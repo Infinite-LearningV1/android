@@ -31,13 +31,17 @@ import com.example.infinite_track.presentation.navigation.NavigationEvent
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.navigation.appNavGraph
 import com.example.infinite_track.utils.DialogHelper
+import com.example.infinite_track.utils.LocalLocationPermissionHelper
+import com.example.infinite_track.utils.LocationPermissionHelper
 import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.runtime.CompositionLocalProvider
 
 @Composable
 fun InfiniteTrackApp(
     modifier: Modifier = Modifier,
     appNavigator: AppNavigator? = null,
-    sessionManager: SessionManager? = null
+    sessionManager: SessionManager? = null,
+    locationPermissionHelper: LocationPermissionHelper? = null
 ) {
     // Root level NavController - handles top-level navigation
     val navController = rememberNavController()
@@ -148,13 +152,16 @@ fun InfiniteTrackApp(
             modifier = Modifier.fillMaxSize(),
             color = Color.Transparent
         ) {
-            // Root NavHost with only top-level navigation concerns
-            NavHost(
-                navController = navController,
-                startDestination = Screen.Splash.route
-            ) {
-                // Connect to the app navigation graph
-                appNavGraph(navController)
+            // Provide LocationPermissionHelper throughout the app
+            CompositionLocalProvider(LocalLocationPermissionHelper provides locationPermissionHelper) {
+                // Root NavHost with only top-level navigation concerns
+                NavHost(
+                    navController = navController,
+                    startDestination = Screen.Splash.route
+                ) {
+                    // Connect to the app navigation graph
+                    appNavGraph(navController)
+                }
             }
         }
     }

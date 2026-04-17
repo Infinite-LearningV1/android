@@ -48,6 +48,8 @@ import com.example.infinite_track.presentation.components.empty.ErrorAnimation
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
 import com.example.infinite_track.presentation.components.maps.AttendanceMap
 import com.example.infinite_track.presentation.components.maps.MarkerView
+import com.example.infinite_track.presentation.components.dialog.LocationPermissionDialog
+import com.example.infinite_track.utils.LocalLocationPermissionHelper
 import com.example.infinite_track.presentation.components.maps.MarkerViewWfa
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
@@ -71,6 +73,7 @@ fun AttendanceScreen(
 
     // Observasi state dari ViewModel yang sudah disederhanakan
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val locationPermissionHelper = LocalLocationPermissionHelper.current
 
     // Handle hasil pencarian lokasi dari LocationSearchScreen
     val selectedLocation = navController.currentBackStackEntry
@@ -541,6 +544,22 @@ fun AttendanceScreen(
                     ?.remove<Boolean>("face_verification_result")
             }
         }
+    }
+
+    // Permission Dialog for Geofencing
+    if (uiState.showPermissionDialog && uiState.permissionResult != null) {
+        LocationPermissionDialog(
+            permissionResult = uiState.permissionResult!!,
+            onRequestPermission = {
+                locationPermissionHelper?.checkAndRequestPermissions()
+            },
+            onOpenSettings = {
+                locationPermissionHelper?.openAppSettings()
+            },
+            onDismiss = {
+                viewModel.onDismissPermissionDialog()
+            }
+        )
     }
 }
 

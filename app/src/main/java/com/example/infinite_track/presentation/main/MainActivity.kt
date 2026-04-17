@@ -18,6 +18,8 @@ import com.example.infinite_track.presentation.navigation.AppNavigator
 import com.example.infinite_track.presentation.screen.splash.SplashNavigationState
 import com.example.infinite_track.presentation.screen.splash.SplashViewModel
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
+import com.example.infinite_track.utils.LocationPermissionHelper
+import com.example.infinite_track.utils.NotificationHelper
 import com.example.infinite_track.utils.updateAppLanguage
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -41,6 +43,9 @@ class MainActivity : ComponentActivity() {
 	@Inject
 	lateinit var localizationRepository: LocalizationRepository
 
+	// Location permission helper untuk geofencing
+	private lateinit var locationPermissionHelper: LocationPermissionHelper
+
 	private val requestNotificationPermission =
 		registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
 
@@ -62,13 +67,23 @@ class MainActivity : ComponentActivity() {
 			updateAppLanguage(this@MainActivity, savedLanguage)
 		}
 
+		// Initialize location permission helper
+		locationPermissionHelper = LocationPermissionHelper(this) { result ->
+			Log.d("MainActivity", "Permission result: $result")
+			// Permission result akan dihandle di AttendanceViewModel
+		}
+
+		// Create notification channel untuk geofencing
+		NotificationHelper.createNotificationChannel(this)
+
 		requestPostNotificationsIfNeeded()
 
 		setContent {
 			Infinite_TrackTheme {
 				InfiniteTrackApp(
 					appNavigator = appNavigator,
-					sessionManager = sessionManager
+					sessionManager = sessionManager,
+					locationPermissionHelper = locationPermissionHelper
 				)
 			}
 		}
@@ -104,3 +119,4 @@ class MainActivity : ComponentActivity() {
 		}
 	}
 }
+

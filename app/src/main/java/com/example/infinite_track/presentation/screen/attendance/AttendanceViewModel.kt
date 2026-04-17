@@ -19,6 +19,7 @@ import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
 import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.example.infinite_track.presentation.navigation.Screen
+import com.example.infinite_track.utils.LocationPermissionHelper
 import com.example.infinite_track.utils.UiState
 import com.mapbox.geojson.Point
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -360,7 +361,7 @@ class AttendanceViewModel @Inject constructor(
 
     /**
      * Setup geofence for validation (background monitoring)
-     * UPDATED: Improved integration with new GeofenceManager clean slate approach
+     * UPDATED: Enhanced with permission checking and user feedback
      */
     private fun setupGeofence(location: Location) {
         try {
@@ -370,11 +371,39 @@ class AttendanceViewModel @Inject constructor(
                 "Location details - ID: ${location.locationId}, Lat: ${location.latitude}, Lng: ${location.longitude}, Radius: ${location.radius}m"
             )
 
+            // Check if all required permissions are granted
+            if (!geofenceManager.hasAllRequiredPermissions()) {
+                Log.w(TAG, "Missing location permissions for geofencing")
+                
+                // Determine which permission is missing
+                val permissionResult = when {
+                    !geofenceManager.hasForegroundLocationPermission() -> 
+                        LocationPermissionHelper.PermissionResult.ForegroundPermissionDenied
+                    !geofenceManager.hasBackgroundLocationPermission() -> 
+                        LocationPermissionHelper.PermissionResult.BackgroundPermissionDenied
+                    else -> LocationPermissionHelper.PermissionResult.PermanentlyDenied
+                }
+                
+                _uiState.value = _uiState.value.copy(
+                    showPermissionDialog = true,
+                    permissionResult = permissionResult,
+                    permissionMessage = geofenceManager.getPermissionStatusMessage()
+                )
+                return
+            }
+
             geofenceManager.addGeofence(
                 id = location.locationId.toString(),
                 latitude = location.latitude,
                 longitude = location.longitude,
-                radius = location.radius.toFloat()
+                radius = location.radius.toFloat(),
+                onPermissionError = { errorMessage ->
+                    Log.e(TAG, "Permission error during geofence setup: $errorMessage")
+                    _uiState.value = _uiState.value.copy(
+                        showPermissionDialog = true,
+                        permissionMessage = errorMessage
+                    )
+                }
             )
 
             Log.d(TAG, "Geofence setup request sent for location: ${location.description}")
@@ -1060,6 +1089,50 @@ class AttendanceViewModel @Inject constructor(
                 Log.e(TAG, "Unexpected error in onMapIdle", e)
             }
         }
+    }
+
+    // ===========================================
+    // Permission Dialog Handling
+    // ===========================================
+
+    /**
+     * Handle permission dialog result
+     */
+    fun onPermissionDialogResult(result: LocationPermissionHelper.PermissionResult) {
+        _uiState.value = _uiState.value.copy(
+            showPermissionDialog = false,
+            permissionResult = result
+        )
+
+        // If permissions are granted, retry geofence setup
+        if (result == LocationPermissionHelper.PermissionResult.AllPermissionsGranted) {
+            // Retry setting up geofence for current selected location
+            when (_uiState.value.selectedWorkMode) {
+                "Work From Home", "WFH" -> _uiState.value.wfhLocation?.let { setupGeofence(it) }
+                "Work From Office", "WFO" -> _uiState.value.wfoLocation?.let { setupGeofence(it) }
+                else -> _uiState.value.selectedWfaLocation?.let { wfaLocation ->
+                    val location = Location(
+                        locationId = 0, // WFA doesn't have fixed ID
+                        latitude = wfaLocation.latitude,
+                        longitude = wfaLocation.longitude,
+                        radius = 100, // Default radius for WFA
+                        description = wfaLocation.name,
+                        category = wfaLocation.category
+                    )
+                    setupGeofence(location)
+                }
+            }
+        }
+    }
+
+    /**
+     * Dismiss permission dialog
+     */
+    fun onDismissPermissionDialog() {
+        _uiState.value = _uiState.value.copy(
+            showPermissionDialog = false,
+            permissionMessage = ""
+        )
     }
 
     override fun onCleared() {
