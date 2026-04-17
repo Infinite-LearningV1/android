@@ -1,0 +1,56 @@
+# ================================================================================================
+# INFINITE TRACK - RELEASE OPTIMIZATION PROPERTIES
+# ================================================================================================
+# Purpose: Enable aggressive R8 optimization for maximum APK size reduction
+# Instructions: Copy these properties to your gradle.properties file
+# ================================================================================================
+
+# Enable R8 full mode for maximum optimization
+# This enables more aggressive optimizations and dead code elimination
+android.enableR8.fullMode=true
+
+# Enable resource optimization
+# Aggressively removes unused resources
+android.enableResourceOptimizations=true
+
+# Enable new resource processing (AAPT2)
+android.enableAapt2=true
+
+# Enable build cache for faster builds
+org.gradle.caching=true
+
+# Enable parallel execution
+org.gradle.parallel=true
+
+# Increase Gradle daemon memory for large projects
+org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError
+
+# Enable configuration cache (experimental - faster builds)
+# org.gradle.configuration-cache=true
+
+# Enable Kotlin incremental compilation
+kotlin.incremental=true
+kotlin.incremental.js=true
+
+# Enable Kotlin compiler daemon
+kotlin.compiler.execution.strategy=daemon
+
+# Disable unnecessary Android build features for release
+android.defaults.buildfeatures.aidl=false
+android.defaults.buildfeatures.renderscript=false
+android.defaults.buildfeatures.resvalues=false
+android.defaults.buildfeatures.shaders=false
+
+# Enable non-transitive R classes (reduces R class size)
+android.nonTransitiveRClass=true
+
+# Use AndroidX
+android.useAndroidX=true
+
+# Enable Jetifier (if needed for old libraries)
+android.enableJetifier=true
+
+# ================================================================================================
+# END OF RELEASE OPTIMIZATION PROPERTIES
+# ================================================================================================
+

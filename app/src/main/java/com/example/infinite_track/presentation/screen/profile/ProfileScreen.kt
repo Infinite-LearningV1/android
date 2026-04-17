@@ -43,6 +43,7 @@ import cn.pedant.SweetAlert.SweetAlertDialog
 import coil.compose.AsyncImage
 import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.auth.UserModel
+import com.example.infinite_track.presentation.components.popUp.LanguagePopUp
 import com.example.infinite_track.presentation.core.headline2
 import com.example.infinite_track.presentation.core.headline3
 import com.example.infinite_track.presentation.core.headline4
@@ -74,16 +75,22 @@ fun ProfileScreen(
     val language by profileViewModel.languageState.collectAsStateWithLifecycle()
     val showLanguageDialog by profileViewModel.showLanguageDialog.collectAsStateWithLifecycle()
 
-    // Show language selection dialog
-    if (showLanguageDialog) {
-        SimpleLanguageDialog(
-            selectedLanguage = language,
-            onDismiss = { profileViewModel.onLanguageDialogDismiss() },
-            onSelectLanguage = { newLanguage ->
-                profileViewModel.onUpdateLanguage(newLanguage)
-            }
-        )
-    }
+    // Show language selection dialog using LanguagePopUp
+    LanguagePopUp(
+        showDialog = showLanguageDialog,
+        selectedLanguage = language,
+        onDismiss = { profileViewModel.onLanguageDialogDismiss() },
+        onLanguageChange = { newLanguage ->
+            // Update temporary selection in ViewModel state
+            // We do not persist here; persistence happens on confirm
+            profileViewModel.onUpdateLanguage(newLanguage)
+        },
+        onConfirm = { confirmedLanguage ->
+            // Persist already done in onUpdateLanguage; ensure dialog closed
+            // LanguagePopUp will call updateAppLanguage to apply runtime locale
+            profileViewModel.onLanguageDialogDismiss()
+        }
+    )
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -326,60 +333,4 @@ fun ProfileBar(
             modifier = Modifier.size(16.dp)
         )
     }
-}
-
-@Composable
-fun SimpleLanguageDialog(
-    selectedLanguage: String,
-    onDismiss: () -> Unit,
-    onSelectLanguage: (String) -> Unit
-) {
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Select Language") },
-        text = {
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onSelectLanguage("en") }
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("English")
-                    Spacer(modifier = Modifier.weight(1f))
-                    if (selectedLanguage == "en") {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_global),
-                            contentDescription = "Selected",
-                            tint = Color.Green
-                        )
-                    }
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onSelectLanguage("id") }
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Indonesia")
-                    Spacer(modifier = Modifier.weight(1f))
-                    if (selectedLanguage == "id") {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_pencil),
-                            contentDescription = "Selected",
-                            tint = Color.Green
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
-        }
-    )
 }

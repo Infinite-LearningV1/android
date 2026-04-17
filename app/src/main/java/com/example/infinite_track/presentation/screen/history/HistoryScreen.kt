@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -213,7 +214,8 @@ fun HistoryScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .defaultMinSize(minHeight = 420.dp)
+                    .fillMaxHeight(0.6f)
+                    .defaultMinSize(minHeight = 200.dp)
             ) {
                 // Initial loading state
                 if (uiState.isLoading && uiState.records.isEmpty()) {
@@ -311,7 +313,8 @@ fun PeriodFilterChips(
     val periods = listOf(
         "daily" to "Daily",
         "weekly" to "Weekly",
-        "monthly" to "Monthly"
+        "monthly" to "Monthly",
+        "all" to "All"
     )
 
     FlowRow(

@@ -28,13 +28,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.infinite_track.presentation.components.button.InfiniteTracButtonBack
-import com.example.infinite_track.presentation.components.calendar.DateRangePickerModal
 import com.example.infinite_track.presentation.components.calendar.TodayDateWithFilterHeader
 import com.example.infinite_track.presentation.components.cards.AttendanceHistoryC
 import com.example.infinite_track.presentation.components.empty.EmptyListAnimation
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
 import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.screen.history.HistoryViewModel
+import com.example.infinite_track.presentation.screen.history.PeriodFilterChips
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -44,167 +44,140 @@ import java.util.Locale
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DetailsMyAttendance(
-    viewModel: HistoryViewModel = hiltViewModel(), // Use the shared HistoryViewModel
-    onBackClick: () -> Unit,
+	viewModel: HistoryViewModel = hiltViewModel(), // Use the shared HistoryViewModel
+	onBackClick: () -> Unit,
 ) {
-    // Collect state from HistoryViewModel
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var expanded by remember { mutableStateOf(false) }
-    var selectedDateRange by remember { mutableStateOf<String?>(null) }
+	// Collect state from HistoryViewModel
+	val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+	var showFilters by remember { mutableStateOf(false) }
 
-    // Create a LazyListState for the attendance list
-    val lazyListState = rememberLazyListState()
+	// Create a LazyListState for the attendance list
+	val lazyListState = rememberLazyListState()
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = Color.Transparent,
-        topBar = {
-            InfiniteTracButtonBack(
-                title = "My Attendance",
-                navigationBack = onBackClick,
-                modifier = Modifier.padding(top = 12.dp)
-            )
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                // Header with date filter
-                TodayDateWithFilterHeader(
-                    displayDate = selectedDateRange ?: uiState.selectedPeriod.capitalize(),
-                    onFilterClick = { expanded = true }
-                )
+	Scaffold(
+		modifier = Modifier.fillMaxSize(),
+		containerColor = Color.Transparent,
+		topBar = {
+			InfiniteTracButtonBack(
+				title = "My Attendance",
+				navigationBack = onBackClick,
+				modifier = Modifier.padding(top = 12.dp)
+			)
+		}
+	) { innerPadding ->
+		Box(
+			modifier = Modifier
+				.fillMaxSize()
+				.padding(16.dp)
+		) {
+			Column(
+				modifier = Modifier
+					.fillMaxSize()
+					.padding(innerPadding)
+			) {
+				// Header with period filter toggle
+				TodayDateWithFilterHeader(
+					displayDate = uiState.selectedPeriod.capitalize(),
+					onFilterClick = { showFilters = !showFilters }
+				)
 
-                // Date range picker modal
-                if (expanded) {
-                    DateRangePickerModal(
-                        onDateRangeSelected = { dateRange ->
-                            val (startMillis, endMillis) = dateRange
-                            if (startMillis != null && endMillis != null) {
-                                val startDate = Instant.ofEpochMilli(startMillis)
-                                    .atZone(ZoneId.systemDefault()).toLocalDate()
+				// Period filter chips
+				if (showFilters) {
+					Spacer(modifier = Modifier.height(8.dp))
+					PeriodFilterChips(
+						selectedPeriod = uiState.selectedPeriod,
+						onPeriodSelected = { period ->
+							viewModel.onFilterChanged(period)
+							showFilters = false
+						}
+					)
+				}
 
-                                val endDate = Instant.ofEpochMilli(endMillis)
-                                    .atZone(ZoneId.systemDefault()).toLocalDate()
+				Spacer(modifier = Modifier.height(16.dp))
 
-                                selectedDateRange =
-                                    "${
-                                        startDate.format(
-                                            DateTimeFormatter.ofPattern(
-                                                "d MMM yyyy",
-                                                Locale("id", "ID")
-                                            )
-                                        )
-                                    } - ${
-                                        endDate.format(
-                                            DateTimeFormatter.ofPattern(
-                                                "d MMM yyyy",
-                                                Locale("id", "ID")
-                                            )
-                                        )
-                                    }"
+				// Display loading, error, or content based on UI state
+				when {
+					uiState.isLoading && uiState.records.isEmpty() -> {
+						Box(
+							modifier = Modifier.fillMaxSize(),
+							contentAlignment = Alignment.Center
+						) {
+							LoadingAnimation()
+						}
+					}
 
-                                // TODO: Implement date range filtering in HistoryViewModel
-                                // For now, we'll just use the existing period filtering
-                            }
-                            expanded = false
-                        },
-                        onDismiss = { expanded = false }
-                    )
-                }
+					uiState.error != null -> {
+						Box(
+							modifier = Modifier.fillMaxSize(),
+							contentAlignment = Alignment.Center
+						) {
+							Column(
+								horizontalAlignment = Alignment.CenterHorizontally,
+							) {
+								EmptyListAnimation(modifier = Modifier.size(150.dp))
+								Text(
+									text = uiState.error ?: "Unknown error",
+									style = headline4,
+								)
+							}
+						}
+					}
 
-                Spacer(modifier = Modifier.height(16.dp))
+					uiState.records.isEmpty() -> {
+						Box(
+							modifier = Modifier.fillMaxSize(),
+							contentAlignment = Alignment.Center
+						) {
+							Column(
+								horizontalAlignment = Alignment.CenterHorizontally,
+							) {
+								EmptyListAnimation(modifier = Modifier.size(150.dp))
+								Text(
+									text = "No attendance data available yet.",
+									style = headline4,
+								)
+							}
+						}
+					}
 
-                // Display loading, error, or content based on UI state
-                when {
-                    uiState.isLoading && uiState.records.isEmpty() -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            LoadingAnimation()
-                        }
-                    }
+					else -> {
+						// Replace AttendanceHistoryList with a LazyColumn using AttendanceHistoryC
+						LazyColumn(
+							state = lazyListState,
+							modifier = Modifier
+								.weight(1f)
+								.fillMaxSize(),
+							contentPadding = PaddingValues(bottom = 16.dp)
+						) {
+							items(uiState.records) { record ->
+								AttendanceHistoryC(record = record)
+								Spacer(modifier = Modifier.height(8.dp))
+							}
 
-                    uiState.error != null -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                EmptyListAnimation(modifier = Modifier.size(150.dp))
-                                Text(
-                                    text = uiState.error ?: "Unknown error",
-                                    style = headline4,
-                                )
-                            }
-                        }
-                    }
-
-                    uiState.records.isEmpty() -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                EmptyListAnimation(modifier = Modifier.size(150.dp))
-                                Text(
-                                    text = "No attendance data available yet.",
-                                    style = headline4,
-                                )
-                            }
-                        }
-                    }
-
-                    else -> {
-                        // Replace AttendanceHistoryList with a LazyColumn using AttendanceHistoryC
-                        LazyColumn(
-                            state = lazyListState,
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 16.dp)
-                        ) {
-                            items(uiState.records) { record ->
-                                AttendanceHistoryC(record = record)
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-
-                            if (uiState.isLoadingMore) {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        LoadingAnimation()
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+							if (uiState.isLoadingMore) {
+								item {
+									Box(
+										modifier = Modifier
+											.fillMaxWidth()
+											.padding(16.dp),
+										contentAlignment = Alignment.Center
+									) {
+										LoadingAnimation()
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 // Extension function to capitalize the first letter of a string
 private fun String.capitalize(): String {
-    return this.replaceFirstChar {
-        if (it.isLowerCase()) it.titlecase(Locale.getDefault())
-        else it.toString()
-    }
+	return this.replaceFirstChar {
+		if (it.isLowerCase()) it.titlecase(Locale.getDefault())
+		else it.toString()
+	}
 }

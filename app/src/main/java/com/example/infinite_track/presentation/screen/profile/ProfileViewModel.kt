@@ -97,11 +97,10 @@ class ProfileViewModel @Inject constructor(
         _showLanguageDialog.value = false
     }
 
+    // Persist language selection
     fun onUpdateLanguage(language: String) {
         viewModelScope.launch {
             setSelectedLanguageUseCase(language)
-            // Close the dialog after language is updated
-            onLanguageDialogDismiss()
         }
     }
 

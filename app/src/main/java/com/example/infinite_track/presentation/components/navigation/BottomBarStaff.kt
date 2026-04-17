@@ -118,7 +118,7 @@ fun BottomBarStaff(navController: NavController) {
                     ),
                     NavigationItem(
                         tittle = stringResource(R.string.bottom_menu_MyLeave),
-                        selectedIcon = R.drawable.ic_myleave_s,
+                        selectedIcon = R.drawable.ic_myleave,
                         unselectedIcon = R.drawable.ic_myleave,
                         screen = Screen.MyLeave
                     ),

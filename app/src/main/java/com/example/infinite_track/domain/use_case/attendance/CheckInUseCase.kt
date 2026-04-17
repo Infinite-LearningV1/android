@@ -55,6 +55,9 @@ class CheckInUseCase @Inject constructor(
             // Step 4: If check-in successful, setup geofence monitoring using provided target location
             if (checkInResult.isSuccess) {
                 try {
+                    // Clean up reminder geofences to avoid double notifications during active session
+                    geofenceManager.removeAllGeofences()
+
                     val requestId = if (targetLocation.locationId != 0) {
                         targetLocation.locationId.toString()
                     } else {

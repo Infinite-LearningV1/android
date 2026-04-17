@@ -100,7 +100,7 @@ fun CardInbox(
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_delete),
+                    painter = painterResource(id = R.drawable.ic_pencil),
                     contentDescription = "Delete",
                     modifier = Modifier
                         .padding(end = 16.dp)

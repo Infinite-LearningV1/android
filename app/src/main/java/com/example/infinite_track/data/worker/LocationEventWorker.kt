@@ -26,7 +26,7 @@ class LocationEventWorker @AssistedInject constructor(
 
         // Input data keys
         const val KEY_EVENT_TYPE = "event_type"
-        const val KEY_LOCATION_ID = "location_id"
+        const val KEY_LOCATION_ID = "location_id" // now String
         const val KEY_EVENT_TIMESTAMP = "event_timestamp"
     }
 
@@ -36,11 +36,11 @@ class LocationEventWorker @AssistedInject constructor(
 
             // Extract data from input
             val eventType = inputData.getString(KEY_EVENT_TYPE)
-            val locationId = inputData.getInt(KEY_LOCATION_ID, -1)
+            val locationId = inputData.getString(KEY_LOCATION_ID)
             val eventTimestamp = inputData.getString(KEY_EVENT_TIMESTAMP)
 
             // Validate input data
-            if (eventType == null || locationId == -1 || eventTimestamp == null) {
+            if (eventType.isNullOrBlank() || locationId.isNullOrBlank() || eventTimestamp.isNullOrBlank()) {
                 Log.e(
                     TAG,
                     "Invalid input data: eventType=$eventType, locationId=$locationId, timestamp=$eventTimestamp"

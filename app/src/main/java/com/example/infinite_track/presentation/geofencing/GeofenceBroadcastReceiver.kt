@@ -77,7 +77,19 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                 val activeAttendanceId = attendancePreference.getActiveAttendanceId().first()
 
                 if (activeAttendanceId == null) {
-                    Log.d(TAG, "No active attendance session found. Ignoring geofence event.")
+                    Log.d(TAG, "No active session. Handling as reminder mode for event: $eventType")
+
+                    // In reminder mode, only act on ENTER to nudge user to check-in
+                    if (eventType == "ENTER") {
+                        triggeringGeofences.forEach { geofence ->
+                            val locationId = geofence.requestId
+                            val friendlyLabel = when {
+                                locationId.startsWith("wfa:") -> "Lokasi WFA"
+                                else -> locationId
+                            }
+                            NotificationHelper.showCheckInReminderNotification(context, friendlyLabel)
+                        }
+                    }
                     return@launch
                 }
 
@@ -94,6 +106,12 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
                 // Process each triggered geofence
                 triggeringGeofences.forEach { geofence ->
+                    val requestId = geofence.requestId
+                    // Ignore reminder geofences (prefixed) during active session
+                    if (requestId.startsWith("reminder:")) {
+                        Log.d(TAG, "Ignoring reminder geofence during active session: $requestId")
+                        return@forEach
+                    }
                     processGeofenceEvent(context, geofence, eventType)
                 }
 
@@ -105,49 +123,39 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
     private fun processGeofenceEvent(context: Context, geofence: Geofence, eventType: String) {
         try {
-            // Extract location ID from geofence request ID
-            val locationId = geofence.requestId.toIntOrNull() ?: run {
-                Log.e(TAG, "Invalid geofence request ID: ${geofence.requestId}")
-                return
-            }
+            val locationId = geofence.requestId // String: supports numeric and WFA ids
 
-            // Generate timestamp in ISO 8601 UTC format
             val formatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
                 timeZone = TimeZone.getTimeZone("UTC")
             }
             val timestamp = formatter.format(Date())
 
-            // Show immediate notification to user
-            val locationName = geofence.requestId // Use requestId as location name
-            NotificationHelper.showGeofenceNotification(context, eventType, locationName)
+            // Derive a user-friendly label for notification
+            val friendlyLabel = when {
+                locationId.startsWith("wfa:") -> "Lokasi WFA"
+                else -> locationId
+            }
+            NotificationHelper.showGeofenceNotification(context, eventType, friendlyLabel)
 
-            // Prepare data for WorkManager
             val workData = Data.Builder()
                 .putString(LocationEventWorker.KEY_EVENT_TYPE, eventType)
-                .putInt(LocationEventWorker.KEY_LOCATION_ID, locationId)
+                .putString(LocationEventWorker.KEY_LOCATION_ID, locationId)
                 .putString(LocationEventWorker.KEY_EVENT_TIMESTAMP, timestamp)
                 .build()
 
-            // Create constraints - require network connection
             val constraints = androidx.work.Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
 
-            // Create work request
             val workRequest = OneTimeWorkRequestBuilder<LocationEventWorker>()
                 .setInputData(workData)
                 .setConstraints(constraints)
                 .addTag("location_event_$locationId")
                 .build()
 
-            // Enqueue work
             WorkManager.getInstance(context).enqueue(workRequest)
 
-            Log.d(
-                TAG,
-                "Location event work enqueued: $eventType for location $locationId at $timestamp"
-            )
-
+            Log.d(TAG, "Location event enqueued: $eventType for $locationId at $timestamp")
         } catch (e: Exception) {
             Log.e(TAG, "Error processing geofence event for ${geofence.requestId}", e)
         }

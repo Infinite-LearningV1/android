@@ -25,6 +25,9 @@
     <uses-permission android:name="android:permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
+    <!-- Re-register geofence after device reboot -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:name=".InfiniteTrackApplication"
         android:allowBackup="true"
@@ -39,13 +42,19 @@
         android:theme="@style/Theme.Infinite_Track"
         tools:targetApi="31">
 
-        <!-- BroadcastReceiver untuk Geofencing -->
+        <!-- BroadcastReceiver untuk Geofencing (triggered via PendingIntent, no intent-filter needed) -->
         <receiver
             android:name=".presentation.geofencing.GeofenceBroadcastReceiver"
             android:enabled="true"
+            android:exported="false" />
+
+        <!-- Boot Completed Receiver -->
+        <receiver
+            android:name=".presentation.geofencing.BootCompletedReceiver"
+            android:enabled="true"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.google.android.gms.location.Geofence" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
 

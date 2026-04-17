@@ -77,10 +77,10 @@ data class PaginationData(
     val totalItems: Int,
     @SerializedName("items_per_page")
     val itemsPerPage: Int,
-    @SerializedName("has_next")
-    val hasNext: Boolean,
-    @SerializedName("has_prev")
-    val hasPrev: Boolean
+    @SerializedName("has_next_page")
+    val hasNextPage: Boolean,
+    @SerializedName("has_previous_page")
+    val hasPreviousPage: Boolean
 )
 
 data class FilterData(

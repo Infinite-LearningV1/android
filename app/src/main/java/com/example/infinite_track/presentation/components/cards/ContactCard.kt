@@ -189,7 +189,7 @@ fun ContactCard(
                                     }
                             )
                             Image(
-                                painter = painterResource(id = R.drawable.ic_message),
+                                painter = painterResource(id = R.drawable.ic_whatsapp),
                                 contentDescription = "",
                                 modifier = Modifier
                                     .padding(start = 10.dp, end = 10.dp)

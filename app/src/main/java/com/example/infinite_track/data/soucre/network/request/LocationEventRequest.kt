@@ -10,7 +10,7 @@ data class LocationEventRequest(
     val eventType: String, // "ENTER" atau "EXIT"
 
     @SerializedName("location_id")
-    val locationId: Int, // ID lokasi dari geofence
+    val locationId: String, // ID lokasi dari geofence (boleh non-numerik)
 
     @SerializedName("event_timestamp")
     val eventTimestamp: String // ISO timestamp format

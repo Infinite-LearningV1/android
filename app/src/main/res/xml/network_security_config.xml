@@ -20,6 +20,6 @@
         <domain includeSubdomains="true">50.0.0.231</domain>
         <domain includeSubdomains="true">192.168.1.11</domain>
         <domain includeSubdomains="true">192.168.197.197</domain>
-        <domain includeSubdomains="true">192.168.212.197</domain>
+        <domain includeSubdomains="true">192.168.3.197</domain>
     </domain-config>
 </network-security-config>

@@ -1,330 +1,292 @@
 # ================================================================================================
-# INFINITE TRACK - RELEASE BUILD PROGUARD RULES
+# INFINITE TRACK - AGGRESSIVE RELEASE BUILD PROGUARD RULES
 # ================================================================================================
-# Purpose: Production-ready R8/ProGuard configuration for offline APK distribution
+# Purpose: Maximum code shrinking & obfuscation for smallest APK size
+# Strategy: Strip all debug code, logging, and unused code aggressively
 # Last Updated: 2025-10-28
-# AGP Version: 8.5.2 (R8 is default)
+# AGP Version: 8.5.2 (R8 default)
 # ================================================================================================
 
 # ================================================================================================
-# GENERAL OPTIMIZATION & OBFUSCATION SETTINGS
+# AGGRESSIVE LOGGING REMOVAL
+# ================================================================================================
+# WHY: Remove ALL android.util.Log calls from release builds
+# This strips debug, info, warn, and even error logs for maximum security & size reduction
+# IMPACT: ~50KB+ reduction, prevents information leakage
+
+-assumenosideeffects class android.util.Log {
+    public static boolean isLoggable(java.lang.String, int);
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+    public static int w(...);
+    public static int e(...);
+    public static int wtf(...);
+}
+
+# Alternative: Use maximum log level removal (keeps only wtf/assert)
+# Uncomment if you want to keep error logs
+# -maximumremovedandroidloglevel 4
+
+# Remove println calls (debug prints)
+-assumenosideeffects class java.io.PrintStream {
+    public void println(...);
+    public void print(...);
+}
+
+# Remove Kotlin println
+-assumenosideeffects class kotlin.io.ConsoleKt {
+    public static *** println(...);
+    public static *** print(...);
+}
+
+# ================================================================================================
+# AGGRESSIVE OPTIMIZATION SETTINGS
 # ================================================================================================
 
-# Keep source file names and line numbers for better crash reports
-# Comment out for maximum obfuscation (but harder to debug production crashes)
--keepattributes SourceFile,LineNumberTable
+# Allow aggressive optimization
+-optimizations !code/simplification/arithmetic,!code/simplification/cast,!field/*,!class/merging/*
+-optimizationpasses 5
+-allowaccessmodification
+-mergeinterfacesaggressively
 
-# Keep generic signatures for Kotlin reflection and Java generics
--keepattributes Signature
+# Repackage classes to reduce APK size
+-repackageclasses ''
+-flattenpackagehierarchy
 
-# Preserve all annotations (required for Retrofit, Hilt, Room, etc.)
--keepattributes *Annotation*
-
-# Keep exceptions for proper error handling
--keepattributes Exceptions
+# Remove attributes not needed in release
+-keepattributes SourceFile,LineNumberTable,Signature,*Annotation*,Exceptions
 
 # ================================================================================================
-# KOTLIN-SPECIFIC RULES
+# KOTLIN OPTIMIZATIONS
 # ================================================================================================
 
-# Keep Kotlin metadata for reflection
 -keep class kotlin.Metadata { *; }
-
-# Keep Kotlin intrinsics (required for Kotlin stdlib)
 -keep class kotlin.jvm.internal.** { *; }
 
-# Preserve Kotlin coroutines
+# Keep coroutines (minimal)
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
 -keepclassmembers class kotlinx.coroutines.** {
     volatile <fields>;
 }
 
-# ================================================================================================
-# GSON / JSON SERIALIZATION RULES
-# ================================================================================================
-# WHY: Gson uses reflection to access fields in data classes
-# All request/response DTOs must preserve field names and structure
+# Remove Kotlin debugging metadata
+-assumenosideeffects class kotlin.jvm.internal.Intrinsics {
+    public static void check*(...);
+    public static void throw*(...);
+}
 
-# Keep all data classes in network package (request/response DTOs)
+# ================================================================================================
+# GSON / JSON SERIALIZATION (CRITICAL - MUST KEEP)
+# ================================================================================================
+# WHY: Gson uses reflection to serialize/deserialize data classes
+# Without these rules, runtime crashes will occur
+
 -keep class com.example.infinite_track.data.soucre.network.request.** { *; }
 -keep class com.example.infinite_track.data.soucre.network.response.** { *; }
 
-# Keep Gson annotations
 -keepattributes Signature
--keepattributes *Annotation*
--keep class com.google.gson.annotations.** { *; }
-
-# Gson specific classes
--dontwarn com.google.gson.**
 -keep class com.google.gson.** { *; }
+-keepclassmembers,allowobfuscation class * {
+  @com.google.gson.annotations.SerializedName <fields>;
+}
 
-# Keep generic signature of Gson classes (for parameterized types)
+# Prevent stripping of generic signatures
 -keep class * implements com.google.gson.TypeAdapter
 -keep class * implements com.google.gson.TypeAdapterFactory
 -keep class * implements com.google.gson.JsonSerializer
 -keep class * implements com.google.gson.JsonDeserializer
 
-# Prevent R8 from stripping @SerializedName fields
--keepclassmembers,allowobfuscation class * {
-  @com.google.gson.annotations.SerializedName <fields>;
-}
-
 # ================================================================================================
-# RETROFIT & OKHTTP RULES
+# RETROFIT & OKHTTP (MINIMAL RULES)
 # ================================================================================================
-# WHY: Retrofit uses reflection and code generation for API interfaces
 
-# Retrofit does reflection on generic parameters and annotations
 -keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations
-
-# Keep API service interfaces
 -keep,allowobfuscation interface com.example.infinite_track.data.soucre.network.retrofit.** { *; }
 
-# Retrofit
--dontwarn retrofit2.**
--keep class retrofit2.** { *; }
 -keepclasseswithmembers class * {
     @retrofit2.http.* <methods>;
 }
 
-# OkHttp
--dontwarn okhttp3.**
--dontwarn okio.**
--keep class okhttp3.** { *; }
--keep interface okhttp3.** { *; }
-
-# OkHttp logging interceptor
--keep class okhttp3.logging.HttpLoggingInterceptor { *; }
+# OkHttp platform detection
+-dontwarn okhttp3.internal.platform.**
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**
 
 # ================================================================================================
-# HILT / DAGGER DEPENDENCY INJECTION RULES
+# HILT / DAGGER (MINIMAL - RELY ON CONSUMER RULES)
 # ================================================================================================
-# WHY: Hilt uses annotation processing and reflection for DI
 
-# Keep Hilt-generated classes
--keep class dagger.hilt.** { *; }
--keep class javax.inject.** { *; }
--keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
-
-# Keep all Hilt modules and injected constructors
 -keep @dagger.hilt.android.lifecycle.HiltViewModel class * { *; }
 -keep @dagger.Module class * { *; }
 -keep @dagger.hilt.InstallIn class * { *; }
 
-# Keep ViewModels (Hilt injects these)
 -keep class * extends androidx.lifecycle.ViewModel { *; }
 -keepclassmembers class * extends androidx.lifecycle.ViewModel {
     <init>(...);
 }
 
 # ================================================================================================
-# JETPACK COMPOSE RULES
+# JETPACK COMPOSE (MINIMAL)
 # ================================================================================================
-# WHY: Compose uses reflection for @Composable functions
 
-# Keep all Composable functions
 -keep @androidx.compose.runtime.Composable class * { *; }
 -keepclassmembers class * {
     @androidx.compose.runtime.Composable *;
 }
 
-# Compose runtime
--keep class androidx.compose.runtime.** { *; }
--keep class androidx.compose.ui.** { *; }
-
 # ================================================================================================
-# ANDROIDX CAMERA X RULES
+# ANDROIDX CAMERA X (CRITICAL FOR FACE RECOGNITION)
 # ================================================================================================
-# WHY: CameraX uses reflection for camera implementations and extensions
 
-# Keep CameraX core classes
 -keep class androidx.camera.** { *; }
 -keep interface androidx.camera.** { *; }
-
-# Keep Camera2 interop classes
 -keep class androidx.camera.camera2.** { *; }
-
-# Prevent CameraX extensions from being removed
 -keep class androidx.camera.extensions.** { *; }
 
 # ================================================================================================
-# ML KIT FACE DETECTION RULES
+# ML KIT & TENSORFLOW LITE (CRITICAL FOR FACE DETECTION)
 # ================================================================================================
-# WHY: ML Kit uses native libraries and reflection
 
-# Keep ML Kit classes
 -keep class com.google.mlkit.** { *; }
 -keep class com.google.android.gms.vision.** { *; }
-
-# Keep face detection models
 -keep class com.google.mlkit.vision.face.** { *; }
 
-# ================================================================================================
-# TENSORFLOW LITE RULES
-# ================================================================================================
-# WHY: TensorFlow Lite uses JNI and native code
-
-# Keep TensorFlow Lite classes
 -keep class org.tensorflow.lite.** { *; }
 -keep interface org.tensorflow.lite.** { *; }
-
-# Keep TensorFlow Lite GPU delegate
 -keep class org.tensorflow.lite.gpu.** { *; }
-
-# Keep model classes and metadata
 -keep class org.tensorflow.lite.support.** { *; }
 -keep class org.tensorflow.lite.task.** { *; }
 
-# Prevent stripping of native methods
 -keepclasseswithmembers class * {
     native <methods>;
 }
 
 # ================================================================================================
-# ANDROIDX ROOM DATABASE RULES
+# ANDROIDX ROOM DATABASE
 # ================================================================================================
-# WHY: Room uses annotation processing and reflection
 
-# Keep Room database classes
 -keep class * extends androidx.room.RoomDatabase { *; }
 -keep @androidx.room.Entity class * { *; }
 -keep @androidx.room.Database class * { *; }
-
-# Keep DAO interfaces
 -keep interface * extends androidx.room.Dao { *; }
-
-# Keep Room annotations
--keepattributes *Annotation*
 -keep class androidx.room.** { *; }
 
 # ================================================================================================
-# ANDROIDX WORK MANAGER RULES
+# ANDROIDX WORK MANAGER
 # ================================================================================================
-# WHY: WorkManager uses reflection to instantiate workers
 
-# Keep all Worker classes
 -keep class * extends androidx.work.Worker { *; }
 -keep class * extends androidx.work.CoroutineWorker { *; }
-
-# Keep WorkManager
 -keep class androidx.work.** { *; }
-
-# Keep Hilt Worker Factory
 -keep class androidx.hilt.work.** { *; }
-
-# Specifically keep our LocationEventWorker
 -keep class com.example.infinite_track.data.worker.LocationEventWorker { *; }
 
 # ================================================================================================
-# GOOGLE PLAY SERVICES RULES
+# GOOGLE PLAY SERVICES (MINIMAL)
 # ================================================================================================
-# WHY: Play Services use reflection and native code
 
-# Google Maps
 -keep class com.google.android.gms.maps.** { *; }
 -keep interface com.google.android.gms.maps.** { *; }
-
-# Location Services
 -keep class com.google.android.gms.location.** { *; }
-
-# Places API
 -keep class com.google.android.libraries.places.** { *; }
 
 # ================================================================================================
-# MAPBOX RULES
+# MAPBOX (CRITICAL FOR MAPS)
 # ================================================================================================
-# WHY: Mapbox uses reflection and native rendering
 
-# Keep Mapbox classes
 -keep class com.mapbox.** { *; }
 -keep interface com.mapbox.** { *; }
-
-# Mapbox services
 -dontwarn com.mapbox.services.**
 
 # ================================================================================================
-# COIL IMAGE LOADING RULES
+# FIREBASE
 # ================================================================================================
-# WHY: Coil uses reflection for image loading
+
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+-keep class com.example.infinite_track.presentation.fcm.InfiniteTrackFCMService { *; }
+
+# ================================================================================================
+# COIL IMAGE LOADING
+# ================================================================================================
 
 -keep class coil.** { *; }
 -keep interface coil.** { *; }
 
 # ================================================================================================
-# LOTTIE ANIMATION RULES
+# LOTTIE ANIMATION
 # ================================================================================================
-# WHY: Lottie parses JSON animations
 
 -keep class com.airbnb.lottie.** { *; }
 
 # ================================================================================================
-# FIREBASE RULES
+# PARCELIZE
 # ================================================================================================
-# WHY: Firebase uses reflection for messaging and analytics
-
-# Firebase Messaging
--keep class com.google.firebase.** { *; }
--keep class com.google.android.gms.** { *; }
-
-# Keep FCM service
--keep class com.example.infinite_track.presentation.fcm.InfiniteTrackFCMService { *; }
-
-# ================================================================================================
-# PARCELIZE RULES
-# ================================================================================================
-# WHY: Kotlin Parcelize uses code generation
 
 -keepclassmembers class * implements android.os.Parcelable {
     public static final ** CREATOR;
 }
-
-# Keep Parcelize annotations
 -keep @kotlinx.parcelize.Parcelize class * { *; }
 
 # ================================================================================================
-# APPLICATION-SPECIFIC RULES
+# APPLICATION SPECIFIC (MINIMAL)
 # ================================================================================================
 
-# Keep Application class
 -keep class com.example.infinite_track.InfiniteTrackApplication { *; }
-
-# Keep MainActivity
 -keep class com.example.infinite_track.presentation.main.MainActivity { *; }
-
-# Keep all BroadcastReceivers (required for Geofencing)
 -keep class * extends android.content.BroadcastReceiver { *; }
-
-# Keep Geofencing receivers
 -keep class com.example.infinite_track.presentation.geofencing.** { *; }
 
-# ================================================================================================
-# DOMAIN MODELS (if accessed by reflection)
-# ================================================================================================
-
-# Keep domain models if they're used with Gson or reflection
-# -keep class com.example.infinite_track.domain.model.** { *; }
-
-# ================================================================================================
-# MISCELLANEOUS RULES
-# ================================================================================================
-
-# Remove logging in release builds (optional - for extra security)
--assumenosideeffects class android.util.Log {
-    public static *** d(...);
-    public static *** v(...);
-    public static *** i(...);
-}
-
-# Keep BuildConfig (to check DEBUG flag at runtime)
+# Keep BuildConfig for runtime checks
 -keep class com.example.infinite_track.BuildConfig { *; }
 
-# Suppress warnings about missing classes (if they're optional dependencies)
+# ================================================================================================
+# AGGRESSIVE DEAD CODE REMOVAL
+# ================================================================================================
+
+# Remove unused enum values
+-optimizations !class/unboxing/enum
+
+# Remove unused code paths
+-assumenosideeffects class android.os.Build$VERSION {
+    public static int SDK_INT return 26..2147483647;
+}
+
+# Remove debug-only code branches
+-assumenosideeffects class com.example.infinite_track.BuildConfig {
+    public static boolean DEBUG return false;
+}
+
+# ================================================================================================
+# REMOVE DEBUG TOOLS & LIBRARIES
+# ================================================================================================
+
+# Remove any Timber/Debug logging libraries if present
+-dontwarn timber.log.**
+-assumenosideeffects class timber.log.** {
+    *;
+}
+
+# Remove LeakCanary if present
+-dontwarn com.squareup.leakcanary.**
+
+# Remove Stetho if present  
+-dontwarn com.facebook.stetho.**
+
+# ================================================================================================
+# SUPPRESS WARNINGS FOR OPTIONAL DEPENDENCIES
+# ================================================================================================
+
 -dontwarn javax.annotation.**
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
+-dontwarn com.google.errorprone.annotations.**
 
 # ================================================================================================
-# END OF PROGUARD RULES
+# END OF AGGRESSIVE PROGUARD RULES
 # ================================================================================================
+

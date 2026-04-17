@@ -136,10 +136,6 @@ class AttendanceRepositoryImpl @Inject constructor(
             } else {
                 Result.failure(Exception(response.message))
             }
-        } catch (e: HttpException) {
-            Log.e(TAG, "HTTP Error during check-out", e)
-            val errorMessage = extractErrorMessage(e)
-            Result.failure(Exception(errorMessage))
         } catch (e: Exception) {
             Log.e(TAG, "Error during check-out", e)
             Result.failure(e)

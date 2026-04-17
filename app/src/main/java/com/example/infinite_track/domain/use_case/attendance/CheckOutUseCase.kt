@@ -60,6 +60,12 @@ class CheckOutUseCase @Inject constructor(
                         "CheckOutUseCase",
                         "Geofence removed using stored request ID: ${lastRequestId ?: "ALL"}"
                     )
+
+                    // Re-register reminder geofences (WFO/WFH) so reminders work after checkout
+                    val reminders = attendancePreference.getReminderGeofences().firstOrNull().orEmpty()
+                    reminders.forEach { r ->
+                        geofenceManager.addReminderGeofence(r.id, r.latitude, r.longitude, r.radiusMeters)
+                    }
                 } catch (e: Exception) {
                     android.util.Log.e("CheckOutUseCase", "Failed to remove geofence", e)
                     // Don't fail the entire check-out process if geofence removal fails

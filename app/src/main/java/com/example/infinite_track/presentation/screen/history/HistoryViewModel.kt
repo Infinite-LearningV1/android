@@ -22,7 +22,7 @@ data class HistoryScreenState(
     val isLoadingMore: Boolean = false,
     val canLoadMore: Boolean = true,
     val error: String? = null,
-    val selectedPeriod: String = "monthly",
+    val selectedPeriod: String = "all",
     val summary: AttendanceSummaryInfo? = null,
     val records: List<AttendanceRecord> = emptyList(),
     val currentPage: Int = 1,

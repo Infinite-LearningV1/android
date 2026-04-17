@@ -24,11 +24,12 @@ data class AttendanceSummary(
 
 data class AttendanceItem(
     @SerializedName("id_attendance") val idAttendance: Int,
-    @SerializedName("date") val attendanceDate: String,
+    @SerializedName("attendance_date") val attendanceDate: String,
+    @SerializedName("date") val date: String,
     @SerializedName("monthYear") val monthYear: String,
     @SerializedName("time_in") val timeIn: String,
     @SerializedName("time_out") val timeOut: String?,
-    @SerializedName("work_hour") val workHour: String,
+    @SerializedName("work_hour") val workHour: String?,
     @SerializedName("category") val category: String,
     @SerializedName("status") val status: String,
     @SerializedName("location") val location: String,

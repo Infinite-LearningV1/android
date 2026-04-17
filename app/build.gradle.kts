@@ -27,7 +27,7 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -37,21 +37,81 @@ android {
         // Add Mapbox access token to manifest dan BuildConfig
         manifestPlaceholders["MAPBOX_PUBLIC_TOKEN"] = mapboxAccessToken
         buildConfigField("String", "MAPBOX_PUBLIC_TOKEN", "\"$mapboxAccessToken\"")
+        
+        // Optimize native libraries - only include necessary ABIs
+        ndk {
+            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // ============================================================================
+            // AGGRESSIVE RELEASE BUILD CONFIGURATION
+            // ============================================================================
+            
+            // CRITICAL: Enable R8 code shrinking, obfuscation, and optimization
+            isMinifyEnabled = true
+            
+            // CRITICAL: Enable resource shrinking (removes ALL unused resources)
+            isShrinkResources = true
+            
+            // CRITICAL: Explicitly disable debugging for production security
+            isDebuggable = false
+            
+            // Enable aggressive ProGuard optimization
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
+                "proguard-rules-aggressive.pro"  // ← ADDED: Aggressive rules
             )
-            // Removed BASE_URL buildConfigField for dynamic runtime detection
+            
+            // Enable R8 full mode for maximum optimization
+            // This enables more aggressive optimizations
+            // Uncomment if you want even more aggressive optimization:
+            // android.enableR8.fullMode=true (in gradle.properties)
+            
+            // Optional: Enable code signing (configure keystore separately)
+            // signingConfig = signingConfigs.getByName("release")
+            
+            // Generate mapping file for stack trace deobfuscation
+            // Mapping file: app/build/outputs/mapping/release/mapping.txt
+            
+            // Optimize native libraries (strip debug symbols)
+            ndk {
+                debugSymbolLevel = "NONE"  // Remove all debug symbols from .so files
+            }
         }
+        
         debug {
-            // Removed BASE_URL buildConfigField for dynamic runtime detection
+            // Debug builds - NO optimization for faster build times
+            isMinifyEnabled = false
+            isShrinkResources = false
+            isDebuggable = true
+            
+            // NOTE: applicationIdSuffix removed to match google-services.json configuration
+            // If you need separate debug/release apps, add a new client in Firebase Console
+            // with package name "com.example.infinite_track.debug"
+            // applicationIdSuffix = ".debug"
+            versionNameSuffix = "-DEBUG"
+            
+            // Enable strict mode in debug (optional - for detecting performance issues)
+            // buildConfigField("boolean", "ENABLE_STRICT_MODE", "true")
         }
     }
+    
+    // Optional: Configure signing configs for release
+    // Uncomment and configure with your keystore
+    /*
+    signingConfigs {
+        create("release") {
+            storeFile = file("path/to/your/keystore.jks")
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias = System.getenv("KEY_ALIAS") ?: ""
+            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+        }
+    }
+    */
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
@@ -78,37 +138,56 @@ android {
 }
 
 dependencies {
+    // ============================================================================
+    // CORE DEPENDENCIES (ALL BUILD TYPES)
+    // ============================================================================
 
     implementation(libs.lottie)
-
     implementation(libs.androidx.core.splashscreen)
-
     implementation(libs.kotlin.stdlib)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    
+    // Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.navigation.runtime.ktx)
-    implementation(libs.androidx.datastore.preferences.core.jvm)
-    implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.runtime.livedata)
+    
+    // DataStore
+    implementation(libs.androidx.datastore.preferences.core.jvm)
+    implementation(libs.androidx.datastore.preferences)
+    
+    // Firebase
     implementation(libs.firebase.messaging)
 
     // WorkManager untuk background tasks
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
+    
+    // TensorFlow Lite
     implementation(libs.tensorflow.lite.gpu)
 
+    // ============================================================================
+    // TEST DEPENDENCIES
+    // ============================================================================
+    
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
+    
+    // ============================================================================
+    // DEBUG-ONLY DEPENDENCIES (NOT INCLUDED IN RELEASE)
+    // ============================================================================
+    // WHY: These are only needed during development and increase APK size
+    
+    debugImplementation(libs.androidx.ui.tooling)        // Compose preview tools
+    debugImplementation(libs.androidx.ui.test.manifest)   // Test manifest
 
     //DataStore
     implementation(libs.androidx.datastore.preferences)
@@ -117,9 +196,13 @@ dependencies {
     implementation(libs.coil.compose.v230)
     implementation(libs.androidx.navigation.compose)
 
-    //Retrofit
+    // ============================================================================
+    // NETWORKING
+    // ============================================================================
+    
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
+    implementation(libs.logging.interceptor)  // Moved from below
 
     //Camera X
     implementation(libs.androidx.camera.view)
@@ -143,15 +226,20 @@ dependencies {
     implementation(libs.ui)
     implementation(libs.androidx.exifinterface)
 
+    // ============================================================================
+    // DEPENDENCY INJECTION (HILT)
+    // ============================================================================
+    
     implementation(libs.hilt.android)
     kapt(libs.hilt.android.compiler)
     kapt(libs.androidx.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
 
-    implementation(libs.library)
-
-
-    implementation(libs.logging.interceptor)
+    // ============================================================================
+    // UI COMPONENTS
+    // ============================================================================
+    
+    implementation(libs.library)  // SweetAlert dialog
 
 
     // Jetpack Compose core libraries
