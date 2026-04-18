@@ -12,8 +12,6 @@ Repo Android menggunakan tiga level branch operasional:
 Distribusi Firebase App Distribution dijalankan dari `master`, bukan dari `develop`.
 PR ke `master` hanya berasal dari `develop`.
 
-`DOCS/ADR UPDATE REQUIRED`
-
 ## Tujuan
 - Menjaga `master` sebagai branch distribusi yang terkontrol
 - Memusatkan review dan QA di `develop`
