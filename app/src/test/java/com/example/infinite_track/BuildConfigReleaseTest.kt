@@ -1,25 +1,34 @@
 package com.example.infinite_track
 
-import org.junit.Test
 import org.junit.Assert.*
+import org.junit.Assume.assumeTrue
+import org.junit.Before
+import org.junit.Test
 
 /**
  * Release Build Configuration Verification Test
  * 
- * Purpose: Ensures that release builds are properly configured with:
+ * Purpose: Verifies release build configuration values such as:
  * - BuildConfig.DEBUG == false
- * - Proper version information
- * 
- * This test will FAIL if run against a debug build, ensuring release configuration is correct.
- * 
- * Run with: ./gradlew test
+ * - application ID
+ * - version information
+ * - required tokens
+ *
+ * This suite is gated to release unit tests and skipped when the build type is not `release`.
+ *
+ * Run with: ./gradlew app:testReleaseUnitTest
  */
 class BuildConfigReleaseTest {
 
+    @Before
+    fun requireReleaseBuild() {
+        assumeTrue("Release-only verification must run only for release unit tests", BuildConfig.BUILD_TYPE == "release")
+    }
+
     @Test
     fun `verify BuildConfig DEBUG is false for release builds`() {
-        // This assertion ensures that release builds have DEBUG = false
-        // If this fails, check build.gradle.kts release configuration
+        // Verifies that the release test variant exposes BuildConfig.DEBUG == false.
+        // If this fails, check build.gradle.kts release configuration.
         assertFalse(
             "BuildConfig.DEBUG must be false in release builds! " +
             "Current value: ${BuildConfig.DEBUG}. " +
@@ -73,7 +82,7 @@ class BuildConfigReleaseTest {
         println("DEBUG Mode: ${BuildConfig.DEBUG}")
         println("========================================")
         
-        // This test always passes but outputs useful info
+        // Diagnostic output only; no release-config assertion is performed here.
         assertTrue(true)
     }
 }
