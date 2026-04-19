@@ -31,16 +31,12 @@ jobs:
       - name: Create local.properties for CI
         shell: bash
         run: |
-          cat > local.properties <<EOF
-          MAPBOX_ACCESS_TOKEN=${{ secrets.MAPBOX_ACCESS_TOKEN }}
-          EOF
+          printf 'MAPBOX_ACCESS_TOKEN=%s\n' '${{ secrets.MAPBOX_ACCESS_TOKEN }}' > local.properties
 
       - name: Restore google-services.json
         shell: bash
         run: |
-          cat > app/google-services.json <<EOF
-          ${{ secrets.GOOGLE_SERVICES_JSON }}
-          EOF
+          echo '${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}' | base64 --decode > app/google-services.json
 
       - name: Make Gradle executable
         run: chmod +x ./gradlew
