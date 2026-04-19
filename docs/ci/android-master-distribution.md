@@ -24,7 +24,8 @@ End-to-end readiness remains blocked until backend final readiness exists.
 
 ## Required GitHub secrets
 - `MAPBOX_ACCESS_TOKEN`
-- `GOOGLE_SERVICES_JSON_BASE64`
+- `GOOGLE_SERVICES_JSON_BASE64` (preferred)
+- `GOOGLE_SERVICES_JSON` (legacy fallback)
 - `ANDROID_KEYSTORE_BASE64`
 - `ANDROID_KEYSTORE_PASSWORD`
 - `ANDROID_KEY_ALIAS`

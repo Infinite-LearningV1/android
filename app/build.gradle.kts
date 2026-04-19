@@ -82,7 +82,10 @@ android {
                 "proguard-rules-aggressive.pro"  // ← ADDED: Aggressive rules
             )
 
-            signingConfig = signingConfigs.getByName("release")
+            val ciKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+            if (!ciKeystorePath.isNullOrBlank() && file(ciKeystorePath).exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
 
             // Enable R8 full mode for maximum optimization
             // This enables more aggressive optimizations

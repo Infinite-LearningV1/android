@@ -36,7 +36,14 @@ jobs:
       - name: Restore google-services.json
         shell: bash
         run: |
-          echo '${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}' | base64 --decode > app/google-services.json
+          if [ -n "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" ]; then
+            echo '${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}' | base64 --decode > app/google-services.json
+          elif [ -n "${{ secrets.GOOGLE_SERVICES_JSON }}" ]; then
+            printf '%s' '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/google-services.json
+          else
+            echo 'Missing google-services secret. Set GOOGLE_SERVICES_JSON_BASE64 or GOOGLE_SERVICES_JSON.' >&2
+            exit 1
+          fi
 
       - name: Make Gradle executable
         run: chmod +x ./gradlew
