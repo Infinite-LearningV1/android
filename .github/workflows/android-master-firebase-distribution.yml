@@ -1,0 +1,104 @@
+name: Android Master Firebase Distribution
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  distribute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Create local.properties for CI
+        shell: bash
+        run: |
+          cat > local.properties <<EOF
+          MAPBOX_ACCESS_TOKEN=${{ secrets.MAPBOX_ACCESS_TOKEN }}
+          EOF
+
+      - name: Restore google-services.json
+        shell: bash
+        run: |
+          cat > app/google-services.json <<EOF
+          ${{ secrets.GOOGLE_SERVICES_JSON }}
+          EOF
+
+      - name: Restore release keystore
+        shell: bash
+        run: |
+          echo '${{ secrets.ANDROID_KEYSTORE_BASE64 }}' | base64 --decode > release-keystore.jks
+
+      - name: Export Android signing environment
+        shell: bash
+        run: |
+          echo "ANDROID_KEYSTORE_PATH=$GITHUB_WORKSPACE/release-keystore.jks" >> $GITHUB_ENV
+          echo "ANDROID_KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+          echo "ANDROID_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> $GITHUB_ENV
+          echo "ANDROID_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> $GITHUB_ENV
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      - name: Build signed release APK
+        run: ./gradlew app:assembleRelease
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Authenticate Firebase CLI
+        shell: bash
+        run: |
+          cat > firebase-service-account.json <<EOF
+          ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          EOF
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$GITHUB_WORKSPACE/firebase-service-account.json" >> $GITHUB_ENV
+
+      - name: Generate release notes
+        shell: bash
+        run: |
+          {
+            echo "Branch: master"
+            echo "Commit: $GITHUB_SHA"
+            echo
+            echo "Changes since previous distribution:"
+            git log -1 --pretty=format:'- %s'
+            echo
+            echo "Distribution status: release artifact generated from master"
+            echo "Runtime E2E status: blocked until backend final readiness exists"
+          } > firebase-release-notes.txt
+
+      - name: Upload APK to Firebase App Distribution
+        run: |
+          firebase appdistribution:distribute app/build/outputs/apk/release/app-release.apk \
+            --app "${{ secrets.FIREBASE_APP_ID }}" \
+            --groups "${{ vars.FIREBASE_TESTER_GROUPS }}" \
+            --release-notes-file firebase-release-notes.txt
+
+      - name: Upload release notes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firebase-release-notes
+          path: firebase-release-notes.txt
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-master-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
+
+      - name: Cleanup temporary secrets
+        if: always()
+        shell: bash
+        run: rm -f release-keystore.jks firebase-service-account.json app/google-services.json local.properties
