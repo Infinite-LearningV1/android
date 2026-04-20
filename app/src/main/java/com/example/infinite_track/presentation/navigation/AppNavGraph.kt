@@ -1,6 +1,5 @@
 package com.example.infinite_track.presentation.navigation
 
-import androidx.camera.core.ExperimentalGetImage
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -8,16 +7,12 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
-import com.example.infinite_track.presentation.main.MainScreen
-import com.example.infinite_track.presentation.screen.attendance.AttendanceScreen
-import com.example.infinite_track.presentation.screen.attendance.face.FaceScannerScreen
 import com.example.infinite_track.presentation.screen.attendance.search.LocationSearchScreen
 import com.example.infinite_track.presentation.screen.auth.LoginScreen
 import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingScreen
 import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingViewModel
 import com.example.infinite_track.presentation.screen.splash.SplashScreen
 
-@ExperimentalGetImage
 fun NavGraphBuilder.appNavGraph(
     navController: NavHostController
 ) {
@@ -46,16 +41,6 @@ fun NavGraphBuilder.appNavGraph(
                 }
             )
         }
-    }
-
-    // Main graph - contains all authenticated screens
-    composable(Screen.Home.route) {
-        MainScreen(rootNavController = navController)
-    }
-
-    // Attendance Screen
-    composable(Screen.Attendance.route) {
-        AttendanceScreen(navController = navController)
     }
 
     // Location Search Screen - untuk pencarian lokasi attendance

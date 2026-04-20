@@ -28,6 +28,8 @@ import com.example.infinite_track.utils.safeNavigate
 @Composable
 fun MainScreen(
     rootNavController: NavHostController,
+    navigateToAttendance: Boolean = false,
+    onAttendanceNavigationHandled: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // Create a NavController specific to the main content area
@@ -41,6 +43,13 @@ fun MainScreen(
     // Collect user role from MainViewModel
     val userRole by mainViewModel.userRole.collectAsState()
     val context = LocalContext.current
+
+    LaunchedEffect(navigateToAttendance) {
+        if (navigateToAttendance) {
+            mainContentNavController.safeNavigate(Screen.Attendance.route)
+            onAttendanceNavigationHandled()
+        }
+    }
 
     // Screens that should not display the bottom bar
     val screensWithoutBottomBar = listOf(
