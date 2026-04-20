@@ -1,0 +1,13 @@
+<resources>
+    <string name="face_detection_idle">Siap memindai</string>
+    <string name="face_detection_detecting">Mendeteksi wajah</string>
+    <string name="face_detection_waiting_liveness">Silakan berkedip atau bergerak sedikit</string>
+    <string name="face_detection_liveness_detected">Liveness terdeteksi</string>
+    <string name="face_detection_verifying">Memverifikasi wajah</string>
+    <string name="face_detection_success">Verifikasi berhasil</string>
+    <string name="face_detection_failure">Verifikasi gagal</string>
+    <string name="face_detection_timeout">Verifikasi habis waktu</string>
+    <string name="location_permission_required">Izin lokasi diperlukan</string>
+    <string name="location_permission_rationale">Aplikasi ini memerlukan izin lokasi untuk menampilkan peta dan memvalidasi kehadiran Anda.</string>
+    <string name="location_permission_settings">Izin lokasi diperlukan untuk fitur ini. Silakan aktifkan izin di pengaturan aplikasi.</string>
+</resources>

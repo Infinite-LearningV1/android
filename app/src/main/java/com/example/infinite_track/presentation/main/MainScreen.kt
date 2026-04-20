@@ -1,6 +1,7 @@
 package com.example.infinite_track.presentation.main
 
 import android.widget.Toast
+import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -23,6 +24,7 @@ import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.navigation.mainContentNavGraph
 import com.example.infinite_track.utils.safeNavigate
 
+@ExperimentalGetImage
 @Composable
 fun MainScreen(
     rootNavController: NavHostController,

@@ -1,5 +1,6 @@
 package com.example.infinite_track.presentation.navigation
 
+import androidx.camera.core.ExperimentalGetImage
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -16,6 +17,7 @@ import com.example.infinite_track.presentation.screen.attendance.booking.WfaBook
 import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingViewModel
 import com.example.infinite_track.presentation.screen.splash.SplashScreen
 
+@ExperimentalGetImage
 fun NavGraphBuilder.appNavGraph(
     navController: NavHostController
 ) {

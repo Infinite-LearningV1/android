@@ -1,5 +1,6 @@
 package com.example.infinite_track.presentation.main
 
+import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -33,6 +34,7 @@ import com.example.infinite_track.presentation.navigation.appNavGraph
 import com.example.infinite_track.utils.DialogHelper
 import kotlinx.coroutines.flow.collectLatest
 
+@ExperimentalGetImage
 @Composable
 fun InfiniteTrackApp(
     modifier: Modifier = Modifier,

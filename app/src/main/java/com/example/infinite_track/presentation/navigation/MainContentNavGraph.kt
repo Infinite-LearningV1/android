@@ -1,5 +1,6 @@
 package com.example.infinite_track.presentation.navigation
 
+import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.runtime.remember
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
@@ -31,6 +32,7 @@ import com.example.infinite_track.presentation.screen.profile.details.my_documen
 import com.example.infinite_track.presentation.screen.profile.details.pay_slip.PaySlipScreen
 import com.example.infinite_track.utils.safeNavigate
 
+@ExperimentalGetImage
 fun NavGraphBuilder.mainContentNavGraph(
     navController: NavHostController,
     rootNavController: NavHostController
