@@ -44,45 +44,63 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            val ciKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+            val ciKeystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            val ciKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
+            val ciKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+
+            if (!ciKeystorePath.isNullOrBlank()) {
+                storeFile = file(ciKeystorePath)
+                storePassword = ciKeystorePassword ?: ""
+                keyAlias = ciKeyAlias ?: ""
+                keyPassword = ciKeyPassword ?: ""
+            }
+        }
+    }
+
     buildTypes {
         release {
             // ============================================================================
             // AGGRESSIVE RELEASE BUILD CONFIGURATION
             // ============================================================================
-            
+
             // CRITICAL: Enable R8 code shrinking, obfuscation, and optimization
             isMinifyEnabled = true
-            
+
             // CRITICAL: Enable resource shrinking (removes ALL unused resources)
             isShrinkResources = true
-            
+
             // CRITICAL: Explicitly disable debugging for production security
             isDebuggable = false
-            
+
             // Enable aggressive ProGuard optimization
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
                 "proguard-rules-aggressive.pro"  // ← ADDED: Aggressive rules
             )
-            
+
+            val ciKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+            if (!ciKeystorePath.isNullOrBlank() && file(ciKeystorePath).exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+
             // Enable R8 full mode for maximum optimization
             // This enables more aggressive optimizations
             // Uncomment if you want even more aggressive optimization:
             // android.enableR8.fullMode=true (in gradle.properties)
-            
-            // Optional: Enable code signing (configure keystore separately)
-            // signingConfig = signingConfigs.getByName("release")
-            
+
             // Generate mapping file for stack trace deobfuscation
             // Mapping file: app/build/outputs/mapping/release/mapping.txt
-            
+
             // Optimize native libraries (strip debug symbols)
             ndk {
                 debugSymbolLevel = "NONE"  // Remove all debug symbols from .so files
             }
         }
-        
+
         debug {
             // Debug builds - NO optimization for faster build times
             isMinifyEnabled = false
@@ -100,18 +118,6 @@ android {
         }
     }
     
-    // Optional: Configure signing configs for release
-    // Uncomment and configure with your keystore
-    /*
-    signingConfigs {
-        create("release") {
-            storeFile = file("path/to/your/keystore.jks")
-            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
-            keyAlias = System.getenv("KEY_ALIAS") ?: ""
-            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
-        }
-    }
-    */
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
@@ -169,7 +175,6 @@ dependencies {
     implementation(libs.androidx.hilt.work)
     
     // TensorFlow Lite
-    implementation(libs.tensorflow.lite.gpu)
 
     // ============================================================================
     // TEST DEPENDENCIES
@@ -265,8 +270,7 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1") // Using hardcoded version for Room KTX
     kapt(libs.room.compiler)
 
-    //Tensorflow Lite
-    implementation(libs.tensorflow.lite.task.vision)
+    // TensorFlow Lite
     implementation(libs.tensorflow.lite)
     implementation(libs.tensorflow.lite.metadata)
     implementation(libs.tensorflow.lite.support)
