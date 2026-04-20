@@ -79,9 +79,6 @@ fun InfiniteTrackApp(
             when (event) {
                 is NavigationEvent.NavigateToAttendance -> {
                     pendingAttendanceNavigation = true
-                    navController.navigate(Screen.Home.route) {
-                        launchSingleTop = true
-                    }
                 }
 
                 is NavigationEvent.NavigateToScreen -> {

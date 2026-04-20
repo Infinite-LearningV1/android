@@ -44,8 +44,8 @@ fun MainScreen(
     val userRole by mainViewModel.userRole.collectAsState()
     val context = LocalContext.current
 
-    LaunchedEffect(navigateToAttendance) {
-        if (navigateToAttendance) {
+    LaunchedEffect(navigateToAttendance, currentRoute) {
+        if (navigateToAttendance && currentRoute == Screen.Home.route) {
             mainContentNavController.safeNavigate(Screen.Attendance.route)
             onAttendanceNavigationHandled()
         }
