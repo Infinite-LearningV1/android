@@ -6,6 +6,8 @@
 - `deploy` = review and hardening
 - `master` = only branch allowed to distribute to Firebase App Distribution
 
+The documented branch model and the workflow expectations should stay aligned: `deploy` is an intentional hardening lane, not an accidental extra branch.
+
 ## Distribution artifact
 - Signed release APK only
 

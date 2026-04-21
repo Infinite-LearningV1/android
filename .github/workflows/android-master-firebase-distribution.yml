@@ -41,7 +41,12 @@ jobs:
       - name: Restore release keystore
         shell: bash
         run: |
-          echo '${{ secrets.ANDROID_KEYSTORE_BASE64 }}' | base64 --decode > release-keystore.jks
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo '${{ secrets.ANDROID_KEYSTORE_BASE64 }}' | base64 --decode > release-keystore.jks
+          else
+            echo 'Missing ANDROID_KEYSTORE_BASE64 secret. Set ANDROID_KEYSTORE_BASE64.' >&2
+            exit 1
+          fi
 
       - name: Export Android signing environment
         shell: bash
