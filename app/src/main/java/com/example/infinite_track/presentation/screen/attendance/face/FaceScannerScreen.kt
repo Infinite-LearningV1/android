@@ -2,6 +2,7 @@ package com.example.infinite_track.presentation.screen.attendance.face
 
 import android.graphics.Bitmap
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -67,6 +68,7 @@ import java.util.concurrent.Executors
 import androidx.camera.core.Preview as CameraPreview
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
+@ExperimentalGetImage
 @Composable
 fun FaceScannerScreen(
     action: String,
@@ -184,6 +186,7 @@ fun FaceScannerScreen(
 }
 
 @Composable
+@ExperimentalGetImage
 private fun CameraContent(
     modifier: Modifier = Modifier,
     action: String,
@@ -274,6 +277,7 @@ private fun CameraContent(
 }
 
 @Composable
+@ExperimentalGetImage
 private fun CameraPreview(
     modifier: Modifier = Modifier,
     cameraExecutor: ExecutorService,
@@ -502,6 +506,7 @@ private fun InstructionSection(
 }
 
 // Helper function to convert ImageProxy to Bitmap
+@ExperimentalGetImage
 private fun imageProxyToBitmap(imageProxy: ImageProxy): Bitmap? {
     return try {
         // Get the YUV_420_888 image from camera

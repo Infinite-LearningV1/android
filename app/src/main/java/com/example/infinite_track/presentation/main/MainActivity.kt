@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.camera.core.ExperimentalGetImage
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -49,6 +50,7 @@ class MainActivity : ComponentActivity() {
 	private val requestNotificationPermission =
 		registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
 
+	@ExperimentalGetImage
 	override fun onCreate(savedInstanceState: Bundle?) {
 		// Install splash screen BEFORE super.onCreate()
 		val splashScreen = installSplashScreen()

@@ -59,45 +59,6 @@ sealed class MapAnimationTarget {
 }
 
 /**
- * Simplified state object focused on reactive geofence integration
- * Now supports WFO, WFH, and WFA location markers with Pick on Map functionality
- * Updated for state-driven architecture
- */
-data class AttendanceScreenState(
-    val uiState: UiState<Unit> = UiState.Loading,
-    val todayStatus: TodayStatus? = null,
-    val targetLocation: Location? = null, // Keep for backward compatibility
-    val wfoLocation: Location? = null,    // Work From Office location
-    val wfhLocation: Location? = null,    // Work From Home location
-    val wfaRecommendations: List<WfaRecommendation> = emptyList(), // WFA recommendations
-    val selectedWfaLocation: WfaRecommendation? = null, // Selected WFA location
-    val selectedWfaMarkerInfo: WfaRecommendation? = null, // For showing WFA marker details
-    val isWfaModeActive: Boolean = false, // Flag for WFA mode
-    val isLoadingWfaRecommendations: Boolean = false, // Loading state for WFA recommendations
-    val currentUserAddress: String = "",
-    val currentUserLatitude: Double? = null,
-    val currentUserLongitude: Double? = null,
-    val isBookingEnabled: Boolean = false,
-    val selectedWorkMode: String = "Work From Office",
-    // Map-specific properties
-    val targetLocationMarker: Location? = null,
-    val selectedMarkerInfo: Location? = null,
-    // Pick on Map properties
-    val pickedLocation: LocationResult? = null, // Location picked by user on map
-    val isPickOnMapModeActive: Boolean = false, // Flag for Pick on Map mode
-    val error: String? = null, // Error message for network failures
-    // Attendance button state
-    val buttonText: String = "Loading...",
-    val isButtonEnabled: Boolean = false,
-    val isCheckInMode: Boolean = true, // Track whether we're in check-in or check-out mode
-
-    // State-driven properties for navigation and dialogs
-    val navigationTarget: NavigationTarget? = null, // Navigation commands
-    val activeDialog: DialogState? = null, // Dialog state
-    val mapAnimationTarget: MapAnimationTarget? = null // Map animation commands
-)
-
-/**
  * Simplified ViewModel that is fully reactive to geofence state
  * Removed manual GPS tracking and distance calculation logic
  * Uses geofence as the single source of truth for validation

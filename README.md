@@ -88,7 +88,17 @@ Proyek ini menggunakan layanan Google (kemungkinan untuk Firebase Cloud Messagin
 1. Dapatkan file `google-services.json` Anda dari Firebase console.
 2. Tempatkan file `google-services.json` di dalam direktori `app/`.
 
-#### c. Backend API URL
+#### c. Firebase App Distribution and CI
+Repositori ini dirancang agar distribusi internal Firebase App Distribution hanya berjalan dari branch `master`.
+
+Setup lokal `google-services.json` tetap dibutuhkan untuk integrasi app, tetapi distribusi CI juga membutuhkan GitHub-managed secrets terpisah untuk:
+- release signing
+- Firebase non-interactive upload authentication
+- tester-group targeting
+
+Sebuah build bisa berstatus **distribution-ready** sebelum menjadi **end-to-end-ready**. End-to-end readiness tetap diblok sampai backend final dapat diakses oleh tester.
+
+#### d. Backend API URL
 Aplikasi secara cerdas mendeteksi apakah sedang berjalan di emulator atau perangkat fisik untuk menentukan URL backend.
 1. Buka file `app/src/main/java/com/example/infinite_track/di/NetworkModule.kt`.
 2. Temukan properti `baseUrl`:

@@ -1,5 +1,6 @@
 package com.example.infinite_track.presentation.main
 
+import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -17,12 +18,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.presentation.components.base.BaseLayout
@@ -36,6 +39,7 @@ import com.example.infinite_track.utils.LocationPermissionHelper
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.runtime.CompositionLocalProvider
 
+@ExperimentalGetImage
 @Composable
 fun InfiniteTrackApp(
     modifier: Modifier = Modifier,
@@ -49,6 +53,7 @@ fun InfiniteTrackApp(
 
     // Observe session expiration state
     val sessionExpired by sessionManager?.sessionExpired?.collectAsState() ?: remember { androidx.compose.runtime.mutableStateOf(false) }
+    var pendingAttendanceNavigation by remember { androidx.compose.runtime.mutableStateOf(false) }
 
     // Handle session expiration
     LaunchedEffect(sessionExpired) {
@@ -77,11 +82,7 @@ fun InfiniteTrackApp(
         appNavigator?.navigationEvents?.collectLatest { event ->
             when (event) {
                 is NavigationEvent.NavigateToAttendance -> {
-                    // Navigate to attendance screen
-                    navController.navigate(Screen.Attendance.route) {
-                        // Optional: Clear back stack if needed
-                        launchSingleTop = true
-                    }
+                    pendingAttendanceNavigation = true
                 }
 
                 is NavigationEvent.NavigateToScreen -> {
@@ -160,6 +161,15 @@ fun InfiniteTrackApp(
                     startDestination = Screen.Splash.route
                 ) {
                     // Connect to the app navigation graph
+                    composable(Screen.Home.route) {
+                        MainScreen(
+                            rootNavController = navController,
+                            navigateToAttendance = pendingAttendanceNavigation,
+                            onAttendanceNavigationHandled = {
+                                pendingAttendanceNavigation = false
+                            }
+                        )
+                    }
                     appNavGraph(navController)
                 }
             }

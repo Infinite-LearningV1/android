@@ -1,6 +1,7 @@
 package com.example.infinite_track.presentation.main
 
 import android.widget.Toast
+import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -23,9 +24,12 @@ import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.navigation.mainContentNavGraph
 import com.example.infinite_track.utils.safeNavigate
 
+@ExperimentalGetImage
 @Composable
 fun MainScreen(
     rootNavController: NavHostController,
+    navigateToAttendance: Boolean = false,
+    onAttendanceNavigationHandled: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // Create a NavController specific to the main content area
@@ -39,6 +43,15 @@ fun MainScreen(
     // Collect user role from MainViewModel
     val userRole by mainViewModel.userRole.collectAsState()
     val context = LocalContext.current
+
+    LaunchedEffect(navigateToAttendance, currentRoute) {
+        if (navigateToAttendance) {
+            if (currentRoute != Screen.Attendance.route) {
+                mainContentNavController.safeNavigate(Screen.Attendance.route)
+            }
+            onAttendanceNavigationHandled()
+        }
+    }
 
     // Screens that should not display the bottom bar
     val screensWithoutBottomBar = listOf(
