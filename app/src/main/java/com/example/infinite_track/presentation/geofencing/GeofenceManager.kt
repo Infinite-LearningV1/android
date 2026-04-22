@@ -50,7 +50,7 @@ class GeofenceManager @Inject constructor(
         )
     }
 
-    private fun hasForegroundLocationPermission(): Boolean {
+    fun hasForegroundLocationPermission(): Boolean {
         val fine = ContextCompat.checkSelfPermission(
             context,
             android.Manifest.permission.ACCESS_FINE_LOCATION
@@ -58,13 +58,32 @@ class GeofenceManager @Inject constructor(
         return fine
     }
 
-    private fun hasBackgroundLocationPermission(): Boolean {
+    fun hasBackgroundLocationPermission(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ContextCompat.checkSelfPermission(
                 context,
                 android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
         } else true
+    }
+
+    /**
+     * Check if all required permissions are granted
+     */
+    fun hasAllRequiredPermissions(): Boolean {
+        return hasForegroundLocationPermission() && hasBackgroundLocationPermission()
+    }
+
+    /**
+     * Get detailed permission status for UI feedback
+     */
+    fun getPermissionStatusMessage(): String {
+        return when {
+            hasAllRequiredPermissions() -> "Semua izin lokasi telah diberikan"
+            !hasForegroundLocationPermission() -> "Izin lokasi diperlukan untuk fitur geofencing"
+            !hasBackgroundLocationPermission() -> "Izin lokasi latar belakang diperlukan untuk pemantauan area kerja secara otomatis"
+            else -> "Status izin tidak diketahui"
+        }
     }
 
     /**
@@ -88,14 +107,29 @@ class GeofenceManager @Inject constructor(
     }
 
     @SuppressLint("MissingPermission")
-    fun addGeofence(id: String, latitude: Double, longitude: Double, radius: Float) {
-        // Permission guards
+    fun addGeofence(
+        id: String, 
+        latitude: Double, 
+        longitude: Double, 
+        radius: Float,
+        onPermissionError: ((String) -> Unit)? = null
+    ) {
+        // Enhanced permission guards with user feedback
         if (!hasForegroundLocationPermission()) {
-            Log.e(TAG, "Tidak ada izin ACCESS_FINE_LOCATION. Geofence tidak dapat ditambahkan.")
+            val errorMsg = "Izin lokasi (FINE/COARSE) diperlukan untuk fitur geofencing. Silakan berikan izin di pengaturan aplikasi."
+            Log.e(TAG, errorMsg)
+            onPermissionError?.invoke(errorMsg)
             return
         }
         if (!hasBackgroundLocationPermission()) {
-            Log.e(TAG, "Tidak ada izin ACCESS_BACKGROUND_LOCATION. Geofence gagal (API 29+).")
+            val errorMsg = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                "Izin lokasi latar belakang diperlukan untuk pemantauan area kerja otomatis (Android 10+). " +
+                "Pilih 'Izinkan sepanjang waktu' di pengaturan lokasi aplikasi."
+            } else {
+                "Izin lokasi latar belakang tidak tersedia."
+            }
+            Log.e(TAG, errorMsg)
+            onPermissionError?.invoke(errorMsg)
             return
         }
 
