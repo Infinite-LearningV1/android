@@ -125,33 +125,41 @@ Important distinction:
 ## Packages Used
 
 ### UI & App
-- Jetpack Compose
-- Material 3
-- Navigation Compose
-- Lottie
+- **Jetpack Compose** — UI rendering and screen composition
+- **Material 3** — design system and core UI components
+- **Navigation Compose** — in-app navigation and graph ownership
+- **Lottie** — loading and motion animations
 
 ### Dependency Injection & Background Work
-- Hilt
-- WorkManager
+- **Hilt** — dependency injection for app, ViewModel, and worker wiring
+- **WorkManager** — background work execution and retryable tasks
+- **Hilt Work** — worker injection support
 
 ### Networking & Persistence
-- Retrofit
-- OkHttp logging interceptor
-- Room
-- DataStore
+- **Retrofit** — backend API client
+- **OkHttp + logging-interceptor** — HTTP stack and debug logging
+- **Room** — structured local persistence
+- **DataStore** — lightweight preference and session storage
 
 ### Location & Maps
-- Mapbox SDK
-- Google Play Services Location / Geofencing
+- **Mapbox Maps SDK** — map rendering and camera control
+- **Mapbox Compose Extension** — Compose integration for map UI
+- **Google Play Services Location** — current location and geofencing support
 
 ### Camera & ML
-- CameraX
-- ML Kit Face Detection
-- TensorFlow Lite
+- **CameraX** — camera preview and image analysis
+- **ML Kit Face Detection** — face detection and liveness-related detection support
+- **TensorFlow Lite** — face embedding and on-device inference runtime
+- **TensorFlow Lite Support / Metadata** — preprocessing and model support utilities
 
 ### Firebase
-- Firebase Cloud Messaging
-- Firebase App Distribution (via GitHub Actions release workflow)
+- **Firebase Cloud Messaging** — push notification delivery
+- **Firebase App Distribution** — internal release distribution from `master` via GitHub Actions
+
+### Build & Tooling
+- **Android Gradle Plugin**
+- **Kotlin**
+- **Google Services Gradle Plugin**
 
 For exact dependency versions, use:
 - `gradle/libs.versions.toml`
