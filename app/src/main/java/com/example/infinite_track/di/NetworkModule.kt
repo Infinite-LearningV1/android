@@ -4,6 +4,8 @@ import android.os.Build
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
+import com.example.infinite_track.di.auth.AuthRefreshInterceptor
+import com.example.infinite_track.di.auth.RefreshSingleFlightCoordinator
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
 import com.google.gson.Gson
@@ -12,11 +14,6 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -38,56 +35,29 @@ object NetworkModule {
         return HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
     }
 
-    // 2. Menyediakan Interceptor untuk Otentikasi dengan Auto Logout
+    @Provides
+    @Singleton
+    fun provideRefreshSingleFlightCoordinator(
+        authRepositoryProvider: Provider<com.example.infinite_track.domain.repository.AuthRepository>
+    ): RefreshSingleFlightCoordinator {
+        return RefreshSingleFlightCoordinator(authRepositoryProvider)
+    }
+
+    // 2. Menyediakan Interceptor untuk Otentikasi dengan single-flight refresh orchestration
     @Provides
     @Singleton
     fun provideAuthInterceptor(
         userPreference: UserPreference,
+        refreshSingleFlightCoordinator: RefreshSingleFlightCoordinator,
         logoutUseCaseProvider: Provider<LogoutUseCase>,
         sessionManagerProvider: Provider<SessionManager>
     ): Interceptor {
-        return Interceptor { chain ->
-            val token = runBlocking { userPreference.getAuthToken().first() }
-            val requestBuilder = chain.request().newBuilder()
-
-            if (!token.isNullOrEmpty()) {
-                requestBuilder.addHeader("Authorization", "Bearer $token")
-            }
-
-            val response = chain.proceed(requestBuilder.build())
-
-            // Check for 401 Unauthorized response
-            if (response.code == 401) {
-                // PERBAIKAN: Tambahkan pengecualian untuk endpoint logout
-                val requestUrl = chain.request().url.toString()
-                val isLogoutRequest =
-                    requestUrl.contains("/auth/logout") || requestUrl.endsWith("/logout")
-
-                // Hanya trigger auto-logout jika bukan dari endpoint logout itu sendiri
-                if (!isLogoutRequest) {
-                    // Launch coroutine to handle logout in background
-                    CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                            // Clear session data
-                            logoutUseCaseProvider.get().invoke()
-
-                            // Trigger session expiration notification
-                            sessionManagerProvider.get().triggerSessionExpired()
-                        } catch (e: Exception) {
-                            // Log error but don't crash the app
-                            e.printStackTrace()
-                        }
-                    }
-                } else {
-                    // Log untuk debugging - logout endpoint memang boleh return 401
-                    android.util.Log.d(
-                        "AuthInterceptor",
-                        "Ignoring 401 from logout endpoint: $requestUrl"
-                    )
-                }
-            }
-            response
-        }
+        return AuthRefreshInterceptor(
+            userPreference = userPreference,
+            refreshSingleFlightCoordinator = refreshSingleFlightCoordinator,
+            logoutUseCaseProvider = logoutUseCaseProvider,
+            sessionManagerProvider = sessionManagerProvider
+        )
     }
 
     // 3. Menyediakan OkHttpClient dengan timeout yang lebih panjang

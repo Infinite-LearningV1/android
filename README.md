@@ -13,7 +13,14 @@ Infinite Track adalah sebuah sistem presensi karyawan berbasis Android yang cerd
 ### Backend
 - **Framework**: Laravel 11 (PHP)
 - **Database**: MySQL
-- **API**: RESTful API dengan otentikasi JWT
+- **API**: RESTful API dengan access token + refresh-session contract untuk client Android
+
+### Auth & Session Contract (Android)
+- Backend tetap source of truth untuk validitas session.
+- Android memakai `POST /api/auth/refresh` dengan `X-Client-Type: android` dan refresh token eksplisit untuk memulihkan access token yang expired.
+- Android hanya menganggap session valid saat bootstrap jika backend validity berhasil dikonfirmasi kembali.
+- `invalid/revoked` dan `inactivity > 48 jam` memaksa full re-auth, sedangkan temporary transport/server failure tidak dianggap auth invalid.
+- Detail governance perubahan ini didokumentasikan di `docs/adr/ADR-007-refresh-session-and-bootstrap-truthfulness.md`.
 
 ### Android App
 - **Bahasa**: Kotlin

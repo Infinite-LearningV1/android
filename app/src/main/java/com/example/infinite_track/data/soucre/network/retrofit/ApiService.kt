@@ -6,10 +6,12 @@ import com.example.infinite_track.data.soucre.network.request.CheckOutRequestDto
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
 import com.example.infinite_track.data.soucre.network.request.ProfileUpdateRequest
+import com.example.infinite_track.data.soucre.network.request.RefreshSessionRequest
 import com.example.infinite_track.data.soucre.network.response.AttendanceHistoryResponse
 import com.example.infinite_track.data.soucre.network.response.AttendanceResponse
 import com.example.infinite_track.data.soucre.network.response.LoginResponse
 import com.example.infinite_track.data.soucre.network.response.LogoutResponse
+import com.example.infinite_track.data.soucre.network.response.RefreshSessionResponse
 import com.example.infinite_track.data.soucre.network.response.ProfileUpdateResponse
 import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
 import com.example.infinite_track.data.soucre.network.response.WfaRecommendationResponse
@@ -17,6 +19,7 @@ import com.example.infinite_track.data.soucre.network.response.booking.BookingHi
 import com.example.infinite_track.data.soucre.network.response.booking.BookingResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Headers
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
@@ -30,6 +33,10 @@ interface ApiService {
 
     @GET("api/auth/me")
     suspend fun getUserProfile(): LoginResponse
+
+    @Headers("X-Client-Type: android")
+    @POST("api/auth/refresh")
+    suspend fun refreshSession(@Body request: RefreshSessionRequest): RefreshSessionResponse
 
     @POST("api/auth/logout")
     suspend fun logout(): LogoutResponse

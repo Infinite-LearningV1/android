@@ -54,6 +54,7 @@ roomCompiler = "2.6.1"
 roomRuntime = "2.6.1"
 workRuntimeKtx = "2.9.0"
 androidxHiltCompiler = "1.0.0"
+kotlinxCoroutinesTest = "1.8.1"
 
 [libraries]
 face-detection = { module = "com.google.mlkit:face-detection", version.ref = "faceDetection" }
@@ -116,6 +117,7 @@ firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCompiler" }
 androidx-hilt-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "androidxHiltCompiler" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
