@@ -4,6 +4,7 @@ import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.repository.RefreshSessionResult
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -41,7 +42,13 @@ class AuthRefreshInterceptor @Inject constructor(
             return response
         }
 
-        val refreshResult = runBlocking { refreshSingleFlightCoordinator.refreshOrJoin() }
+        val refreshResult = try {
+            runBlocking { refreshSingleFlightCoordinator.refreshOrJoin() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return response
+        }
 
         return when (refreshResult) {
             RefreshSessionResult.Success -> {

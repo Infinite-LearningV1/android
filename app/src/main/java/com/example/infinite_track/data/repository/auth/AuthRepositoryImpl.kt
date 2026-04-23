@@ -9,6 +9,7 @@ import com.example.infinite_track.data.soucre.network.request.LoginRequest
 import com.example.infinite_track.data.soucre.network.request.RefreshSessionRequest
 import com.example.infinite_track.data.soucre.network.response.ErrorResponse
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
+import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.RefreshSessionResult
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import retrofit2.HttpException
 import java.io.IOException
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,6 +32,7 @@ import javax.inject.Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val userPreference: UserPreference,
     private val apiService: ApiService,
+    private val authSessionApiService: AuthSessionApiService,
     private val userDao: UserDao
 ) : AuthRepository {
 
@@ -40,7 +43,7 @@ class AuthRepositoryImpl @Inject constructor(
                 return RefreshSessionResult.ReAuthRequired.InvalidOrRevoked
             }
 
-            val response = apiService.refreshSession(
+            val response = authSessionApiService.refreshSession(
                 RefreshSessionRequest(refreshToken = existingRefreshToken)
             )
 
@@ -153,21 +156,21 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             try {
                 // Try to call logout API endpoint
-                apiService.logout()
-                Log.d("AuthRepositoryImpl", "Server logout successful")
+                authSessionApiService.logout()
+                safeLogDebug("Server logout successful")
             } catch (e: Exception) {
                 // Log the error but continue with local logout
-                Log.e("AuthRepositoryImpl", "Server logout failed, proceeding with local logout", e)
+                safeLogError("Server logout failed, proceeding with local logout", e)
             } finally {
                 // Always clear local data, regardless of API call result
                 userPreference.clearAuthData()
                 userDao.clearUserProfile()
-                Log.d("AuthRepositoryImpl", "Local data cleared successfully")
+                safeLogDebug("Local data cleared successfully")
             }
             Result.success(Unit)
         } catch (e: Exception) {
             // This would only happen if clearing local data fails
-            Log.e("AuthRepositoryImpl", "Critical error during logout", e)
+            safeLogError("Critical error during logout", e)
             Result.failure(e)
         }
     }
@@ -219,10 +222,18 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    private fun safeLogDebug(message: String) {
+        runCatching { Log.d("AuthRepositoryImpl", message) }
+    }
+
+    private fun safeLogError(message: String, throwable: Throwable) {
+        runCatching { Log.e("AuthRepositoryImpl", message, throwable) }
+    }
+
     private fun classifyRefreshHttpError(httpException: HttpException): RefreshSessionResult {
         val code = httpException.code()
         val errorBody = parseHttpErrorBodySafely(httpException)
-        val normalizedCode = errorBody?.code?.uppercase()
+        val normalizedCode = errorBody?.code?.uppercase(Locale.ROOT)
 
         return when {
             normalizedCode == "INACTIVITY_TIMEOUT_48H" -> {

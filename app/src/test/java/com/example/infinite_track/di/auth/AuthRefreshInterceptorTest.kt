@@ -166,6 +166,31 @@ class AuthRefreshInterceptorTest {
     }
 
     @Test
+    fun `401 on protected request with unexpected refresh exception returns original 401 without logout`() = runBlocking {
+        val fixture = TestFixture(refreshResult = RefreshSessionResult.Success)
+        fixture.userPreference.saveSession("token-a", "10", "refresh-a")
+        fixture.onRefresh = {
+            throw IllegalStateException("boom")
+        }
+
+        val interceptor = fixture.createInterceptor()
+        val chain = FakeChain(
+            request = request("https://example.com/api/attendance/status-today"),
+            proceedBlock = { req -> okResponse(req, 401) }
+        )
+
+        val response = interceptor.intercept(chain)
+
+        assertEquals(401, response.code)
+        assertEquals(1, fixture.refreshCalls.get())
+        assertEquals(0, fixture.logoutCalls.get())
+        assertFalse(fixture.sessionManager.sessionExpired.value)
+        assertEquals("token-a", fixture.userPreference.getAuthToken().first())
+        assertEquals("refresh-a", fixture.userPreference.getRefreshToken().first())
+        response.close()
+    }
+
+    @Test
     fun `request retried at most once when retry response is still 401`() = runBlocking {
         val fixture = TestFixture(refreshResult = RefreshSessionResult.Success)
         fixture.userPreference.saveSession("old-access", "10", "old-refresh")

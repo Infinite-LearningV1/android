@@ -3,6 +3,7 @@ package com.example.infinite_track.di
 import android.os.Build
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
+import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
 import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
 import com.example.infinite_track.di.auth.AuthRefreshInterceptor
 import com.example.infinite_track.di.auth.RefreshSingleFlightCoordinator
@@ -60,35 +61,63 @@ object NetworkModule {
         )
     }
 
-    // 3. Menyediakan OkHttpClient dengan timeout yang lebih panjang
+    // 3. Menyediakan OkHttpClient untuk protected request path
     @Provides
     @Singleton
-    fun provideOkHttpClient(
+    @Named("protected")
+    fun provideProtectedOkHttpClient(
         loggingInterceptor: HttpLoggingInterceptor,
         authInterceptor: Interceptor
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
             .addInterceptor(authInterceptor)
-            .connectTimeout(30, TimeUnit.SECONDS) // Increased timeout
+            .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .build()
     }
 
-    // 4. Menyediakan Retrofit untuk Backend API (yang sudah ada)
+    // 4. Menyediakan OkHttpClient untuk auth session calls tanpa auth-refresh interceptor
+    @Provides
+    @Singleton
+    @Named("authSession")
+    fun provideAuthSessionOkHttpClient(
+        loggingInterceptor: HttpLoggingInterceptor
+    ): OkHttpClient {
+        return OkHttpClient.Builder()
+            .addInterceptor(loggingInterceptor)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
+
+    // 5. Menyediakan Retrofit untuk Backend API protected path
     @Provides
     @Singleton
     @Named("backend")
-    fun provideBackendRetrofit(okHttpClient: OkHttpClient): Retrofit {
+    fun provideBackendRetrofit(@Named("protected") okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(baseUrl) // Base URL backend lokal
+            .baseUrl(baseUrl)
             .addConverterFactory(GsonConverterFactory.create())
             .client(okHttpClient)
             .build()
     }
 
-    // 5. Menyediakan Retrofit untuk Mapbox API (BARU)
+    // 6. Menyediakan Retrofit untuk auth session path (refresh/logout)
+    @Provides
+    @Singleton
+    @Named("authSession")
+    fun provideAuthSessionRetrofit(@Named("authSession") okHttpClient: OkHttpClient): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(okHttpClient)
+            .build()
+    }
+
+    // 7. Menyediakan Retrofit untuk Mapbox API (BARU)
     @Provides
     @Singleton
     @Named("mapbox")
@@ -111,6 +140,12 @@ object NetworkModule {
     @Singleton
     fun provideApiService(@Named("backend") retrofit: Retrofit): ApiService {
         return retrofit.create(ApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAuthSessionApiService(@Named("authSession") retrofit: Retrofit): AuthSessionApiService {
+        return retrofit.create(AuthSessionApiService::class.java)
     }
 
     // 7. MapboxApiService untuk Mapbox API (BARU)

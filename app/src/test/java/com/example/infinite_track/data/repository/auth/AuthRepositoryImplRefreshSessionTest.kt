@@ -26,6 +26,7 @@ import com.example.infinite_track.data.soucre.network.response.WfaRecommendation
 import com.example.infinite_track.data.soucre.network.response.booking.BookingHistoryResponse
 import com.example.infinite_track.data.soucre.network.response.booking.BookingResponse
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
+import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
 import com.example.infinite_track.domain.repository.RefreshSessionResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
@@ -42,6 +43,7 @@ import retrofit2.HttpException
 import retrofit2.Response
 import java.io.File
 import java.io.IOException
+import java.util.Locale
 
 class AuthRepositoryImplRefreshSessionTest {
 
@@ -58,7 +60,9 @@ class AuthRepositoryImplRefreshSessionTest {
                         message = "ok",
                         data = createUserData(refreshToken = null)
                     )
-                },
+                }
+            ),
+            authSessionApiService = FakeAuthSessionApiService(
                 refreshSessionBlock = { unsupportedRefreshSession() }
             ),
             userDao = userDao
@@ -87,7 +91,9 @@ class AuthRepositoryImplRefreshSessionTest {
                         message = "ok",
                         data = createUserData(refreshToken = "   ")
                     )
-                },
+                }
+            ),
+            authSessionApiService = FakeAuthSessionApiService(
                 refreshSessionBlock = { unsupportedRefreshSession() }
             ),
             userDao = userDao
@@ -132,13 +138,15 @@ class AuthRepositoryImplRefreshSessionTest {
         val repository = AuthRepositoryImpl(
             userPreference = userPreference,
             apiService = FakeApiService(
-                refreshSessionBlock = { unsupportedRefreshSession() },
                 getUserProfileBlock = {
                     throw httpException(
                         code = 500,
                         error = ErrorResponse(success = false, message = "server down", code = "SERVER_ERROR")
                     )
                 }
+            ),
+            authSessionApiService = FakeAuthSessionApiService(
+                refreshSessionBlock = { unsupportedRefreshSession() }
             ),
             userDao = CachedUserDao(cachedUser)
         )
@@ -177,10 +185,12 @@ class AuthRepositoryImplRefreshSessionTest {
         val repository = AuthRepositoryImpl(
             userPreference = userPreference,
             apiService = FakeApiService(
-                refreshSessionBlock = { unsupportedRefreshSession() },
                 getUserProfileBlock = {
                     throw IOException("timeout")
                 }
+            ),
+            authSessionApiService = FakeAuthSessionApiService(
+                refreshSessionBlock = { unsupportedRefreshSession() }
             ),
             userDao = CachedUserDao(cachedUser)
         )
@@ -191,9 +201,37 @@ class AuthRepositoryImplRefreshSessionTest {
     }
 
     @Test
+    fun `logout uses auth session api service and clears local state`() = runBlocking {
+        val userPreference = createUserPreference()
+        userPreference.saveSession(token = "access-token", userId = "10", refreshToken = "refresh-token")
+        val userDao = CapturingUserDao()
+        val fakeAuthSessionApi = FakeAuthSessionApiService(
+            refreshSessionBlock = { unsupportedRefreshSession() },
+            logoutBlock = {
+                LogoutResponse(message = "ok")
+            }
+        )
+
+        val repository = AuthRepositoryImpl(
+            userPreference = userPreference,
+            apiService = FakeApiService(),
+            authSessionApiService = fakeAuthSessionApi,
+            userDao = userDao
+        )
+
+        val result = repository.logout()
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, fakeAuthSessionApi.logoutCallCount)
+        assertTrue(userPreference.getAuthToken().first().isBlank())
+        assertTrue(userPreference.getRefreshToken().first().isBlank())
+        assertTrue(userPreference.getUserId().first().isBlank())
+    }
+
+    @Test
     fun `refresh session returns reauth required when refresh token revoked`() = runBlocking {
         val repository = createRepository(
-            apiService = FakeApiService(
+            refreshApiService = FakeAuthSessionApiService(
                 refreshSessionBlock = {
                     throw httpException(
                         code = 401,
@@ -215,7 +253,7 @@ class AuthRepositoryImplRefreshSessionTest {
     @Test
     fun `refresh session returns inactivity reauth required when inactivity exceeded 48h`() = runBlocking {
         val repository = createRepository(
-            apiService = FakeApiService(
+            refreshApiService = FakeAuthSessionApiService(
                 refreshSessionBlock = {
                     throw httpException(
                         code = 401,
@@ -235,9 +273,37 @@ class AuthRepositoryImplRefreshSessionTest {
     }
 
     @Test
+    fun `refresh session uses locale-stable error code normalization with Locale ROOT`() = runBlocking {
+        val defaultLocale = Locale.getDefault()
+        Locale.setDefault(Locale("tr", "TR"))
+        try {
+            val repository = createRepository(
+                refreshApiService = FakeAuthSessionApiService(
+                    refreshSessionBlock = {
+                        throw httpException(
+                            code = 401,
+                            error = ErrorResponse(
+                                success = false,
+                                message = "session inactive for more than 48 hours",
+                                code = "inactivity_timeout_48h"
+                            )
+                        )
+                    }
+                )
+            )
+
+            val result = repository.refreshSession()
+
+            assertTrue(result is RefreshSessionResult.ReAuthRequired.InactivityExceeded)
+        } finally {
+            Locale.setDefault(defaultLocale)
+        }
+    }
+
+    @Test
     fun `refresh session rethrows cancellation exception`() = runBlocking {
         val repository = createRepository(
-            apiService = FakeApiService(
+            refreshApiService = FakeAuthSessionApiService(
                 refreshSessionBlock = {
                     throw CancellationException("cancelled")
                 }
@@ -255,7 +321,7 @@ class AuthRepositoryImplRefreshSessionTest {
     @Test
     fun `refresh session returns temporary failure on network exception`() = runBlocking {
         val repository = createRepository(
-            apiService = FakeApiService(
+            refreshApiService = FakeAuthSessionApiService(
                 refreshSessionBlock = {
                     throw IOException("timeout")
                 }
@@ -270,7 +336,7 @@ class AuthRepositoryImplRefreshSessionTest {
     @Test
     fun `refresh session returns temporary failure on server side refresh error`() = runBlocking {
         val repository = createRepository(
-            apiService = FakeApiService(
+            refreshApiService = FakeAuthSessionApiService(
                 refreshSessionBlock = {
                     throw httpException(
                         code = 500,
@@ -293,7 +359,7 @@ class AuthRepositoryImplRefreshSessionTest {
     fun `refresh session success stores latest tokens`() = runBlocking {
         val userPreference = createUserPreference()
         userPreference.saveSession(token = "old-access", userId = "10", refreshToken = "old-refresh")
-        val fakeApi = FakeApiService(
+        val fakeAuthSessionApi = FakeAuthSessionApiService(
             refreshSessionBlock = {
                 RefreshSessionResponse(
                     success = true,
@@ -309,7 +375,8 @@ class AuthRepositoryImplRefreshSessionTest {
 
         val repository = AuthRepositoryImpl(
             userPreference = userPreference,
-            apiService = fakeApi,
+            apiService = FakeApiService(),
+            authSessionApiService = fakeAuthSessionApi,
             userDao = FakeUserDao()
         )
 
@@ -318,7 +385,7 @@ class AuthRepositoryImplRefreshSessionTest {
         assertTrue(result is RefreshSessionResult.Success)
         assertEquals("new-access", userPreference.getAuthToken().first())
         assertEquals("new-refresh", userPreference.getRefreshToken().first())
-        assertEquals("old-refresh", fakeApi.lastRefreshRequest?.refreshToken)
+        assertEquals("old-refresh", fakeAuthSessionApi.lastRefreshRequest?.refreshToken)
     }
 
     @Test
@@ -328,7 +395,8 @@ class AuthRepositoryImplRefreshSessionTest {
 
         val repository = AuthRepositoryImpl(
             userPreference = userPreference,
-            apiService = FakeApiService(
+            apiService = FakeApiService(),
+            authSessionApiService = FakeAuthSessionApiService(
                 refreshSessionBlock = {
                     RefreshSessionResponse(
                         success = true,
@@ -358,7 +426,8 @@ class AuthRepositoryImplRefreshSessionTest {
 
         val repository = AuthRepositoryImpl(
             userPreference = userPreference,
-            apiService = FakeApiService(
+            apiService = FakeApiService(),
+            authSessionApiService = FakeAuthSessionApiService(
                 refreshSessionBlock = {
                     RefreshSessionResponse(
                         success = true,
@@ -389,7 +458,8 @@ class AuthRepositoryImplRefreshSessionTest {
 
         val repository = AuthRepositoryImpl(
             userPreference = userPreference,
-            apiService = FakeApiService(
+            apiService = FakeApiService(),
+            authSessionApiService = FakeAuthSessionApiService(
                 refreshSessionBlock = {
                     RefreshSessionResponse(
                         success = true,
@@ -416,7 +486,7 @@ class AuthRepositoryImplRefreshSessionTest {
     @Test
     fun `refresh session rethrows unexpected internal exception`() = runBlocking {
         val repository = createRepository(
-            apiService = FakeApiService(
+            refreshApiService = FakeAuthSessionApiService(
                 refreshSessionBlock = {
                     throw IllegalStateException("boom")
                 }
@@ -434,7 +504,7 @@ class AuthRepositoryImplRefreshSessionTest {
     @Test
     fun `refresh session returns temporary failure when error body is malformed json`() = runBlocking {
         val repository = createRepository(
-            apiService = FakeApiService(
+            refreshApiService = FakeAuthSessionApiService(
                 refreshSessionBlock = {
                     throw rawHttpException(code = 500, rawBody = "not-json")
                 }
@@ -449,7 +519,7 @@ class AuthRepositoryImplRefreshSessionTest {
     @Test
     fun `refresh session returns temporary failure when error body is empty`() = runBlocking {
         val repository = createRepository(
-            apiService = FakeApiService(
+            refreshApiService = FakeAuthSessionApiService(
                 refreshSessionBlock = {
                     throw rawHttpException(code = 500, rawBody = "")
                 }
@@ -461,7 +531,10 @@ class AuthRepositoryImplRefreshSessionTest {
         assertTrue(result is RefreshSessionResult.TemporaryFailure)
     }
 
-    private fun createRepository(apiService: ApiService): AuthRepositoryImpl {
+    private fun createRepository(
+        apiService: ApiService = FakeApiService(),
+        refreshApiService: AuthSessionApiService
+    ): AuthRepositoryImpl {
         val userPreference = createUserPreference().also {
             runBlocking {
                 it.saveSession(token = "existing-access", userId = "10", refreshToken = "existing-refresh")
@@ -471,6 +544,7 @@ class AuthRepositoryImplRefreshSessionTest {
         return AuthRepositoryImpl(
             userPreference = userPreference,
             apiService = apiService,
+            authSessionApiService = refreshApiService,
             userDao = FakeUserDao()
         )
     }
@@ -571,16 +645,9 @@ private class CachedUserDao(
 }
 
 private class FakeApiService(
-    private val refreshSessionBlock: suspend () -> RefreshSessionResponse,
     private val loginBlock: suspend (LoginRequest) -> LoginResponse = { throw NotImplementedError("login not configured in test") },
     private val getUserProfileBlock: suspend () -> LoginResponse = { throw NotImplementedError("getUserProfile not configured in test") }
 ) : ApiService {
-    var lastRefreshRequest: RefreshSessionRequest? = null
-
-    override suspend fun refreshSession(request: RefreshSessionRequest): RefreshSessionResponse {
-        lastRefreshRequest = request
-        return refreshSessionBlock()
-    }
 
     override suspend fun login(loginRequest: LoginRequest): LoginResponse {
         return loginBlock(loginRequest)
@@ -588,10 +655,6 @@ private class FakeApiService(
 
     override suspend fun getUserProfile(): LoginResponse {
         return getUserProfileBlock()
-    }
-
-    override suspend fun logout(): LogoutResponse {
-        throw NotImplementedError()
     }
 
     override suspend fun checkIn(request: AttendanceRequest): AttendanceResponse {
@@ -634,5 +697,23 @@ private class FakeApiService(
 
     override suspend fun submitWfaBooking(request: BookingRequest): BookingResponse {
         throw NotImplementedError()
+    }
+}
+
+private class FakeAuthSessionApiService(
+    private val refreshSessionBlock: suspend () -> RefreshSessionResponse,
+    private val logoutBlock: suspend () -> LogoutResponse = { throw NotImplementedError("logout not configured in test") }
+) : AuthSessionApiService {
+    var lastRefreshRequest: RefreshSessionRequest? = null
+    var logoutCallCount: Int = 0
+
+    override suspend fun refreshSession(request: RefreshSessionRequest): RefreshSessionResponse {
+        lastRefreshRequest = request
+        return refreshSessionBlock()
+    }
+
+    override suspend fun logout(): LogoutResponse {
+        logoutCallCount += 1
+        return logoutBlock()
     }
 }
