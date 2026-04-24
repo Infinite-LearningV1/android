@@ -8,6 +8,7 @@ import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.BookingRepository
 import com.example.infinite_track.domain.repository.LocationRepository
+import com.example.infinite_track.domain.repository.RefreshSessionResult
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.booking.SubmitWfaBookingUseCase
 import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
@@ -39,9 +40,10 @@ class WfaBookingViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
-    fun init_prefillsUserDataFromSingleSnapshot() = runTest {
+    fun init_prefillsUserDataFromFirstNonNullSnapshot() = runTest {
         val authRepository = FakeAuthRepository(
             flow {
+                emit(null)
                 emit(testUser(fullName = "Febri", divisionName = "Android"))
                 emit(testUser(fullName = "Updated", divisionName = "Changed"))
             }
@@ -163,6 +165,10 @@ class WfaBookingViewModelTest {
     private class FakeAuthRepository(
         private val userFlow: Flow<UserModel?>
     ) : AuthRepository {
+        override suspend fun refreshSession(): RefreshSessionResult {
+            throw UnsupportedOperationException()
+        }
+
         override suspend fun login(loginRequest: LoginRequest): Result<UserModel> {
             throw UnsupportedOperationException()
         }

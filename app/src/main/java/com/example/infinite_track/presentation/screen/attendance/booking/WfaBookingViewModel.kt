@@ -10,7 +10,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -58,13 +59,11 @@ class WfaBookingViewModel @Inject constructor(
 
     private suspend fun loadUserData() {
         try {
-            val user = getLoggedInUserUseCase().firstOrNull()
-            user?.let {
-                _uiState.value = _uiState.value.copy(
-                    fullName = it.fullName,
-                    division = it.divisionName ?: ""
-                )
-            }
+            val user = getLoggedInUserUseCase().filterNotNull().first()
+            _uiState.value = _uiState.value.copy(
+                fullName = user.fullName,
+                division = user.divisionName ?: ""
+            )
         } catch (e: Exception) {
             _uiState.value = _uiState.value.copy(
                 error = "Failed to load user data: ${e.message}"
