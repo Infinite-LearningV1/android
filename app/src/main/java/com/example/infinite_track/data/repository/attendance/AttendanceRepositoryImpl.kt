@@ -87,6 +87,7 @@ class AttendanceRepositoryImpl @Inject constructor(
             if (response.success) {
                 // Save the attendance ID for later checkout
                 attendancePreference.saveActiveAttendanceId(response.data.idAttendance)
+                attendancePreference.clearNotificationSessionState()
                 Log.d(
                     TAG,
                     "Check-in successful, saved attendance ID: ${response.data.idAttendance}"
@@ -129,6 +130,7 @@ class AttendanceRepositoryImpl @Inject constructor(
             if (response.success) {
                 // Clear the active attendance ID
                 attendancePreference.clearActiveAttendanceId()
+                attendancePreference.clearNotificationSessionState()
                 Log.d(TAG, "Check-out successful, cleared attendance ID")
 
                 // Convert DTO to ActiveAttendanceSession domain model using mapper

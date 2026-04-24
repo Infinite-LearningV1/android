@@ -25,33 +25,31 @@ object NotificationHelper {
         notificationManager.createNotificationChannel(channel)
     }
 
-    fun showGeofenceNotification(context: Context, eventType: String, locationName: String) {
+    fun buildLaunchAppIntent(context: Context): Intent {
+        return Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+    }
+
+    private fun buildLaunchAppPendingIntent(context: Context): PendingIntent {
+        return PendingIntent.getActivity(
+            context,
+            0,
+            buildLaunchAppIntent(context),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    fun showExitAreaWarningNotification(context: Context, locationName: String) {
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        // Generate message based on event type and location name
-        val message = when (eventType) {
-            "ENTER" -> "Anda telah memasuki area: $locationName"
-            "EXIT" -> "Anda telah meninggalkan area: $locationName"
-            else -> "Terdeteksi event lokasi."
-        }
-
-        // Intent untuk membuka MainActivity dan menavigasi ke AttendanceScreen
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            // Add extra to indicate we should navigate to attendance screen
-            putExtra("navigate_to_attendance", true)
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.notifications_24px)
-            .setContentTitle("Pemberitahuan Area Presensi")
-            .setContentText(message)
+            .setContentTitle("Peringatan Keluar Area")
+            .setContentText("Anda telah meninggalkan area: $locationName")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(pendingIntent)
+            .setContentIntent(buildLaunchAppPendingIntent(context))
             .setAutoCancel(true)
             .build()
 
@@ -62,20 +60,12 @@ object NotificationHelper {
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("navigate_to_attendance", true)
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.notifications_24px)
             .setContentTitle("Pengingat Check-in")
             .setContentText("Anda berada di area: $locationName. Jangan lupa check-in.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(pendingIntent)
+            .setContentIntent(buildLaunchAppPendingIntent(context))
             .setAutoCancel(true)
             .build()
 
