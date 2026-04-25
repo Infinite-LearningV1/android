@@ -7,7 +7,7 @@ import org.junit.Test
 
 /**
  * Release Build Configuration Verification Test
- * 
+ *
  * Purpose: Verifies release build configuration values such as:
  * - BuildConfig.DEBUG == false
  * - application ID
