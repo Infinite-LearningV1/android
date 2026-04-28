@@ -65,6 +65,25 @@ app/google-services.json
 #### 3. Backend URL
 The app chooses its backend base URL in:
 
+#### 2a. Firebase App Distribution and CI
+Distribusi internal Firebase App Distribution di CI bersifat **master-only**: workflow distribusi hanya trigger pada `push` ke `master` dan tidak melakukan distribusi dari `develop`, `deploy`, `feature/**`, atau `pull_request`.
+
+Kontrak workflow distribusi:
+- Build release memakai `./gradlew app:assembleRelease`.
+- APK yang didistribusikan adalah `app/build/outputs/apk/release/app-release.apk`.
+- Firebase CLI memakai autentikasi non-interaktif via service account JSON (`FIREBASE_SERVICE_ACCOUNT_JSON`) dan `GOOGLE_APPLICATION_CREDENTIALS`.
+- Workflow mencakup langkah GitHub Actions artifact upload untuk release notes artifact dan APK artifact.
+- Workflow mencakup cleanup temporary secret/config files: `release-keystore.jks`, `firebase-service-account.json`, `app/google-services.json`, dan `local.properties`.
+
+Input GitHub yang dibutuhkan:
+- Secrets: `MAPBOX_ACCESS_TOKEN`, `GOOGLE_SERVICES_JSON_BASE64` preferred atau `GOOGLE_SERVICES_JSON`, `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_APP_ID`.
+- Variable: `FIREBASE_TESTER_GROUPS`.
+
+Catatan governance: repo dapat mendokumentasikan kontrak workflow, tetapi branch protection / ruleset GitHub untuk enforcement promosi `develop -> master` tetap **Needs Verification** di settings GitHub.
+
+#### 3. Backend URL
+The app chooses its backend base URL in:
+
 ```text
 app/src/main/java/com/example/infinite_track/di/NetworkModule.kt
 ```
