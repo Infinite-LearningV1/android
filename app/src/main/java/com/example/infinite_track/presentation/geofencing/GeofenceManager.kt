@@ -9,7 +9,6 @@ import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
-import com.example.infinite_track.data.soucre.local.preferences.ReminderGeofence
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofenceStatusCodes
@@ -51,7 +50,7 @@ class GeofenceManager @Inject constructor(
         )
     }
 
-    private fun hasForegroundLocationPermission(): Boolean {
+    fun hasForegroundLocationPermission(): Boolean {
         val fine = ContextCompat.checkSelfPermission(
             context,
             android.Manifest.permission.ACCESS_FINE_LOCATION
@@ -59,13 +58,32 @@ class GeofenceManager @Inject constructor(
         return fine
     }
 
-    private fun hasBackgroundLocationPermission(): Boolean {
+    fun hasBackgroundLocationPermission(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ContextCompat.checkSelfPermission(
                 context,
                 android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
         } else true
+    }
+
+    /**
+     * Check if all required permissions are granted
+     */
+    fun hasAllRequiredPermissions(): Boolean {
+        return hasForegroundLocationPermission() && hasBackgroundLocationPermission()
+    }
+
+    /**
+     * Get detailed permission status for UI feedback
+     */
+    fun getPermissionStatusMessage(): String {
+        return when {
+            hasAllRequiredPermissions() -> "Semua izin lokasi telah diberikan"
+            !hasForegroundLocationPermission() -> "Izin lokasi diperlukan untuk fitur geofencing"
+            !hasBackgroundLocationPermission() -> "Izin lokasi latar belakang diperlukan untuk pemantauan area kerja secara otomatis"
+            else -> "Status izin tidak diketahui"
+        }
     }
 
     /**
@@ -89,14 +107,29 @@ class GeofenceManager @Inject constructor(
     }
 
     @SuppressLint("MissingPermission")
-    fun addGeofence(id: String, latitude: Double, longitude: Double, radius: Float) {
-        // Permission guards
+    fun addGeofence(
+        id: String, 
+        latitude: Double, 
+        longitude: Double, 
+        radius: Float,
+        onPermissionError: ((String) -> Unit)? = null
+    ) {
+        // Enhanced permission guards with user feedback
         if (!hasForegroundLocationPermission()) {
-            Log.e(TAG, "Tidak ada izin ACCESS_FINE_LOCATION. Geofence tidak dapat ditambahkan.")
+            val errorMsg = "Izin lokasi (FINE/COARSE) diperlukan untuk fitur geofencing. Silakan berikan izin di pengaturan aplikasi."
+            Log.e(TAG, errorMsg)
+            onPermissionError?.invoke(errorMsg)
             return
         }
         if (!hasBackgroundLocationPermission()) {
-            Log.e(TAG, "Tidak ada izin ACCESS_BACKGROUND_LOCATION. Geofence gagal (API 29+).")
+            val errorMsg = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                "Izin lokasi latar belakang diperlukan untuk pemantauan area kerja otomatis (Android 10+). " +
+                "Pilih 'Izinkan sepanjang waktu' di pengaturan lokasi aplikasi."
+            } else {
+                "Izin lokasi latar belakang tidak tersedia."
+            }
+            Log.e(TAG, errorMsg)
+            onPermissionError?.invoke(errorMsg)
             return
         }
 
@@ -233,90 +266,6 @@ class GeofenceManager @Inject constructor(
                 Log.e(TAG, "Gagal menambahkan reminder geofence: $id (${status ?: "?"}: ${statusText ?: exception.message})", exception)
             }
         }
-    }
-
-    @SuppressLint("MissingPermission")
-    fun restoreGeofencesAfterBoot(
-        monitoringGeofence: Triple<String, Pair<Double, Double>, Float>?,
-        reminderGeofences: List<ReminderGeofence>
-    ) {
-        if (!hasForegroundLocationPermission()) {
-            Log.e(TAG, "Tidak ada izin ACCESS_FINE_LOCATION. Geofence tidak dapat dipulihkan setelah reboot.")
-            return
-        }
-        if (!hasBackgroundLocationPermission()) {
-            Log.e(TAG, "Tidak ada izin ACCESS_BACKGROUND_LOCATION. Geofence gagal dipulihkan setelah reboot (API 29+).")
-            return
-        }
-
-        val geofences = mutableListOf<Geofence>()
-        monitoringGeofence?.let { (requestId, latLng, radius) ->
-            val (lat, lng) = latLng
-            geofences.add(
-                Geofence.Builder()
-                    .setRequestId(requestId)
-                    .setCircularRegion(lat, lng, radius)
-                    .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
-                    .build()
-            )
-        }
-        reminderGeofences.forEach { reminder ->
-            geofences.add(
-                Geofence.Builder()
-                    .setRequestId(reminder.id)
-                    .setCircularRegion(reminder.latitude, reminder.longitude, reminder.radiusMeters)
-                    .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
-                    .build()
-            )
-        }
-
-        if (geofences.isEmpty()) {
-            Log.d(TAG, "No geofences to restore after boot.")
-            return
-        }
-
-        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10_000L)
-            .setMinUpdateIntervalMillis(5_000L)
-            .build()
-        val settingsRequest = LocationSettingsRequest.Builder()
-            .addLocationRequest(locationRequest)
-            .build()
-
-        settingsClient.checkLocationSettings(settingsRequest)
-            .addOnSuccessListener {
-                Log.d(TAG, "Membersihkan semua geofence sebelum memulihkan setelah reboot...")
-                geofencingClient.removeGeofences(geofencePendingIntent).run {
-                    addOnSuccessListener {
-                        val geofencingRequestBuilder = GeofencingRequest.Builder()
-                            .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
-                        geofences.forEach { geofencingRequestBuilder.addGeofence(it) }
-
-                        geofencingClient.addGeofences(
-                            geofencingRequestBuilder.build(),
-                            geofencePendingIntent
-                        ).run {
-                            addOnSuccessListener {
-                                Log.d(TAG, "Berhasil memulihkan ${geofences.size} geofence setelah reboot")
-                            }
-                            addOnFailureListener { exception ->
-                                val status = (exception as? ApiException)?.statusCode
-                                val statusText = status?.let { GeofenceStatusCodes.getStatusCodeString(it) }
-                                Log.e(TAG, "Gagal memulihkan geofence setelah reboot (${status ?: "?"}: ${statusText ?: exception.message})", exception)
-                            }
-                        }
-                    }
-                    addOnFailureListener { exception ->
-                        Log.e(TAG, "Gagal menghapus geofence lama sebelum restore reboot", exception)
-                    }
-                }
-            }
-            .addOnFailureListener { exception ->
-                val status = (exception as? ApiException)?.statusCode
-                val statusText = status?.let { GeofenceStatusCodes.getStatusCodeString(it) }
-                Log.e(TAG, "Location settings tidak memenuhi syarat untuk memulihkan Geofencing (${status ?: "?"}: ${statusText ?: exception.message}). Pastikan Location diaktifkan.")
-            }
     }
 
     fun removeReminderGeofence(id: String) {

@@ -16,7 +16,6 @@ import com.example.infinite_track.data.soucre.local.preferences.LocalizationPref
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
-import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
 import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
 import com.example.infinite_track.domain.repository.AttendanceRepository
@@ -45,10 +44,9 @@ object RepositoryModule {
     fun provideAuthRepository(
         userPreference: UserPreference,
         apiService: ApiService,
-        authSessionApiService: AuthSessionApiService,
         userDao: UserDao
     ): AuthRepository {
-        return AuthRepositoryImpl(userPreference, apiService, authSessionApiService, userDao)
+        return AuthRepositoryImpl(userPreference, apiService, userDao)
     }
 
     @Provides

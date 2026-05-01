@@ -9,6 +9,7 @@ import com.example.infinite_track.data.soucre.network.request.ProfileUpdateReque
 import com.example.infinite_track.data.soucre.network.response.AttendanceHistoryResponse
 import com.example.infinite_track.data.soucre.network.response.AttendanceResponse
 import com.example.infinite_track.data.soucre.network.response.LoginResponse
+import com.example.infinite_track.data.soucre.network.response.LogoutResponse
 import com.example.infinite_track.data.soucre.network.response.ProfileUpdateResponse
 import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
 import com.example.infinite_track.data.soucre.network.response.WfaRecommendationResponse
@@ -30,6 +31,8 @@ interface ApiService {
     @GET("api/auth/me")
     suspend fun getUserProfile(): LoginResponse
 
+    @POST("api/auth/logout")
+    suspend fun logout(): LogoutResponse
 
     @POST("api/attendance/check-in")
     suspend fun checkIn(
