@@ -14,7 +14,6 @@ import com.example.infinite_track.data.soucre.network.response.AttendanceData
 import com.example.infinite_track.data.soucre.network.response.AttendanceHistoryResponse
 import com.example.infinite_track.data.soucre.network.response.AttendanceResponse
 import com.example.infinite_track.data.soucre.network.response.LoginResponse
-import com.example.infinite_track.data.soucre.network.response.LogoutResponse
 import com.example.infinite_track.data.soucre.network.response.ProfileUpdateResponse
 import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
 import com.example.infinite_track.data.soucre.network.response.WfaRecommendationResponse
@@ -96,10 +95,6 @@ class AttendanceRepositoryNotificationStateTest {
         }
 
         override suspend fun getUserProfile(): LoginResponse {
-            throw UnsupportedOperationException("Not needed for this test")
-        }
-
-        override suspend fun logout(): LogoutResponse {
             throw UnsupportedOperationException("Not needed for this test")
         }
 
