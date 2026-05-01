@@ -27,7 +27,6 @@ class AttendancePreference @Inject constructor(
 	companion object {
 		private val ACTIVE_ATTENDANCE_ID_KEY = intPreferencesKey("active_attendance_id")
 		private val IS_INSIDE_GEOFENCE_KEY = booleanPreferencesKey("is_inside_geofence")
-		private val HAS_ENTERED_ACTIVE_SESSION_AREA_KEY = booleanPreferencesKey("has_entered_active_session_area")
 		private val LAST_GEOFENCE_REQUEST_ID_KEY = stringPreferencesKey("last_geofence_request_id")
 		private val LAST_GEOFENCE_LAT_KEY = floatPreferencesKey("last_geofence_lat")
 		private val LAST_GEOFENCE_LNG_KEY = floatPreferencesKey("last_geofence_lng")
@@ -97,14 +96,14 @@ class AttendancePreference @Inject constructor(
 	/**
 	 * Retrieve last geofence parameters as Triple(requestId, Pair(lat,lng), radiusMeters)
 	 */
-	fun getLastGeofenceParams(): Flow<Triple<String, Pair<Double, Double>, Float>?> {
+	fun getLastGeofenceParams(): Flow<Triple<String, Pair<Double, Double>, Int>?> {
 		return dataStore.data.map { preferences ->
 			val requestId = preferences[LAST_GEOFENCE_REQUEST_ID_KEY]
 			val lat = preferences[LAST_GEOFENCE_LAT_KEY]
 			val lng = preferences[LAST_GEOFENCE_LNG_KEY]
 			val radius = preferences[LAST_GEOFENCE_RADIUS_KEY]
 			if (requestId != null && lat != null && lng != null && radius != null) {
-				Triple(requestId, Pair(lat.toDouble(), lng.toDouble()), radius)
+				Triple(requestId, Pair(lat.toDouble(), lng.toDouble()), radius.toInt())
 			} else {
 				null
 			}
@@ -150,25 +149,6 @@ class AttendancePreference @Inject constructor(
 		}
 	}
 
-	fun hasEnteredActiveSessionArea(): Flow<Boolean> {
-		return dataStore.data.map { preferences ->
-			preferences[HAS_ENTERED_ACTIVE_SESSION_AREA_KEY] ?: false
-		}
-	}
-
-	suspend fun setHasEnteredActiveSessionArea(hasEntered: Boolean) {
-		dataStore.edit { preferences ->
-			preferences[HAS_ENTERED_ACTIVE_SESSION_AREA_KEY] = hasEntered
-		}
-	}
-
-	suspend fun clearNotificationSessionState() {
-		dataStore.edit { preferences ->
-			preferences[IS_INSIDE_GEOFENCE_KEY] = false
-			preferences[HAS_ENTERED_ACTIVE_SESSION_AREA_KEY] = false
-		}
-	}
-
 	/**
 	 * Reminder geofences - multi-store helpers
 	 */
@@ -176,10 +156,7 @@ class AttendancePreference @Inject constructor(
 		dataStore.edit { preferences ->
 			val current = preferences[REMINDER_GEOFENCES_KEY] ?: emptySet()
 			val merged = current.toMutableSet()
-			geofences.forEach { geofence ->
-				merged.removeAll { it.startsWith("${geofence.id}|") }
-				merged.add(geofence.serialize())
-			}
+			geofences.forEach { merged.add(it.serialize()) }
 			preferences[REMINDER_GEOFENCES_KEY] = merged
 		}
 	}

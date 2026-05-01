@@ -16,22 +16,6 @@ class SessionManager @Inject constructor() {
     private val _sessionExpired = MutableStateFlow(false)
     val sessionExpired: StateFlow<Boolean> = _sessionExpired.asStateFlow()
 
-    private var sessionExpiryHandlingInProgress: Boolean = false
-
-    /**
-     * Try to acquire single-flight guard for session-expired handling.
-     * Returns true only for the first caller until resetSessionExpired is invoked.
-     */
-    @Synchronized
-    fun beginSessionExpiryHandling(): Boolean {
-        if (sessionExpiryHandlingInProgress) {
-            return false
-        }
-
-        sessionExpiryHandlingInProgress = true
-        return true
-    }
-
     /**
      * Trigger session expiration
      * Dipanggil oleh AuthInterceptor ketika mendapat 401 error
@@ -44,9 +28,7 @@ class SessionManager @Inject constructor() {
      * Reset session expiration state
      * Dipanggil setelah user dismiss dialog atau navigate ke login
      */
-    @Synchronized
     fun resetSessionExpired() {
         _sessionExpired.value = false
-        sessionExpiryHandlingInProgress = false
     }
 }

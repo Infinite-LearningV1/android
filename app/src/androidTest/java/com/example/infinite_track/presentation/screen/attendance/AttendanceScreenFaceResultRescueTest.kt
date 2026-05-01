@@ -23,7 +23,6 @@ import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.LocationRepository
-import com.example.infinite_track.domain.repository.RefreshSessionResult
 import com.example.infinite_track.domain.repository.WfaRepository
 import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
 import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
@@ -39,9 +38,12 @@ import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -54,6 +56,12 @@ class AttendanceScreenFaceResultRescueTest {
         const val FACE_RESULT_SINK_ROUTE = "face_result_sink"
         const val FACE_VERIFICATION_RESULT_KEY = "face_verification_result"
     }
+
+    @Before
+    fun setUp() = clearAttendancePreferenceState()
+
+    @After
+    fun tearDown() = clearAttendancePreferenceState()
 
     @Test
     fun attendanceScreen_forwardsFalseFaceVerificationResultBeforeClearingIt() {
@@ -173,6 +181,15 @@ class AttendanceScreenFaceResultRescueTest {
         composeRule.waitForIdle()
 
         return navController
+    }
+
+    private fun clearAttendancePreferenceState() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val attendancePreference = AttendancePreference(context)
+        attendancePreference.clearActiveAttendanceId()
+        attendancePreference.setUserInsideGeofence(false)
+        attendancePreference.clearLastGeofenceParams()
+        attendancePreference.clearReminderGeofences()
     }
 
     private fun createAttendanceViewModel(): AttendanceViewModel {
@@ -306,8 +323,6 @@ class AttendanceScreenFaceResultRescueTest {
     }
 
     private class FakeAuthRepository : AuthRepository {
-        override suspend fun refreshSession(): RefreshSessionResult = RefreshSessionResult.Success
-
         override suspend fun login(loginRequest: LoginRequest): Result<UserModel> {
             throw UnsupportedOperationException("Login is outside this regression")
         }
