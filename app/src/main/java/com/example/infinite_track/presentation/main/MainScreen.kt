@@ -45,8 +45,10 @@ fun MainScreen(
     val context = LocalContext.current
 
     LaunchedEffect(navigateToAttendance, currentRoute) {
-        if (navigateToAttendance && currentRoute == Screen.Home.route) {
-            mainContentNavController.safeNavigate(Screen.Attendance.route)
+        if (navigateToAttendance) {
+            if (currentRoute != Screen.Attendance.route) {
+                mainContentNavController.safeNavigate(Screen.Attendance.route)
+            }
             onAttendanceNavigationHandled()
         }
     }
