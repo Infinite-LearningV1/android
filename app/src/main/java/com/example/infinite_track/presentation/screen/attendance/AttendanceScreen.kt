@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.attendance.TargetLocationInfo
 import com.example.infinite_track.domain.model.location.LocationResult
@@ -48,6 +49,8 @@ import com.example.infinite_track.presentation.components.empty.ErrorAnimation
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
 import com.example.infinite_track.presentation.components.maps.AttendanceMap
 import com.example.infinite_track.presentation.components.maps.MarkerView
+import com.example.infinite_track.presentation.components.dialog.LocationPermissionDialog
+import com.example.infinite_track.utils.LocalLocationPermissionHelper
 import com.example.infinite_track.presentation.components.maps.MarkerViewWfa
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
@@ -61,6 +64,8 @@ import com.mapbox.maps.MapboxDelicateApi
 import com.mapbox.maps.plugin.animation.MapAnimationOptions
 import com.mapbox.maps.plugin.animation.flyTo
 
+private const val FACE_VERIFICATION_RESULT_KEY = "face_verification_result"
+
 @OptIn(ExperimentalMaterial3Api::class, MapboxDelicateApi::class)
 @Composable
 fun AttendanceScreen(
@@ -71,6 +76,7 @@ fun AttendanceScreen(
 
     // Observasi state dari ViewModel yang sudah disederhanakan
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val locationPermissionHelper = LocalLocationPermissionHelper.current
 
     // Handle hasil pencarian lokasi dari LocationSearchScreen
     val selectedLocation = navController.currentBackStackEntry
@@ -513,34 +519,37 @@ fun AttendanceScreen(
         }
     }
 
-    // Handle face verification result from FaceScannerScreen
-    LaunchedEffect(Unit) {
-        // Get face verification result from savedStateHandle
-        val faceVerificationResult = navController.currentBackStackEntry
-            ?.savedStateHandle
-            ?.getLiveData<Boolean>("face_verification_result")
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val fallbackFaceVerificationResult = remember { mutableStateOf<Boolean?>(null) }
+    val faceVerificationResult by currentBackStackEntry
+        ?.savedStateHandle
+        ?.getStateFlow<Boolean?>(FACE_VERIFICATION_RESULT_KEY, null)
+        ?.collectAsStateWithLifecycle()
+        ?: fallbackFaceVerificationResult
 
-        faceVerificationResult?.observeForever { isSuccess ->
-            if (isSuccess != null) {
-                // FIXED: Only process if verification was successful
-                // If failed, user should stay on FaceScannerScreen for retry
-                if (isSuccess) {
-                    // Call ViewModel to handle the successful result
-                    viewModel.onFaceVerificationResult(isSuccess)
-                } else {
-                    // Face verification failed - don't process, let user retry on scanner screen
-                    android.util.Log.d(
-                        "AttendanceScreen",
-                        "Face verification failed - user should retry on scanner screen"
-                    )
-                }
-
-                // Clear the result to prevent re-processing
-                navController.currentBackStackEntry
-                    ?.savedStateHandle
-                    ?.remove<Boolean>("face_verification_result")
-            }
+    LaunchedEffect(faceVerificationResult, currentBackStackEntry) {
+        faceVerificationResult?.let { isSuccess ->
+            viewModel.onFaceVerificationResult(isSuccess)
+            currentBackStackEntry
+                ?.savedStateHandle
+                ?.remove<Boolean>(FACE_VERIFICATION_RESULT_KEY)
         }
+    }
+
+    // Permission Dialog for Geofencing
+    if (uiState.showPermissionDialog && uiState.permissionResult != null) {
+        LocationPermissionDialog(
+            permissionResult = uiState.permissionResult!!,
+            onRequestPermission = {
+                locationPermissionHelper?.checkAndRequestPermissions()
+            },
+            onOpenSettings = {
+                locationPermissionHelper?.openAppSettings()
+            },
+            onDismiss = {
+                viewModel.onDismissPermissionDialog()
+            }
+        )
     }
 }
 

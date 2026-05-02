@@ -1,135 +1,192 @@
-# Infinite Track
+# Infinite Track Android
 
-Infinite Track adalah sebuah sistem presensi karyawan berbasis Android yang cerdas dan modern. Tujuan utamanya adalah untuk melampaui aplikasi absensi konvensional dengan mengintegrasikan teknologi canggih untuk memberikan analisis perilaku kerja yang mendalam bagi manajemen dan pengalaman pengguna yang mulus bagi karyawan.
+Android mobile client for Infinite Track Palu, focused on attendance capture, geofencing, face verification, WFA booking, and internal pre-release distribution through Firebase App Distribution.
+
+## Repository Role
+
+This repository owns the Android client experience and runtime behavior for:
+- login and session bootstrap
+- attendance check-in / check-out flow
+- work mode capture (`WFO`, `WFH`, `WFA`)
+- geofence reminders and background location-event handling
+- face verification and liveness flow
+- WFA booking and related client-side state
+- local persistence for session, profile, and attendance-related state
+
+Android is treated as a trusted data-capture client. Backend state remains the final source of truth for attendance outcomes.
 
 ## Core Features
 
-- **Presensi Cerdas**: Menggunakan **Geofencing** untuk notifikasi masuk/keluar area kerja dan **Face Recognition** untuk validasi check-in/check-out yang aman.
-- **Fleksibilitas Kerja**: Mendukung mode kerja modern seperti Work From Office (WFO), Work From Home (WFH), dan Work From Anywhere (WFA) dengan sistem booking dan rekomendasi lokasi.
-- **Analitik Perilaku**: Memanfaatkan algoritma `Fuzzy Logic` dan `AHP` untuk menghasilkan metrik cerdas seperti skor kelayakan lokasi WFA, indeks kedisiplinan karyawan, dan smart auto check-out.
+- Smart attendance flow with geofence-aware validation
+- Face verification and liveness challenge for attendance actions
+- Support for `WFO`, `WFH`, and `WFA` work modes
+- WFA booking flow with recommendation and map interaction support
+- Attendance and booking history screens
+- Internal master-only Firebase App Distribution lane for pre-release delivery
 
-## Technology Stack & Architecture
+## Tech Stack
 
-### Backend
-- **Framework**: Laravel 11 (PHP)
-- **Database**: MySQL
-- **API**: RESTful API dengan access token + refresh-session contract untuk client Android
-
-### Auth & Session Contract (Android)
-- Backend tetap source of truth untuk validitas session.
-- Android memakai `POST /api/auth/refresh` dengan `X-Client-Type: android` dan refresh token eksplisit untuk memulihkan access token yang expired.
-- Android hanya menganggap session valid saat bootstrap jika backend validity berhasil dikonfirmasi kembali.
-- `invalid/revoked` dan `inactivity > 48 jam` memaksa full re-auth, sedangkan temporary transport/server failure tidak dianggap auth invalid.
-- Detail governance perubahan ini didokumentasikan di `docs/adr/ADR-007-refresh-session-and-bootstrap-truthfulness.md`.
-
-### Android App
-- **Bahasa**: Kotlin
-- **UI**: Jetpack Compose
-- **Arsitektur**: Clean Architecture (MVVM)
-- **Dependency Injection**: Hilt
-- **Networking**: Retrofit & OkHttp
-- **Local Storage**: Room & DataStore
-- **Asynchronous**: Kotlin Coroutines & Flow
-- **Peta**: Mapbox SDK
-- **Kamera & ML**: CameraX & TensorFlow Lite untuk Face Recognition
-
-### Arsitektur Clean Architecture
-
-Proyek ini mengadopsi prinsip Clean Architecture untuk memisahkan *concerns* dan menciptakan basis kode yang tangguh, dapat diuji, dan dapat dipelihara.
-
-```
-presentation/  (UI Layer: Composable Screens, ViewModels)
-├── screen/
-│   ├── attendance/
-│   │   ├── AttendanceScreen.kt
-│   │   └── AttendanceViewModel.kt
-│   └── ...
-└── components/
-    └── ...
-
-domain/         (Business Logic Layer: Use Cases, Models)
-├── model/
-│   ├── attendance/
-│   │   └── AttendanceModel.kt
-│   └── ...
-└── use_case/
-    └── attendance/
-        └── GetTodayStatusUseCase.kt
-
-data/           (Data Layer: Repositories, Data Sources)
-├── repository/
-│   └── attendance/
-│       └── AttendanceRepositoryImpl.kt
-├── mapper/
-│   └── attendance/
-│       └── AttendanceMapper.kt
-└── source/
-    ├── network/ (Retrofit API Service)
-    └── local/   (Room Database, DataStore Preferences)
-```
+- **Language:** Kotlin
+- **UI:** Jetpack Compose + Material 3
+- **Architecture:** Clean Architecture style with MVVM-oriented presentation flow
+- **Dependency Injection:** Hilt
+- **Networking:** Retrofit + OkHttp
+- **Persistence:** Room + DataStore
+- **Background Work:** WorkManager
+- **Maps & Location:** Mapbox + Google Play Services Location / Geofencing
+- **Camera & ML:** CameraX + ML Kit Face Detection + TensorFlow Lite
+- **Firebase:** Firebase Cloud Messaging, Firebase App Distribution workflow integration
 
 ## Getting Started
 
 ### Prerequisites
-- Android Studio (versi terbaru direkomendasikan)
-- JDK 1.8 atau yang lebih baru
-- Backend server Infinite Track berjalan dan dapat diakses dari jaringan Anda.
+- Android Studio
+- JDK 17-compatible Android toolchain
+- Reachable backend environment for device/runtime testing
+- Firebase app config for Android
+- Mapbox access token
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/username/infinite-track.git
-cd infinite-track
+### Local Configuration
+
+#### 1. Mapbox token
+Create `local.properties` in the repository root:
+
+```properties
+MAPBOX_ACCESS_TOKEN=YOUR_MAPBOX_ACCESS_TOKEN
 ```
 
-### 2. Setup Configuration
+#### 2. Firebase config
+Place the correct Android Firebase config file at:
 
-#### a. Mapbox Access Token
-1. Buat file bernama `local.properties` di direktori root proyek.
-2. Buka `local.properties` dan tambahkan Mapbox Access Token Anda. Ganti `YOUR_MAPBOX_ACCESS_TOKEN` dengan token Anda yang sebenarnya.
-   ```properties
-   MAPBOX_ACCESS_TOKEN=YOUR_MAPBOX_ACCESS_TOKEN
-   ```
+```text
+app/google-services.json
+```
 
-#### b. Google Services
-Proyek ini menggunakan layanan Google (kemungkinan untuk Firebase Cloud Messaging dan Geofencing).
-1. Dapatkan file `google-services.json` Anda dari Firebase console.
-2. Tempatkan file `google-services.json` di dalam direktori `app/`.
+#### 3. Backend URL
+The app chooses its backend base URL in:
 
-#### c. Firebase App Distribution and CI
-Repositori ini dirancang agar distribusi internal Firebase App Distribution hanya berjalan dari branch `master`.
+#### 2a. Firebase App Distribution and CI
+Distribusi internal Firebase App Distribution di CI bersifat **master-only**: workflow distribusi hanya trigger pada `push` ke `master` dan tidak melakukan distribusi dari `develop`, `deploy`, `feature/**`, atau `pull_request`.
 
-Setup lokal `google-services.json` tetap dibutuhkan untuk integrasi app, tetapi distribusi CI juga membutuhkan GitHub-managed secrets terpisah untuk:
-- release signing
-- Firebase non-interactive upload authentication
-- tester-group targeting
+Kontrak workflow distribusi:
+- Build release memakai `./gradlew app:assembleRelease`.
+- APK yang didistribusikan adalah `app/build/outputs/apk/release/app-release.apk`.
+- Firebase CLI memakai autentikasi non-interaktif via service account JSON (`FIREBASE_SERVICE_ACCOUNT_JSON`) dan `GOOGLE_APPLICATION_CREDENTIALS`.
+- Workflow mencakup langkah GitHub Actions artifact upload untuk release notes artifact dan APK artifact.
+- Workflow mencakup cleanup temporary secret/config files: `release-keystore.jks`, `firebase-service-account.json`, `app/google-services.json`, dan `local.properties`.
 
-Sebuah build bisa berstatus **distribution-ready** sebelum menjadi **end-to-end-ready**. End-to-end readiness tetap diblok sampai backend final dapat diakses oleh tester.
+Input GitHub yang dibutuhkan:
+- Secrets: `MAPBOX_ACCESS_TOKEN`, `GOOGLE_SERVICES_JSON_BASE64` preferred atau `GOOGLE_SERVICES_JSON`, `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_APP_ID`.
+- Variable: `FIREBASE_TESTER_GROUPS`.
 
-#### d. Backend API URL
-Aplikasi secara cerdas mendeteksi apakah sedang berjalan di emulator atau perangkat fisik untuk menentukan URL backend.
-1. Buka file `app/src/main/java/com/example/infinite_track/di/NetworkModule.kt`.
-2. Temukan properti `baseUrl`:
-   ```kotlin
-   private val baseUrl: String
-       get() = if (isEmulator()) {
-           "http://10.0.2.2:3005/" // Untuk Emulator
-       } else {
-           "http://192.168.212.197:3005/" // Untuk Perangkat Fisik
-       }
-   ```
-3. **PENTING**: Jika Anda menjalankan aplikasi di perangkat fisik, ubah alamat IP `192.168.212.197` menjadi alamat IP lokal dari mesin tempat backend server Anda berjalan.
+Catatan governance: repo dapat mendokumentasikan kontrak workflow, tetapi branch protection / ruleset GitHub untuk enforcement promosi `develop -> master` tetap **Needs Verification** di settings GitHub.
 
-### 3. Build and Run the App
-1. Buka proyek di Android Studio.
-2. Biarkan Gradle menyinkronkan dan mengunduh semua dependensi.
-3. Pilih konfigurasi run `app`.
-4. Pilih perangkat (emulator atau fisik) dan klik tombol **Run**.
+#### 3. Backend URL
+The app chooses its backend base URL in:
+
+```text
+app/src/main/java/com/example/infinite_track/di/NetworkModule.kt
+```
+
+Current behavior:
+- emulator → `http://10.0.2.2:3005/`
+- physical device → hardcoded local-network IP
+
+If you test on a physical device, update that IP to a reachable backend host for your environment.
+
+## Verification Commands
+
+Use these commands from the repository root:
+
+```bash
+./gradlew app:assembleDebug
+./gradlew app:test
+./gradlew app:lint
+./gradlew app:assembleRelease
+```
+
+These are the primary local verification commands used for CI/CD and release-prep validation.
 
 ## Project Structure
 
-- **`/app`**: Modul utama aplikasi Android.
-  - **`/src/main/java`**: Kode sumber Kotlin, diorganisir berdasarkan fitur dan layer arsitektur.
-  - **`/src/main/res`**: Semua resource Android (drawable, layout, font, dll.).
-  - **`/src/main/ml`**: Model machine learning (TensorFlow Lite) untuk pengenalan wajah.
-- **`/gradle`**: Skrip dan file konfigurasi Gradle.
-- **`/memory-bank`**: Dokumentasi internal dan catatan proyek.
+```text
+app/src/main/java/com/example/infinite_track/
+├── presentation/   # Compose UI, navigation, ViewModels, receivers
+├── domain/         # Use cases, models, repository contracts, managers
+├── data/           # Repository implementations, local/network data sources, workers
+└── di/             # Dependency injection wiring
+```
+
+Keep detailed architecture reasoning in `CLAUDE.md` and dedicated docs; this README is the operational entry point.
+
+## Branch and Release Flow
+
+Branch model in practice:
+- `feature/*` → isolated development branches
+- `develop` → integration branch
+- `master` → release-ready branch
+
+Release-prep work is validated before final merge to `master`, and Firebase App Distribution runs from `master`.
+
+## Firebase Distribution Status
+
+The repository now supports a master-only Firebase App Distribution lane.
+
+What is currently true:
+- release APK builds are validated locally and in CI
+- branch verification checks lint, unit tests, debug build, and release compile smoke
+- signed release distribution is triggered from `master`
+
+Important distinction:
+- **Distribution-ready** means the build/sign/upload path is working
+- **End-to-end-ready** still depends on backend/runtime validation with the target environment
+
+## Packages Used
+
+### UI & App
+- **Jetpack Compose** — UI rendering and screen composition
+- **Material 3** — design system and core UI components
+- **Navigation Compose** — in-app navigation and graph ownership
+- **Lottie** — loading and motion animations
+
+### Dependency Injection & Background Work
+- **Hilt** — dependency injection for app, ViewModel, and worker wiring
+- **WorkManager** — background work execution and retryable tasks
+- **Hilt Work** — worker injection support
+
+### Networking & Persistence
+- **Retrofit** — backend API client
+- **OkHttp + logging-interceptor** — HTTP stack and debug logging
+- **Room** — structured local persistence
+- **DataStore** — lightweight preference and session storage
+
+### Location & Maps
+- **Mapbox Maps SDK** — map rendering and camera control
+- **Mapbox Compose Extension** — Compose integration for map UI
+- **Google Play Services Location** — current location and geofencing support
+
+### Camera & ML
+- **CameraX** — camera preview and image analysis
+- **ML Kit Face Detection** — face detection and liveness-related detection support
+- **TensorFlow Lite** — face embedding and on-device inference runtime
+- **TensorFlow Lite Support / Metadata** — preprocessing and model support utilities
+
+### Firebase
+- **Firebase Cloud Messaging** — push notification delivery
+- **Firebase App Distribution** — internal release distribution from `master` via GitHub Actions
+
+### Build & Tooling
+- **Android Gradle Plugin**
+- **Kotlin**
+- **Google Services Gradle Plugin**
+
+For exact dependency versions, use:
+- `gradle/libs.versions.toml`
+- `app/build.gradle.kts`
+
+## Related Docs
+
+- `CLAUDE.md` — repo operating contract and Android risk policy
+- `docs/ci/android-master-distribution.md` — master-only distribution workflow notes
+- `.github/workflows/README.md` — workflow inventory
+- `RELEASE_BUILD_GUIDE.md` — release-build details
