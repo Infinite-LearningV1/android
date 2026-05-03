@@ -12,33 +12,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.presentation.navigation.main.FabConfig
 import com.example.infinite_track.presentation.theme.Blue_500
-import com.example.infinite_track.utils.getFabAttributesByRole
 
 @Composable
-fun CustomFAB(userRole: String, onFabClick: () -> Unit) {
-    val fabAttributes = getFabAttributesByRole(userRole)
-
-    if (fabAttributes.isVisible) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .offset(y = 120.dp)
+fun CustomFAB(fabConfig: FabConfig, onFabClick: () -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .offset(y = 120.dp)
+    ) {
+        PulsatingCirclesWithIcon()
+        FloatingActionButton(
+            onClick = onFabClick,
+            containerColor = Blue_500,
+            shape = CircleShape,
+            modifier = Modifier.size(64.dp)
         ) {
-            PulsatingCirclesWithIcon()
-            FloatingActionButton(
-                onClick = onFabClick,
-                containerColor = Blue_500,
-                shape = CircleShape,
-                modifier = Modifier.size(64.dp)
-            ) {
-                Icon(
-                    painter = painterResource(id = fabAttributes.icon),
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
+            Icon(
+                painter = painterResource(id = fabConfig.iconRes),
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(32.dp)
+            )
         }
     }
 }
