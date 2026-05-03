@@ -49,7 +49,7 @@ import com.example.infinite_track.presentation.components.loading.LoadingAnimati
 import com.example.infinite_track.presentation.components.maps.AttendanceMap
 import com.example.infinite_track.presentation.components.maps.MarkerView
 import com.example.infinite_track.presentation.components.maps.MarkerViewWfa
-import com.example.infinite_track.presentation.navigation.Screen
+import com.example.infinite_track.presentation.navigation.model.Screen
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import com.example.infinite_track.utils.DialogHelper

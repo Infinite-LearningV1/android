@@ -18,7 +18,7 @@ import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinates
 import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
 import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
-import com.example.infinite_track.presentation.navigation.Screen
+import com.example.infinite_track.presentation.navigation.model.Screen
 import com.example.infinite_track.utils.UiState
 import com.mapbox.geojson.Point
 import dagger.hilt.android.lifecycle.HiltViewModel
