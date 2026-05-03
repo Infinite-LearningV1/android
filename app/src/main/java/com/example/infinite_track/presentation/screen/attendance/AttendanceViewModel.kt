@@ -675,23 +675,43 @@ class AttendanceViewModel @Inject constructor(
      * Handle face verification result - GATEWAY after face verification
      * Called from FaceScannerScreen when verification is complete
      */
-    fun onFaceVerificationResult(isSuccess: Boolean) {
-        Log.d(TAG, "Face verification result: $isSuccess")
+    fun onFaceVerificationResult(result: FaceVerificationResult) {
+        Log.d(TAG, "Face verification result: $result")
 
-        if (!isSuccess) {
-            Log.d(TAG, "Face verification failed - aborting attendance process")
-            _uiState.value = _uiState.value.copy(
-                activeDialog = DialogState.Error("Verifikasi wajah gagal. Silakan coba lagi.")
-            )
-            return
-        }
+        when (result) {
+            FaceVerificationResult.SUCCESS -> {
+                if (_uiState.value.isCheckInMode) {
+                    proceedWithCheckIn()
+                } else {
+                    proceedWithCheckOut()
+                }
+            }
 
-        // Check current mode and proceed accordingly
-        if (_uiState.value.isCheckInMode) {
-            proceedWithCheckIn()
-        } else {
-            proceedWithCheckOut()
+            FaceVerificationResult.FAILED -> {
+                Log.d(TAG, "Face verification failed - aborting attendance process")
+                _uiState.value = _uiState.value.copy(
+                    activeDialog = DialogState.Error("Verifikasi wajah gagal. Silakan coba lagi.")
+                )
+            }
+
+            FaceVerificationResult.TIMEOUT -> {
+                Log.d(TAG, "Face verification timed out - aborting attendance process")
+                _uiState.value = _uiState.value.copy(
+                    activeDialog = DialogState.Error("Waktu verifikasi wajah habis. Silakan coba lagi.")
+                )
+            }
+
+            FaceVerificationResult.CANCELLED -> {
+                Log.d(TAG, "Face verification cancelled - attendance process remains idle")
+            }
         }
+    }
+
+    fun onUnexpectedFaceVerificationResult() {
+        Log.e(TAG, "Unexpected face verification result payload received")
+        _uiState.value = _uiState.value.copy(
+            activeDialog = DialogState.Error("Hasil verifikasi wajah tidak dikenali. Silakan coba lagi.")
+        )
     }
 
     /**

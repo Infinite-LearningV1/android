@@ -32,6 +32,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +55,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.infinite_track.presentation.components.button.ButtonStateType
+import com.example.infinite_track.presentation.screen.attendance.FACE_VERIFICATION_RESULT_KEY
+import com.example.infinite_track.presentation.screen.attendance.FaceVerificationResult
 import com.example.infinite_track.presentation.components.button.ButtonStyle
 import com.example.infinite_track.presentation.components.button.StatefulButton
 import com.example.infinite_track.presentation.components.cameras.FaceBoundingBox
@@ -66,6 +69,23 @@ import com.google.accompanist.permissions.shouldShowRationale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import androidx.camera.core.Preview as CameraPreview
+
+private fun NavController.finishFaceScanner(result: FaceVerificationResult) {
+    previousBackStackEntry?.savedStateHandle?.set(
+        FACE_VERIFICATION_RESULT_KEY,
+        result.savedStateValue
+    )
+    popBackStack()
+}
+
+private fun determineExitResult(state: LivenessState): FaceVerificationResult {
+    return when (state) {
+        LivenessState.SUCCESS -> FaceVerificationResult.SUCCESS
+        LivenessState.FAILURE -> FaceVerificationResult.FAILED
+        LivenessState.TIMEOUT -> FaceVerificationResult.TIMEOUT
+        else -> FaceVerificationResult.CANCELLED
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @ExperimentalGetImage
@@ -98,31 +118,20 @@ fun FaceScannerScreen(
         }
     }
 
+    BackHandler {
+        navController.finishFaceScanner(determineExitResult(uiState.livenessState))
+    }
+
     // Handle navigation based on verification result
     LaunchedEffect(uiState.livenessState) {
         when (uiState.livenessState) {
             LivenessState.SUCCESS -> {
-                // Send success result and navigate back to proceed with attendance
-                navController.previousBackStackEntry?.savedStateHandle?.set(
-                    "face_verification_result",
-                    true
-                )
-                navController.popBackStack()
+                navController.finishFaceScanner(FaceVerificationResult.SUCCESS)
             }
 
-            LivenessState.TIMEOUT -> {
-                // TIMEOUT means user ran out of time - send failure and go back
-                navController.previousBackStackEntry?.savedStateHandle?.set(
-                    "face_verification_result",
-                    false
-                )
-                navController.popBackStack()
-            }
-
-            // FAILURE stays on screen to allow retry - no automatic navigation
-            LivenessState.FAILURE -> {
-                // Stay on screen, show retry button - user can try again
-            }
+            // FAILURE and TIMEOUT stay on screen to allow explicit retry or close
+            LivenessState.FAILURE,
+            LivenessState.TIMEOUT -> Unit
 
             else -> {
                 // Continue with current state - don't navigate anywhere
@@ -153,7 +162,7 @@ fun FaceScannerScreen(
                         viewModel.resetScanner()
                     },
                     onCloseClick = {
-                        navController.popBackStack()
+                        navController.finishFaceScanner(determineExitResult(uiState.livenessState))
                     }
                 )
             }
@@ -165,7 +174,7 @@ fun FaceScannerScreen(
                         cameraPermissionState.launchPermissionRequest()
                     },
                     onCloseClick = {
-                        navController.popBackStack()
+                        navController.finishFaceScanner(determineExitResult(uiState.livenessState))
                     }
                 )
             }
@@ -177,7 +186,7 @@ fun FaceScannerScreen(
                         cameraPermissionState.launchPermissionRequest()
                     },
                     onCloseClick = {
-                        navController.popBackStack()
+                        navController.finishFaceScanner(determineExitResult(uiState.livenessState))
                     }
                 )
             }

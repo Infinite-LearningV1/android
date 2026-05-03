@@ -64,14 +64,14 @@ class AttendanceScreenFaceResultRescueTest {
     fun tearDown() = clearAttendancePreferenceState()
 
     @Test
-    fun attendanceScreen_forwardsFalseFaceVerificationResultBeforeClearingIt() {
+    fun attendanceScreen_forwardsFailedFaceVerificationResultBeforeClearingIt() {
         val viewModel = createAttendanceViewModel()
         val navController = setAttendanceContent(viewModel)
 
         composeRule.runOnIdle {
             navController.currentBackStackEntry
                 ?.savedStateHandle
-                ?.set(FACE_VERIFICATION_RESULT_KEY, false)
+                ?.set(FACE_VERIFICATION_RESULT_KEY, FaceVerificationResult.FAILED.savedStateValue)
         }
 
         composeRule.waitForIdle()
@@ -84,20 +84,46 @@ class AttendanceScreenFaceResultRescueTest {
             assertNull(
                 navController.currentBackStackEntry
                     ?.savedStateHandle
-                    ?.get<Boolean>(FACE_VERIFICATION_RESULT_KEY)
+                    ?.get<String>(FACE_VERIFICATION_RESULT_KEY)
             )
         }
     }
 
     @Test
-    fun attendanceScreen_forwardsTrueFaceVerificationResultBeforeClearingIt() {
+    fun attendanceScreen_forwardsTimeoutFaceVerificationResultBeforeClearingIt() {
         val viewModel = createAttendanceViewModel()
         val navController = setAttendanceContent(viewModel)
 
         composeRule.runOnIdle {
             navController.currentBackStackEntry
                 ?.savedStateHandle
-                ?.set(FACE_VERIFICATION_RESULT_KEY, true)
+                ?.set(FACE_VERIFICATION_RESULT_KEY, FaceVerificationResult.TIMEOUT.savedStateValue)
+        }
+
+        composeRule.waitForIdle()
+
+        composeRule.runOnIdle {
+            assertEquals(
+                DialogState.Error("Waktu verifikasi wajah habis. Silakan coba lagi."),
+                viewModel.uiState.value.activeDialog
+            )
+            assertNull(
+                navController.currentBackStackEntry
+                    ?.savedStateHandle
+                    ?.get<String>(FACE_VERIFICATION_RESULT_KEY)
+            )
+        }
+    }
+
+    @Test
+    fun attendanceScreen_forwardsSuccessFaceVerificationResultBeforeClearingIt() {
+        val viewModel = createAttendanceViewModel()
+        val navController = setAttendanceContent(viewModel)
+
+        composeRule.runOnIdle {
+            navController.currentBackStackEntry
+                ?.savedStateHandle
+                ?.set(FACE_VERIFICATION_RESULT_KEY, FaceVerificationResult.SUCCESS.savedStateValue)
         }
 
         composeRule.waitForIdle()
@@ -111,7 +137,56 @@ class AttendanceScreenFaceResultRescueTest {
             assertNull(
                 navController.currentBackStackEntry
                     ?.savedStateHandle
-                    ?.get<Boolean>(FACE_VERIFICATION_RESULT_KEY)
+                    ?.get<String>(FACE_VERIFICATION_RESULT_KEY)
+            )
+        }
+    }
+
+    @Test
+    fun attendanceScreen_ignoresCancelledFaceVerificationResultAfterClearingIt() {
+        val viewModel = createAttendanceViewModel()
+        val navController = setAttendanceContent(viewModel)
+
+        composeRule.runOnIdle {
+            navController.currentBackStackEntry
+                ?.savedStateHandle
+                ?.set(FACE_VERIFICATION_RESULT_KEY, FaceVerificationResult.CANCELLED.savedStateValue)
+        }
+
+        composeRule.waitForIdle()
+
+        composeRule.runOnIdle {
+            assertNull(viewModel.uiState.value.activeDialog)
+            assertNull(
+                navController.currentBackStackEntry
+                    ?.savedStateHandle
+                    ?.get<String>(FACE_VERIFICATION_RESULT_KEY)
+            )
+        }
+    }
+
+    @Test
+    fun attendanceScreen_surfacesUnknownFaceVerificationResultBeforeClearingIt() {
+        val viewModel = createAttendanceViewModel()
+        val navController = setAttendanceContent(viewModel)
+
+        composeRule.runOnIdle {
+            navController.currentBackStackEntry
+                ?.savedStateHandle
+                ?.set(FACE_VERIFICATION_RESULT_KEY, "unexpected_result")
+        }
+
+        composeRule.waitForIdle()
+
+        composeRule.runOnIdle {
+            assertEquals(
+                DialogState.Error("Hasil verifikasi wajah tidak dikenali. Silakan coba lagi."),
+                viewModel.uiState.value.activeDialog
+            )
+            assertNull(
+                navController.currentBackStackEntry
+                    ?.savedStateHandle
+                    ?.get<String>(FACE_VERIFICATION_RESULT_KEY)
             )
         }
     }
@@ -124,7 +199,7 @@ class AttendanceScreenFaceResultRescueTest {
         composeRule.runOnIdle {
             navController.currentBackStackEntry
                 ?.savedStateHandle
-                ?.set(FACE_VERIFICATION_RESULT_KEY, false)
+                ?.set(FACE_VERIFICATION_RESULT_KEY, FaceVerificationResult.FAILED.savedStateValue)
         }
 
         composeRule.waitForIdle()
@@ -152,7 +227,7 @@ class AttendanceScreenFaceResultRescueTest {
             assertNull(
                 navController.currentBackStackEntry
                     ?.savedStateHandle
-                    ?.get<Boolean>(FACE_VERIFICATION_RESULT_KEY)
+                    ?.get<String>(FACE_VERIFICATION_RESULT_KEY)
             )
         }
     }

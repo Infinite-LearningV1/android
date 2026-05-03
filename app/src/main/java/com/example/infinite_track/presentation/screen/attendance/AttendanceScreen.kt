@@ -64,8 +64,6 @@ import com.mapbox.maps.MapboxDelicateApi
 import com.mapbox.maps.plugin.animation.MapAnimationOptions
 import com.mapbox.maps.plugin.animation.flyTo
 
-private const val FACE_VERIFICATION_RESULT_KEY = "face_verification_result"
-
 @OptIn(ExperimentalMaterial3Api::class, MapboxDelicateApi::class)
 @Composable
 fun AttendanceScreen(
@@ -520,19 +518,28 @@ fun AttendanceScreen(
     }
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
-    val fallbackFaceVerificationResult = remember { mutableStateOf<Boolean?>(null) }
+    val fallbackFaceVerificationResult = remember { mutableStateOf<String?>(null) }
     val faceVerificationResult by currentBackStackEntry
         ?.savedStateHandle
-        ?.getStateFlow<Boolean?>(FACE_VERIFICATION_RESULT_KEY, null)
+        ?.getStateFlow<String?>(FACE_VERIFICATION_RESULT_KEY, null)
         ?.collectAsStateWithLifecycle()
         ?: fallbackFaceVerificationResult
 
     LaunchedEffect(faceVerificationResult, currentBackStackEntry) {
-        faceVerificationResult?.let { isSuccess ->
-            viewModel.onFaceVerificationResult(isSuccess)
+        faceVerificationResult?.let { resultValue ->
+            val parsedFaceVerificationResult = FaceVerificationResult.fromSavedState(resultValue)
+            if (parsedFaceVerificationResult != null) {
+                viewModel.onFaceVerificationResult(parsedFaceVerificationResult)
+            } else {
+                android.util.Log.e(
+                    "AttendanceScreen",
+                    "Unknown face verification result payload: $resultValue"
+                )
+                viewModel.onUnexpectedFaceVerificationResult()
+            }
             currentBackStackEntry
                 ?.savedStateHandle
-                ?.remove<Boolean>(FACE_VERIFICATION_RESULT_KEY)
+                ?.remove<String>(FACE_VERIFICATION_RESULT_KEY)
         }
     }
 
