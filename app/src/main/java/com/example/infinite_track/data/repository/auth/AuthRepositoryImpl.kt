@@ -76,21 +76,19 @@ class AuthRepositoryImpl @Inject constructor(
      */
     override suspend fun login(loginRequest: LoginRequest): Result<UserModel> {
         return try {
-            val response = apiService.login(loginRequest)
-            val refreshToken = response.data.refreshToken?.takeIf { it.isNotBlank() }
-                ?: return Result.failure(IllegalStateException("Login response missing usable refresh token"))
+            val loginResponse = apiService.login(loginRequest)
+            val loginData = loginResponse.data
+            val accessToken = loginData.token.takeIf { it.isNotBlank() }
+                ?: return Result.failure(IllegalStateException("Login response missing usable access token"))
+            val refreshToken = loginData.refreshToken?.takeIf { it.isNotBlank() }
 
-            // Save token and user ID to DataStore
             userPreference.saveSession(
-                token = response.data.token,
-                userId = response.data.id.toString(),
+                token = accessToken,
+                userId = loginData.id.toString(),
                 refreshToken = refreshToken
             )
 
-            // Convert network response to domain model
-            val user = response.data.toDomain()
-
-            // Save user data to Room database
+            val user = loginData.toDomain()
             val userEntity = user.toEntity(userDao.getUserProfile()?.faceEmbedding)
             userDao.insertOrUpdateUserProfile(userEntity)
 
