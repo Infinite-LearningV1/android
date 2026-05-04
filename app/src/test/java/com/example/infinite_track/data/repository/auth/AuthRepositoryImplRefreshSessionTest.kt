@@ -48,61 +48,59 @@ import java.util.Locale
 class AuthRepositoryImplRefreshSessionTest {
 
     @Test
-    fun `login fails when refresh token is null in login response`() = runBlocking {
+    fun `login succeeds when refresh token is null in login response`() = runBlocking {
         val userPreference = createUserPreference()
         val userDao = CapturingUserDao()
-        val repository = AuthRepositoryImpl(
+        val repository = createLoginRepository(
             userPreference = userPreference,
-            apiService = FakeApiService(
-                loginBlock = {
-                    LoginResponse(
-                        success = true,
-                        message = "ok",
-                        data = createUserData(refreshToken = null)
-                    )
-                }
-            ),
-            authSessionApiService = FakeAuthSessionApiService(
-                refreshSessionBlock = { unsupportedRefreshSession() }
-            ),
-            userDao = userDao
+            userDao = userDao,
+            userData = createUserData(refreshToken = null)
         )
 
         val result = repository.login(LoginRequest(email = "user@example.com", password = "secret"))
 
-        assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message?.contains("refresh token", ignoreCase = true) == true)
-        assertTrue(userPreference.getAuthToken().first().isBlank())
+        assertTrue(result.isSuccess)
+        assertEquals("user@example.com", result.getOrNull()?.email)
+        assertEquals("access-token", userPreference.getAuthToken().first())
         assertTrue(userPreference.getRefreshToken().first().isBlank())
-        assertTrue(userPreference.getUserId().first().isBlank())
-        assertTrue(userDao.insertedUsers.isEmpty())
+        assertEquals("10", userPreference.getUserId().first())
+        assertEquals(1, userDao.insertedUsers.size)
     }
 
     @Test
-    fun `login fails when refresh token is blank in login response`() = runBlocking {
+    fun `login succeeds when refresh token is blank in login response`() = runBlocking {
         val userPreference = createUserPreference()
         val userDao = CapturingUserDao()
-        val repository = AuthRepositoryImpl(
+        val repository = createLoginRepository(
             userPreference = userPreference,
-            apiService = FakeApiService(
-                loginBlock = {
-                    LoginResponse(
-                        success = true,
-                        message = "ok",
-                        data = createUserData(refreshToken = "   ")
-                    )
-                }
-            ),
-            authSessionApiService = FakeAuthSessionApiService(
-                refreshSessionBlock = { unsupportedRefreshSession() }
-            ),
-            userDao = userDao
+            userDao = userDao,
+            userData = createUserData(refreshToken = "   ")
+        )
+
+        val result = repository.login(LoginRequest(email = "user@example.com", password = "secret"))
+
+        assertTrue(result.isSuccess)
+        assertEquals("user@example.com", result.getOrNull()?.email)
+        assertEquals("access-token", userPreference.getAuthToken().first())
+        assertTrue(userPreference.getRefreshToken().first().isBlank())
+        assertEquals("10", userPreference.getUserId().first())
+        assertEquals(1, userDao.insertedUsers.size)
+    }
+
+    @Test
+    fun `login fails when access token is blank in login response`() = runBlocking {
+        val userPreference = createUserPreference()
+        val userDao = CapturingUserDao()
+        val repository = createLoginRepository(
+            userPreference = userPreference,
+            userDao = userDao,
+            userData = createUserData(refreshToken = "refresh-token").copy(token = "   ")
         )
 
         val result = repository.login(LoginRequest(email = "user@example.com", password = "secret"))
 
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message?.contains("refresh token", ignoreCase = true) == true)
+        assertTrue(result.exceptionOrNull()?.message?.contains("access token", ignoreCase = true) == true)
         assertTrue(userPreference.getAuthToken().first().isBlank())
         assertTrue(userPreference.getRefreshToken().first().isBlank())
         assertTrue(userPreference.getUserId().first().isBlank())
@@ -226,6 +224,30 @@ class AuthRepositoryImplRefreshSessionTest {
         assertTrue(userPreference.getAuthToken().first().isBlank())
         assertTrue(userPreference.getRefreshToken().first().isBlank())
         assertTrue(userPreference.getUserId().first().isBlank())
+    }
+
+    @Test
+    fun `refresh session returns reauth required without calling backend when refresh token is missing locally`() = runBlocking {
+        val userPreference = createUserPreference().also {
+            it.saveSession(token = "existing-access", userId = "10", refreshToken = null)
+        }
+        val fakeAuthSessionApi = FakeAuthSessionApiService(
+            refreshSessionBlock = { unsupportedRefreshSession() }
+        )
+        val repository = AuthRepositoryImpl(
+            userPreference = userPreference,
+            apiService = FakeApiService(),
+            authSessionApiService = fakeAuthSessionApi,
+            userDao = FakeUserDao()
+        )
+
+        val result = repository.refreshSession()
+
+        assertTrue(result is RefreshSessionResult.ReAuthRequired.InvalidOrRevoked)
+        assertEquals(null, fakeAuthSessionApi.lastRefreshRequest)
+        assertEquals("existing-access", userPreference.getAuthToken().first())
+        assertTrue(userPreference.getRefreshToken().first().isBlank())
+        assertEquals("10", userPreference.getUserId().first())
     }
 
     @Test
@@ -546,6 +568,29 @@ class AuthRepositoryImplRefreshSessionTest {
             apiService = apiService,
             authSessionApiService = refreshApiService,
             userDao = FakeUserDao()
+        )
+    }
+
+    private fun createLoginRepository(
+        userPreference: UserPreference,
+        userDao: UserDao,
+        userData: UserData
+    ): AuthRepositoryImpl {
+        return AuthRepositoryImpl(
+            userPreference = userPreference,
+            apiService = FakeApiService(
+                loginBlock = {
+                    LoginResponse(
+                        success = true,
+                        message = "ok",
+                        data = userData
+                    )
+                }
+            ),
+            authSessionApiService = FakeAuthSessionApiService(
+                refreshSessionBlock = { unsupportedRefreshSession() }
+            ),
+            userDao = userDao
         )
     }
 
