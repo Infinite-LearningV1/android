@@ -25,6 +25,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        val pendingResult = goAsync()
         val entryPoint = EntryPointAccessors.fromApplication(
             context.applicationContext,
             BootReceiverEntryPoint::class.java
@@ -44,14 +45,15 @@ class BootCompletedReceiver : BroadcastReceiver() {
                     Log.d("BootCompletedReceiver", "No monitoring geofence to restore.")
                 }
 
-                // Restore reminder geofences
                 val reminders = attendancePreference.getReminderGeofences().firstOrNull().orEmpty()
                 reminders.forEach { r ->
-                    Log.d("BootCompletedReceiver", "Re-registering reminder geofence after boot: ${'$'}{r.id}")
+                    Log.d("BootCompletedReceiver", "Re-registering reminder geofence after boot: ${r.id}")
                     geofenceManager.addReminderGeofence(r.id, r.latitude, r.longitude, r.radiusMeters)
                 }
             } catch (e: Exception) {
                 Log.e("BootCompletedReceiver", "Failed to re-register geofence after boot", e)
+            } finally {
+                pendingResult.finish()
             }
         }
     }

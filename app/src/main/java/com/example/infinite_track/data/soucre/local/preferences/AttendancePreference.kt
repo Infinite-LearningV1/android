@@ -154,9 +154,11 @@ class AttendancePreference @Inject constructor(
 	 */
 	suspend fun addReminderGeofences(geofences: List<ReminderGeofence>) {
 		dataStore.edit { preferences ->
-			val current = preferences[REMINDER_GEOFENCES_KEY] ?: emptySet()
-			val merged = current.toMutableSet()
-			geofences.forEach { merged.add(it.serialize()) }
+			val merged = (preferences[REMINDER_GEOFENCES_KEY] ?: emptySet()).toMutableSet()
+			geofences.forEach { geofence ->
+				merged.removeAll { it.startsWith("${geofence.id}|") }
+				merged.add(geofence.serialize())
+			}
 			preferences[REMINDER_GEOFENCES_KEY] = merged
 		}
 	}
