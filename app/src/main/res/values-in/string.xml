@@ -10,7 +10,7 @@
     <string name="bottom_menu_profile">Profil</string>
     <string name="forgot_password">Lupa Kata Sandi?</string>
     <string name="email_password_empty_error">Email dan Kata Sandi Tidak Boleh Kosong</string>
-    <string name="face_detection_idle">Siap untuk memindai</string>
+    <string name="face_detection_idle">Siap memindai</string>
     <string name="face_detection_detecting">Mendeteksi wajah</string>
     <string name="face_detection_waiting_liveness">Silakan berkedip atau bergerak sedikit</string>
     <string name="face_detection_liveness_detected">Liveness terdeteksi</string>
