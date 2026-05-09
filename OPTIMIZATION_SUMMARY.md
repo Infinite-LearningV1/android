@@ -80,8 +80,8 @@ echo "android.enableR8.fullMode=true" >> gradle.properties
 # Build
 ./gradlew clean assembleRelease
 
-# Verify
-./gradlew test
+# Verify release build configuration
+./gradlew app:testReleaseUnitTest --tests "com.example.infinite_track.BuildConfigReleaseTest"
 ```
 
 ---

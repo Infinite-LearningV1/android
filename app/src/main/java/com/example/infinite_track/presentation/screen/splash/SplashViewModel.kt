@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
-import com.example.infinite_track.domain.use_case.auth.SessionBootstrapFailure
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +16,6 @@ import javax.inject.Inject
 // Navigation states for the SplashScreen
 sealed class SplashNavigationState {
     object Loading : SplashNavigationState()
-    object TemporaryFailure : SplashNavigationState()
     object NavigateToHome : SplashNavigationState()
     object NavigateToLogin : SplashNavigationState()
 }
@@ -40,11 +38,6 @@ class SplashViewModel @Inject constructor(
         checkSession()
     }
 
-    fun retrySessionCheck() {
-        _navigationState.value = SplashNavigationState.Loading
-        checkSession()
-    }
-
     private fun checkSession() {
         viewModelScope.launch {
             checkSessionUseCase()
@@ -55,32 +48,23 @@ class SplashViewModel @Inject constructor(
                 .onFailure { exception ->
                     // Session is invalid or embedding generation failed
                     // DON'T show dialog in splash screen - directly navigate to login
-                    processSessionFailure(exception)
+                    handleSessionFailure(exception)
                 }
         }
     }
 
-    private fun processSessionFailure(exception: Throwable) {
-        when (exception) {
-            is SessionBootstrapFailure.ReAuthRequired -> {
-                viewModelScope.launch {
-                    try {
-                        logoutUseCase()
-                    } finally {
-                        _navigationState.value = SplashNavigationState.NavigateToLogin
-                    }
-                }
-            }
+    private suspend fun handleSessionFailure(exception: Throwable) {
+        try {
+            // Clear any existing session data
+            logoutUseCase()
 
-            is SessionBootstrapFailure.TemporaryFailure -> {
-                // Bounded truthful state: bootstrap is currently unavailable; preserve local auth.
-                _navigationState.value = SplashNavigationState.TemporaryFailure
-            }
+            // Directly navigate to login without showing dialog
+            // This prevents BadTokenException in splash screen
+            _navigationState.value = SplashNavigationState.NavigateToLogin
 
-            else -> {
-                // Unknown bootstrap failure is treated as temporary/bootstrap-unavailable.
-                _navigationState.value = SplashNavigationState.TemporaryFailure
-            }
+        } catch (e: Exception) {
+            // Even if logout fails, still navigate to login
+            _navigationState.value = SplashNavigationState.NavigateToLogin
         }
     }
 }

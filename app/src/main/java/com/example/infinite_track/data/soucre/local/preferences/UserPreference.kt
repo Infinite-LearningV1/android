@@ -35,26 +35,12 @@ class UserPreference @Inject constructor(private val dataUserStore: DataStore<Pr
     }
 
     /**
-     * Save session information (access token, user ID, and optional refresh token)
+     * Save session information (token and user ID)
      */
-    suspend fun saveSession(token: String, userId: String, refreshToken: String? = null) {
+    suspend fun saveSession(token: String, userId: String) {
         dataUserStore.edit { preferences ->
             preferences[AUTH_TOKEN_KEY] = token
             preferences[USER_ID_KEY] = userId
-            if (refreshToken.isNullOrBlank()) {
-                preferences.remove(REFRESH_TOKEN_KEY)
-            } else {
-                preferences[REFRESH_TOKEN_KEY] = refreshToken
-            }
-        }
-    }
-
-    /**
-     * Get refresh token as a Flow
-     */
-    fun getRefreshToken(): Flow<String> {
-        return dataUserStore.data.map { preferences ->
-            preferences[REFRESH_TOKEN_KEY] ?: ""
         }
     }
 
@@ -65,13 +51,11 @@ class UserPreference @Inject constructor(private val dataUserStore: DataStore<Pr
         dataUserStore.edit { preferences ->
             preferences.remove(AUTH_TOKEN_KEY)
             preferences.remove(USER_ID_KEY)
-            preferences.remove(REFRESH_TOKEN_KEY)
         }
     }
 
     companion object {
         private val AUTH_TOKEN_KEY = stringPreferencesKey("auth_token")
         private val USER_ID_KEY = stringPreferencesKey("user_id")
-        private val REFRESH_TOKEN_KEY = stringPreferencesKey("refresh_token")
     }
 }

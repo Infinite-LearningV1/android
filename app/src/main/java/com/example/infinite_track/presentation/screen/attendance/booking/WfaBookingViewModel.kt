@@ -118,7 +118,6 @@ class WfaBookingViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                // Format schedule date to DD-MM-YYYY
                 val formattedDate = formatDate(currentState.scheduleDate)
 
                 val result = submitWfaBookingUseCase(

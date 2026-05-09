@@ -4,13 +4,14 @@ Tanggal: 2026-04-18
 Status: Approved — ready for implementation planning
 
 ## Ringkasan
-Repo Android menggunakan tiga level branch operasional:
+Repo Android menggunakan empat level branch operasional:
 - `feature/*` untuk pekerjaan per perubahan
-- `develop` untuk integrasi, review, QA, dan bugfix
+- `develop` untuk integrasi harian
+- `deploy` untuk review/hardening lane
 - `master` untuk state release-ready dan distribusi Firebase
 
 Distribusi Firebase App Distribution dijalankan dari `master`, bukan dari `develop`.
-PR ke `master` hanya berasal dari `develop`.
+PR ke `master` berasal dari branch release/hardening yang sudah diturunkan dari `develop` dan melewati lane review yang relevan.
 
 ## Tujuan
 - Menjaga `master` sebagai branch distribusi yang terkontrol
