@@ -54,7 +54,6 @@ class AttendanceScreenFaceResultRescueTest {
 
     private companion object {
         const val FACE_RESULT_SINK_ROUTE = "face_result_sink"
-        const val FACE_VERIFICATION_RESULT_KEY = "face_verification_result"
     }
 
     @Before
