@@ -78,13 +78,8 @@ private fun NavController.finishFaceScanner(result: FaceVerificationResult) {
     popBackStack()
 }
 
-private fun determineExitResult(state: LivenessState): FaceVerificationResult {
-    return when (state) {
-        LivenessState.SUCCESS -> FaceVerificationResult.SUCCESS
-        LivenessState.FAILURE -> FaceVerificationResult.FAILED
-        LivenessState.TIMEOUT -> FaceVerificationResult.TIMEOUT
-        else -> FaceVerificationResult.CANCELLED
-    }
+private fun NavController.finishFaceScanner(state: LivenessState) {
+    finishFaceScanner(FaceVerificationResult.fromScannerExitState(state))
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
@@ -119,7 +114,7 @@ fun FaceScannerScreen(
     }
 
     BackHandler {
-        navController.finishFaceScanner(determineExitResult(uiState.livenessState))
+        navController.finishFaceScanner(uiState.livenessState)
     }
 
     // Handle navigation based on verification result
@@ -162,7 +157,7 @@ fun FaceScannerScreen(
                         viewModel.resetScanner()
                     },
                     onCloseClick = {
-                        navController.finishFaceScanner(determineExitResult(uiState.livenessState))
+                        navController.finishFaceScanner(uiState.livenessState)
                     }
                 )
             }
@@ -174,7 +169,7 @@ fun FaceScannerScreen(
                         cameraPermissionState.launchPermissionRequest()
                     },
                     onCloseClick = {
-                        navController.finishFaceScanner(determineExitResult(uiState.livenessState))
+                        navController.finishFaceScanner(uiState.livenessState)
                     }
                 )
             }
@@ -186,7 +181,7 @@ fun FaceScannerScreen(
                         cameraPermissionState.launchPermissionRequest()
                     },
                     onCloseClick = {
-                        navController.finishFaceScanner(determineExitResult(uiState.livenessState))
+                        navController.finishFaceScanner(uiState.livenessState)
                     }
                 )
             }
@@ -497,9 +492,7 @@ private fun InstructionSection(
                 )
 
                 // Retry Button (show when failed or timeout) menggunakan StatefulButton
-                if (uiState.livenessState == LivenessState.FAILURE ||
-                    uiState.livenessState == LivenessState.TIMEOUT
-                ) {
+                if (FaceVerificationResult.fromScannerExitState(uiState.livenessState).allowsRetryOnScanner) {
                     StatefulButton(
                         text = "Coba Lagi",
                         onClick = onRetryClick,

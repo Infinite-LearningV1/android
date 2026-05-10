@@ -678,33 +678,24 @@ class AttendanceViewModel @Inject constructor(
     fun onFaceVerificationResult(result: FaceVerificationResult) {
         Log.d(TAG, "Face verification result: $result")
 
-        when (result) {
-            FaceVerificationResult.SUCCESS -> {
-                if (_uiState.value.isCheckInMode) {
-                    proceedWithCheckIn()
-                } else {
-                    proceedWithCheckOut()
-                }
+        if (result.submitsAttendance) {
+            if (_uiState.value.isCheckInMode) {
+                proceedWithCheckIn()
+            } else {
+                proceedWithCheckOut()
             }
-
-            FaceVerificationResult.FAILED -> {
-                Log.d(TAG, "Face verification failed - aborting attendance process")
-                _uiState.value = _uiState.value.copy(
-                    activeDialog = DialogState.Error("Verifikasi wajah gagal. Silakan coba lagi.")
-                )
-            }
-
-            FaceVerificationResult.TIMEOUT -> {
-                Log.d(TAG, "Face verification timed out - aborting attendance process")
-                _uiState.value = _uiState.value.copy(
-                    activeDialog = DialogState.Error("Waktu verifikasi wajah habis. Silakan coba lagi.")
-                )
-            }
-
-            FaceVerificationResult.CANCELLED -> {
-                Log.d(TAG, "Face verification cancelled - attendance process remains idle")
-            }
+            return
         }
+
+        result.attendanceErrorMessage?.let { errorMessage ->
+            Log.d(TAG, "Face verification did not submit attendance: $result")
+            _uiState.value = _uiState.value.copy(
+                activeDialog = DialogState.Error(errorMessage)
+            )
+            return
+        }
+
+        Log.d(TAG, "Face verification cancelled - attendance process remains idle")
     }
 
     fun onUnexpectedFaceVerificationResult() {
