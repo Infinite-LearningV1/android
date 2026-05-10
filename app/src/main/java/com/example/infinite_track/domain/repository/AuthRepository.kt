@@ -8,17 +8,7 @@ import kotlinx.coroutines.flow.Flow
  * Repository interface for authentication operations
  * This is in the domain layer and does not depend on any implementation details
  */
-class UnauthorizedSyncFailure(message: String = "Unauthorized while syncing user profile") : Exception(message)
-
 interface AuthRepository {
-    /**
-     * Attempt to refresh the current auth session.
-     *
-     * This does not perform interceptor retry orchestration. It only classifies
-     * refresh outcomes so higher layers can decide between re-auth and retry.
-     */
-    suspend fun refreshSession(): RefreshSessionResult
-
     /**
      * Login a user with credentials
      * @param loginRequest The login credentials

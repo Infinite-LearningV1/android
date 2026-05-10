@@ -43,8 +43,10 @@ fun MainScreen(
     val isBottomBarVisible = MainShellNavigationPolicy.shouldShowBottomBar(currentRoute)
 
     LaunchedEffect(navigateToAttendance, currentRoute) {
-        if (navigateToAttendance && currentRoute == Screen.Home.route) {
-            mainContentNavController.safeNavigate(Screen.Attendance.route)
+        if (navigateToAttendance) {
+            if (currentRoute != Screen.Attendance.route) {
+                mainContentNavController.safeNavigate(Screen.Attendance.route)
+            }
             onAttendanceNavigationHandled()
         }
     }

@@ -137,7 +137,7 @@ build-release.bat
 
 ### 4. ✅ Verification Test Created
 
-**File:** `app/src/test/java/com/example/infinite_track/BuildConfigReleaseTest.kt`
+**File:** `app/src/testRelease/java/com/example/infinite_track/BuildConfigReleaseTest.kt`
 
 **Tests:**
 
@@ -151,7 +151,7 @@ build-release.bat
 **Run:**
 
 ```bash
-./gradlew test
+./gradlew app:testReleaseUnitTest --tests "com.example.infinite_track.BuildConfigReleaseTest"
 ```
 
 ---
@@ -252,8 +252,8 @@ artifacts/1.0.0-1/                         # Auto-archived by build script
 # 1. Build release APK
 ./build-release.sh
 
-# 2. Verify tests pass
-./gradlew test
+# 2. Verify release build configuration test passes
+./gradlew app:testReleaseUnitTest --tests "com.example.infinite_track.BuildConfigReleaseTest"
 
 # 3. Sign the APK (if keystore configured)
 # See RELEASE_BUILD_GUIDE.md for signing instructions

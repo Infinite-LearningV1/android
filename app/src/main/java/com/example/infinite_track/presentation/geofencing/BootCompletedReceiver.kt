@@ -36,18 +36,20 @@ class BootCompletedReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val params = attendancePreference.getLastGeofenceParams().firstOrNull()
-                val reminders = attendancePreference.getReminderGeofences().firstOrNull().orEmpty()
-
-                if (params == null && reminders.isEmpty()) {
-                    Log.d("BootCompletedReceiver", "No geofences to restore after boot.")
-                    return@launch
+                if (params != null) {
+                    val (requestId, latLng, radius) = params
+                    val (lat, lng) = latLng
+                    Log.d("BootCompletedReceiver", "Re-registering monitoring geofence after boot: $requestId")
+                    geofenceManager.addGeofence(requestId, lat, lng, radius.toFloat())
+                } else {
+                    Log.d("BootCompletedReceiver", "No monitoring geofence to restore.")
                 }
 
-                Log.d("BootCompletedReceiver", "Restoring persisted geofences after boot")
-                geofenceManager.restoreGeofencesAfterBoot(
-                    monitoringGeofence = params,
-                    reminderGeofences = reminders
-                )
+                val reminders = attendancePreference.getReminderGeofences().firstOrNull().orEmpty()
+                reminders.forEach { r ->
+                    Log.d("BootCompletedReceiver", "Re-registering reminder geofence after boot: ${r.id}")
+                    geofenceManager.addReminderGeofence(r.id, r.latitude, r.longitude, r.radiusMeters)
+                }
             } catch (e: Exception) {
                 Log.e("BootCompletedReceiver", "Failed to re-register geofence after boot", e)
             } finally {
