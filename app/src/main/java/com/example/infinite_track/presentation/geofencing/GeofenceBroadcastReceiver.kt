@@ -52,6 +52,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
         val geofenceTransition = geofencingEvent?.geofenceTransition
         val triggeringGeofences = geofencingEvent?.triggeringGeofences ?: return
+        val pendingResult = goAsync()
 
         // Convert transition type to string
         val eventType = when (geofenceTransition) {
@@ -73,13 +74,11 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
         // Use coroutine to check active session
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Check if there's an active attendance session
                 val activeAttendanceId = attendancePreference.getActiveAttendanceId().first()
 
                 if (activeAttendanceId == null) {
                     Log.d(TAG, "No active session. Handling as reminder mode for event: $eventType")
 
-                    // In reminder mode, only act on ENTER to nudge user to check-in
                     if (eventType == "ENTER") {
                         triggeringGeofences.forEach { geofence ->
                             val locationId = geofence.requestId
@@ -98,25 +97,23 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                     "Active session found (ID: $activeAttendanceId). Processing geofence event: $eventType"
                 )
 
-                // Update geofence status in preferences based on event type
                 when (eventType) {
                     "ENTER" -> attendancePreference.setUserInsideGeofence(true)
                     "EXIT" -> attendancePreference.setUserInsideGeofence(false)
                 }
 
-                // Process each triggered geofence
                 triggeringGeofences.forEach { geofence ->
                     val requestId = geofence.requestId
-                    // Ignore reminder geofences (prefixed) during active session
                     if (requestId.startsWith("reminder:")) {
                         Log.d(TAG, "Ignoring reminder geofence during active session: $requestId")
                         return@forEach
                     }
                     processGeofenceEvent(context, geofence, eventType)
                 }
-
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing geofence event", e)
+            } finally {
+                pendingResult.finish()
             }
         }
     }

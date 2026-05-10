@@ -1,6 +1,7 @@
 package com.example.infinite_track.presentation.screen.attendance.face
 
 import android.graphics.Bitmap
+import androidx.annotation.OptIn as AndroidxOptIn
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
@@ -82,7 +83,7 @@ private fun NavController.finishFaceScanner(state: LivenessState) {
     finishFaceScanner(FaceVerificationResult.fromScannerExitState(state))
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
+@kotlin.OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @ExperimentalGetImage
 @Composable
 fun FaceScannerScreen(
@@ -508,7 +509,7 @@ private fun InstructionSection(
 }
 
 // Helper function to convert ImageProxy to Bitmap
-@ExperimentalGetImage
+@AndroidxOptIn(ExperimentalGetImage::class)
 private fun imageProxyToBitmap(imageProxy: ImageProxy): Bitmap? {
     return try {
         // Get the YUV_420_888 image from camera

@@ -62,9 +62,6 @@ Place the correct Android Firebase config file at:
 app/google-services.json
 ```
 
-#### 3. Backend URL
-The app chooses its backend base URL in:
-
 #### 2a. Firebase App Distribution and CI
 Distribusi internal Firebase App Distribution di CI bersifat **master-only**: workflow distribusi hanya trigger pada `push` ke `master` dan tidak melakukan distribusi dari `develop`, `deploy`, `feature/**`, atau `pull_request`.
 
