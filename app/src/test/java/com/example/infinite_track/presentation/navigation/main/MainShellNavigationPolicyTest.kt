@@ -89,26 +89,26 @@ class MainShellNavigationPolicyTest {
     }
 
     @Test
-    fun `profile tab stays selected for profile detail routes`() {
+    fun `profile tab stays selected for profile child routes that keep the bottom bar visible`() {
         val profileItem = MainShellNavigationPolicy.bottomBarItemsForRole("Employee")[3]
 
         assertTrue(MainShellNavigationPolicy.isSelected(profileItem, Screen.Profile.route))
         assertTrue(MainShellNavigationPolicy.isSelected(profileItem, Screen.ProfileFlow.route))
         assertTrue(MainShellNavigationPolicy.isSelected(profileItem, Screen.EditProfile.route))
+        assertTrue(MainShellNavigationPolicy.isSelected(profileItem, Screen.ContactUs.route))
+        assertTrue(MainShellNavigationPolicy.isSelected(profileItem, Screen.PaySlip.route))
+        assertTrue(MainShellNavigationPolicy.isSelected(profileItem, Screen.MyDocument.route))
         assertFalse(MainShellNavigationPolicy.isSelected(profileItem, Screen.Home.route))
     }
 
     @Test
-    fun `fab mapping preserves current repo behavior`() {
+    fun `fab mapping matches final shell contract`() {
         assertEquals(
             Screen.Attendance.route,
             MainShellNavigationPolicy.fabConfigForRole("Internship")?.destination?.route
         )
-        assertEquals(
-            Screen.TimeOffReq.route,
-            MainShellNavigationPolicy.fabConfigForRole("Management")?.destination?.route
-        )
         assertNull(MainShellNavigationPolicy.fabConfigForRole("Employee"))
         assertNull(MainShellNavigationPolicy.fabConfigForRole("Admin"))
+        assertNull(MainShellNavigationPolicy.fabConfigForRole("Management"))
     }
 }

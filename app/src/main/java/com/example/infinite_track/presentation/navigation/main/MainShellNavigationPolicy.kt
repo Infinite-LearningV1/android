@@ -38,7 +38,10 @@ object MainShellNavigationPolicy {
     private val profileSelectedRoutes = setOf(
         Screen.Profile.route,
         Screen.ProfileFlow.route,
-        Screen.EditProfile.route
+        Screen.EditProfile.route,
+        Screen.ContactUs.route,
+        Screen.PaySlip.route,
+        Screen.MyDocument.route
     )
 
     private val defaultBottomBarItems = listOf(
@@ -95,10 +98,6 @@ object MainShellNavigationPolicy {
             "Internship" -> FabConfig(
                 iconRes = R.drawable.ic_intern_fab,
                 destination = Screen.Attendance
-            )
-            "Management" -> FabConfig(
-                iconRes = R.drawable.ic_management,
-                destination = Screen.TimeOffReq
             )
             else -> null
         }
