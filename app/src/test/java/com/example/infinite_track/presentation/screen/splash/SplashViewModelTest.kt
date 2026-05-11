@@ -5,12 +5,11 @@ import com.example.infinite_track.data.face.FaceProcessor
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRepository
+import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.repository.RefreshSessionResult
-import com.example.infinite_track.domain.repository.UnauthorizedSyncFailure
 import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
 import com.example.infinite_track.domain.use_case.auth.GenerateAndSaveEmbeddingUseCase
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
-import com.example.infinite_track.domain.use_case.auth.SessionBootstrapFailure
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -34,7 +33,7 @@ class SplashViewModelTest {
         Dispatchers.setMain(testDispatcher)
         try {
             val repository = FakeAuthRepository(
-                syncResults = mutableListOf(Result.failure(UnauthorizedSyncFailure())),
+                syncResults = mutableListOf(ProfileSyncResult.Unauthorized),
                 refreshSessionResult = RefreshSessionResult.ReAuthRequired.InvalidOrRevoked
             )
 
@@ -55,7 +54,9 @@ class SplashViewModelTest {
         Dispatchers.setMain(testDispatcher)
         try {
             val repository = FakeAuthRepository(
-                syncResults = mutableListOf(Result.failure(Exception("network"))),
+                syncResults = mutableListOf(
+                    ProfileSyncResult.TemporaryFailure(Exception("network"))
+                ),
                 refreshSessionResult = RefreshSessionResult.TemporaryFailure("timeout")
             )
 
@@ -71,14 +72,14 @@ class SplashViewModelTest {
     }
 
     @Test
-    fun `generic bootstrap exception does not navigate to login and stays temporary failure`() = runTest {
+    fun `post refresh sync temporary failure does not navigate to login and stays temporary failure`() = runTest {
         val testDispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(testDispatcher)
         try {
             val repository = FakeAuthRepository(
                 syncResults = mutableListOf(
-                    Result.failure(Exception("initial sync failed")),
-                    Result.failure(Exception("post-refresh sync failed"))
+                    ProfileSyncResult.Unauthorized,
+                    ProfileSyncResult.TemporaryFailure(Exception("post-refresh sync failed"))
                 ),
                 refreshSessionResult = RefreshSessionResult.Success
             )
@@ -101,8 +102,8 @@ class SplashViewModelTest {
         try {
             val repository = FakeAuthRepository(
                 syncResults = mutableListOf(
-                    Result.failure(UnauthorizedSyncFailure()),
-                    Result.failure(UnauthorizedSyncFailure())
+                    ProfileSyncResult.Unauthorized,
+                    ProfileSyncResult.Unauthorized
                 ),
                 refreshSessionResult = RefreshSessionResult.Success
             )
@@ -125,8 +126,8 @@ class SplashViewModelTest {
         try {
             val repository = FakeAuthRepository(
                 syncResults = mutableListOf(
-                    Result.failure(Exception("network")),
-                    Result.success(sampleUser())
+                    ProfileSyncResult.TemporaryFailure(Exception("network")),
+                    ProfileSyncResult.Success(sampleUser())
                 ),
                 refreshSessionResult = RefreshSessionResult.TemporaryFailure("timeout")
             )
@@ -180,7 +181,7 @@ class SplashViewModelTest {
     )
 
     private class FakeAuthRepository(
-        private val syncResults: MutableList<Result<UserModel>>,
+        private val syncResults: MutableList<ProfileSyncResult>,
         private val refreshSessionResult: RefreshSessionResult
     ) : AuthRepository {
 
@@ -192,7 +193,7 @@ class SplashViewModelTest {
             throw NotImplementedError()
         }
 
-        override suspend fun syncUserProfile(): Result<UserModel> = syncResults.removeFirst()
+        override suspend fun syncUserProfile(): ProfileSyncResult = syncResults.removeFirst()
 
         override suspend fun logout(): Result<Unit> {
             logoutCalled = true

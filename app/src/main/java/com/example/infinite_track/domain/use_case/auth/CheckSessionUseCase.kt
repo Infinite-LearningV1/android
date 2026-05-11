@@ -2,44 +2,30 @@ package com.example.infinite_track.domain.use_case.auth
 
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRepository
+import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.repository.RefreshSessionResult
-import com.example.infinite_track.domain.repository.UnauthorizedSyncFailure
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
-/**
- * Use case for checking if user has an active session and syncing face embedding if needed
- */
 class CheckSessionUseCase @Inject constructor(
     private val authRepository: AuthRepository,
     private val generateAndSaveEmbeddingUseCase: GenerateAndSaveEmbeddingUseCase
 ) {
-    /**
-     * Invokes the session check process
-     * Orchestrates the flow of data between repository and face processor
-     * @return Result<UserModel> with the user data if session exists, or failure if embedding generation fails
-     */
     suspend operator fun invoke(): Result<UserModel> {
         return try {
-            val initialSyncResult = authRepository.syncUserProfile()
-            val syncResult = if (initialSyncResult.isSuccess) {
-                initialSyncResult
-            } else {
-                handleSyncFailure(initialSyncResult.exceptionOrNull())
-            }
+            val syncResult = resolveSyncResult(authRepository.syncUserProfile())
 
             if (syncResult.isFailure) {
                 return syncResult
             }
 
-            val newUserData = syncResult.getOrNull()!!
-
+            val newUserData = syncResult.getOrThrow()
             val currentUser = authRepository.getLoggedInUser().first()
 
             if (currentUser != null &&
                 (newUserData.photoUpdatedAt != currentUser.photoUpdatedAt ||
-                        currentUser.faceEmbedding == null)
+                    currentUser.faceEmbedding == null)
             ) {
                 val embeddingResult = generateAndSaveEmbeddingUseCase(
                     userId = newUserData.id,
@@ -68,38 +54,46 @@ class CheckSessionUseCase @Inject constructor(
         }
     }
 
-    private suspend fun handleSyncFailure(cause: Throwable?): Result<UserModel> {
-        if (!isUnauthorizedSyncFailure(cause)) {
-            return Result.failure(
+    private suspend fun resolveSyncResult(syncResult: ProfileSyncResult): Result<UserModel> {
+        return when (syncResult) {
+            is ProfileSyncResult.Success -> Result.success(syncResult.user)
+            ProfileSyncResult.Unauthorized -> handleUnauthorizedSync()
+            is ProfileSyncResult.TemporaryFailure -> Result.failure(
                 SessionBootstrapFailure.TemporaryFailure(
-                    cause = cause ?: Exception("Failed to sync profile data")
+                    cause = syncResult.cause,
+                    message = syncResult.message
                 )
             )
         }
+    }
 
+    private suspend fun handleUnauthorizedSync(): Result<UserModel> {
         return when (val refreshResult = authRepository.refreshSession()) {
             RefreshSessionResult.Success -> {
-                val retrySyncResult = authRepository.syncUserProfile()
-                if (retrySyncResult.isFailure && isUnauthorizedSyncFailure(retrySyncResult.exceptionOrNull())) {
-                    Result.failure(
+                when (val retrySyncResult = authRepository.syncUserProfile()) {
+                    is ProfileSyncResult.Success -> Result.success(retrySyncResult.user)
+                    ProfileSyncResult.Unauthorized -> Result.failure(
                         SessionBootstrapFailure.ReAuthRequired(
                             RefreshSessionResult.ReAuthRequired.InvalidOrRevoked
                         )
                     )
-                } else {
-                    retrySyncResult
+                    is ProfileSyncResult.TemporaryFailure -> Result.failure(
+                        SessionBootstrapFailure.TemporaryFailure(
+                            cause = retrySyncResult.cause,
+                            message = retrySyncResult.message
+                        )
+                    )
                 }
             }
             is RefreshSessionResult.ReAuthRequired -> Result.failure(
                 SessionBootstrapFailure.ReAuthRequired(refreshResult)
             )
             is RefreshSessionResult.TemporaryFailure -> Result.failure(
-                SessionBootstrapFailure.TemporaryFailure(message = refreshResult.reason)
+                SessionBootstrapFailure.TemporaryFailure(
+                    cause = refreshResult.cause,
+                    message = refreshResult.reason
+                )
             )
         }
-    }
-
-    private fun isUnauthorizedSyncFailure(cause: Throwable?): Boolean {
-        return cause is UnauthorizedSyncFailure
     }
 }

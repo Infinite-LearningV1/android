@@ -8,8 +8,6 @@ import kotlinx.coroutines.flow.Flow
  * Repository interface for authentication operations
  * This is in the domain layer and does not depend on any implementation details
  */
-class UnauthorizedSyncFailure(message: String = "Unauthorized while syncing user profile") : Exception(message)
-
 interface AuthRepository {
     /**
      * Attempt to refresh the current auth session.
@@ -28,9 +26,9 @@ interface AuthRepository {
 
     /**
      * Sync user profile from the server
-     * @return Result containing User domain model if successful
+     * @return Explicit sync outcome for success, unauthorized, or temporary failure
      */
-    suspend fun syncUserProfile(): Result<UserModel>
+    suspend fun syncUserProfile(): ProfileSyncResult
 
     /**
      * Logout the current user

@@ -12,8 +12,8 @@ import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRepository
+import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.repository.RefreshSessionResult
-import com.example.infinite_track.domain.repository.UnauthorizedSyncFailure
 import com.google.gson.Gson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -64,7 +64,7 @@ class AuthRepositoryImpl @Inject constructor(
         } catch (e: HttpException) {
             classifyRefreshHttpError(e)
         } catch (e: IOException) {
-            RefreshSessionResult.TemporaryFailure(e.message)
+            RefreshSessionResult.TemporaryFailure(reason = e.message, cause = e)
         }
     }
 
@@ -110,39 +110,41 @@ class AuthRepositoryImpl @Inject constructor(
 
     /**
      * Sync user profile from server
-     * @return Result containing User domain model
+     * @return Explicit sync outcome for success, unauthorized, or temporary failure
      */
-    override suspend fun syncUserProfile(): Result<UserModel> {
+    override suspend fun syncUserProfile(): ProfileSyncResult {
         return try {
-            // Check if user is logged in by getting token from DataStore
             val token = userPreference.getAuthToken().first()
 
-            if (token.isEmpty()) {
-                return Result.failure(Exception("No active session found"))
+            if (token.isBlank()) {
+                return ProfileSyncResult.Unauthorized
             }
 
-            // User is logged in, fetch profile from API
             val response = apiService.getUserProfile()
-
-            // Convert to domain model
             val user = response.data.toDomain()
-
-            // Save to Room database
             val userEntity = user.toEntity(userDao.getUserProfile()?.faceEmbedding)
             userDao.insertOrUpdateUserProfile(userEntity)
 
-            Result.success(user)
+            ProfileSyncResult.Success(user)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: HttpException) {
             if (e.code() == 401 || e.code() == 403) {
-                Result.failure(UnauthorizedSyncFailure())
+                ProfileSyncResult.Unauthorized
             } else {
-                Result.failure(Exception("Failed to sync profile data"))
+                ProfileSyncResult.TemporaryFailure(
+                    cause = e,
+                    message = parseHttpErrorBodySafely(e)?.message ?: "Failed to sync profile data"
+                )
             }
         } catch (e: IOException) {
-            Result.failure(Exception("Network error, please check your internet connection."))
+            ProfileSyncResult.TemporaryFailure(
+                cause = e,
+                message = "Network error, please check your internet connection."
+            )
         } catch (e: Exception) {
             Log.e("AuthRepositoryImpl", "Unknown Error during sync", e)
-            Result.failure(e)
+            ProfileSyncResult.TemporaryFailure(cause = e)
         }
     }
 
@@ -243,7 +245,10 @@ class AuthRepositoryImpl @Inject constructor(
             }
 
             else -> {
-                RefreshSessionResult.TemporaryFailure(errorBody?.message ?: "HTTP $code")
+                RefreshSessionResult.TemporaryFailure(
+                    reason = errorBody?.message ?: "HTTP $code",
+                    cause = httpException
+                )
             }
         }
     }

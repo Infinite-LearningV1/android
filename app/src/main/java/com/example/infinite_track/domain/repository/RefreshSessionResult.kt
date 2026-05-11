@@ -8,5 +8,8 @@ sealed interface RefreshSessionResult {
         data object InactivityExceeded : ReAuthRequired
     }
 
-    data class TemporaryFailure(val reason: String? = null) : RefreshSessionResult
+    data class TemporaryFailure(
+        val reason: String? = null,
+        val cause: Throwable? = null
+    ) : RefreshSessionResult
 }

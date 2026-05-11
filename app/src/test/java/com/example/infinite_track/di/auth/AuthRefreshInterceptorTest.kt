@@ -6,6 +6,7 @@ import com.example.infinite_track.data.soucre.network.request.LoginRequest
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRepository
+import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.repository.RefreshSessionResult
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
 import kotlinx.coroutines.delay
@@ -414,7 +415,7 @@ private class TestFixture(
         }
 
         override suspend fun login(loginRequest: LoginRequest): Result<UserModel> = Result.failure(NotImplementedError())
-        override suspend fun syncUserProfile(): Result<UserModel> = Result.failure(NotImplementedError())
+        override suspend fun syncUserProfile(): ProfileSyncResult = ProfileSyncResult.TemporaryFailure(NotImplementedError())
         override fun getLoggedInUser(): Flow<UserModel?> = flowOf(null)
         override suspend fun saveFaceEmbedding(userId: Int, embedding: ByteArray): Result<Unit> = Result.failure(NotImplementedError())
     }

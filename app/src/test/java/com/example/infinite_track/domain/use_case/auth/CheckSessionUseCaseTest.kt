@@ -5,8 +5,8 @@ import com.example.infinite_track.data.face.FaceProcessor
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRepository
+import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.repository.RefreshSessionResult
-import com.example.infinite_track.domain.repository.UnauthorizedSyncFailure
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -21,7 +21,9 @@ class CheckSessionUseCaseTest {
     @Test
     fun `bootstrap does not refresh after non-auth sync failure`() = runBlocking {
         val repository = FakeAuthRepository(
-            syncResults = mutableListOf(Result.failure(Exception("network down"))),
+            syncResults = mutableListOf(
+                ProfileSyncResult.TemporaryFailure(Exception("network down"))
+            ),
             refreshSessionResult = RefreshSessionResult.TemporaryFailure("timeout")
         )
 
@@ -37,7 +39,7 @@ class CheckSessionUseCaseTest {
     @Test
     fun `bootstrap refreshes after unauthorized sync failure`() = runBlocking {
         val repository = FakeAuthRepository(
-            syncResults = mutableListOf(Result.failure(UnauthorizedSyncFailure())),
+            syncResults = mutableListOf(ProfileSyncResult.Unauthorized),
             refreshSessionResult = RefreshSessionResult.ReAuthRequired.InvalidOrRevoked
         )
 
@@ -60,8 +62,8 @@ class CheckSessionUseCaseTest {
         val user = sampleUser()
         val repository = FakeAuthRepository(
             syncResults = mutableListOf(
-                Result.failure(UnauthorizedSyncFailure()),
-                Result.success(user)
+                ProfileSyncResult.Unauthorized,
+                ProfileSyncResult.Success(user)
             ),
             refreshSessionResult = RefreshSessionResult.Success,
             loggedInUser = null
@@ -81,8 +83,8 @@ class CheckSessionUseCaseTest {
     fun `returns reauth required when second sync is still unauthorized after refresh success`() = runBlocking {
         val repository = FakeAuthRepository(
             syncResults = mutableListOf(
-                Result.failure(UnauthorizedSyncFailure()),
-                Result.failure(UnauthorizedSyncFailure())
+                ProfileSyncResult.Unauthorized,
+                ProfileSyncResult.Unauthorized
             ),
             refreshSessionResult = RefreshSessionResult.Success,
             loggedInUser = null
@@ -104,6 +106,51 @@ class CheckSessionUseCaseTest {
     }
 
     @Test
+    fun `returns temporary bootstrap failure when refresh fails temporarily after unauthorized sync`() = runBlocking {
+        val refreshCause = IllegalStateException("timeout")
+        val repository = FakeAuthRepository(
+            syncResults = mutableListOf(ProfileSyncResult.Unauthorized),
+            refreshSessionResult = RefreshSessionResult.TemporaryFailure(
+                reason = "timeout",
+                cause = refreshCause
+            )
+        )
+
+        val useCase = createUseCase(repository)
+
+        val result = useCase()
+
+        assertTrue(result.isFailure)
+        val exception = result.exceptionOrNull()
+        assertTrue(exception is SessionBootstrapFailure.TemporaryFailure)
+        assertEquals(refreshCause, exception?.cause)
+        assertEquals(1, repository.syncCallCount)
+        assertEquals(1, repository.refreshCallCount)
+    }
+
+    @Test
+    fun `returns reauth required when refresh reports inactivity exceeded after unauthorized sync`() = runBlocking {
+        val repository = FakeAuthRepository(
+            syncResults = mutableListOf(ProfileSyncResult.Unauthorized),
+            refreshSessionResult = RefreshSessionResult.ReAuthRequired.InactivityExceeded
+        )
+
+        val useCase = createUseCase(repository)
+
+        val result = useCase()
+
+        assertTrue(result.isFailure)
+        val exception = result.exceptionOrNull()
+        assertTrue(exception is SessionBootstrapFailure.ReAuthRequired)
+        assertEquals(
+            RefreshSessionResult.ReAuthRequired.InactivityExceeded,
+            (exception as SessionBootstrapFailure.ReAuthRequired).reason
+        )
+        assertEquals(1, repository.syncCallCount)
+        assertEquals(1, repository.refreshCallCount)
+    }
+
+    @Test
     fun `returns temporary bootstrap failure when embedding generation fails after successful sync`() = runBlocking {
         val currentUser = sampleUser().copy(
             photoUpdatedAt = "2025-12-01T00:00:00Z",
@@ -114,7 +161,7 @@ class CheckSessionUseCaseTest {
             photoUrl = null
         )
         val repository = FakeAuthRepository(
-            syncResults = mutableListOf(Result.success(syncedUser)),
+            syncResults = mutableListOf(ProfileSyncResult.Success(syncedUser)),
             refreshSessionResult = RefreshSessionResult.Success,
             loggedInUser = currentUser
         )
@@ -175,7 +222,7 @@ class CheckSessionUseCaseTest {
     )
 
     private class FakeAuthRepository(
-        private val syncResults: MutableList<Result<UserModel>>,
+        private val syncResults: MutableList<ProfileSyncResult>,
         private val refreshSessionResult: RefreshSessionResult,
         private val loggedInUser: UserModel? = null,
         private val syncThrowable: Throwable? = null
@@ -192,7 +239,7 @@ class CheckSessionUseCaseTest {
             throw NotImplementedError()
         }
 
-        override suspend fun syncUserProfile(): Result<UserModel> {
+        override suspend fun syncUserProfile(): ProfileSyncResult {
             syncCallCount += 1
             syncThrowable?.let { throw it }
             return syncResults.removeFirst()

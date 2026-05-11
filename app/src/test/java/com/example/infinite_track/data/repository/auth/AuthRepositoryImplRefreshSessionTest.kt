@@ -27,6 +27,7 @@ import com.example.infinite_track.data.soucre.network.response.booking.BookingHi
 import com.example.infinite_track.data.soucre.network.response.booking.BookingResponse
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
+import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.repository.RefreshSessionResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
@@ -108,7 +109,104 @@ class AuthRepositoryImplRefreshSessionTest {
     }
 
     @Test
-    fun `sync user profile returns failure on http exception even when cached user exists`() = runBlocking {
+    fun `sync user profile returns success and preserves existing face embedding`() = runBlocking {
+        val cachedUser = UserEntity(
+            id = 10,
+            fullName = "Cached User",
+            email = "cached@example.com",
+            roleName = "staff",
+            positionName = "Engineer",
+            programName = "Program",
+            divisionName = "Division",
+            nipNim = "12345",
+            phone = "08123456789",
+            photo = "cached.jpg",
+            photoUpdatedAt = "2026-01-01T00:00:00Z",
+            latitude = -0.9,
+            longitude = 119.8,
+            radius = 100,
+            locationDescription = "Office",
+            locationCategoryName = "WFO",
+            faceEmbedding = byteArrayOf(1, 2, 3)
+        )
+        val userPreference = createUserPreference().also {
+            it.saveSession(token = "access-token", userId = "10", refreshToken = "refresh-token")
+        }
+        val userDao = CapturingUserDao(initialUser = cachedUser)
+        val repository = AuthRepositoryImpl(
+            userPreference = userPreference,
+            apiService = FakeApiService(
+                getUserProfileBlock = {
+                    LoginResponse(
+                        success = true,
+                        message = "ok",
+                        data = createUserData(refreshToken = "refresh-token")
+                    )
+                }
+            ),
+            authSessionApiService = FakeAuthSessionApiService(
+                refreshSessionBlock = { unsupportedRefreshSession() }
+            ),
+            userDao = userDao
+        )
+
+        val result = repository.syncUserProfile()
+
+        assertTrue(result is ProfileSyncResult.Success)
+        val syncedUser = (result as ProfileSyncResult.Success).user
+        assertEquals("user@example.com", syncedUser.email)
+        assertEquals(1, userDao.insertedUsers.size)
+        assertTrue(userDao.insertedUsers.single().faceEmbedding.contentEquals(byteArrayOf(1, 2, 3)))
+    }
+
+    @Test
+    fun `sync user profile returns unauthorized when token is missing locally`() = runBlocking {
+        val repository = AuthRepositoryImpl(
+            userPreference = createUserPreference(),
+            apiService = FakeApiService(
+                getUserProfileBlock = {
+                    throw AssertionError("Profile endpoint should not be called without a local access token")
+                }
+            ),
+            authSessionApiService = FakeAuthSessionApiService(
+                refreshSessionBlock = { unsupportedRefreshSession() }
+            ),
+            userDao = FakeUserDao()
+        )
+
+        val result = repository.syncUserProfile()
+
+        assertTrue(result is ProfileSyncResult.Unauthorized)
+    }
+
+    @Test
+    fun `sync user profile returns unauthorized on 401 response`() = runBlocking {
+        val userPreference = createUserPreference().also {
+            it.saveSession(token = "access-token", userId = "10", refreshToken = "refresh-token")
+        }
+        val repository = AuthRepositoryImpl(
+            userPreference = userPreference,
+            apiService = FakeApiService(
+                getUserProfileBlock = {
+                    throw httpException(
+                        code = 401,
+                        error = ErrorResponse(success = false, message = "unauthorized", code = "UNAUTHORIZED")
+                    )
+                }
+            ),
+            authSessionApiService = FakeAuthSessionApiService(
+                refreshSessionBlock = { unsupportedRefreshSession() }
+            ),
+            userDao = FakeUserDao()
+        )
+
+        val result = repository.syncUserProfile()
+
+        assertTrue(result is ProfileSyncResult.Unauthorized)
+    }
+
+    @Test
+    fun `sync user profile returns temporary failure on http exception even when cached user exists`() = runBlocking {
         val cachedUser = UserEntity(
             id = 10,
             fullName = "Cached User",
@@ -151,11 +249,11 @@ class AuthRepositoryImplRefreshSessionTest {
 
         val result = repository.syncUserProfile()
 
-        assertTrue(result.isFailure)
+        assertTrue(result is ProfileSyncResult.TemporaryFailure)
     }
 
     @Test
-    fun `sync user profile returns failure on io exception even when cached user exists`() = runBlocking {
+    fun `sync user profile returns temporary failure on io exception even when cached user exists`() = runBlocking {
         val cachedUser = UserEntity(
             id = 10,
             fullName = "Cached User",
@@ -195,7 +293,7 @@ class AuthRepositoryImplRefreshSessionTest {
 
         val result = repository.syncUserProfile()
 
-        assertTrue(result.isFailure)
+        assertTrue(result is ProfileSyncResult.TemporaryFailure)
     }
 
     @Test
@@ -657,19 +755,22 @@ private class FakeUserDao : UserDao {
     }
 }
 
-private class CapturingUserDao : UserDao {
+private class CapturingUserDao(
+    private val initialUser: UserEntity? = null
+) : UserDao {
     val insertedUsers = mutableListOf<UserEntity>()
+    var clearCallCount: Int = 0
 
     override suspend fun insertOrUpdateUserProfile(userEntity: UserEntity) {
         insertedUsers += userEntity
     }
 
-    override fun getUserProfileFlow(): Flow<UserEntity?> = flowOf(null)
+    override fun getUserProfileFlow(): Flow<UserEntity?> = flowOf(insertedUsers.lastOrNull() ?: initialUser)
 
-    override suspend fun getUserProfile(): UserEntity? = null
+    override suspend fun getUserProfile(): UserEntity? = insertedUsers.lastOrNull() ?: initialUser
 
     override suspend fun clearUserProfile() {
-        // no-op
+        clearCallCount += 1
     }
 }
 
