@@ -151,7 +151,7 @@ class CheckSessionUseCaseTest {
     }
 
     @Test
-    fun `returns temporary bootstrap failure when embedding generation fails after successful sync`() = runBlocking {
+    fun `returns original embedding exception after successful sync`() = runBlocking {
         val currentUser = sampleUser().copy(
             photoUpdatedAt = "2025-12-01T00:00:00Z",
             faceEmbedding = null
@@ -171,7 +171,49 @@ class CheckSessionUseCaseTest {
         val result = useCase()
 
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.TemporaryFailure)
+        val exception = result.exceptionOrNull()
+        assertTrue(exception is IllegalArgumentException)
+        assertEquals("Photo URL cannot be null or empty", exception?.message)
+    }
+
+    @Test
+    fun `returns unexpected sync exception without wrapping it as bootstrap failure`() = runBlocking {
+        val repository = FakeAuthRepository(
+            syncResults = mutableListOf(),
+            refreshSessionResult = RefreshSessionResult.Success,
+            syncThrowable = IllegalStateException("boom")
+        )
+        val useCase = createUseCase(repository)
+
+        val result = useCase()
+
+        assertTrue(result.isFailure)
+        val exception = result.exceptionOrNull()
+        assertTrue(exception is IllegalStateException)
+        assertTrue(exception !is SessionBootstrapFailure.TemporaryFailure)
+        assertEquals("boom", exception?.message)
+        assertEquals(1, repository.syncCallCount)
+        assertEquals(0, repository.refreshCallCount)
+    }
+
+    @Test
+    fun `returns unexpected refresh exception without wrapping it as bootstrap failure`() = runBlocking {
+        val repository = FakeAuthRepository(
+            syncResults = mutableListOf(ProfileSyncResult.Unauthorized),
+            refreshSessionResult = RefreshSessionResult.Success,
+            refreshThrowable = IllegalStateException("refresh boom")
+        )
+        val useCase = createUseCase(repository)
+
+        val result = useCase()
+
+        assertTrue(result.isFailure)
+        val exception = result.exceptionOrNull()
+        assertTrue(exception is IllegalStateException)
+        assertTrue(exception !is SessionBootstrapFailure.TemporaryFailure)
+        assertEquals("refresh boom", exception?.message)
+        assertEquals(1, repository.syncCallCount)
+        assertEquals(1, repository.refreshCallCount)
     }
 
     @Test
@@ -225,13 +267,15 @@ class CheckSessionUseCaseTest {
         private val syncResults: MutableList<ProfileSyncResult>,
         private val refreshSessionResult: RefreshSessionResult,
         private val loggedInUser: UserModel? = null,
-        private val syncThrowable: Throwable? = null
+        private val syncThrowable: Throwable? = null,
+        private val refreshThrowable: Throwable? = null
     ) : AuthRepository {
         var syncCallCount: Int = 0
         var refreshCallCount: Int = 0
 
         override suspend fun refreshSession(): RefreshSessionResult {
             refreshCallCount += 1
+            refreshThrowable?.let { throw it }
             return refreshSessionResult
         }
 

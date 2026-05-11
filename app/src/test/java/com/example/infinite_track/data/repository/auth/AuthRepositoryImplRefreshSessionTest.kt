@@ -35,7 +35,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody
 import okhttp3.ResponseBody.Companion.toResponseBody
+import okio.BufferedSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -294,6 +296,58 @@ class AuthRepositoryImplRefreshSessionTest {
         val result = repository.syncUserProfile()
 
         assertTrue(result is ProfileSyncResult.TemporaryFailure)
+    }
+
+    @Test
+    fun `sync user profile rethrows unexpected internal exception`() = runBlocking {
+        val userPreference = createUserPreference().also {
+            it.saveSession(token = "access-token", userId = "10", refreshToken = "refresh-token")
+        }
+        val repository = AuthRepositoryImpl(
+            userPreference = userPreference,
+            apiService = FakeApiService(
+                getUserProfileBlock = {
+                    throw IllegalStateException("boom")
+                }
+            ),
+            authSessionApiService = FakeAuthSessionApiService(
+                refreshSessionBlock = { unsupportedRefreshSession() }
+            ),
+            userDao = FakeUserDao()
+        )
+
+        try {
+            repository.syncUserProfile()
+            fail("Expected IllegalStateException to be rethrown")
+        } catch (e: IllegalStateException) {
+            assertEquals("boom", e.message)
+        }
+    }
+
+    @Test
+    fun `sync user profile rethrows unexpected error body read failure`() = runBlocking {
+        val userPreference = createUserPreference().also {
+            it.saveSession(token = "access-token", userId = "10", refreshToken = "refresh-token")
+        }
+        val repository = AuthRepositoryImpl(
+            userPreference = userPreference,
+            apiService = FakeApiService(
+                getUserProfileBlock = {
+                    throw throwingRawHttpException(code = 500, error = IOException("body read failed"))
+                }
+            ),
+            authSessionApiService = FakeAuthSessionApiService(
+                refreshSessionBlock = { unsupportedRefreshSession() }
+            ),
+            userDao = FakeUserDao()
+        )
+
+        try {
+            repository.syncUserProfile()
+            fail("Expected IOException to be rethrown")
+        } catch (e: IOException) {
+            assertEquals("body read failed", e.message)
+        }
     }
 
     @Test
@@ -622,6 +676,24 @@ class AuthRepositoryImplRefreshSessionTest {
     }
 
     @Test
+    fun `refresh session rethrows unexpected error body read failure`() = runBlocking {
+        val repository = createRepository(
+            refreshApiService = FakeAuthSessionApiService(
+                refreshSessionBlock = {
+                    throw throwingRawHttpException(code = 500, error = IOException("body read failed"))
+                }
+            )
+        )
+
+        try {
+            repository.refreshSession()
+            fail("Expected IOException to be rethrown")
+        } catch (e: IOException) {
+            assertEquals("body read failed", e.message)
+        }
+    }
+
+    @Test
     fun `refresh session returns temporary failure when error body is malformed json`() = runBlocking {
         val repository = createRepository(
             refreshApiService = FakeAuthSessionApiService(
@@ -708,6 +780,19 @@ class AuthRepositoryImplRefreshSessionTest {
 
     private fun rawHttpException(code: Int, rawBody: String): HttpException {
         val body = rawBody.toResponseBody("application/json".toMediaType())
+        return HttpException(Response.error<Any>(code, body))
+    }
+
+    private fun throwingRawHttpException(code: Int, error: IOException): HttpException {
+        val body = object : ResponseBody() {
+            override fun contentType() = "application/json".toMediaType()
+
+            override fun contentLength(): Long = 0
+
+            override fun source(): BufferedSource {
+                throw error
+            }
+        }
         return HttpException(Response.error<Any>(code, body))
     }
 

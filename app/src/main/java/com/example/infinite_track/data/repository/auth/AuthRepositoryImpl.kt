@@ -15,6 +15,7 @@ import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.repository.RefreshSessionResult
 import com.google.gson.Gson
+import com.google.gson.JsonSyntaxException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -40,6 +41,7 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             val existingRefreshToken = userPreference.getRefreshToken().first()
             if (existingRefreshToken.isBlank()) {
+                safeLogDebug("Refresh session skipped because refresh token is missing")
                 return RefreshSessionResult.ReAuthRequired.InvalidOrRevoked
             }
 
@@ -48,6 +50,10 @@ class AuthRepositoryImpl @Inject constructor(
             )
 
             if (response.data.token.isBlank() || response.data.id <= 0) {
+                safeLogError(
+                    "Refresh session returned invalid payload",
+                    IllegalStateException("Invalid refresh session payload")
+                )
                 return RefreshSessionResult.TemporaryFailure("Invalid refresh session payload")
             }
 
@@ -64,6 +70,7 @@ class AuthRepositoryImpl @Inject constructor(
         } catch (e: HttpException) {
             classifyRefreshHttpError(e)
         } catch (e: IOException) {
+            safeLogError("Refresh session failed due to network error", e)
             RefreshSessionResult.TemporaryFailure(reason = e.message, cause = e)
         }
     }
@@ -117,6 +124,7 @@ class AuthRepositoryImpl @Inject constructor(
             val token = userPreference.getAuthToken().first()
 
             if (token.isBlank()) {
+                safeLogDebug("Profile sync skipped because auth token is missing")
                 return ProfileSyncResult.Unauthorized
             }
 
@@ -130,21 +138,21 @@ class AuthRepositoryImpl @Inject constructor(
             throw e
         } catch (e: HttpException) {
             if (e.code() == 401 || e.code() == 403) {
+                safeLogDebug("Profile sync unauthorized: HTTP ${e.code()}")
                 ProfileSyncResult.Unauthorized
             } else {
+                safeLogError("Profile sync failed with HTTP ${e.code()}", e)
                 ProfileSyncResult.TemporaryFailure(
                     cause = e,
                     message = parseHttpErrorBodySafely(e)?.message ?: "Failed to sync profile data"
                 )
             }
         } catch (e: IOException) {
+            safeLogError("Profile sync failed due to network error", e)
             ProfileSyncResult.TemporaryFailure(
                 cause = e,
                 message = "Network error, please check your internet connection."
             )
-        } catch (e: Exception) {
-            Log.e("AuthRepositoryImpl", "Unknown Error during sync", e)
-            ProfileSyncResult.TemporaryFailure(cause = e)
         }
     }
 
@@ -237,14 +245,17 @@ class AuthRepositoryImpl @Inject constructor(
 
         return when {
             normalizedCode == "INACTIVITY_TIMEOUT_48H" -> {
+                safeLogDebug("Refresh session requires re-authentication because inactivity exceeded 48 hours")
                 RefreshSessionResult.ReAuthRequired.InactivityExceeded
             }
 
             code == 401 || code == 403 || normalizedCode == "INVALID_REFRESH_TOKEN" || normalizedCode == "REFRESH_TOKEN_REVOKED" -> {
+                safeLogDebug("Refresh session rejected: HTTP $code, code=${normalizedCode ?: "UNKNOWN"}")
                 RefreshSessionResult.ReAuthRequired.InvalidOrRevoked
             }
 
             else -> {
+                safeLogError("Refresh session failed with HTTP $code", httpException)
                 RefreshSessionResult.TemporaryFailure(
                     reason = errorBody?.message ?: "HTTP $code",
                     cause = httpException
@@ -254,14 +265,15 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     private fun parseHttpErrorBodySafely(httpException: HttpException): ErrorResponse? {
+        val rawBody = httpException.response()?.errorBody()?.string().orEmpty()
+        if (rawBody.isBlank()) {
+            return null
+        }
+
         return try {
-            val rawBody = httpException.response()?.errorBody()?.string().orEmpty()
-            if (rawBody.isBlank()) {
-                null
-            } else {
-                Gson().fromJson(rawBody, ErrorResponse::class.java)
-            }
-        } catch (_: Exception) {
+            Gson().fromJson(rawBody, ErrorResponse::class.java)
+        } catch (e: JsonSyntaxException) {
+            safeLogError("Failed to parse HTTP error body JSON", e)
             null
         }
     }

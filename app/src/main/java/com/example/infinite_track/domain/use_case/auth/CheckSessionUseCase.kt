@@ -34,10 +34,8 @@ class CheckSessionUseCase @Inject constructor(
 
                 if (embeddingResult.isFailure) {
                     return Result.failure(
-                        SessionBootstrapFailure.TemporaryFailure(
-                            cause = embeddingResult.exceptionOrNull()
-                                ?: Exception("Face embedding generation failed")
-                        )
+                        embeddingResult.exceptionOrNull()
+                            ?: Exception("Face embedding generation failed")
                     )
                 }
             }
@@ -45,12 +43,10 @@ class CheckSessionUseCase @Inject constructor(
             syncResult
         } catch (e: CancellationException) {
             throw e
+        } catch (e: SessionBootstrapFailure) {
+            Result.failure(e)
         } catch (e: Exception) {
-            when (e) {
-                is SessionBootstrapFailure.ReAuthRequired,
-                is SessionBootstrapFailure.TemporaryFailure -> Result.failure(e)
-                else -> Result.failure(SessionBootstrapFailure.TemporaryFailure(cause = e))
-            }
+            Result.failure(e)
         }
     }
 
