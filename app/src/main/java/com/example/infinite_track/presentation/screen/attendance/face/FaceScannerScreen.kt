@@ -66,7 +66,36 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import androidx.activity.compose.BackHandler
 import androidx.camera.core.Preview as CameraPreview
+import com.example.infinite_track.presentation.screen.attendance.FACE_VERIFICATION_RESULT_KEY
+import com.example.infinite_track.presentation.screen.attendance.FaceVerificationResult
+
+private fun NavController.finishFaceScanner(result: FaceVerificationResult) {
+    val targetEntry = previousBackStackEntry
+    if (targetEntry == null) {
+        android.util.Log.e(
+            "FaceScannerScreen",
+            "Cannot deliver face verification result=${result.savedStateValue}: previousBackStackEntry is null"
+        )
+        navigateUp()
+        return
+    }
+
+    targetEntry.savedStateHandle[FACE_VERIFICATION_RESULT_KEY] = result.savedStateValue
+
+    val popped = popBackStack()
+    if (!popped) {
+        android.util.Log.e(
+            "FaceScannerScreen",
+            "Failed to pop FaceScanner after delivering result=${result.savedStateValue}"
+        )
+    }
+}
+
+private fun NavController.finishFaceScanner(state: LivenessState) {
+    finishFaceScanner(FaceVerificationResult.fromScannerExitState(state))
+}
 
 @kotlin.OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @ExperimentalGetImage
@@ -99,31 +128,19 @@ fun FaceScannerScreen(
         }
     }
 
+    BackHandler {
+        navController.finishFaceScanner(uiState.livenessState)
+    }
+
     // Handle navigation based on verification result
     LaunchedEffect(uiState.livenessState) {
         when (uiState.livenessState) {
             LivenessState.SUCCESS -> {
-                // Send success result and navigate back to proceed with attendance
-                navController.previousBackStackEntry?.savedStateHandle?.set(
-                    "face_verification_result",
-                    true
-                )
-                navController.popBackStack()
+                navController.finishFaceScanner(FaceVerificationResult.SUCCESS)
             }
 
-            LivenessState.TIMEOUT -> {
-                // TIMEOUT means user ran out of time - send failure and go back
-                navController.previousBackStackEntry?.savedStateHandle?.set(
-                    "face_verification_result",
-                    false
-                )
-                navController.popBackStack()
-            }
-
-            // FAILURE stays on screen to allow retry - no automatic navigation
-            LivenessState.FAILURE -> {
-                // Stay on screen, show retry button - user can try again
-            }
+            LivenessState.FAILURE,
+            LivenessState.TIMEOUT -> Unit
 
             else -> {
                 // Continue with current state - don't navigate anywhere
@@ -154,7 +171,7 @@ fun FaceScannerScreen(
                         viewModel.resetScanner()
                     },
                     onCloseClick = {
-                        navController.popBackStack()
+                        navController.finishFaceScanner(uiState.livenessState)
                     }
                 )
             }
@@ -166,7 +183,7 @@ fun FaceScannerScreen(
                         cameraPermissionState.launchPermissionRequest()
                     },
                     onCloseClick = {
-                        navController.popBackStack()
+                        navController.finishFaceScanner(uiState.livenessState)
                     }
                 )
             }
@@ -178,7 +195,7 @@ fun FaceScannerScreen(
                         cameraPermissionState.launchPermissionRequest()
                     },
                     onCloseClick = {
-                        navController.popBackStack()
+                        navController.finishFaceScanner(uiState.livenessState)
                     }
                 )
             }
@@ -489,9 +506,7 @@ private fun InstructionSection(
                 )
 
                 // Retry Button (show when failed or timeout) menggunakan StatefulButton
-                if (uiState.livenessState == LivenessState.FAILURE ||
-                    uiState.livenessState == LivenessState.TIMEOUT
-                ) {
+                if (FaceVerificationResult.fromScannerExitState(uiState.livenessState).allowsRetryOnScanner) {
                     StatefulButton(
                         text = "Coba Lagi",
                         onClick = onRetryClick,
