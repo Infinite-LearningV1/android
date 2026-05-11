@@ -33,6 +33,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -59,6 +60,8 @@ import com.example.infinite_track.presentation.components.button.ButtonStyle
 import com.example.infinite_track.presentation.components.button.StatefulButton
 import com.example.infinite_track.presentation.components.cameras.FaceBoundingBox
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
+import com.example.infinite_track.presentation.screen.attendance.FACE_VERIFICATION_RESULT_KEY
+import com.example.infinite_track.presentation.screen.attendance.FaceVerificationResult
 import com.example.infinite_track.presentation.theme.Blue_500
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -66,10 +69,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import androidx.activity.compose.BackHandler
 import androidx.camera.core.Preview as CameraPreview
-import com.example.infinite_track.presentation.screen.attendance.FACE_VERIFICATION_RESULT_KEY
-import com.example.infinite_track.presentation.screen.attendance.FaceVerificationResult
 
 private fun NavController.finishFaceScanner(result: FaceVerificationResult) {
     val targetEntry = previousBackStackEntry
@@ -78,7 +78,13 @@ private fun NavController.finishFaceScanner(result: FaceVerificationResult) {
             "FaceScannerScreen",
             "Cannot deliver face verification result=${result.savedStateValue}: previousBackStackEntry is null"
         )
-        navigateUp()
+        val navigatedUp = navigateUp()
+        if (!navigatedUp) {
+            android.util.Log.e(
+                "FaceScannerScreen",
+                "Failed to close FaceScanner after missing previousBackStackEntry for result=${result.savedStateValue}"
+            )
+        }
         return
     }
 
@@ -90,6 +96,13 @@ private fun NavController.finishFaceScanner(result: FaceVerificationResult) {
             "FaceScannerScreen",
             "Failed to pop FaceScanner after delivering result=${result.savedStateValue}"
         )
+        val navigatedUp = navigateUp()
+        if (!navigatedUp) {
+            android.util.Log.e(
+                "FaceScannerScreen",
+                "Failed to close FaceScanner after fallback navigateUp for result=${result.savedStateValue}"
+            )
+        }
     }
 }
 
