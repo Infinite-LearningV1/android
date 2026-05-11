@@ -675,23 +675,34 @@ class AttendanceViewModel @Inject constructor(
      * Handle face verification result - GATEWAY after face verification
      * Called from FaceScannerScreen when verification is complete
      */
-    fun onFaceVerificationResult(isSuccess: Boolean) {
-        Log.d(TAG, "Face verification result: $isSuccess")
+    fun onFaceVerificationResult(result: FaceVerificationResult) {
+        Log.d(TAG, "Face verification result: $result")
 
-        if (!isSuccess) {
-            Log.d(TAG, "Face verification failed - aborting attendance process")
+        if (result.submitsAttendance) {
+            if (_uiState.value.isCheckInMode) {
+                proceedWithCheckIn()
+            } else {
+                proceedWithCheckOut()
+            }
+            return
+        }
+
+        result.attendanceErrorMessage?.let { errorMessage ->
+            Log.d(TAG, "Face verification did not submit attendance: $result")
             _uiState.value = _uiState.value.copy(
-                activeDialog = DialogState.Error("Verifikasi wajah gagal. Silakan coba lagi.")
+                activeDialog = DialogState.Error(errorMessage)
             )
             return
         }
 
-        // Check current mode and proceed accordingly
-        if (_uiState.value.isCheckInMode) {
-            proceedWithCheckIn()
-        } else {
-            proceedWithCheckOut()
-        }
+        Log.d(TAG, "Face verification cancelled - attendance process remains idle")
+    }
+
+    fun onUnexpectedFaceVerificationResult() {
+        Log.e(TAG, "Unexpected face verification result payload received")
+        _uiState.value = _uiState.value.copy(
+            activeDialog = DialogState.Error("Hasil verifikasi wajah tidak dikenali. Silakan coba lagi.")
+        )
     }
 
     /**
