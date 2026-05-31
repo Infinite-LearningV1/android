@@ -27,6 +27,22 @@ class SessionManager @Inject constructor() {
     val reauthReason: StateFlow<ReauthReason?> = _reauthReason.asStateFlow()
 
     private var sessionExpiryHandlingInProgress: Boolean = false
+    private var bootstrapSessionDepth: Int = 0
+
+    val isBootstrapSessionInProgress: Boolean
+        @Synchronized get() = bootstrapSessionDepth > 0
+
+    @Synchronized
+    fun beginBootstrapSession() {
+        bootstrapSessionDepth += 1
+    }
+
+    @Synchronized
+    fun endBootstrapSession() {
+        if (bootstrapSessionDepth > 0) {
+            bootstrapSessionDepth -= 1
+        }
+    }
 
     /**
      * Try to acquire single-flight guard for session-expired handling.
@@ -45,6 +61,10 @@ class SessionManager @Inject constructor() {
     fun triggerForcedReauth(reason: ReauthReason) {
         _reauthReason.value = reason
         _sessionExpired.value = true
+    }
+
+    fun recordBootstrapReauth(reason: ReauthReason) {
+        _reauthReason.value = reason
     }
 
     /**

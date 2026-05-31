@@ -32,6 +32,7 @@ class SessionManagerTest {
         assertTrue(sessionManager.beginSessionExpiryHandling())
     }
 
+    @Suppress("DEPRECATION")
     @Test
     fun `legacy triggerSessionExpired maps to unknown reauth reason`() {
         val sessionManager = SessionManager()
@@ -40,5 +41,34 @@ class SessionManagerTest {
 
         assertTrue(sessionManager.sessionExpired.value)
         assertEquals(ReauthReason.UNKNOWN, sessionManager.reauthReason.value)
+    }
+
+    @Test
+    fun `bootstrap session guard stays active until all owners end`() {
+        val sessionManager = SessionManager()
+
+        assertFalse(sessionManager.isBootstrapSessionInProgress)
+
+        sessionManager.beginBootstrapSession()
+        sessionManager.beginBootstrapSession()
+
+        assertTrue(sessionManager.isBootstrapSessionInProgress)
+
+        sessionManager.endBootstrapSession()
+
+        assertTrue(sessionManager.isBootstrapSessionInProgress)
+
+        sessionManager.endBootstrapSession()
+
+        assertFalse(sessionManager.isBootstrapSessionInProgress)
+    }
+
+    @Test
+    fun `extra bootstrap end is harmless`() {
+        val sessionManager = SessionManager()
+
+        sessionManager.endBootstrapSession()
+
+        assertFalse(sessionManager.isBootstrapSessionInProgress)
     }
 }

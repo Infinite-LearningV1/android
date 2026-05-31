@@ -2,6 +2,7 @@ package com.example.infinite_track.di.auth
 
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.network.response.RefreshErrorResponse
+import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.repository.AuthRefreshException
 import com.example.infinite_track.domain.repository.AuthRefreshFailureKind
@@ -29,9 +30,11 @@ class AuthRefreshInterceptor @Inject constructor(
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
+        val isBootstrapAuthRequest = originalRequest.header(HEADER_BOOTSTRAP_AUTH_REQUEST) == BOOTSTRAP_AUTH_REQUEST_VALUE
         val token = runBlocking { userPreference.getAuthToken().first() }
 
         val requestWithToken = originalRequest.newBuilder()
+            .removeHeader(HEADER_BOOTSTRAP_AUTH_REQUEST)
             .header(HEADER_CLIENT_TYPE, CLIENT_TYPE_MOBILE)
             .apply {
                 if (!token.isNullOrBlank() && !isAuthEndpoint(originalRequest)) {
@@ -52,7 +55,7 @@ class AuthRefreshInterceptor @Inject constructor(
 
         val authCode = parseAuthCode(response)
         forcedReauthReasonFor(authCode)?.let { reason ->
-            triggerForcedReauth(reason)
+            triggerForcedReauth(reason, suppressGlobalHandling = isBootstrapAuthRequest)
             return response
         }
 
@@ -73,6 +76,7 @@ class AuthRefreshInterceptor @Inject constructor(
                 response.close()
                 val newToken = runBlocking { userPreference.getAuthToken().first() }
                 val retriedRequest = originalRequest.newBuilder()
+                    .removeHeader(HEADER_BOOTSTRAP_AUTH_REQUEST)
                     .header(HEADER_CLIENT_TYPE, CLIENT_TYPE_MOBILE)
                     .header(HEADER_RETRY_MARKER, RETRY_MARKER_VALUE)
                     .apply {
@@ -88,7 +92,10 @@ class AuthRefreshInterceptor @Inject constructor(
             onFailure = { throwable ->
                 val refreshException = throwable as? AuthRefreshException
                 if (refreshException?.kind == AuthRefreshFailureKind.NON_REFRESHABLE) {
-                    triggerForcedReauth(reauthReasonFor(refreshException.reason))
+                    triggerForcedReauth(
+                        reason = reauthReasonFor(refreshException.reason),
+                        suppressGlobalHandling = isBootstrapAuthRequest
+                    )
                 }
                 response
             }
@@ -108,7 +115,14 @@ class AuthRefreshInterceptor @Inject constructor(
         return hasBearerToken && (authCode == null || authCode == AUTH_ACCESS_TOKEN_EXPIRED)
     }
 
-    private fun triggerForcedReauth(reason: SessionManager.ReauthReason) {
+    private fun triggerForcedReauth(
+        reason: SessionManager.ReauthReason,
+        suppressGlobalHandling: Boolean
+    ) {
+        if (suppressGlobalHandling) {
+            return
+        }
+
         val sessionManager = sessionManagerProvider.get()
         if (sessionManager.beginSessionExpiryHandling()) {
             runBlocking {
@@ -174,6 +188,8 @@ class AuthRefreshInterceptor @Inject constructor(
         private const val HEADER_AUTHORIZATION = "Authorization"
         private const val HEADER_CLIENT_TYPE = "X-Client-Type"
         private const val CLIENT_TYPE_MOBILE = "mobile"
+        private const val HEADER_BOOTSTRAP_AUTH_REQUEST = ApiService.HEADER_BOOTSTRAP_AUTH_REQUEST
+        private const val BOOTSTRAP_AUTH_REQUEST_VALUE = ApiService.BOOTSTRAP_AUTH_REQUEST_VALUE
         private const val HEADER_RETRY_MARKER = "X-Refresh-Retry"
         private const val RETRY_MARKER_VALUE = "1"
         private const val MAX_ERROR_BODY_BYTES = 1024 * 1024L

@@ -21,8 +21,10 @@ import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.domain.repository.AttendanceRepository
+import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.LocationRepository
+import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.repository.WfaRepository
 import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
 import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
@@ -397,11 +399,15 @@ class AttendanceScreenFaceResultRescueTest {
     }
 
     private class FakeAuthRepository : AuthRepository {
+        override suspend fun refreshSession(): Result<AuthRefreshResult> {
+            throw UnsupportedOperationException("Session refresh is outside this regression")
+        }
+
         override suspend fun login(loginRequest: LoginRequest): Result<UserModel> {
             throw UnsupportedOperationException("Login is outside this regression")
         }
 
-        override suspend fun syncUserProfile(): Result<UserModel> {
+        override suspend fun syncUserProfile(): ProfileSyncResult {
             throw UnsupportedOperationException("Profile sync is outside this regression")
         }
 

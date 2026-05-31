@@ -142,7 +142,7 @@ class AuthRepositoryImplRefreshSessionTest {
         val repository = AuthRepositoryImpl(
             userPreference = userPreference,
             apiService = FakeApiService(
-                getUserProfileBlock = {
+                getUserProfileBlock = { _ ->
                     LoginResponse(
                         success = true,
                         message = "ok",
@@ -166,11 +166,40 @@ class AuthRepositoryImplRefreshSessionTest {
     }
 
     @Test
+    fun `bootstrap sync marks profile request with bootstrap header value`() = runBlocking {
+        val userPreference = createUserPreference().also {
+            it.saveSession(token = "access-token", userId = "10", refreshToken = "refresh-token")
+        }
+        val apiService = FakeApiService(
+            getUserProfileBlock = { bootstrapMarker ->
+                assertEquals(ApiService.BOOTSTRAP_AUTH_REQUEST_VALUE, bootstrapMarker)
+                LoginResponse(
+                    success = true,
+                    message = "ok",
+                    data = createUserData(refreshToken = "refresh-token")
+                )
+            }
+        )
+        val repository = AuthRepositoryImpl(
+            userPreference = userPreference,
+            apiService = apiService,
+            authSessionApiService = FakeAuthSessionApiService(
+                refreshSessionBlock = { unsupportedRefreshSession() }
+            ),
+            userDao = FakeUserDao()
+        )
+
+        val result = repository.syncUserProfileForBootstrap()
+
+        assertTrue(result is ProfileSyncResult.Success)
+    }
+
+    @Test
     fun `sync user profile returns unauthorized when token is missing locally`() = runBlocking {
         val repository = AuthRepositoryImpl(
             userPreference = createUserPreference(),
             apiService = FakeApiService(
-                getUserProfileBlock = {
+                getUserProfileBlock = { _ ->
                     throw AssertionError("Profile endpoint should not be called without a local access token")
                 }
             ),
@@ -193,7 +222,7 @@ class AuthRepositoryImplRefreshSessionTest {
         val repository = AuthRepositoryImpl(
             userPreference = userPreference,
             apiService = FakeApiService(
-                getUserProfileBlock = {
+                getUserProfileBlock = { _ ->
                     throw httpException(
                         code = 401,
                         error = ErrorResponse(success = false, message = "unauthorized", code = "UNAUTHORIZED")
@@ -209,6 +238,75 @@ class AuthRepositoryImplRefreshSessionTest {
         val result = repository.syncUserProfile()
 
         assertTrue(result is ProfileSyncResult.Unauthorized)
+        assertEquals(null, (result as ProfileSyncResult.Unauthorized).reason)
+    }
+
+    @Test
+    fun `bootstrap profile sync preserves inactive session unauthorized reason from 401 auth code`() = runBlocking {
+        val userPreference = createUserPreference().also {
+            it.saveSession(token = "access-token", userId = "10", refreshToken = "refresh-token")
+        }
+        val repository = AuthRepositoryImpl(
+            userPreference = userPreference,
+            apiService = FakeApiService(
+                getUserProfileBlock = { _ ->
+                    throw httpException(
+                        code = 401,
+                        error = ErrorResponse(
+                            success = false,
+                            message = "session inactive for more than 48 hours",
+                            code = "AUTH_SESSION_INACTIVE"
+                        )
+                    )
+                }
+            ),
+            authSessionApiService = FakeAuthSessionApiService(
+                refreshSessionBlock = { unsupportedRefreshSession() }
+            ),
+            userDao = FakeUserDao()
+        )
+
+        val result = repository.syncUserProfileForBootstrap()
+
+        assertTrue(result is ProfileSyncResult.Unauthorized)
+        assertEquals(
+            AuthRefreshFailureReason.INACTIVITY_EXPIRED,
+            (result as ProfileSyncResult.Unauthorized).reason
+        )
+    }
+
+    @Test
+    fun `bootstrap profile sync preserves revoked refresh unauthorized reason from 401 auth code`() = runBlocking {
+        val userPreference = createUserPreference().also {
+            it.saveSession(token = "access-token", userId = "10", refreshToken = "refresh-token")
+        }
+        val repository = AuthRepositoryImpl(
+            userPreference = userPreference,
+            apiService = FakeApiService(
+                getUserProfileBlock = { _ ->
+                    throw httpException(
+                        code = 401,
+                        error = ErrorResponse(
+                            success = false,
+                            message = "refresh token revoked",
+                            code = "AUTH_REFRESH_TOKEN_REVOKED"
+                        )
+                    )
+                }
+            ),
+            authSessionApiService = FakeAuthSessionApiService(
+                refreshSessionBlock = { unsupportedRefreshSession() }
+            ),
+            userDao = FakeUserDao()
+        )
+
+        val result = repository.syncUserProfileForBootstrap()
+
+        assertTrue(result is ProfileSyncResult.Unauthorized)
+        assertEquals(
+            AuthRefreshFailureReason.REFRESH_REVOKED,
+            (result as ProfileSyncResult.Unauthorized).reason
+        )
     }
 
     @Test
@@ -240,7 +338,7 @@ class AuthRepositoryImplRefreshSessionTest {
         val repository = AuthRepositoryImpl(
             userPreference = userPreference,
             apiService = FakeApiService(
-                getUserProfileBlock = {
+                getUserProfileBlock = { _ ->
                     throw httpException(
                         code = 500,
                         error = ErrorResponse(success = false, message = "server down", code = "SERVER_ERROR")
@@ -287,7 +385,7 @@ class AuthRepositoryImplRefreshSessionTest {
         val repository = AuthRepositoryImpl(
             userPreference = userPreference,
             apiService = FakeApiService(
-                getUserProfileBlock = {
+                getUserProfileBlock = { _ ->
                     throw IOException("timeout")
                 }
             ),
@@ -310,7 +408,7 @@ class AuthRepositoryImplRefreshSessionTest {
         val repository = AuthRepositoryImpl(
             userPreference = userPreference,
             apiService = FakeApiService(
-                getUserProfileBlock = {
+                getUserProfileBlock = { _ ->
                     throw IllegalStateException("boom")
                 }
             ),
@@ -336,7 +434,7 @@ class AuthRepositoryImplRefreshSessionTest {
         val repository = AuthRepositoryImpl(
             userPreference = userPreference,
             apiService = FakeApiService(
-                getUserProfileBlock = {
+                getUserProfileBlock = { _ ->
                     throw throwingRawHttpException(code = 500, error = IOException("body read failed"))
                 }
             ),
@@ -953,7 +1051,7 @@ private class CachedUserDao(
 
 private class FakeApiService(
     private val loginBlock: suspend (LoginRequest) -> LoginResponse = { throw NotImplementedError("login not configured in test") },
-    private val getUserProfileBlock: suspend () -> LoginResponse = { throw NotImplementedError("getUserProfile not configured in test") },
+    private val getUserProfileBlock: suspend (String?) -> LoginResponse = { throw NotImplementedError("getUserProfile not configured in test") },
     private val refreshBlock: suspend (RefreshSessionRequest) -> RefreshSessionResponse = { throw NotImplementedError("refresh not configured in test") }
 ) : ApiService {
     var lastRefreshRequest: RefreshSessionRequest? = null
@@ -962,8 +1060,8 @@ private class FakeApiService(
         return loginBlock(loginRequest)
     }
 
-    override suspend fun getUserProfile(): LoginResponse {
-        return getUserProfileBlock()
+    override suspend fun getUserProfile(bootstrapAuthRequest: String?): LoginResponse {
+        return getUserProfileBlock(bootstrapAuthRequest)
     }
 
     override suspend fun logout(): LogoutResponse {

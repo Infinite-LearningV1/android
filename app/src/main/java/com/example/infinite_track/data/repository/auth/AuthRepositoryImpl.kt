@@ -151,15 +151,23 @@ class AuthRepositoryImpl @Inject constructor(
      * @return Explicit sync outcome for success, unauthorized, or temporary failure
      */
     override suspend fun syncUserProfile(): ProfileSyncResult {
+        return syncUserProfile(bootstrapAuthRequest = null)
+    }
+
+    override suspend fun syncUserProfileForBootstrap(): ProfileSyncResult {
+        return syncUserProfile(bootstrapAuthRequest = ApiService.BOOTSTRAP_AUTH_REQUEST_VALUE)
+    }
+
+    private suspend fun syncUserProfile(bootstrapAuthRequest: String?): ProfileSyncResult {
         return try {
             val token = userPreference.getAuthToken().first()
 
             if (token.isBlank()) {
                 safeLogDebug("Profile sync skipped because auth token is missing")
-                return ProfileSyncResult.Unauthorized
+                return ProfileSyncResult.Unauthorized()
             }
 
-            val response = apiService.getUserProfile()
+            val response = apiService.getUserProfile(bootstrapAuthRequest)
             val user = response.data.toDomain()
             val userEntity = user.toEntity(userDao.getUserProfile()?.faceEmbedding)
             userDao.insertOrUpdateUserProfile(userEntity)
@@ -169,8 +177,9 @@ class AuthRepositoryImpl @Inject constructor(
             throw e
         } catch (e: HttpException) {
             if (e.code() == 401 || e.code() == 403) {
+                val reason = authFailureReasonFor(parseHttpErrorBodySafely(e)?.code)
                 safeLogDebug("Profile sync unauthorized: HTTP ${e.code()}")
-                ProfileSyncResult.Unauthorized
+                ProfileSyncResult.Unauthorized(reason)
             } else {
                 safeLogError("Profile sync failed with HTTP ${e.code()}", e)
                 ProfileSyncResult.TemporaryFailure(
@@ -279,31 +288,20 @@ class AuthRepositoryImpl @Inject constructor(
         val normalizedCode = errorBody?.code?.uppercase(Locale.ROOT)
         val message = errorBody?.message ?: "HTTP $statusCode"
 
-        val exception = when (normalizedCode) {
-            "AUTH_ACCESS_TOKEN_EXPIRED" -> AuthRefreshException(
+        val reason = authFailureReasonFor(normalizedCode)
+        val exception = when (reason) {
+            AuthRefreshFailureReason.ACCESS_EXPIRED -> AuthRefreshException(
                 kind = AuthRefreshFailureKind.TRANSIENT,
-                reason = AuthRefreshFailureReason.ACCESS_EXPIRED,
+                reason = reason,
                 message = message,
                 cause = httpException
             )
 
-            "AUTH_REFRESH_TOKEN_INVALID" -> AuthRefreshException(
+            AuthRefreshFailureReason.REFRESH_INVALID,
+            AuthRefreshFailureReason.REFRESH_REVOKED,
+            AuthRefreshFailureReason.INACTIVITY_EXPIRED -> AuthRefreshException(
                 kind = AuthRefreshFailureKind.NON_REFRESHABLE,
-                reason = AuthRefreshFailureReason.REFRESH_INVALID,
-                message = message,
-                cause = httpException
-            )
-
-            "AUTH_REFRESH_TOKEN_REVOKED" -> AuthRefreshException(
-                kind = AuthRefreshFailureKind.NON_REFRESHABLE,
-                reason = AuthRefreshFailureReason.REFRESH_REVOKED,
-                message = message,
-                cause = httpException
-            )
-
-            "AUTH_SESSION_INACTIVE", "INACTIVITY_TIMEOUT_48H" -> AuthRefreshException(
-                kind = AuthRefreshFailureKind.NON_REFRESHABLE,
-                reason = AuthRefreshFailureReason.INACTIVITY_EXPIRED,
+                reason = reason,
                 message = message,
                 cause = httpException
             )
@@ -318,6 +316,16 @@ class AuthRepositoryImpl @Inject constructor(
 
         safeLogDebug("Refresh session rejected: HTTP $statusCode, code=${normalizedCode ?: "UNKNOWN"}")
         return Result.failure(exception)
+    }
+
+    private fun authFailureReasonFor(code: String?): AuthRefreshFailureReason? {
+        return when (code?.uppercase(Locale.ROOT)) {
+            "AUTH_ACCESS_TOKEN_EXPIRED" -> AuthRefreshFailureReason.ACCESS_EXPIRED
+            "AUTH_REFRESH_TOKEN_INVALID" -> AuthRefreshFailureReason.REFRESH_INVALID
+            "AUTH_REFRESH_TOKEN_REVOKED" -> AuthRefreshFailureReason.REFRESH_REVOKED
+            "AUTH_SESSION_INACTIVE", "INACTIVITY_TIMEOUT_48H" -> AuthRefreshFailureReason.INACTIVITY_EXPIRED
+            else -> null
+        }
     }
 
     private fun parseHttpErrorBodySafely(httpException: HttpException): ErrorResponse? {
