@@ -131,6 +131,87 @@ class CheckSessionUseCaseTest {
     }
 
     @Test
+    fun `bootstrap retry sync unauthorized falls back to initial inactivity reason when retry omits reason`() = runBlocking {
+        val userPreference = createUserPreference().also {
+            it.saveSession("old-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+        }
+        val repository = FakeAuthRepository(
+            syncResults = mutableListOf(
+                ProfileSyncResult.Unauthorized(AuthRefreshFailureReason.INACTIVITY_EXPIRED),
+                ProfileSyncResult.Unauthorized()
+            ),
+            refreshSessionResult = Result.success(AuthRefreshResult("new-access", "new-refresh", "1")),
+            loggedInUser = sampleUser()
+        )
+        val sessionManager = SessionManager()
+
+        val result = createUseCase(repository, userPreference, sessionManager)()
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
+        assertEquals(SessionManager.ReauthReason.INACTIVITY_EXPIRED, sessionManager.reauthReason.value)
+        assertFalse(sessionManager.sessionExpired.value)
+        assertEquals(2, repository.refreshCallCount)
+        assertEquals(0, repository.syncCallCount)
+        assertEquals(2, repository.bootstrapSyncCallCount)
+    }
+
+    @Test
+    fun `bootstrap retry sync unauthorized falls back to initial refresh revoked reason when retry omits reason`() = runBlocking {
+        val userPreference = createUserPreference().also {
+            it.saveSession("old-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+        }
+        val repository = FakeAuthRepository(
+            syncResults = mutableListOf(
+                ProfileSyncResult.Unauthorized(AuthRefreshFailureReason.REFRESH_REVOKED),
+                ProfileSyncResult.Unauthorized()
+            ),
+            refreshSessionResult = Result.success(AuthRefreshResult("new-access", "new-refresh", "1")),
+            loggedInUser = sampleUser()
+        )
+        val sessionManager = SessionManager()
+
+        val result = createUseCase(repository, userPreference, sessionManager)()
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
+        assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
+        assertFalse(sessionManager.sessionExpired.value)
+        assertEquals(2, repository.refreshCallCount)
+        assertEquals(0, repository.syncCallCount)
+        assertEquals(2, repository.bootstrapSyncCallCount)
+    }
+
+    @Test
+    fun `bootstrap unauthorized uses initial inactivity reason when refresh failure is generic invalid`() = runBlocking {
+        val userPreference = createUserPreference()
+        val repository = FakeAuthRepository(
+            syncResults = mutableListOf(
+                ProfileSyncResult.Unauthorized(AuthRefreshFailureReason.INACTIVITY_EXPIRED)
+            ),
+            refreshSessionResult = Result.failure(
+                AuthRefreshException(
+                    kind = AuthRefreshFailureKind.NON_REFRESHABLE,
+                    reason = AuthRefreshFailureReason.REFRESH_INVALID,
+                    message = "invalid"
+                )
+            ),
+            loggedInUser = sampleUser()
+        )
+        val sessionManager = SessionManager()
+
+        val result = createUseCase(repository, userPreference, sessionManager)()
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
+        assertEquals(SessionManager.ReauthReason.INACTIVITY_EXPIRED, sessionManager.reauthReason.value)
+        assertFalse(sessionManager.sessionExpired.value)
+        assertEquals(1, repository.refreshCallCount)
+        assertEquals(0, repository.syncCallCount)
+        assertEquals(1, repository.bootstrapSyncCallCount)
+    }
+
+    @Test
     fun `bootstrap reports temporary failure on refresh transport failure while preserving cached session`() = runBlocking {
         val cachedUser = sampleUser()
         val userPreference = createUserPreference().also {

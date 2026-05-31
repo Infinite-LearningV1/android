@@ -84,7 +84,7 @@ class CheckSessionUseCase @Inject constructor(
     ): Result<UserModel> {
         return when (syncResult) {
             is ProfileSyncResult.Success -> Result.success(syncResult.user)
-            is ProfileSyncResult.Unauthorized -> handleUnauthorizedSync()
+            is ProfileSyncResult.Unauthorized -> handleUnauthorizedSync(syncResult.reason)
             is ProfileSyncResult.TemporaryFailure -> Result.failure(
                 SessionBootstrapFailure.TemporaryFailure(
                     cause = syncResult.cause,
@@ -94,14 +94,19 @@ class CheckSessionUseCase @Inject constructor(
         }
     }
 
-    private suspend fun handleUnauthorizedSync(): Result<UserModel> {
+    private suspend fun handleUnauthorizedSync(
+        initialReason: AuthRefreshFailureReason?
+    ): Result<UserModel> {
         val refreshResult = authRepository.refreshSession()
         if (refreshResult.isSuccess) {
             return when (val retrySyncResult = authRepository.syncUserProfileForBootstrap()) {
                 is ProfileSyncResult.Success -> Result.success(retrySyncResult.user)
                 is ProfileSyncResult.Unauthorized -> {
-                    val reason = retrySyncResult.reason?.let(::reauthReasonFor)
-                        ?: SessionManager.ReauthReason.REFRESH_INVALID
+                    val reason = reauthReasonFor(
+                        retrySyncResult.reason
+                            ?: initialReason
+                            ?: AuthRefreshFailureReason.REFRESH_INVALID
+                    )
                     sessionManager.recordBootstrapReauth(reason)
                     Result.failure(SessionBootstrapFailure.ReAuthRequired(reason))
                 }
@@ -114,16 +119,17 @@ class CheckSessionUseCase @Inject constructor(
             }
         }
 
-        return handleFailedRefresh(refreshResult)
+        return handleFailedRefresh(refreshResult, initialReason)
     }
 
     private fun handleFailedRefresh(
-        refreshResult: Result<*>
+        refreshResult: Result<*>,
+        initialReason: AuthRefreshFailureReason? = null
     ): Result<UserModel> {
         val refreshException = refreshResult.exceptionOrNull() as? AuthRefreshException
         return when (refreshException?.kind) {
             AuthRefreshFailureKind.NON_REFRESHABLE -> {
-                val reason = reauthReasonFor(refreshException.reason)
+                val reason = reauthReasonFor(preferredUnauthorizedReason(refreshException.reason, initialReason))
                 sessionManager.recordBootstrapReauth(reason)
                 Result.failure(SessionBootstrapFailure.ReAuthRequired(reason))
             }
@@ -142,6 +148,19 @@ class CheckSessionUseCase @Inject constructor(
                     message = refreshException?.message
                 )
             )
+        }
+    }
+
+    private fun preferredUnauthorizedReason(
+        refreshFailureReason: AuthRefreshFailureReason,
+        initialReason: AuthRefreshFailureReason?
+    ): AuthRefreshFailureReason {
+        return when {
+            initialReason == null -> refreshFailureReason
+            refreshFailureReason == AuthRefreshFailureReason.REFRESH_INVALID ||
+                refreshFailureReason == AuthRefreshFailureReason.MISSING_REFRESH_TOKEN ||
+                refreshFailureReason == AuthRefreshFailureReason.UNKNOWN -> initialReason
+            else -> refreshFailureReason
         }
     }
 
