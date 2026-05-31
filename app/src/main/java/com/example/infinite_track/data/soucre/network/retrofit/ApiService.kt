@@ -20,6 +20,7 @@ import com.example.infinite_track.data.soucre.network.response.booking.BookingHi
 import com.example.infinite_track.data.soucre.network.response.booking.BookingResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
@@ -32,7 +33,9 @@ interface ApiService {
     suspend fun login(@Body loginRequest: LoginRequest): LoginResponse
 
     @GET("api/auth/me")
-    suspend fun getUserProfile(): LoginResponse
+    suspend fun getUserProfile(
+        @Header(HEADER_BOOTSTRAP_AUTH_REQUEST) bootstrapAuthRequest: String? = null
+    ): LoginResponse
 
     @POST("api/auth/logout")
     suspend fun logout(): LogoutResponse
@@ -94,4 +97,9 @@ interface ApiService {
     suspend fun submitWfaBooking(
         @Body request: BookingRequest
     ): BookingResponse
+
+    companion object {
+        const val HEADER_BOOTSTRAP_AUTH_REQUEST = "X-Bootstrap-Auth-Request"
+        const val BOOTSTRAP_AUTH_REQUEST_VALUE = "1"
+    }
 }

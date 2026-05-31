@@ -3,6 +3,7 @@ package com.example.infinite_track.di.auth
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRefreshException
@@ -178,14 +179,13 @@ class AuthRefreshInterceptorTest {
     }
 
     @Test
-    fun `bootstrap owned protected 401 does not arm global forced reauth`() = runBlocking {
+    fun `bootstrap marked protected 401 does not arm global forced reauth`() = runBlocking {
         val fixture = TestFixture(refreshResult = nonRefreshable(AuthRefreshFailureReason.REFRESH_INVALID))
         fixture.userPreference.saveSession("token-a", "10", "refresh-a")
-        fixture.sessionManager.beginBootstrapSession()
 
         val interceptor = fixture.createInterceptor()
         val chain = FakeChain(
-            request = request("https://example.com/api/user/profile"),
+            request = bootstrapRequest("https://example.com/api/user/profile"),
             proceedBlock = { req ->
                 Response.Builder()
                     .request(req)
@@ -210,18 +210,16 @@ class AuthRefreshInterceptorTest {
         assertEquals("token-a", fixture.userPreference.getAuthToken().first())
         assertEquals("refresh-a", fixture.userPreference.getRefreshToken().first())
         response.close()
-        fixture.sessionManager.endBootstrapSession()
     }
 
     @Test
-    fun `bootstrap owned non refreshable refresh failure does not arm global forced reauth`() = runBlocking {
+    fun `bootstrap marked non refreshable refresh failure does not arm global forced reauth`() = runBlocking {
         val fixture = TestFixture(refreshResult = nonRefreshable(AuthRefreshFailureReason.REFRESH_INVALID))
         fixture.userPreference.saveSession("token-a", "10", "refresh-a")
-        fixture.sessionManager.beginBootstrapSession()
 
         val interceptor = fixture.createInterceptor()
         val chain = FakeChain(
-            request = request("https://example.com/api/user/profile"),
+            request = bootstrapRequest("https://example.com/api/user/profile"),
             proceedBlock = { req -> okResponse(req, 401) }
         )
 
@@ -234,6 +232,27 @@ class AuthRefreshInterceptorTest {
         assertEquals(null, fixture.sessionManager.reauthReason.value)
         assertEquals("token-a", fixture.userPreference.getAuthToken().first())
         assertEquals("refresh-a", fixture.userPreference.getRefreshToken().first())
+        response.close()
+    }
+
+    @Test
+    fun `process wide bootstrap state without request marker still arms global forced reauth`() = runBlocking {
+        val fixture = TestFixture(refreshResult = nonRefreshable(AuthRefreshFailureReason.REFRESH_INVALID))
+        fixture.userPreference.saveSession("token-a", "10", "refresh-a")
+        fixture.sessionManager.beginBootstrapSession()
+
+        val interceptor = fixture.createInterceptor()
+        val chain = FakeChain(
+            request = request("https://example.com/api/attendance/status-today"),
+            proceedBlock = { req -> okResponse(req, 401) }
+        )
+
+        val response = interceptor.intercept(chain)
+
+        assertEquals(401, response.code)
+        assertEquals(1, fixture.refreshCalls.get())
+        assertEquals(1, fixture.logoutCalls.get())
+        assertTrue(fixture.sessionManager.sessionExpired.value)
         response.close()
         fixture.sessionManager.endBootstrapSession()
     }
@@ -469,6 +488,11 @@ class AuthRefreshInterceptorTest {
     }
 
     private fun request(url: String): Request = Request.Builder().url(url).build()
+
+    private fun bootstrapRequest(url: String): Request = Request.Builder()
+        .url(url)
+        .header(ApiService.HEADER_BOOTSTRAP_AUTH_REQUEST, ApiService.BOOTSTRAP_AUTH_REQUEST_VALUE)
+        .build()
 
     private fun okResponse(request: Request, code: Int): Response {
         return Response.Builder()

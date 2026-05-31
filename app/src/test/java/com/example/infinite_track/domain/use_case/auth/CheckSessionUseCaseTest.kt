@@ -28,7 +28,7 @@ import java.io.File
 class CheckSessionUseCaseTest {
 
     @Test
-    fun `bootstrap validates refresh once then syncs profile`() = runBlocking {
+    fun `bootstrap validates refresh once then uses bootstrap scoped profile sync`() = runBlocking {
         val user = sampleUser()
         val userPreference = createUserPreference().also {
             it.saveSession("old-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
@@ -45,7 +45,8 @@ class CheckSessionUseCaseTest {
         assertTrue(result.isSuccess)
         assertEquals(user, result.getOrNull())
         assertEquals(1, repository.refreshCallCount)
-        assertEquals(1, repository.syncCallCount)
+        assertEquals(0, repository.syncCallCount)
+        assertEquals(1, repository.bootstrapSyncCallCount)
         assertEquals(null, sessionManager.reauthReason.value)
     }
 
@@ -99,7 +100,8 @@ class CheckSessionUseCaseTest {
         assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
         assertFalse(sessionManager.sessionExpired.value)
         assertEquals(2, repository.refreshCallCount)
-        assertEquals(2, repository.syncCallCount)
+        assertEquals(0, repository.syncCallCount)
+        assertEquals(2, repository.bootstrapSyncCallCount)
     }
 
     @Test
@@ -201,6 +203,7 @@ class CheckSessionUseCaseTest {
         private val refreshThrowable: Throwable? = null
     ) : AuthRepository {
         var syncCallCount: Int = 0
+        var bootstrapSyncCallCount: Int = 0
         var refreshCallCount: Int = 0
 
         override suspend fun refreshSession(): Result<AuthRefreshResult> {
@@ -215,6 +218,12 @@ class CheckSessionUseCaseTest {
 
         override suspend fun syncUserProfile(): ProfileSyncResult {
             syncCallCount += 1
+            syncThrowable?.let { throw it }
+            return syncResults.removeFirst()
+        }
+
+        override suspend fun syncUserProfileForBootstrap(): ProfileSyncResult {
+            bootstrapSyncCallCount += 1
             syncThrowable?.let { throw it }
             return syncResults.removeFirst()
         }

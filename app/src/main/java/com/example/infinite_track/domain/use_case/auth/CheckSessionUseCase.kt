@@ -26,7 +26,7 @@ class CheckSessionUseCase @Inject constructor(
                 return bootstrapRefreshResult
             }
 
-            val syncResult = resolveSyncResult(authRepository.syncUserProfile())
+            val syncResult = resolveSyncResult(authRepository.syncUserProfileForBootstrap())
 
             if (syncResult.isFailure) {
                 return syncResult
@@ -97,7 +97,7 @@ class CheckSessionUseCase @Inject constructor(
     private suspend fun handleUnauthorizedSync(): Result<UserModel> {
         val refreshResult = authRepository.refreshSession()
         if (refreshResult.isSuccess) {
-            return when (val retrySyncResult = authRepository.syncUserProfile()) {
+            return when (val retrySyncResult = authRepository.syncUserProfileForBootstrap()) {
                 is ProfileSyncResult.Success -> Result.success(retrySyncResult.user)
                 ProfileSyncResult.Unauthorized -> {
                     val reason = SessionManager.ReauthReason.REFRESH_INVALID

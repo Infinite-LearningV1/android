@@ -151,6 +151,14 @@ class AuthRepositoryImpl @Inject constructor(
      * @return Explicit sync outcome for success, unauthorized, or temporary failure
      */
     override suspend fun syncUserProfile(): ProfileSyncResult {
+        return syncUserProfile(bootstrapAuthRequest = null)
+    }
+
+    override suspend fun syncUserProfileForBootstrap(): ProfileSyncResult {
+        return syncUserProfile(bootstrapAuthRequest = ApiService.BOOTSTRAP_AUTH_REQUEST_VALUE)
+    }
+
+    private suspend fun syncUserProfile(bootstrapAuthRequest: String?): ProfileSyncResult {
         return try {
             val token = userPreference.getAuthToken().first()
 
@@ -159,7 +167,7 @@ class AuthRepositoryImpl @Inject constructor(
                 return ProfileSyncResult.Unauthorized
             }
 
-            val response = apiService.getUserProfile()
+            val response = apiService.getUserProfile(bootstrapAuthRequest)
             val user = response.data.toDomain()
             val userEntity = user.toEntity(userDao.getUserProfile()?.faceEmbedding)
             userDao.insertOrUpdateUserProfile(userEntity)

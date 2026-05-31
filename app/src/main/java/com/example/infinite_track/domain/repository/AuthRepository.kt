@@ -31,6 +31,13 @@ interface AuthRepository {
     suspend fun syncUserProfile(): ProfileSyncResult
 
     /**
+     * Sync user profile as part of startup bootstrap.
+     * Implementations may mark the underlying request so interceptor-level forced reauth
+     * handling stays scoped to the bootstrap owner instead of the global dialog path.
+     */
+    suspend fun syncUserProfileForBootstrap(): ProfileSyncResult = syncUserProfile()
+
+    /**
      * Logout the current user
      * @return Result indicating success or failure
      */
