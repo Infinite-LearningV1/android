@@ -19,4 +19,4 @@ This follow-up does not absorb:
 - clean launch with invalid session shows one terminal path to login
 - `/api/auth/logout` occurs at most once during startup failure
 - POST_NOTIFICATIONS prompt does not overlap the invalid-session flow
-- offline startup still falls back to one local logout path without crash
+- offline startup follows the temporary/bootstrap-unavailable path without crash while preserving local auth state
