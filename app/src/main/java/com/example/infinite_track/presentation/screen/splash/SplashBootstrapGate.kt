@@ -7,8 +7,22 @@ internal class SplashBootstrapGate(
 ) {
     private var bootstrapRunning: Boolean = false
 
+    suspend fun runBootstrapIfIdle(block: suspend () -> Unit): Boolean {
+        if (!acquireBootstrap()) {
+            return false
+        }
+
+        try {
+            block()
+        } finally {
+            releaseBootstrap()
+        }
+
+        return true
+    }
+
     @Synchronized
-    fun beginBootstrap(): Boolean {
+    private fun acquireBootstrap(): Boolean {
         if (bootstrapRunning) {
             return false
         }
@@ -17,7 +31,7 @@ internal class SplashBootstrapGate(
     }
 
     @Synchronized
-    fun finishBootstrap() {
+    private fun releaseBootstrap() {
         bootstrapRunning = false
     }
 
