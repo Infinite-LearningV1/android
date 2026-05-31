@@ -79,14 +79,14 @@ class CheckSessionUseCaseTest {
     }
 
     @Test
-    fun `bootstrap retry sync unauthorized preserves reason without global session expired dialog flag`() = runBlocking {
+    fun `bootstrap retry sync unauthorized preserves refresh revoked reason without global session expired dialog flag`() = runBlocking {
         val userPreference = createUserPreference().also {
             it.saveSession("old-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
         }
         val repository = FakeAuthRepository(
             syncResults = mutableListOf(
-                ProfileSyncResult.Unauthorized,
-                ProfileSyncResult.Unauthorized
+                ProfileSyncResult.Unauthorized(),
+                ProfileSyncResult.Unauthorized(AuthRefreshFailureReason.REFRESH_REVOKED)
             ),
             refreshSessionResult = Result.success(AuthRefreshResult("new-access", "new-refresh", "1")),
             loggedInUser = sampleUser()
@@ -97,7 +97,33 @@ class CheckSessionUseCaseTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
-        assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
+        assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
+        assertFalse(sessionManager.sessionExpired.value)
+        assertEquals(2, repository.refreshCallCount)
+        assertEquals(0, repository.syncCallCount)
+        assertEquals(2, repository.bootstrapSyncCallCount)
+    }
+
+    @Test
+    fun `bootstrap retry sync unauthorized preserves inactivity reason without global session expired dialog flag`() = runBlocking {
+        val userPreference = createUserPreference().also {
+            it.saveSession("old-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+        }
+        val repository = FakeAuthRepository(
+            syncResults = mutableListOf(
+                ProfileSyncResult.Unauthorized(),
+                ProfileSyncResult.Unauthorized(AuthRefreshFailureReason.INACTIVITY_EXPIRED)
+            ),
+            refreshSessionResult = Result.success(AuthRefreshResult("new-access", "new-refresh", "1")),
+            loggedInUser = sampleUser()
+        )
+        val sessionManager = SessionManager()
+
+        val result = createUseCase(repository, userPreference, sessionManager)()
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
+        assertEquals(SessionManager.ReauthReason.INACTIVITY_EXPIRED, sessionManager.reauthReason.value)
         assertFalse(sessionManager.sessionExpired.value)
         assertEquals(2, repository.refreshCallCount)
         assertEquals(0, repository.syncCallCount)

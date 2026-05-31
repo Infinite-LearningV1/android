@@ -238,6 +238,75 @@ class AuthRepositoryImplRefreshSessionTest {
         val result = repository.syncUserProfile()
 
         assertTrue(result is ProfileSyncResult.Unauthorized)
+        assertEquals(null, (result as ProfileSyncResult.Unauthorized).reason)
+    }
+
+    @Test
+    fun `bootstrap profile sync preserves inactive session unauthorized reason from 401 auth code`() = runBlocking {
+        val userPreference = createUserPreference().also {
+            it.saveSession(token = "access-token", userId = "10", refreshToken = "refresh-token")
+        }
+        val repository = AuthRepositoryImpl(
+            userPreference = userPreference,
+            apiService = FakeApiService(
+                getUserProfileBlock = { _ ->
+                    throw httpException(
+                        code = 401,
+                        error = ErrorResponse(
+                            success = false,
+                            message = "session inactive for more than 48 hours",
+                            code = "AUTH_SESSION_INACTIVE"
+                        )
+                    )
+                }
+            ),
+            authSessionApiService = FakeAuthSessionApiService(
+                refreshSessionBlock = { unsupportedRefreshSession() }
+            ),
+            userDao = FakeUserDao()
+        )
+
+        val result = repository.syncUserProfileForBootstrap()
+
+        assertTrue(result is ProfileSyncResult.Unauthorized)
+        assertEquals(
+            AuthRefreshFailureReason.INACTIVITY_EXPIRED,
+            (result as ProfileSyncResult.Unauthorized).reason
+        )
+    }
+
+    @Test
+    fun `bootstrap profile sync preserves revoked refresh unauthorized reason from 401 auth code`() = runBlocking {
+        val userPreference = createUserPreference().also {
+            it.saveSession(token = "access-token", userId = "10", refreshToken = "refresh-token")
+        }
+        val repository = AuthRepositoryImpl(
+            userPreference = userPreference,
+            apiService = FakeApiService(
+                getUserProfileBlock = { _ ->
+                    throw httpException(
+                        code = 401,
+                        error = ErrorResponse(
+                            success = false,
+                            message = "refresh token revoked",
+                            code = "AUTH_REFRESH_TOKEN_REVOKED"
+                        )
+                    )
+                }
+            ),
+            authSessionApiService = FakeAuthSessionApiService(
+                refreshSessionBlock = { unsupportedRefreshSession() }
+            ),
+            userDao = FakeUserDao()
+        )
+
+        val result = repository.syncUserProfileForBootstrap()
+
+        assertTrue(result is ProfileSyncResult.Unauthorized)
+        assertEquals(
+            AuthRefreshFailureReason.REFRESH_REVOKED,
+            (result as ProfileSyncResult.Unauthorized).reason
+        )
     }
 
     @Test

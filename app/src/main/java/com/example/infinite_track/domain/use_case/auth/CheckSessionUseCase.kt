@@ -84,7 +84,7 @@ class CheckSessionUseCase @Inject constructor(
     ): Result<UserModel> {
         return when (syncResult) {
             is ProfileSyncResult.Success -> Result.success(syncResult.user)
-            ProfileSyncResult.Unauthorized -> handleUnauthorizedSync()
+            is ProfileSyncResult.Unauthorized -> handleUnauthorizedSync()
             is ProfileSyncResult.TemporaryFailure -> Result.failure(
                 SessionBootstrapFailure.TemporaryFailure(
                     cause = syncResult.cause,
@@ -99,8 +99,9 @@ class CheckSessionUseCase @Inject constructor(
         if (refreshResult.isSuccess) {
             return when (val retrySyncResult = authRepository.syncUserProfileForBootstrap()) {
                 is ProfileSyncResult.Success -> Result.success(retrySyncResult.user)
-                ProfileSyncResult.Unauthorized -> {
-                    val reason = SessionManager.ReauthReason.REFRESH_INVALID
+                is ProfileSyncResult.Unauthorized -> {
+                    val reason = retrySyncResult.reason?.let(::reauthReasonFor)
+                        ?: SessionManager.ReauthReason.REFRESH_INVALID
                     sessionManager.recordBootstrapReauth(reason)
                     Result.failure(SessionBootstrapFailure.ReAuthRequired(reason))
                 }
