@@ -110,6 +110,10 @@ class AuthRefreshInterceptor @Inject constructor(
 
     private fun triggerForcedReauth(reason: SessionManager.ReauthReason) {
         val sessionManager = sessionManagerProvider.get()
+        if (sessionManager.isBootstrapSessionInProgress) {
+            return
+        }
+
         if (sessionManager.beginSessionExpiryHandling()) {
             runBlocking {
                 logoutUseCaseProvider.get().invoke()

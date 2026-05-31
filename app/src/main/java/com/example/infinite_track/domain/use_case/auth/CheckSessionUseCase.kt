@@ -19,14 +19,14 @@ class CheckSessionUseCase @Inject constructor(
     private val sessionManager: SessionManager
 ) {
     suspend operator fun invoke(): Result<UserModel> {
+        sessionManager.beginBootstrapSession()
         return try {
-            val cachedUser = authRepository.getLoggedInUser().first()
-            val bootstrapRefreshResult = validateRefreshSessionIfAvailable(cachedUser)
+            val bootstrapRefreshResult = validateRefreshSessionIfAvailable()
             if (bootstrapRefreshResult != null) {
                 return bootstrapRefreshResult
             }
 
-            val syncResult = resolveSyncResult(authRepository.syncUserProfile(), cachedUser)
+            val syncResult = resolveSyncResult(authRepository.syncUserProfile())
 
             if (syncResult.isFailure) {
                 return syncResult
@@ -59,10 +59,12 @@ class CheckSessionUseCase @Inject constructor(
             Result.failure(e)
         } catch (e: Exception) {
             Result.failure(e)
+        } finally {
+            sessionManager.endBootstrapSession()
         }
     }
 
-    private suspend fun validateRefreshSessionIfAvailable(cachedUser: UserModel?): Result<UserModel>? {
+    private suspend fun validateRefreshSessionIfAvailable(): Result<UserModel>? {
         val token = userPreference.getAuthToken().first()
         val refreshToken = userPreference.getRefreshToken().first()
         if (token.isBlank() || refreshToken.isBlank()) {
@@ -74,16 +76,15 @@ class CheckSessionUseCase @Inject constructor(
             return null
         }
 
-        return handleFailedRefresh(refreshResult, cachedUser)
+        return handleFailedRefresh(refreshResult)
     }
 
     private suspend fun resolveSyncResult(
-        syncResult: ProfileSyncResult,
-        cachedUser: UserModel?
+        syncResult: ProfileSyncResult
     ): Result<UserModel> {
         return when (syncResult) {
             is ProfileSyncResult.Success -> Result.success(syncResult.user)
-            ProfileSyncResult.Unauthorized -> handleUnauthorizedSync(cachedUser)
+            ProfileSyncResult.Unauthorized -> handleUnauthorizedSync()
             is ProfileSyncResult.TemporaryFailure -> Result.failure(
                 SessionBootstrapFailure.TemporaryFailure(
                     cause = syncResult.cause,
@@ -93,7 +94,7 @@ class CheckSessionUseCase @Inject constructor(
         }
     }
 
-    private suspend fun handleUnauthorizedSync(cachedUser: UserModel?): Result<UserModel> {
+    private suspend fun handleUnauthorizedSync(): Result<UserModel> {
         val refreshResult = authRepository.refreshSession()
         if (refreshResult.isSuccess) {
             return when (val retrySyncResult = authRepository.syncUserProfile()) {
@@ -112,12 +113,11 @@ class CheckSessionUseCase @Inject constructor(
             }
         }
 
-        return handleFailedRefresh(refreshResult, cachedUser)
+        return handleFailedRefresh(refreshResult)
     }
 
     private fun handleFailedRefresh(
-        refreshResult: Result<*>,
-        cachedUser: UserModel?
+        refreshResult: Result<*>
     ): Result<UserModel> {
         val refreshException = refreshResult.exceptionOrNull() as? AuthRefreshException
         return when (refreshException?.kind) {
@@ -127,13 +127,12 @@ class CheckSessionUseCase @Inject constructor(
                 Result.failure(SessionBootstrapFailure.ReAuthRequired(reason))
             }
 
-            AuthRefreshFailureKind.TRANSPORT -> cachedUser?.let { Result.success(it) }
-                ?: Result.failure(
-                    SessionBootstrapFailure.TemporaryFailure(
-                        cause = refreshException,
-                        message = refreshException.message
-                    )
+            AuthRefreshFailureKind.TRANSPORT -> Result.failure(
+                SessionBootstrapFailure.TemporaryFailure(
+                    cause = refreshException,
+                    message = refreshException.message
                 )
+            )
 
             AuthRefreshFailureKind.TRANSIENT,
             null -> Result.failure(

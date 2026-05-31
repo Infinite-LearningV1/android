@@ -178,6 +178,67 @@ class AuthRefreshInterceptorTest {
     }
 
     @Test
+    fun `bootstrap owned protected 401 does not arm global forced reauth`() = runBlocking {
+        val fixture = TestFixture(refreshResult = nonRefreshable(AuthRefreshFailureReason.REFRESH_INVALID))
+        fixture.userPreference.saveSession("token-a", "10", "refresh-a")
+        fixture.sessionManager.beginBootstrapSession()
+
+        val interceptor = fixture.createInterceptor()
+        val chain = FakeChain(
+            request = request("https://example.com/api/user/profile"),
+            proceedBlock = { req ->
+                Response.Builder()
+                    .request(req)
+                    .protocol(Protocol.HTTP_1_1)
+                    .message("test")
+                    .code(401)
+                    .body(
+                        "{\"success\":false,\"code\":\"AUTH_REFRESH_TOKEN_INVALID\",\"message\":\"invalid\"}"
+                            .toResponseBody("application/json".toMediaType())
+                    )
+                    .build()
+            }
+        )
+
+        val response = interceptor.intercept(chain)
+
+        assertEquals(401, response.code)
+        assertEquals(0, fixture.refreshCalls.get())
+        assertEquals(0, fixture.logoutCalls.get())
+        assertFalse(fixture.sessionManager.sessionExpired.value)
+        assertEquals(null, fixture.sessionManager.reauthReason.value)
+        assertEquals("token-a", fixture.userPreference.getAuthToken().first())
+        assertEquals("refresh-a", fixture.userPreference.getRefreshToken().first())
+        response.close()
+        fixture.sessionManager.endBootstrapSession()
+    }
+
+    @Test
+    fun `bootstrap owned non refreshable refresh failure does not arm global forced reauth`() = runBlocking {
+        val fixture = TestFixture(refreshResult = nonRefreshable(AuthRefreshFailureReason.REFRESH_INVALID))
+        fixture.userPreference.saveSession("token-a", "10", "refresh-a")
+        fixture.sessionManager.beginBootstrapSession()
+
+        val interceptor = fixture.createInterceptor()
+        val chain = FakeChain(
+            request = request("https://example.com/api/user/profile"),
+            proceedBlock = { req -> okResponse(req, 401) }
+        )
+
+        val response = interceptor.intercept(chain)
+
+        assertEquals(401, response.code)
+        assertEquals(1, fixture.refreshCalls.get())
+        assertEquals(0, fixture.logoutCalls.get())
+        assertFalse(fixture.sessionManager.sessionExpired.value)
+        assertEquals(null, fixture.sessionManager.reauthReason.value)
+        assertEquals("token-a", fixture.userPreference.getAuthToken().first())
+        assertEquals("refresh-a", fixture.userPreference.getRefreshToken().first())
+        response.close()
+        fixture.sessionManager.endBootstrapSession()
+    }
+
+    @Test
     fun `401 on protected request with temporary refresh failure keeps auth state and does not force reauth`() = runBlocking {
         val fixture = TestFixture(refreshResult = transportFailure())
         fixture.userPreference.saveSession("token-a", "10", "refresh-a")

@@ -15,6 +15,7 @@ import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.ProfileSyncResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -102,7 +103,7 @@ class CheckSessionUseCaseTest {
     }
 
     @Test
-    fun `bootstrap keeps cached session on refresh transport failure`() = runBlocking {
+    fun `bootstrap reports temporary failure on refresh transport failure while preserving cached session`() = runBlocking {
         val cachedUser = sampleUser()
         val userPreference = createUserPreference().also {
             it.saveSession("old-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
@@ -122,9 +123,12 @@ class CheckSessionUseCaseTest {
 
         val result = createUseCase(repository, userPreference, sessionManager)()
 
-        assertTrue(result.isSuccess)
-        assertEquals(cachedUser, result.getOrNull())
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.TemporaryFailure)
         assertEquals(null, sessionManager.reauthReason.value)
+        assertFalse(sessionManager.sessionExpired.value)
+        assertEquals("old-access", userPreference.getAuthToken().first())
+        assertEquals("refresh", userPreference.getRefreshToken().first())
         assertEquals(1, repository.refreshCallCount)
         assertEquals(0, repository.syncCallCount)
     }
