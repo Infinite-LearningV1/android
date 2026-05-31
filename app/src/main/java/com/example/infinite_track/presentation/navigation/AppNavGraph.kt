@@ -12,13 +12,18 @@ import com.example.infinite_track.presentation.screen.auth.LoginScreen
 import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingScreen
 import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingViewModel
 import com.example.infinite_track.presentation.screen.splash.SplashScreen
+import com.example.infinite_track.presentation.screen.splash.SplashViewModel
 
 fun NavGraphBuilder.appNavGraph(
-    navController: NavHostController
+    navController: NavHostController,
+    splashViewModel: SplashViewModel
 ) {
     // Splash Screen - entry point of the app
     composable(Screen.Splash.route) {
-        SplashScreen(navController = navController)
+        SplashScreen(
+            navController = navController,
+            splashViewModel = splashViewModel
+        )
     }
 
     // Auth graph - contains login screen

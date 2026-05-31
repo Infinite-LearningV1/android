@@ -23,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.zIndex
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -33,6 +32,7 @@ import com.example.infinite_track.presentation.navigation.AppNavigator
 import com.example.infinite_track.presentation.navigation.NavigationEvent
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.navigation.appNavGraph
+import com.example.infinite_track.presentation.screen.splash.SplashViewModel
 import com.example.infinite_track.utils.DialogHelper
 import com.example.infinite_track.utils.LocalLocationPermissionHelper
 import com.example.infinite_track.utils.LocationPermissionHelper
@@ -45,7 +45,8 @@ fun InfiniteTrackApp(
     modifier: Modifier = Modifier,
     appNavigator: AppNavigator? = null,
     sessionManager: SessionManager? = null,
-    locationPermissionHelper: LocationPermissionHelper? = null
+    locationPermissionHelper: LocationPermissionHelper? = null,
+    splashViewModel: SplashViewModel
 ) {
     // Root level NavController - handles top-level navigation
     val navController = rememberNavController()
@@ -170,7 +171,10 @@ fun InfiniteTrackApp(
                             }
                         )
                     }
-                    appNavGraph(navController)
+                    appNavGraph(
+                        navController = navController,
+                        splashViewModel = splashViewModel
+                    )
                 }
             }
         }

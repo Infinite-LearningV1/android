@@ -92,7 +92,8 @@ class MainActivity : ComponentActivity() {
 				InfiniteTrackApp(
 					appNavigator = appNavigator,
 					sessionManager = sessionManager,
-					locationPermissionHelper = locationPermissionHelper
+					locationPermissionHelper = locationPermissionHelper,
+					splashViewModel = viewModel
 				)
 			}
 		}
