@@ -102,11 +102,7 @@ class CheckSessionUseCase @Inject constructor(
             return when (val retrySyncResult = authRepository.syncUserProfileForBootstrap()) {
                 is ProfileSyncResult.Success -> Result.success(retrySyncResult.user)
                 is ProfileSyncResult.Unauthorized -> {
-                    val reason = reauthReasonFor(
-                        retrySyncResult.reason
-                            ?: initialReason
-                            ?: AuthRefreshFailureReason.REFRESH_INVALID
-                    )
+                    val reason = reauthReasonFor(preferredUnauthorizedReason(retrySyncResult.reason, initialReason))
                     sessionManager.recordBootstrapReauth(reason)
                     Result.failure(SessionBootstrapFailure.ReAuthRequired(reason))
                 }
@@ -152,13 +148,14 @@ class CheckSessionUseCase @Inject constructor(
     }
 
     private fun preferredUnauthorizedReason(
-        refreshFailureReason: AuthRefreshFailureReason,
+        laterReason: AuthRefreshFailureReason?,
         initialReason: AuthRefreshFailureReason?
     ): AuthRefreshFailureReason {
+        val fallbackReason = laterReason ?: AuthRefreshFailureReason.REFRESH_INVALID
         return when {
-            initialReason == null -> refreshFailureReason
-            initialReason.isTerminalBootstrapReason() && refreshFailureReason.isGenericRefreshFailureReason() -> initialReason
-            else -> refreshFailureReason
+            initialReason == null -> fallbackReason
+            initialReason.isTerminalBootstrapReason() && fallbackReason.isGenericRefreshFailureReason() -> initialReason
+            else -> fallbackReason
         }
     }
 
