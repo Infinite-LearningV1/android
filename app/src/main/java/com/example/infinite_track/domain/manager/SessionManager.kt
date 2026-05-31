@@ -47,6 +47,10 @@ class SessionManager @Inject constructor() {
         _sessionExpired.value = true
     }
 
+    fun recordBootstrapReauth(reason: ReauthReason) {
+        _reauthReason.value = reason
+    }
+
     /**
      * Trigger session expiration
      * Dipanggil oleh AuthInterceptor ketika mendapat 401 error

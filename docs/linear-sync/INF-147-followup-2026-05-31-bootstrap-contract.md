@@ -16,7 +16,7 @@ This follow-up does not absorb:
 
 ## Runtime expectation after implementation
 
-- clean launch with invalid session shows one terminal path to login
+- clean launch with invalid session shows one splash-owned terminal path to login without the global session-expired dialog
 - `/api/auth/logout` occurs at most once during startup failure
 - POST_NOTIFICATIONS prompt does not overlap the invalid-session flow
 - offline startup follows the temporary/bootstrap-unavailable path without crash while preserving local auth state

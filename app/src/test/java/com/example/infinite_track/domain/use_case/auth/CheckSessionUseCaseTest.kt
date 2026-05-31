@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -70,8 +71,34 @@ class CheckSessionUseCaseTest {
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
         assertEquals(SessionManager.ReauthReason.INACTIVITY_EXPIRED, sessionManager.reauthReason.value)
+        assertFalse(sessionManager.sessionExpired.value)
         assertEquals(1, repository.refreshCallCount)
         assertEquals(0, repository.syncCallCount)
+    }
+
+    @Test
+    fun `bootstrap retry sync unauthorized preserves reason without global session expired dialog flag`() = runBlocking {
+        val userPreference = createUserPreference().also {
+            it.saveSession("old-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+        }
+        val repository = FakeAuthRepository(
+            syncResults = mutableListOf(
+                ProfileSyncResult.Unauthorized,
+                ProfileSyncResult.Unauthorized
+            ),
+            refreshSessionResult = Result.success(AuthRefreshResult("new-access", "new-refresh", "1")),
+            loggedInUser = sampleUser()
+        )
+        val sessionManager = SessionManager()
+
+        val result = createUseCase(repository, userPreference, sessionManager)()
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
+        assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
+        assertFalse(sessionManager.sessionExpired.value)
+        assertEquals(2, repository.refreshCallCount)
+        assertEquals(2, repository.syncCallCount)
     }
 
     @Test

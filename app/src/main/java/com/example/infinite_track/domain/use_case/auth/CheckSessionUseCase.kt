@@ -100,7 +100,7 @@ class CheckSessionUseCase @Inject constructor(
                 is ProfileSyncResult.Success -> Result.success(retrySyncResult.user)
                 ProfileSyncResult.Unauthorized -> {
                     val reason = SessionManager.ReauthReason.REFRESH_INVALID
-                    sessionManager.triggerForcedReauth(reason)
+                    sessionManager.recordBootstrapReauth(reason)
                     Result.failure(SessionBootstrapFailure.ReAuthRequired(reason))
                 }
                 is ProfileSyncResult.TemporaryFailure -> Result.failure(
@@ -123,7 +123,7 @@ class CheckSessionUseCase @Inject constructor(
         return when (refreshException?.kind) {
             AuthRefreshFailureKind.NON_REFRESHABLE -> {
                 val reason = reauthReasonFor(refreshException.reason)
-                sessionManager.triggerForcedReauth(reason)
+                sessionManager.recordBootstrapReauth(reason)
                 Result.failure(SessionBootstrapFailure.ReAuthRequired(reason))
             }
 
