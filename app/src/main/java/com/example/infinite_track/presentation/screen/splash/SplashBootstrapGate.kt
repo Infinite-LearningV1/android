@@ -1,11 +1,8 @@
 package com.example.infinite_track.presentation.screen.splash
 
-import com.example.infinite_track.domain.manager.SessionManager
-
-internal class SplashBootstrapGate(
-    private val sessionManager: SessionManager
-) {
+internal class SplashBootstrapGate {
     private var bootstrapRunning: Boolean = false
+    private var terminalLogoutCompleted: Boolean = false
 
     suspend fun runBootstrapIfIdle(block: suspend () -> Unit): Boolean {
         if (!acquireBootstrap()) {
@@ -27,6 +24,7 @@ internal class SplashBootstrapGate(
             return false
         }
         bootstrapRunning = true
+        terminalLogoutCompleted = false
         return true
     }
 
@@ -36,8 +34,17 @@ internal class SplashBootstrapGate(
     }
 
     suspend fun runTerminalLogoutIfOwner(logout: suspend () -> Unit) {
-        if (sessionManager.beginSessionExpiryHandling()) {
+        if (acquireTerminalLogout()) {
             logout()
         }
+    }
+
+    @Synchronized
+    private fun acquireTerminalLogout(): Boolean {
+        if (terminalLogoutCompleted) {
+            return false
+        }
+        terminalLogoutCompleted = true
+        return true
     }
 }

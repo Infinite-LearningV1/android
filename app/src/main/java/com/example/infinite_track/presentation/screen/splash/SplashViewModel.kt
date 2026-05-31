@@ -2,7 +2,6 @@ package com.example.infinite_track.presentation.screen.splash
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
 import com.example.infinite_track.domain.use_case.auth.SessionBootstrapFailure
@@ -24,11 +23,10 @@ sealed class SplashNavigationState {
 @HiltViewModel
 class SplashViewModel @Inject constructor(
     private val checkSessionUseCase: CheckSessionUseCase,
-    private val logoutUseCase: LogoutUseCase,
-    sessionManager: SessionManager
+    private val logoutUseCase: LogoutUseCase
 ) : ViewModel() {
 
-    private val bootstrapGate = SplashBootstrapGate(sessionManager)
+    private val bootstrapGate = SplashBootstrapGate()
 
     // Private mutable state flow for navigation state
     private val _navigationState =

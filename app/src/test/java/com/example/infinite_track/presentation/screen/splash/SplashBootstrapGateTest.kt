@@ -14,7 +14,7 @@ class SplashBootstrapGateTest {
 
     @Test
     fun `second bootstrap start is ignored until current cycle finishes`() = runTest {
-        val gate = SplashBootstrapGate(SessionManager())
+        val gate = SplashBootstrapGate()
         var bootstrapCalls = 0
 
         val firstRunStarted = gate.runBootstrapIfIdle {
@@ -38,7 +38,7 @@ class SplashBootstrapGateTest {
 
     @Test
     fun `bootstrap gate releases when block throws`() = runTest {
-        val gate = SplashBootstrapGate(SessionManager())
+        val gate = SplashBootstrapGate()
         val failure = IllegalStateException("boom")
         var bootstrapCalls = 0
 
@@ -62,7 +62,7 @@ class SplashBootstrapGateTest {
 
     @Test
     fun `bootstrap gate releases when block is cancelled`() = runTest {
-        val gate = SplashBootstrapGate(SessionManager())
+        val gate = SplashBootstrapGate()
         val cancellation = CancellationException("cancelled")
         var bootstrapCalls = 0
 
@@ -85,26 +85,35 @@ class SplashBootstrapGateTest {
     }
 
     @Test
-    fun `terminal logout runs only once when gate owns session expiry handling`() = runTest {
-        val gate = SplashBootstrapGate(SessionManager())
+    fun `terminal logout runs once per bootstrap cycle`() = runTest {
+        val gate = SplashBootstrapGate()
         var logoutCalls = 0
 
-        gate.runTerminalLogoutIfOwner { logoutCalls++ }
-        gate.runTerminalLogoutIfOwner { logoutCalls++ }
+        gate.runBootstrapIfIdle {
+            gate.runTerminalLogoutIfOwner { logoutCalls++ }
+            gate.runTerminalLogoutIfOwner { logoutCalls++ }
+        }
+        gate.runBootstrapIfIdle {
+            gate.runTerminalLogoutIfOwner { logoutCalls++ }
+        }
 
-        assertEquals(1, logoutCalls)
+        assertEquals(2, logoutCalls)
     }
 
     @Test
-    fun `terminal logout is skipped when another path already owns session expiry handling`() = runTest {
+    fun `bootstrap terminal logout does not consume runtime forced reauth guard`() = runTest {
         val sessionManager = SessionManager()
-        val gate = SplashBootstrapGate(sessionManager)
+        val gate = SplashBootstrapGate()
         var logoutCalls = 0
 
+        gate.runBootstrapIfIdle {
+            gate.runTerminalLogoutIfOwner { logoutCalls++ }
+        }
+
+        assertEquals(1, logoutCalls)
         assertTrue(sessionManager.beginSessionExpiryHandling())
-
-        gate.runTerminalLogoutIfOwner { logoutCalls++ }
-
-        assertEquals(0, logoutCalls)
+        sessionManager.triggerForcedReauth(SessionManager.ReauthReason.REFRESH_REVOKED)
+        assertTrue(sessionManager.sessionExpired.value)
+        assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
     }
 }

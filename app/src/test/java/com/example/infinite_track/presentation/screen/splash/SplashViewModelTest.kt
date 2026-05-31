@@ -80,8 +80,7 @@ class SplashViewModelTest {
                 userPreference = userPreference,
                 sessionManager = sessionManager
             ),
-            logoutUseCase = LogoutUseCase(repository),
-            sessionManager = sessionManager
+            logoutUseCase = LogoutUseCase(repository)
         )
     }
 
