@@ -6,11 +6,21 @@ import com.example.infinite_track.data.mapper.auth.toEntity
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.data.soucre.network.request.LogoutRequest
+import com.example.infinite_track.data.soucre.network.request.RefreshRequest
 import com.example.infinite_track.data.soucre.network.response.ErrorResponse
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
+import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
 import com.example.infinite_track.domain.model.auth.UserModel
+import com.example.infinite_track.domain.repository.AuthRefreshException
+import com.example.infinite_track.domain.repository.AuthRefreshFailureKind
+import com.example.infinite_track.domain.repository.AuthRefreshFailureReason
+import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
+import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.google.gson.Gson
+import com.google.gson.JsonSyntaxException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -18,6 +28,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import retrofit2.HttpException
 import java.io.IOException
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,8 +37,74 @@ import javax.inject.Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val userPreference: UserPreference,
     private val apiService: ApiService,
+    private val authSessionApiService: AuthSessionApiService,
     private val userDao: UserDao
 ) : AuthRepository {
+
+    override suspend fun refreshSession(): Result<AuthRefreshResult> {
+        return try {
+            val existingRefreshToken = userPreference.getRefreshToken().first()
+            if (existingRefreshToken.isBlank()) {
+                safeLogDebug("Refresh session skipped because refresh token is missing")
+                return Result.failure(
+                    AuthRefreshException(
+                        kind = AuthRefreshFailureKind.NON_REFRESHABLE,
+                        reason = AuthRefreshFailureReason.MISSING_REFRESH_TOKEN,
+                        message = "Refresh token is missing"
+                    )
+                )
+            }
+
+            val refreshData = apiService.refresh(
+                RefreshRequest(refreshToken = existingRefreshToken)
+            ).data
+
+            if (refreshData.token.isBlank() || refreshData.id <= 0) {
+                val error = IllegalStateException("Invalid refresh session payload")
+                safeLogError("Refresh session returned invalid payload", error)
+                return Result.failure(
+                    AuthRefreshException(
+                        kind = AuthRefreshFailureKind.TRANSIENT,
+                        reason = AuthRefreshFailureReason.INVALID_PAYLOAD,
+                        message = "Invalid refresh session payload",
+                        cause = error
+                    )
+                )
+            }
+
+            val refreshedUserId = refreshData.id.toString()
+            val refreshTokenToStore = refreshData.refreshToken?.takeIf { it.isNotBlank() } ?: existingRefreshToken
+
+            userPreference.saveSession(
+                token = refreshData.token,
+                userId = refreshedUserId,
+                refreshToken = refreshTokenToStore,
+                lastRefreshAt = System.currentTimeMillis()
+            )
+            Result.success(
+                AuthRefreshResult(
+                    token = refreshData.token,
+                    refreshToken = refreshTokenToStore,
+                    userId = refreshedUserId
+                )
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: HttpException) {
+            classifyRefreshHttpError(e)
+        } catch (e: IOException) {
+            safeLogError("Refresh session failed due to transport error", e)
+            Result.failure(
+                AuthRefreshException(
+                    kind = AuthRefreshFailureKind.TRANSPORT,
+                    reason = AuthRefreshFailureReason.TRANSPORT_ERROR,
+                    message = e.message ?: "Refresh transport error",
+                    cause = e
+                )
+            )
+        }
+    }
+
 
     /**
      * Login a user with provided credentials
@@ -36,18 +113,20 @@ class AuthRepositoryImpl @Inject constructor(
      */
     override suspend fun login(loginRequest: LoginRequest): Result<UserModel> {
         return try {
-            val response = apiService.login(loginRequest)
+            val loginResponse = apiService.login(loginRequest)
+            val loginData = loginResponse.data
+            val accessToken = loginData.token.takeIf { it.isNotBlank() }
+                ?: return Result.failure(IllegalStateException("Login response missing usable access token"))
+            val refreshToken = loginData.refreshToken?.takeIf { it.isNotBlank() }
 
-            // Save token and user ID to DataStore
             userPreference.saveSession(
-                token = response.data.token,
-                userId = response.data.id.toString()
+                token = accessToken,
+                userId = loginData.id.toString(),
+                refreshToken = refreshToken,
+                lastRefreshAt = System.currentTimeMillis()
             )
 
-            // Convert network response to domain model
-            val user = response.data.toDomain()
-
-            // Save user data to Room database
+            val user = loginData.toDomain()
             val userEntity = user.toEntity(userDao.getUserProfile()?.faceEmbedding)
             userDao.insertOrUpdateUserProfile(userEntity)
 
@@ -69,49 +148,42 @@ class AuthRepositoryImpl @Inject constructor(
 
     /**
      * Sync user profile from server
-     * @return Result containing User domain model
+     * @return Explicit sync outcome for success, unauthorized, or temporary failure
      */
-    override suspend fun syncUserProfile(): Result<UserModel> {
+    override suspend fun syncUserProfile(): ProfileSyncResult {
         return try {
-            // Check if user is logged in by getting token from DataStore
             val token = userPreference.getAuthToken().first()
 
-            if (token.isEmpty()) {
-                return Result.failure(Exception("No active session found"))
+            if (token.isBlank()) {
+                safeLogDebug("Profile sync skipped because auth token is missing")
+                return ProfileSyncResult.Unauthorized
             }
 
-            // User is logged in, fetch profile from API
             val response = apiService.getUserProfile()
-
-            // Convert to domain model
             val user = response.data.toDomain()
-
-            // Save to Room database
             val userEntity = user.toEntity(userDao.getUserProfile()?.faceEmbedding)
             userDao.insertOrUpdateUserProfile(userEntity)
 
-            Result.success(user)
+            ProfileSyncResult.Success(user)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: HttpException) {
-            // Try to return cached user if available
-            val cachedUser = userDao.getUserProfile()
-            if (cachedUser != null) {
-                return Result.success(cachedUser.toDomain())
+            if (e.code() == 401 || e.code() == 403) {
+                safeLogDebug("Profile sync unauthorized: HTTP ${e.code()}")
+                ProfileSyncResult.Unauthorized
+            } else {
+                safeLogError("Profile sync failed with HTTP ${e.code()}", e)
+                ProfileSyncResult.TemporaryFailure(
+                    cause = e,
+                    message = parseHttpErrorBodySafely(e)?.message ?: "Failed to sync profile data"
+                )
             }
-
-            Log.e("AuthRepositoryImpl", "HTTP Error during sync", e)
-            Result.failure(Exception("Failed to sync profile data"))
         } catch (e: IOException) {
-            // Try to return cached user if available
-            val cachedUser = userDao.getUserProfile()
-            if (cachedUser != null) {
-                return Result.success(cachedUser.toDomain())
-            }
-
-            Log.e("AuthRepositoryImpl", "Network Error during sync", e)
-            Result.failure(Exception("Network error, please check your internet connection."))
-        } catch (e: Exception) {
-            Log.e("AuthRepositoryImpl", "Unknown Error during sync", e)
-            Result.failure(e)
+            safeLogError("Profile sync failed due to network error", e)
+            ProfileSyncResult.TemporaryFailure(
+                cause = e,
+                message = "Network error, please check your internet connection."
+            )
         }
     }
 
@@ -122,22 +194,26 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun logout(): Result<Unit> {
         return try {
             try {
-                // Try to call logout API endpoint
-                apiService.logout()
-                Log.d("AuthRepositoryImpl", "Server logout successful")
+                val refreshToken = userPreference.getRefreshToken().first()
+                if (refreshToken.isNotBlank()) {
+                    apiService.logoutWithRefresh(LogoutRequest(refreshToken = refreshToken))
+                } else {
+                    authSessionApiService.logout()
+                }
+                safeLogDebug("Server logout successful")
             } catch (e: Exception) {
                 // Log the error but continue with local logout
-                Log.e("AuthRepositoryImpl", "Server logout failed, proceeding with local logout", e)
+                safeLogError("Server logout failed, proceeding with local logout", e)
             } finally {
                 // Always clear local data, regardless of API call result
                 userPreference.clearAuthData()
                 userDao.clearUserProfile()
-                Log.d("AuthRepositoryImpl", "Local data cleared successfully")
+                safeLogDebug("Local data cleared successfully")
             }
             Result.success(Unit)
         } catch (e: Exception) {
             // This would only happen if clearing local data fails
-            Log.e("AuthRepositoryImpl", "Critical error during logout", e)
+            safeLogError("Critical error during logout", e)
             Result.failure(e)
         }
     }
@@ -186,6 +262,75 @@ class AuthRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.e("AuthRepositoryImpl", "Error saving face embedding", e)
             Result.failure(e)
+        }
+    }
+
+    private fun safeLogDebug(message: String) {
+        runCatching { Log.d("AuthRepositoryImpl", message) }
+    }
+
+    private fun safeLogError(message: String, throwable: Throwable) {
+        runCatching { Log.e("AuthRepositoryImpl", message, throwable) }
+    }
+
+    private fun classifyRefreshHttpError(httpException: HttpException): Result<AuthRefreshResult> {
+        val statusCode = httpException.code()
+        val errorBody = parseHttpErrorBodySafely(httpException)
+        val normalizedCode = errorBody?.code?.uppercase(Locale.ROOT)
+        val message = errorBody?.message ?: "HTTP $statusCode"
+
+        val exception = when (normalizedCode) {
+            "AUTH_ACCESS_TOKEN_EXPIRED" -> AuthRefreshException(
+                kind = AuthRefreshFailureKind.TRANSIENT,
+                reason = AuthRefreshFailureReason.ACCESS_EXPIRED,
+                message = message,
+                cause = httpException
+            )
+
+            "AUTH_REFRESH_TOKEN_INVALID" -> AuthRefreshException(
+                kind = AuthRefreshFailureKind.NON_REFRESHABLE,
+                reason = AuthRefreshFailureReason.REFRESH_INVALID,
+                message = message,
+                cause = httpException
+            )
+
+            "AUTH_REFRESH_TOKEN_REVOKED" -> AuthRefreshException(
+                kind = AuthRefreshFailureKind.NON_REFRESHABLE,
+                reason = AuthRefreshFailureReason.REFRESH_REVOKED,
+                message = message,
+                cause = httpException
+            )
+
+            "AUTH_SESSION_INACTIVE", "INACTIVITY_TIMEOUT_48H" -> AuthRefreshException(
+                kind = AuthRefreshFailureKind.NON_REFRESHABLE,
+                reason = AuthRefreshFailureReason.INACTIVITY_EXPIRED,
+                message = message,
+                cause = httpException
+            )
+
+            else -> AuthRefreshException(
+                kind = AuthRefreshFailureKind.TRANSPORT,
+                reason = AuthRefreshFailureReason.TRANSPORT_ERROR,
+                message = message,
+                cause = httpException
+            )
+        }
+
+        safeLogDebug("Refresh session rejected: HTTP $statusCode, code=${normalizedCode ?: "UNKNOWN"}")
+        return Result.failure(exception)
+    }
+
+    private fun parseHttpErrorBodySafely(httpException: HttpException): ErrorResponse? {
+        val rawBody = httpException.response()?.errorBody()?.string().orEmpty()
+        if (rawBody.isBlank()) {
+            return null
+        }
+
+        return try {
+            Gson().fromJson(rawBody, ErrorResponse::class.java)
+        } catch (e: JsonSyntaxException) {
+            safeLogError("Failed to parse HTTP error body JSON", e)
+            null
         }
     }
 }

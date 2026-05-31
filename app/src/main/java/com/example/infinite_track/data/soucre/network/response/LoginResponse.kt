@@ -21,7 +21,8 @@ data class UserData(
     @SerializedName("photo") val photo: String,
     @SerializedName("photo_updated_at") val photoUpdatedAt: String,
     @SerializedName("location") val location: LocationData,
-    @SerializedName("token") val token: String
+    @SerializedName("token") val token: String,
+    @SerializedName("refresh_token") val refreshToken: String? = null
 )
 
 data class LocationData(

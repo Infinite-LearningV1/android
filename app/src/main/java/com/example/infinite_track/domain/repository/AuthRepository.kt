@@ -10,6 +10,14 @@ import kotlinx.coroutines.flow.Flow
  */
 interface AuthRepository {
     /**
+     * Attempt to refresh the current auth session.
+     *
+     * This does not perform interceptor retry orchestration. It only classifies
+     * refresh outcomes so higher layers can decide between re-auth and retry.
+     */
+    suspend fun refreshSession(): Result<AuthRefreshResult>
+
+    /**
      * Login a user with credentials
      * @param loginRequest The login credentials
      * @return Result containing User domain model if successful
@@ -18,9 +26,9 @@ interface AuthRepository {
 
     /**
      * Sync user profile from the server
-     * @return Result containing User domain model if successful
+     * @return Explicit sync outcome for success, unauthorized, or temporary failure
      */
-    suspend fun syncUserProfile(): Result<UserModel>
+    suspend fun syncUserProfile(): ProfileSyncResult
 
     /**
      * Logout the current user

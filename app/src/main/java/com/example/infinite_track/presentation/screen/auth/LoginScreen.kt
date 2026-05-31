@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -62,6 +63,7 @@ fun LoginScreen(
 
     // Collect login state using collectAsStateWithLifecycle for lifecycle awareness
     val loginState by loginViewModel.loginState.collectAsStateWithLifecycle()
+    val reauthBannerMessage by loginViewModel.reauthBannerMessage.collectAsStateWithLifecycle()
 
     // Handle login state changes
     LaunchedEffect(loginState) {
@@ -124,6 +126,21 @@ fun LoginScreen(
                         .padding(vertical = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    reauthBannerMessage?.let { message ->
+                        Text(
+                            text = message,
+                            color = Color.Red,
+                            style = body1,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp)
+                        )
+                        Button(onClick = { loginViewModel.dismissReauthBanner() }) {
+                            Text(text = "Tutup")
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
                     Image(
                         painter = painterResource(id = R.drawable.image_login),
                         contentDescription = "Login Image",

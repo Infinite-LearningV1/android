@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,7 +22,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.infinite_track.R
 import com.example.infinite_track.presentation.core.headline1
@@ -35,36 +35,32 @@ fun SplashScreen(
 ) {
     // Get the composition for the Lottie animation
     val composition by rememberLottieComposition(spec = LottieCompositionSpec.RawRes(R.raw.profile_sync))
-    val progress by animateLottieCompositionAsState(composition)
-
     // Collect the navigation state from the ViewModel
     val navigationState by splashViewModel.navigationState.collectAsState()
 
-    // Handle navigation based on animation progress and navigation state
-    LaunchedEffect(progress, navigationState) {
-        if (progress == 1f) {
-            when (navigationState) {
-                is SplashNavigationState.NavigateToHome -> {
-                    navController.navigate(Screen.Home.route) {
-                        popUpTo(navController.graph.startDestinationId) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
+    // Handle navigation based on navigation state
+    LaunchedEffect(navigationState) {
+        when (navigationState) {
+            is SplashNavigationState.NavigateToHome -> {
+                navController.navigate(Screen.Home.route) {
+                    popUpTo(navController.graph.startDestinationId) {
+                        saveState = true
                     }
-                }
-
-                is SplashNavigationState.NavigateToLogin -> {
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(navController.graph.startDestinationId) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                    }
-                }
-                // If still loading, wait for animation to complete
-                SplashNavigationState.Loading -> { /* Wait for sync to complete */
+                    launchSingleTop = true
                 }
             }
+
+            is SplashNavigationState.NavigateToLogin -> {
+                navController.navigate(Screen.Login.route) {
+                    popUpTo(navController.graph.startDestinationId) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                }
+            }
+
+            SplashNavigationState.Loading,
+            SplashNavigationState.TemporaryFailure -> Unit
         }
     }
 
@@ -87,12 +83,40 @@ fun SplashScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Text(
-                text = "Sync Profile",
-                style = headline1,
-                color = Blue_500,
-                textAlign = TextAlign.Center
-            )
+            if (navigationState is SplashNavigationState.TemporaryFailure) {
+                Text(
+                    text = "Unable to verify session",
+                    style = headline1,
+                    color = Blue_500,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(onClick = { splashViewModel.retrySessionCheck() }) {
+                    Text(text = "Retry")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(onClick = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                    }
+                }) {
+                    Text(text = "Login")
+                }
+            } else {
+                Text(
+                    text = "Sync Profile",
+                    style = headline1,
+                    color = Blue_500,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 

@@ -2,6 +2,8 @@ package com.example.infinite_track.di
 
 import com.example.infinite_track.data.face.FaceProcessor
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
+import com.example.infinite_track.data.soucre.local.preferences.UserPreference
+import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
 import com.example.infinite_track.domain.repository.AttendanceRepository
@@ -74,9 +76,16 @@ object UseCaseModule {
     @Provides
     fun provideCheckSessionUseCase(
         authRepository: AuthRepository,
-        generateAndSaveEmbeddingUseCase: GenerateAndSaveEmbeddingUseCase
+        generateAndSaveEmbeddingUseCase: GenerateAndSaveEmbeddingUseCase,
+        userPreference: UserPreference,
+        sessionManager: SessionManager
     ): CheckSessionUseCase {
-        return CheckSessionUseCase(authRepository, generateAndSaveEmbeddingUseCase)
+        return CheckSessionUseCase(
+            authRepository,
+            generateAndSaveEmbeddingUseCase,
+            userPreference,
+            sessionManager
+        )
     }
 
     // Provide the Logout Use Case

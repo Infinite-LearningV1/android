@@ -12,23 +12,62 @@ import javax.inject.Singleton
  */
 @Singleton
 class SessionManager @Inject constructor() {
+    enum class ReauthReason {
+        INACTIVITY_EXPIRED,
+        REFRESH_INVALID,
+        REFRESH_REVOKED,
+        NETWORK_OFFLINE_AT_REFRESH,
+        UNKNOWN
+    }
 
     private val _sessionExpired = MutableStateFlow(false)
     val sessionExpired: StateFlow<Boolean> = _sessionExpired.asStateFlow()
+
+    private val _reauthReason = MutableStateFlow<ReauthReason?>(null)
+    val reauthReason: StateFlow<ReauthReason?> = _reauthReason.asStateFlow()
+
+    private var sessionExpiryHandlingInProgress: Boolean = false
+
+    /**
+     * Try to acquire single-flight guard for session-expired handling.
+     * Returns true only for the first caller until resetSessionExpired is invoked.
+     */
+    @Synchronized
+    fun beginSessionExpiryHandling(): Boolean {
+        if (sessionExpiryHandlingInProgress) {
+            return false
+        }
+
+        sessionExpiryHandlingInProgress = true
+        return true
+    }
+
+    fun triggerForcedReauth(reason: ReauthReason) {
+        _reauthReason.value = reason
+        _sessionExpired.value = true
+    }
 
     /**
      * Trigger session expiration
      * Dipanggil oleh AuthInterceptor ketika mendapat 401 error
      */
+    @Deprecated("Use triggerForcedReauth(reason) so callers preserve the re-auth reason.")
     fun triggerSessionExpired() {
-        _sessionExpired.value = true
+        triggerForcedReauth(ReauthReason.UNKNOWN)
+    }
+
+    fun resetReauthReason() {
+        _reauthReason.value = null
     }
 
     /**
      * Reset session expiration state
      * Dipanggil setelah user dismiss dialog atau navigate ke login
      */
+    @Synchronized
     fun resetSessionExpired() {
         _sessionExpired.value = false
+        resetReauthReason()
+        sessionExpiryHandlingInProgress = false
     }
 }

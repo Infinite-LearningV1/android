@@ -5,12 +5,15 @@ import com.example.infinite_track.data.soucre.network.request.BookingRequest
 import com.example.infinite_track.data.soucre.network.request.CheckOutRequestDto
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.data.soucre.network.request.LogoutRequest
 import com.example.infinite_track.data.soucre.network.request.ProfileUpdateRequest
+import com.example.infinite_track.data.soucre.network.request.RefreshRequest
 import com.example.infinite_track.data.soucre.network.response.AttendanceHistoryResponse
 import com.example.infinite_track.data.soucre.network.response.AttendanceResponse
 import com.example.infinite_track.data.soucre.network.response.LoginResponse
 import com.example.infinite_track.data.soucre.network.response.LogoutResponse
 import com.example.infinite_track.data.soucre.network.response.ProfileUpdateResponse
+import com.example.infinite_track.data.soucre.network.response.RefreshResponse
 import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
 import com.example.infinite_track.data.soucre.network.response.WfaRecommendationResponse
 import com.example.infinite_track.data.soucre.network.response.booking.BookingHistoryResponse
@@ -33,6 +36,12 @@ interface ApiService {
 
     @POST("api/auth/logout")
     suspend fun logout(): LogoutResponse
+
+    @POST("api/auth/logout")
+    suspend fun logoutWithRefresh(@Body request: LogoutRequest): LogoutResponse
+
+    @POST("api/auth/refresh")
+    suspend fun refresh(@Body request: RefreshRequest): RefreshResponse
 
     @POST("api/attendance/check-in")
     suspend fun checkIn(
