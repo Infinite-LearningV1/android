@@ -14,6 +14,7 @@ import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
 import com.example.infinite_track.domain.use_case.auth.GenerateAndSaveEmbeddingUseCase
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -26,7 +27,8 @@ import org.junit.Ignore
 import org.junit.Test
 import java.io.File
 
-@Ignore("Requires Android Main looper in JVM; bootstrap behavior is covered by CheckSessionUseCaseTest.")
+@OptIn(ExperimentalCoroutinesApi::class)
+@Ignore("Requires Android Main looper in JVM; bootstrap behavior is covered by CheckSessionUseCaseTest and SplashBootstrapGateTest.")
 class SplashViewModelTest {
     @Test
     fun `navigates to home when bootstrap succeeds`() = runTest {
@@ -63,9 +65,11 @@ class SplashViewModelTest {
         }
     }
 
-    private fun createViewModel(repository: FakeAuthRepository): SplashViewModel {
-        val userPreference = createUserPreference()
-        val sessionManager = SessionManager()
+    private fun createViewModel(
+        repository: FakeAuthRepository,
+        userPreference: UserPreference = createUserPreference(),
+        sessionManager: SessionManager = SessionManager()
+    ): SplashViewModel {
         return SplashViewModel(
             checkSessionUseCase = CheckSessionUseCase(
                 authRepository = repository,
@@ -77,7 +81,7 @@ class SplashViewModelTest {
                 sessionManager = sessionManager
             ),
             logoutUseCase = LogoutUseCase(repository),
-            context = ContextWrapper(null)
+            sessionManager = sessionManager
         )
     }
 
