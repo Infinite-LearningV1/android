@@ -43,4 +43,28 @@ class StartupNotificationPermissionPolicyTest {
 
         assertFalse(shouldRequest)
     }
+
+    @Test
+    fun `does not request post notifications below Android 13`() {
+        val shouldRequest = shouldRequestPostNotifications(
+            sdkInt = Build.VERSION_CODES.S_V2,
+            alreadyRequestedThisLaunch = false,
+            isGranted = false,
+            navigationState = SplashNavigationState.NavigateToHome
+        )
+
+        assertFalse(shouldRequest)
+    }
+
+    @Test
+    fun `does not request post notifications when already granted`() {
+        val shouldRequest = shouldRequestPostNotifications(
+            sdkInt = Build.VERSION_CODES.TIRAMISU,
+            alreadyRequestedThisLaunch = false,
+            isGranted = true,
+            navigationState = SplashNavigationState.NavigateToHome
+        )
+
+        assertFalse(shouldRequest)
+    }
 }

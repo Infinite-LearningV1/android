@@ -2,6 +2,7 @@ package com.example.infinite_track.presentation.main
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -13,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.repository.LocalizationRepository
 import com.example.infinite_track.presentation.navigation.AppNavigator
@@ -25,6 +27,7 @@ import com.example.infinite_track.utils.updateAppLanguage
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 @AndroidEntryPoint
@@ -49,6 +52,8 @@ class MainActivity : ComponentActivity() {
 
 	private val requestNotificationPermission =
 		registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
+
+	private var notificationPermissionRequestedThisLaunch = false
 
 	@ExperimentalGetImage
 	override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,7 +83,7 @@ class MainActivity : ComponentActivity() {
 		// Create notification channel untuk geofencing
 		NotificationHelper.createNotificationChannel(this)
 
-		requestPostNotificationsIfNeeded()
+		observeStartupNotificationPermissionPrompt()
 
 		setContent {
 			Infinite_TrackTheme {
@@ -109,15 +114,28 @@ class MainActivity : ComponentActivity() {
 		}
 	}
 
-	private fun requestPostNotificationsIfNeeded() {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-			val granted = ContextCompat.checkSelfPermission(
-				this,
-				Manifest.permission.POST_NOTIFICATIONS
-			) == android.content.pm.PackageManager.PERMISSION_GRANTED
-			if (!granted) {
-				requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+	private fun observeStartupNotificationPermissionPrompt() {
+		lifecycleScope.launch {
+			viewModel.navigationState.collect { navigationState ->
+				requestPostNotificationsIfPolicyAllows(navigationState)
 			}
+		}
+	}
+
+	private fun requestPostNotificationsIfPolicyAllows(navigationState: SplashNavigationState) {
+		val granted = ContextCompat.checkSelfPermission(
+			this,
+			Manifest.permission.POST_NOTIFICATIONS
+		) == PackageManager.PERMISSION_GRANTED
+
+		if (shouldRequestPostNotifications(
+				sdkInt = Build.VERSION.SDK_INT,
+				alreadyRequestedThisLaunch = notificationPermissionRequestedThisLaunch,
+				isGranted = granted,
+				navigationState = navigationState
+			)) {
+			notificationPermissionRequestedThisLaunch = true
+			requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
 		}
 	}
 }
