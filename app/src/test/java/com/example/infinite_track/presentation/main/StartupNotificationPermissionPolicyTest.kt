@@ -67,4 +67,22 @@ class StartupNotificationPermissionPolicyTest {
 
         assertFalse(shouldRequest)
     }
+
+    @Test
+    fun `restores already requested guard after activity recreation`() {
+        val alreadyRequested = restoreNotificationPermissionRequestedThisLaunch(
+            savedAlreadyRequestedThisLaunch = true
+        )
+
+        assertTrue(alreadyRequested)
+    }
+
+    @Test
+    fun `defaults already requested guard to false without saved value`() {
+        val alreadyRequested = restoreNotificationPermissionRequestedThisLaunch(
+            savedAlreadyRequestedThisLaunch = null
+        )
+
+        assertFalse(alreadyRequested)
+    }
 }

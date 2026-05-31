@@ -66,6 +66,8 @@ class MainActivity : ComponentActivity() {
 		}
 
 		super.onCreate(savedInstanceState)
+		notificationPermissionRequestedThisLaunch =
+			restoreNotificationPermissionRequestedThisLaunch(savedInstanceState)
 		enableEdgeToEdge()
 
 		// Apply saved language before composing UI
@@ -97,6 +99,14 @@ class MainActivity : ComponentActivity() {
 
 		// Handle intent saat aplikasi pertama kali dibuka dari notifikasi
 		handleIntent(intent)
+	}
+
+	override fun onSaveInstanceState(outState: Bundle) {
+		super.onSaveInstanceState(outState)
+		saveNotificationPermissionRequestedThisLaunch(
+			outState,
+			notificationPermissionRequestedThisLaunch
+		)
 	}
 
 	override fun onNewIntent(intent: Intent) {
