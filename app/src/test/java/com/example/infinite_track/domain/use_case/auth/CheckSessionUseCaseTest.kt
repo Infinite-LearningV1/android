@@ -1,12 +1,18 @@
 package com.example.infinite_track.domain.use_case.auth
 
 import android.content.ContextWrapper
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.example.infinite_track.data.face.FaceProcessor
+import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.model.auth.UserModel
+import com.example.infinite_track.domain.repository.AuthRefreshException
+import com.example.infinite_track.domain.repository.AuthRefreshFailureKind
+import com.example.infinite_track.domain.repository.AuthRefreshFailureReason
+import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.ProfileSyncResult
-import com.example.infinite_track.domain.repository.RefreshSessionResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -15,215 +21,96 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import java.io.File
 
 class CheckSessionUseCaseTest {
 
     @Test
-    fun `bootstrap does not refresh after non-auth sync failure`() = runBlocking {
-        val repository = FakeAuthRepository(
-            syncResults = mutableListOf(
-                ProfileSyncResult.TemporaryFailure(Exception("network down"))
-            ),
-            refreshSessionResult = RefreshSessionResult.TemporaryFailure("timeout")
-        )
-
-        val useCase = createUseCase(repository)
-
-        val result = useCase()
-
-        assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.TemporaryFailure)
-        assertEquals(0, repository.refreshCallCount)
-    }
-
-    @Test
-    fun `bootstrap refreshes after unauthorized sync failure`() = runBlocking {
-        val repository = FakeAuthRepository(
-            syncResults = mutableListOf(ProfileSyncResult.Unauthorized),
-            refreshSessionResult = RefreshSessionResult.ReAuthRequired.InvalidOrRevoked
-        )
-
-        val useCase = createUseCase(repository)
-
-        val result = useCase()
-
-        assertTrue(result.isFailure)
-        val exception = result.exceptionOrNull()
-        assertTrue(exception is SessionBootstrapFailure.ReAuthRequired)
-        assertEquals(
-            RefreshSessionResult.ReAuthRequired.InvalidOrRevoked,
-            (exception as SessionBootstrapFailure.ReAuthRequired).reason
-        )
-        assertEquals(1, repository.refreshCallCount)
-    }
-
-    @Test
-    fun `retries sync after successful refresh and returns success`() = runBlocking {
+    fun `bootstrap validates refresh once then syncs profile`() = runBlocking {
         val user = sampleUser()
+        val userPreference = createUserPreference().also {
+            it.saveSession("old-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+        }
         val repository = FakeAuthRepository(
-            syncResults = mutableListOf(
-                ProfileSyncResult.Unauthorized,
-                ProfileSyncResult.Success(user)
-            ),
-            refreshSessionResult = RefreshSessionResult.Success,
-            loggedInUser = null
+            syncResults = mutableListOf(ProfileSyncResult.Success(user)),
+            refreshSessionResult = Result.success(AuthRefreshResult("new-access", "new-refresh", "1")),
+            loggedInUser = user
         )
+        val sessionManager = SessionManager()
 
-        val useCase = createUseCase(repository)
-
-        val result = useCase()
+        val result = createUseCase(repository, userPreference, sessionManager)()
 
         assertTrue(result.isSuccess)
         assertEquals(user, result.getOrNull())
-        assertEquals(2, repository.syncCallCount)
         assertEquals(1, repository.refreshCallCount)
-    }
-
-    @Test
-    fun `returns reauth required when second sync is still unauthorized after refresh success`() = runBlocking {
-        val repository = FakeAuthRepository(
-            syncResults = mutableListOf(
-                ProfileSyncResult.Unauthorized,
-                ProfileSyncResult.Unauthorized
-            ),
-            refreshSessionResult = RefreshSessionResult.Success,
-            loggedInUser = null
-        )
-
-        val useCase = createUseCase(repository)
-
-        val result = useCase()
-
-        assertTrue(result.isFailure)
-        val exception = result.exceptionOrNull()
-        assertTrue(exception is SessionBootstrapFailure.ReAuthRequired)
-        assertEquals(
-            RefreshSessionResult.ReAuthRequired.InvalidOrRevoked,
-            (exception as SessionBootstrapFailure.ReAuthRequired).reason
-        )
-        assertEquals(2, repository.syncCallCount)
-        assertEquals(1, repository.refreshCallCount)
-    }
-
-    @Test
-    fun `returns temporary bootstrap failure when refresh fails temporarily after unauthorized sync`() = runBlocking {
-        val refreshCause = IllegalStateException("timeout")
-        val repository = FakeAuthRepository(
-            syncResults = mutableListOf(ProfileSyncResult.Unauthorized),
-            refreshSessionResult = RefreshSessionResult.TemporaryFailure(
-                reason = "timeout",
-                cause = refreshCause
-            )
-        )
-
-        val useCase = createUseCase(repository)
-
-        val result = useCase()
-
-        assertTrue(result.isFailure)
-        val exception = result.exceptionOrNull()
-        assertTrue(exception is SessionBootstrapFailure.TemporaryFailure)
-        assertEquals(refreshCause, exception?.cause)
         assertEquals(1, repository.syncCallCount)
-        assertEquals(1, repository.refreshCallCount)
+        assertEquals(null, sessionManager.reauthReason.value)
     }
 
     @Test
-    fun `returns reauth required when refresh reports inactivity exceeded after unauthorized sync`() = runBlocking {
-        val repository = FakeAuthRepository(
-            syncResults = mutableListOf(ProfileSyncResult.Unauthorized),
-            refreshSessionResult = RefreshSessionResult.ReAuthRequired.InactivityExceeded
-        )
-
-        val useCase = createUseCase(repository)
-
-        val result = useCase()
-
-        assertTrue(result.isFailure)
-        val exception = result.exceptionOrNull()
-        assertTrue(exception is SessionBootstrapFailure.ReAuthRequired)
-        assertEquals(
-            RefreshSessionResult.ReAuthRequired.InactivityExceeded,
-            (exception as SessionBootstrapFailure.ReAuthRequired).reason
-        )
-        assertEquals(1, repository.syncCallCount)
-        assertEquals(1, repository.refreshCallCount)
-    }
-
-    @Test
-    fun `returns original embedding exception after successful sync`() = runBlocking {
-        val currentUser = sampleUser().copy(
-            photoUpdatedAt = "2025-12-01T00:00:00Z",
-            faceEmbedding = null
-        )
-        val syncedUser = sampleUser().copy(
-            photoUpdatedAt = "2026-01-01T00:00:00Z",
-            photoUrl = null
-        )
-        val repository = FakeAuthRepository(
-            syncResults = mutableListOf(ProfileSyncResult.Success(syncedUser)),
-            refreshSessionResult = RefreshSessionResult.Success,
-            loggedInUser = currentUser
-        )
-
-        val useCase = createUseCase(repository)
-
-        val result = useCase()
-
-        assertTrue(result.isFailure)
-        val exception = result.exceptionOrNull()
-        assertTrue(exception is IllegalArgumentException)
-        assertEquals("Photo URL cannot be null or empty", exception?.message)
-    }
-
-    @Test
-    fun `returns unexpected sync exception without wrapping it as bootstrap failure`() = runBlocking {
+    fun `bootstrap forced reauth on non refreshable refresh failure`() = runBlocking {
+        val userPreference = createUserPreference().also {
+            it.saveSession("old-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+        }
         val repository = FakeAuthRepository(
             syncResults = mutableListOf(),
-            refreshSessionResult = RefreshSessionResult.Success,
-            syncThrowable = IllegalStateException("boom")
+            refreshSessionResult = Result.failure(
+                AuthRefreshException(
+                    kind = AuthRefreshFailureKind.NON_REFRESHABLE,
+                    reason = AuthRefreshFailureReason.INACTIVITY_EXPIRED,
+                    message = "inactive"
+                )
+            ),
+            loggedInUser = sampleUser()
         )
-        val useCase = createUseCase(repository)
+        val sessionManager = SessionManager()
 
-        val result = useCase()
+        val result = createUseCase(repository, userPreference, sessionManager)()
 
         assertTrue(result.isFailure)
-        val exception = result.exceptionOrNull()
-        assertTrue(exception is IllegalStateException)
-        assertTrue(exception !is SessionBootstrapFailure.TemporaryFailure)
-        assertEquals("boom", exception?.message)
-        assertEquals(1, repository.syncCallCount)
-        assertEquals(0, repository.refreshCallCount)
+        assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
+        assertEquals(SessionManager.ReauthReason.INACTIVITY_EXPIRED, sessionManager.reauthReason.value)
+        assertEquals(1, repository.refreshCallCount)
+        assertEquals(0, repository.syncCallCount)
     }
 
     @Test
-    fun `returns unexpected refresh exception without wrapping it as bootstrap failure`() = runBlocking {
+    fun `bootstrap keeps cached session on refresh transport failure`() = runBlocking {
+        val cachedUser = sampleUser()
+        val userPreference = createUserPreference().also {
+            it.saveSession("old-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+        }
         val repository = FakeAuthRepository(
-            syncResults = mutableListOf(ProfileSyncResult.Unauthorized),
-            refreshSessionResult = RefreshSessionResult.Success,
-            refreshThrowable = IllegalStateException("refresh boom")
+            syncResults = mutableListOf(),
+            refreshSessionResult = Result.failure(
+                AuthRefreshException(
+                    kind = AuthRefreshFailureKind.TRANSPORT,
+                    reason = AuthRefreshFailureReason.TRANSPORT_ERROR,
+                    message = "offline"
+                )
+            ),
+            loggedInUser = cachedUser
         )
-        val useCase = createUseCase(repository)
+        val sessionManager = SessionManager()
 
-        val result = useCase()
+        val result = createUseCase(repository, userPreference, sessionManager)()
 
-        assertTrue(result.isFailure)
-        val exception = result.exceptionOrNull()
-        assertTrue(exception is IllegalStateException)
-        assertTrue(exception !is SessionBootstrapFailure.TemporaryFailure)
-        assertEquals("refresh boom", exception?.message)
-        assertEquals(1, repository.syncCallCount)
+        assertTrue(result.isSuccess)
+        assertEquals(cachedUser, result.getOrNull())
+        assertEquals(null, sessionManager.reauthReason.value)
         assertEquals(1, repository.refreshCallCount)
+        assertEquals(0, repository.syncCallCount)
     }
 
     @Test
     fun `rethrows cancellation exception from sync`() = runBlocking {
+        val userPreference = createUserPreference()
         val repository = FakeAuthRepository(
             syncResults = mutableListOf(),
-            refreshSessionResult = RefreshSessionResult.Success,
+            refreshSessionResult = Result.success(AuthRefreshResult("new-access", "new-refresh", "1")),
             syncThrowable = CancellationException("cancelled")
         )
-        val useCase = createUseCase(repository)
+        val useCase = createUseCase(repository, userPreference, SessionManager())
 
         try {
             useCase()
@@ -233,14 +120,26 @@ class CheckSessionUseCaseTest {
         }
     }
 
-    private fun createUseCase(repository: FakeAuthRepository): CheckSessionUseCase {
+    private fun createUseCase(
+        repository: FakeAuthRepository,
+        userPreference: UserPreference,
+        sessionManager: SessionManager
+    ): CheckSessionUseCase {
         return CheckSessionUseCase(
             authRepository = repository,
             generateAndSaveEmbeddingUseCase = GenerateAndSaveEmbeddingUseCase(
                 faceProcessor = FaceProcessor(appContext = ContextWrapper(null)),
                 authRepository = repository
-            )
+            ),
+            userPreference = userPreference,
+            sessionManager = sessionManager
         )
+    }
+
+    private fun createUserPreference(): UserPreference {
+        val testFile = File.createTempFile("check_session", ".preferences_pb").also { it.delete() }
+        val dataStore = PreferenceDataStoreFactory.create(produceFile = { testFile })
+        return UserPreference(dataStore)
     }
 
     private fun sampleUser(): UserModel = UserModel(
@@ -265,7 +164,7 @@ class CheckSessionUseCaseTest {
 
     private class FakeAuthRepository(
         private val syncResults: MutableList<ProfileSyncResult>,
-        private val refreshSessionResult: RefreshSessionResult,
+        private val refreshSessionResult: Result<AuthRefreshResult>,
         private val loggedInUser: UserModel? = null,
         private val syncThrowable: Throwable? = null,
         private val refreshThrowable: Throwable? = null
@@ -273,7 +172,7 @@ class CheckSessionUseCaseTest {
         var syncCallCount: Int = 0
         var refreshCallCount: Int = 0
 
-        override suspend fun refreshSession(): RefreshSessionResult {
+        override suspend fun refreshSession(): Result<AuthRefreshResult> {
             refreshCallCount += 1
             refreshThrowable?.let { throw it }
             return refreshSessionResult

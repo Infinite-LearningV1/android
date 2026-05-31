@@ -15,7 +15,7 @@ interface AuthRepository {
      * This does not perform interceptor retry orchestration. It only classifies
      * refresh outcomes so higher layers can decide between re-auth and retry.
      */
-    suspend fun refreshSession(): RefreshSessionResult
+    suspend fun refreshSession(): Result<AuthRefreshResult>
 
     /**
      * Login a user with credentials

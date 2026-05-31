@@ -1,6 +1,7 @@
 package com.example.infinite_track.presentation.screen.attendance.face
 
 import android.graphics.Bitmap
+import androidx.annotation.OptIn as AndroidxOptIn
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
@@ -32,6 +33,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +56,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.infinite_track.presentation.components.button.ButtonStateType
+import com.example.infinite_track.presentation.screen.attendance.FACE_VERIFICATION_RESULT_KEY
+import com.example.infinite_track.presentation.screen.attendance.FaceVerificationResult
 import com.example.infinite_track.presentation.components.button.ButtonStyle
 import com.example.infinite_track.presentation.components.button.StatefulButton
 import com.example.infinite_track.presentation.components.cameras.FaceBoundingBox
@@ -67,7 +71,19 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import androidx.camera.core.Preview as CameraPreview
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
+private fun NavController.finishFaceScanner(result: FaceVerificationResult) {
+    previousBackStackEntry?.savedStateHandle?.set(
+        FACE_VERIFICATION_RESULT_KEY,
+        result.savedStateValue
+    )
+    popBackStack()
+}
+
+private fun NavController.finishFaceScanner(state: LivenessState) {
+    finishFaceScanner(FaceVerificationResult.fromScannerExitState(state))
+}
+
+@kotlin.OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @ExperimentalGetImage
 @Composable
 fun FaceScannerScreen(
@@ -98,31 +114,20 @@ fun FaceScannerScreen(
         }
     }
 
+    BackHandler {
+        navController.finishFaceScanner(uiState.livenessState)
+    }
+
     // Handle navigation based on verification result
     LaunchedEffect(uiState.livenessState) {
         when (uiState.livenessState) {
             LivenessState.SUCCESS -> {
-                // Send success result and navigate back to proceed with attendance
-                navController.previousBackStackEntry?.savedStateHandle?.set(
-                    "face_verification_result",
-                    true
-                )
-                navController.popBackStack()
+                navController.finishFaceScanner(FaceVerificationResult.SUCCESS)
             }
 
-            LivenessState.TIMEOUT -> {
-                // TIMEOUT means user ran out of time - send failure and go back
-                navController.previousBackStackEntry?.savedStateHandle?.set(
-                    "face_verification_result",
-                    false
-                )
-                navController.popBackStack()
-            }
-
-            // FAILURE stays on screen to allow retry - no automatic navigation
-            LivenessState.FAILURE -> {
-                // Stay on screen, show retry button - user can try again
-            }
+            // FAILURE and TIMEOUT stay on screen to allow explicit retry or close
+            LivenessState.FAILURE,
+            LivenessState.TIMEOUT -> Unit
 
             else -> {
                 // Continue with current state - don't navigate anywhere
@@ -153,7 +158,7 @@ fun FaceScannerScreen(
                         viewModel.resetScanner()
                     },
                     onCloseClick = {
-                        navController.popBackStack()
+                        navController.finishFaceScanner(uiState.livenessState)
                     }
                 )
             }
@@ -165,7 +170,7 @@ fun FaceScannerScreen(
                         cameraPermissionState.launchPermissionRequest()
                     },
                     onCloseClick = {
-                        navController.popBackStack()
+                        navController.finishFaceScanner(uiState.livenessState)
                     }
                 )
             }
@@ -177,7 +182,7 @@ fun FaceScannerScreen(
                         cameraPermissionState.launchPermissionRequest()
                     },
                     onCloseClick = {
-                        navController.popBackStack()
+                        navController.finishFaceScanner(uiState.livenessState)
                     }
                 )
             }
@@ -488,9 +493,7 @@ private fun InstructionSection(
                 )
 
                 // Retry Button (show when failed or timeout) menggunakan StatefulButton
-                if (uiState.livenessState == LivenessState.FAILURE ||
-                    uiState.livenessState == LivenessState.TIMEOUT
-                ) {
+                if (FaceVerificationResult.fromScannerExitState(uiState.livenessState).allowsRetryOnScanner) {
                     StatefulButton(
                         text = "Coba Lagi",
                         onClick = onRetryClick,
@@ -506,7 +509,7 @@ private fun InstructionSection(
 }
 
 // Helper function to convert ImageProxy to Bitmap
-@ExperimentalGetImage
+@AndroidxOptIn(ExperimentalGetImage::class)
 private fun imageProxyToBitmap(imageProxy: ImageProxy): Bitmap? {
     return try {
         // Get the YUV_420_888 image from camera

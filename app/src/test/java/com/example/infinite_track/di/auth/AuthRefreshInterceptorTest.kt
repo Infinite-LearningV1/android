@@ -5,9 +5,12 @@ import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.model.auth.UserModel
+import com.example.infinite_track.domain.repository.AuthRefreshException
+import com.example.infinite_track.domain.repository.AuthRefreshFailureKind
+import com.example.infinite_track.domain.repository.AuthRefreshFailureReason
+import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.ProfileSyncResult
-import com.example.infinite_track.domain.repository.RefreshSessionResult
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -37,7 +40,7 @@ class AuthRefreshInterceptorTest {
 
     @Test
     fun `non 401 response returns normally without refresh`() = runBlocking {
-        val fixture = TestFixture(refreshResult = RefreshSessionResult.Success)
+        val fixture = TestFixture(refreshResult = refreshSuccess())
         fixture.userPreference.saveSession("token-a", "10", "refresh-a")
 
         val interceptor = fixture.createInterceptor()
@@ -57,7 +60,7 @@ class AuthRefreshInterceptorTest {
 
     @Test
     fun `401 on protected request refreshes once and retries with latest token`() = runBlocking {
-        val fixture = TestFixture(refreshResult = RefreshSessionResult.Success)
+        val fixture = TestFixture(refreshResult = refreshSuccess())
         fixture.userPreference.saveSession("old-access", "10", "old-refresh")
         fixture.onRefresh = {
             fixture.userPreference.saveSession("new-access", "10", "new-refresh")
@@ -91,7 +94,7 @@ class AuthRefreshInterceptorTest {
 
     @Test
     fun `auth endpoints do not get authorization bearer injected`() = runBlocking {
-        val fixture = TestFixture(refreshResult = RefreshSessionResult.Success)
+        val fixture = TestFixture(refreshResult = refreshSuccess())
         fixture.userPreference.saveSession("token-a", "10", "refresh-a")
         val interceptor = fixture.createInterceptor()
 
@@ -124,7 +127,7 @@ class AuthRefreshInterceptorTest {
 
     @Test
     fun `401 on protected request with reauth required clears session and triggers forced reauth`() = runBlocking {
-        val fixture = TestFixture(refreshResult = RefreshSessionResult.ReAuthRequired.InvalidOrRevoked)
+        val fixture = TestFixture(refreshResult = nonRefreshable(AuthRefreshFailureReason.REFRESH_INVALID))
         fixture.userPreference.saveSession("token-a", "10", "refresh-a")
 
         val interceptor = fixture.createInterceptor()
@@ -144,8 +147,39 @@ class AuthRefreshInterceptorTest {
     }
 
     @Test
+    fun `401 on refresh endpoint does not trigger forced reauth inside interceptor`() = runBlocking {
+        val fixture = TestFixture(refreshResult = nonRefreshable(AuthRefreshFailureReason.REFRESH_REVOKED))
+        fixture.userPreference.saveSession("token-a", "10", "refresh-a")
+
+        val interceptor = fixture.createInterceptor()
+        val chain = FakeChain(
+            request = request("https://example.com/api/auth/refresh"),
+            proceedBlock = { req ->
+                Response.Builder()
+                    .request(req)
+                    .protocol(Protocol.HTTP_1_1)
+                    .message("test")
+                    .code(401)
+                    .body(
+                        "{\"success\":false,\"code\":\"AUTH_REFRESH_TOKEN_REVOKED\",\"message\":\"revoked\"}"
+                            .toResponseBody("application/json".toMediaType())
+                    )
+                    .build()
+            }
+        )
+
+        val response = interceptor.intercept(chain)
+
+        assertEquals(401, response.code)
+        assertEquals(0, fixture.refreshCalls.get())
+        assertEquals(0, fixture.logoutCalls.get())
+        assertFalse(fixture.sessionManager.sessionExpired.value)
+        response.close()
+    }
+
+    @Test
     fun `401 on protected request with temporary refresh failure keeps auth state and does not force reauth`() = runBlocking {
-        val fixture = TestFixture(refreshResult = RefreshSessionResult.TemporaryFailure("timeout"))
+        val fixture = TestFixture(refreshResult = transportFailure())
         fixture.userPreference.saveSession("token-a", "10", "refresh-a")
 
         val interceptor = fixture.createInterceptor()
@@ -168,7 +202,7 @@ class AuthRefreshInterceptorTest {
 
     @Test
     fun `401 on protected request with unexpected refresh exception returns original 401 without logout`() = runBlocking {
-        val fixture = TestFixture(refreshResult = RefreshSessionResult.Success)
+        val fixture = TestFixture(refreshResult = refreshSuccess())
         fixture.userPreference.saveSession("token-a", "10", "refresh-a")
         fixture.onRefresh = {
             throw IllegalStateException("boom")
@@ -193,7 +227,7 @@ class AuthRefreshInterceptorTest {
 
     @Test
     fun `request retried at most once when retry response is still 401`() = runBlocking {
-        val fixture = TestFixture(refreshResult = RefreshSessionResult.Success)
+        val fixture = TestFixture(refreshResult = refreshSuccess())
         fixture.userPreference.saveSession("old-access", "10", "old-refresh")
         fixture.onRefresh = {
             fixture.userPreference.saveSession("new-access", "10", "new-refresh")
@@ -219,7 +253,7 @@ class AuthRefreshInterceptorTest {
 
     @Test
     fun `concurrent 401 protected requests use single refresh call and all retry`() = runBlocking {
-        val fixture = TestFixture(refreshResult = RefreshSessionResult.Success)
+        val fixture = TestFixture(refreshResult = refreshSuccess())
         fixture.userPreference.saveSession("old-access", "10", "old-refresh")
         fixture.onRefresh = {
             delay(120)
@@ -277,7 +311,7 @@ class AuthRefreshInterceptorTest {
 
     @Test
     fun `concurrent 401 protected requests with shared reauth required trigger logout once`() = runBlocking {
-        val fixture = TestFixture(refreshResult = RefreshSessionResult.ReAuthRequired.InvalidOrRevoked)
+        val fixture = TestFixture(refreshResult = nonRefreshable(AuthRefreshFailureReason.REFRESH_INVALID))
         fixture.userPreference.saveSession("token-a", "10", "refresh-a")
         fixture.onRefresh = {
             delay(120)
@@ -324,7 +358,7 @@ class AuthRefreshInterceptorTest {
 
     @Test
     fun `after session-expired reset later reauth wave can trigger logout again`() = runBlocking {
-        val fixture = TestFixture(refreshResult = RefreshSessionResult.ReAuthRequired.InvalidOrRevoked)
+        val fixture = TestFixture(refreshResult = nonRefreshable(AuthRefreshFailureReason.REFRESH_INVALID))
         fixture.userPreference.saveSession("token-a", "10", "refresh-a")
         fixture.onRefresh = {
             delay(120)
@@ -386,8 +420,32 @@ class AuthRefreshInterceptorTest {
     }
 }
 
+private fun refreshSuccess(): Result<AuthRefreshResult> = Result.success(
+    AuthRefreshResult(
+        token = "new-access-token-redacted",
+        refreshToken = "new-refresh-token-redacted",
+        userId = "10"
+    )
+)
+
+private fun nonRefreshable(reason: AuthRefreshFailureReason): Result<AuthRefreshResult> = Result.failure(
+    AuthRefreshException(
+        kind = AuthRefreshFailureKind.NON_REFRESHABLE,
+        reason = reason,
+        message = reason.value
+    )
+)
+
+private fun transportFailure(): Result<AuthRefreshResult> = Result.failure(
+    AuthRefreshException(
+        kind = AuthRefreshFailureKind.TRANSPORT,
+        reason = AuthRefreshFailureReason.TRANSPORT_ERROR,
+        message = "timeout"
+    )
+)
+
 private class TestFixture(
-    private val refreshResult: RefreshSessionResult
+    private val refreshResult: Result<AuthRefreshResult>
 ) {
     val refreshCalls = AtomicInteger(0)
     val logoutCalls = AtomicInteger(0)
@@ -402,7 +460,7 @@ private class TestFixture(
     val sessionManager = SessionManager()
 
     private val authRepository = object : AuthRepository {
-        override suspend fun refreshSession(): RefreshSessionResult {
+        override suspend fun refreshSession(): Result<AuthRefreshResult> {
             refreshCalls.incrementAndGet()
             onRefresh?.invoke()
             return refreshResult

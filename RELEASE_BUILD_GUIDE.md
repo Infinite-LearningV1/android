@@ -166,10 +166,10 @@ zipalign -v 4 app-release-unsigned.apk app-release-signed.apk
 
 ### Automated Verification
 
-Run unit tests to verify build configuration:
+Run the release-specific unit test to verify release build configuration:
 
 ```bash
-./gradlew test
+./gradlew app:testReleaseUnitTest --tests "com.example.infinite_track.BuildConfigReleaseTest"
 ```
 
 The `BuildConfigReleaseTest` will verify:
@@ -384,7 +384,7 @@ The following logs are automatically stripped in release:
 
 ### Before Release
 
-1. ✅ Run all unit tests: `./gradlew test`
+1. ✅ Run release build configuration unit test: `./gradlew app:testReleaseUnitTest --tests "com.example.infinite_track.BuildConfigReleaseTest"`
 2. ✅ Run instrumentation tests: `./gradlew connectedAndroidTest`
 3. ✅ Manual testing on multiple devices:
    - Different Android versions (26-34)

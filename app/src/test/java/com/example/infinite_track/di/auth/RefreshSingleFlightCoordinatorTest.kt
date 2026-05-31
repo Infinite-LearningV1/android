@@ -2,9 +2,9 @@ package com.example.infinite_track.di.auth
 
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
 import com.example.infinite_track.domain.model.auth.UserModel
+import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.ProfileSyncResult
-import com.example.infinite_track.domain.repository.RefreshSessionResult
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -25,10 +25,16 @@ class RefreshSingleFlightCoordinatorTest {
         val refreshCalls = AtomicInteger(0)
 
         val repository = object : AuthRepository {
-            override suspend fun refreshSession(): RefreshSessionResult {
+            override suspend fun refreshSession(): Result<AuthRefreshResult> {
                 refreshCalls.incrementAndGet()
                 delay(100)
-                return RefreshSessionResult.Success
+                return Result.success(
+                    AuthRefreshResult(
+                        token = "new-access-token-redacted",
+                        refreshToken = "new-refresh-token-redacted",
+                        userId = "147"
+                    )
+                )
             }
 
             override suspend fun login(loginRequest: LoginRequest): Result<UserModel> = Result.failure(NotImplementedError())
@@ -44,11 +50,12 @@ class RefreshSingleFlightCoordinatorTest {
 
         val results = coroutineScope {
             (1..10).map {
-                async { coordinator.refreshOrJoin() }
+                async { coordinator.runRefresh() }
             }.awaitAll()
         }
 
         assertEquals(1, refreshCalls.get())
-        assertTrue(results.all { it is RefreshSessionResult.Success })
+        assertTrue(results.all { it.isSuccess })
+        assertEquals(RefreshSingleFlightCoordinator.Status.IDLE, coordinator.status.value)
     }
 }

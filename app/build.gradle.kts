@@ -52,10 +52,14 @@ android {
             val ciKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
 
             if (!ciKeystorePath.isNullOrBlank()) {
+                require(!ciKeystorePassword.isNullOrBlank()) { "ANDROID_KEYSTORE_PASSWORD is required when ANDROID_KEYSTORE_PATH is set." }
+                require(!ciKeyAlias.isNullOrBlank()) { "ANDROID_KEY_ALIAS is required when ANDROID_KEYSTORE_PATH is set." }
+                require(!ciKeyPassword.isNullOrBlank()) { "ANDROID_KEY_PASSWORD is required when ANDROID_KEYSTORE_PATH is set." }
+
                 storeFile = file(ciKeystorePath)
-                storePassword = ciKeystorePassword ?: ""
-                keyAlias = ciKeyAlias ?: ""
-                keyPassword = ciKeyPassword ?: ""
+                storePassword = ciKeystorePassword
+                keyAlias = ciKeyAlias
+                keyPassword = ciKeyPassword
             }
         }
     }
