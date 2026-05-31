@@ -157,11 +157,19 @@ class CheckSessionUseCase @Inject constructor(
     ): AuthRefreshFailureReason {
         return when {
             initialReason == null -> refreshFailureReason
-            refreshFailureReason == AuthRefreshFailureReason.REFRESH_INVALID ||
-                refreshFailureReason == AuthRefreshFailureReason.MISSING_REFRESH_TOKEN ||
-                refreshFailureReason == AuthRefreshFailureReason.UNKNOWN -> initialReason
+            initialReason.isTerminalBootstrapReason() && refreshFailureReason.isGenericRefreshFailureReason() -> initialReason
             else -> refreshFailureReason
         }
+    }
+
+    private fun AuthRefreshFailureReason.isTerminalBootstrapReason(): Boolean {
+        return this == AuthRefreshFailureReason.INACTIVITY_EXPIRED ||
+            this == AuthRefreshFailureReason.REFRESH_REVOKED
+    }
+
+    private fun AuthRefreshFailureReason.isGenericRefreshFailureReason(): Boolean {
+        return this == AuthRefreshFailureReason.REFRESH_INVALID ||
+            this == AuthRefreshFailureReason.UNKNOWN
     }
 
     private fun reauthReasonFor(reason: AuthRefreshFailureReason): SessionManager.ReauthReason {

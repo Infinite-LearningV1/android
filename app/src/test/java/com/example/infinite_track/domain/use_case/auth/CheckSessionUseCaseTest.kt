@@ -212,6 +212,35 @@ class CheckSessionUseCaseTest {
     }
 
     @Test
+    fun `bootstrap unauthorized uses refresh missing token reason over generic initial access expired`() = runBlocking {
+        val userPreference = createUserPreference()
+        val repository = FakeAuthRepository(
+            syncResults = mutableListOf(
+                ProfileSyncResult.Unauthorized(AuthRefreshFailureReason.ACCESS_EXPIRED)
+            ),
+            refreshSessionResult = Result.failure(
+                AuthRefreshException(
+                    kind = AuthRefreshFailureKind.NON_REFRESHABLE,
+                    reason = AuthRefreshFailureReason.MISSING_REFRESH_TOKEN,
+                    message = "missing refresh token"
+                )
+            ),
+            loggedInUser = sampleUser()
+        )
+        val sessionManager = SessionManager()
+
+        val result = createUseCase(repository, userPreference, sessionManager)()
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
+        assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
+        assertFalse(sessionManager.sessionExpired.value)
+        assertEquals(1, repository.refreshCallCount)
+        assertEquals(0, repository.syncCallCount)
+        assertEquals(1, repository.bootstrapSyncCallCount)
+    }
+
+    @Test
     fun `bootstrap reports temporary failure on refresh transport failure while preserving cached session`() = runBlocking {
         val cachedUser = sampleUser()
         val userPreference = createUserPreference().also {
