@@ -14,3 +14,13 @@
 .cxx
 local.properties
 ./memory-bank
+# --- agent + worktree scratch (unblock cleanup 2026-06-15) ---
+.worktrees/
+.claude/
+# logs & crash dumps
+*.log
+*_pid*.log
+hs_err_pid*.log
+replay_pid*.log
+# IDE
+.idea/
