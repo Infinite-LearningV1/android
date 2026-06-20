@@ -14,7 +14,7 @@ Android is a trusted data-capture client, not the final source of truth. Backend
 - Current Android config: compile/target SDK 34, min SDK 26.
 - Primary language/runtime: Kotlin on Android with Jetpack Compose UI.
 - Primary branch roles:
-  - `develop` = MVP QA / human validation branch.
+  - `develop` = QA / human validation branch.
   - `master` = release/distribution branch.
 
 ## Agent Context Policy
@@ -23,7 +23,7 @@ Root `CLAUDE.md` is the operating contract for Android agents. The old root `mem
 
 Worktree-specific execution context should come from `docs/superpowers/specs/` and `docs/superpowers/plans/` in the active worktree, plus current repo/runtime evidence. If an old `memory-bank/` appears in historical worktrees, treat it as stale supporting context only, never as authoritative progress status.
 
-Do not recreate `memory-bank/` as the default context system. When context needs to be added, prefer updating `CLAUDE.md`, a focused spec, a focused plan, an ADR, CI/deploy docs, or Linear/Vibe Kanban sync docs depending on scope.
+Do not recreate `memory-bank/` as the default context system. When context needs to be added, prefer updating `CLAUDE.md`, `AGENTS.md`, a focused spec, a focused plan, an ADR, CI/deploy docs, or GitHub/Linear evidence docs depending on scope.
 
 ## Commands
 
@@ -134,7 +134,7 @@ RELEASE_BUILD_SUMMARY.md
 - Android captures intent, local runtime state, device signals, face/geofence signals, and user interaction state.
 - Android must not invent final attendance/reporting truth when backend state is unavailable.
 - Android auth/session behavior must follow the mobile contract from backend/shared context, including `X-Client-Type: mobile`, JSON refresh token, refresh endpoint semantics, and forced re-auth codes.
-- If Android UI state, local persistence, backend response, docs, Linear/Vibe Kanban, and runtime evidence disagree, mark it as `Mismatch` or `Needs Verification` instead of silently choosing one.
+- If Android UI state, local persistence, backend response, docs, GitHub/Linear evidence, and runtime evidence disagree, mark it as `Mismatch` or `Needs Verification` instead of silently choosing one.
 
 ## Shared Context (Cross-Repo)
 
@@ -147,7 +147,8 @@ Before cross-contract work, read the cockpit `shared-context` files:
 - `DECISIONS.md`
 - `RISK_REGISTER.md`
 
-If repo/runtime/Linear/docs differ, live repo/runtime is the highest factual source. For backend-owned semantics, backend contract/runtime wins; Android should request contract changes rather than invent downstream semantics.
+Official operating model: `Cowork -> Claude Desktop Host -> Claude Code CLI -> GitHub + Linear`.
+If repo/runtime/GitHub/Linear/docs differ, live repo/runtime is the highest factual source. For backend-owned semantics, backend contract/runtime wins; Android should request contract changes rather than invent downstream semantics.
 
 Done = diff/PR + fresh verification + review verdict. Missing one means `Needs Verification`, not Done.
 
@@ -203,7 +204,7 @@ Network/environment caveats to verify before changing:
 
 Navigation shell and role-visible action surfaces are user-facing and easy to regress. Verify active branch/worktree structure before applying older plans, because some historical plans may reference files not present on the current branch.
 
-## Execution Model (MVP)
+## Execution Model
 
 - Agent always works in an isolated branch inside a worktree.
 - The main branch held by the human/operator in the terminal remains `develop`.
@@ -311,7 +312,7 @@ A task is Done only when:
 - docs/ADR update need is handled or explicitly noted
 - review verdict exists
 - PR/review/release notes are available when the task produces code or deployment changes
-- Linear/Vibe Kanban/reporting status is synchronized only after repo evidence supports it
+- GitHub/Linear/reporting status is synchronized only after repo evidence supports it
 
 Do not claim completion based only on agent summary, code appearance, compile success for runtime-sensitive flows, or a single happy-path manual observation.
 

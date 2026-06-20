@@ -1,8 +1,8 @@
 # AGENTS — Android (skrisi/android)
 
-> Draft Fase 1. Tujuan placement: root repo Android sebagai `AGENTS.md`.
-> Merujuk ke NORTH_STAR_ROADMAP.md. CLAUDE.md repo tetap berlaku untuk governance + runtime gate.
-> Human-curated. Agent mengisi detail, tidak mengubah arah.
+> Active agent operating guide for the Infinite Track Android repository.
+> Official operating model: `Cowork -> Claude Desktop Host -> Claude Code CLI -> GitHub + Linear`.
+> `CLAUDE.md` remains the detailed governance and runtime gate; this file is the concise repo-local agent routing guide.
 
 ## Role repo
 Android = trusted data-capture client (Kotlin/Jetpack Compose). Login/session, attendance check-in/out, work mode, geofence, face verification, WFA booking, persistence lokal, Firebase distribution. BUKAN sumber kebenaran akhir; backend yang memutuskan.
@@ -22,6 +22,13 @@ Android = trusted data-capture client (Kotlin/Jetpack Compose). Login/session, a
 - Backend final truth; Android capture intent + sinyal device.
 - Release/distribution: Firebase App Distribution HANYA dari master. develop = integrasi + verifikasi manusia.
 - Promotion: feature/* atau worktree → review/PR → develop → master → Firebase.
+
+## ACTIVE_CONTEXT_FLOW
+- Cowork captures product collaboration and high-level intent.
+- Claude Desktop Host holds PM/cockpit context and decides routing.
+- Claude Code CLI executes repo work in isolated worktrees.
+- GitHub PRs and Linear issues are the active evidence/status systems.
+- Source-of-truth order: live repo/runtime > GitHub PR/diff/checks > Linear issue context > active cockpit docs > archived docs.
 
 ## TEST_STRATEGY
 - Compile: `./gradlew app:compileDebugKotlin`. Build: `app:assembleDebug` / `app:assembleRelease`.
