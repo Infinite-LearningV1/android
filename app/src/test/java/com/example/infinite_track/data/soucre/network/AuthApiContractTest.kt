@@ -4,11 +4,13 @@ import com.example.infinite_track.data.soucre.network.request.RefreshRequest
 import com.example.infinite_track.data.soucre.network.response.LoginResponse
 import com.example.infinite_track.data.soucre.network.response.RefreshErrorResponse
 import com.example.infinite_track.data.soucre.network.response.RefreshResponse
+import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
 import com.google.gson.Gson
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import retrofit2.http.Headers
 
 class AuthApiContractTest {
     private val gson = Gson()
@@ -162,5 +164,14 @@ class AuthApiContractTest {
         assertFalse(response.success)
         assertEquals("AUTH_SESSION_INACTIVE", response.code)
         assertEquals("Session inactive for more than 48 hours", response.message)
+    }
+
+    @Test
+    fun `auth session refresh endpoint uses canonical mobile client type header`() {
+        val method = AuthSessionApiService::class.java.declaredMethods.first { it.name == "refreshSession" }
+        val headers = method.getAnnotation(Headers::class.java)?.value?.toList().orEmpty()
+
+        assertTrue(headers.contains("X-Client-Type: mobile"))
+        assertFalse(headers.any { it.equals("X-Client-Type: android", ignoreCase = true) })
     }
 }
