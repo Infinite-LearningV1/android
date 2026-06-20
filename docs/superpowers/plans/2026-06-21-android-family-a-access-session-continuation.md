@@ -41,7 +41,8 @@
 - Modify `app/src/main/java/com/example/infinite_track/data/soucre/network/retrofit/AuthSessionApiService.kt`
   - Change hardcoded header to `X-Client-Type: mobile`.
 - Modify `app/src/test/java/com/example/infinite_track/data/soucre/network/AuthApiContractTest.kt`
-  - Add primary `data.auth.*` parsing tests, legacy fallback tests, and header annotation test.
+  - Add primary `data.auth.*` parsing tests and legacy fallback tests in Task 1.
+  - Add the header annotation test in Task 3 before changing the header.
 - Modify `app/src/test/java/com/example/infinite_track/data/repository/auth/AuthRepositoryImplRefreshSessionTest.kt`
   - Add repository tests for primary login/refresh payloads and auth-session refresh lane.
   - Update helper constructors for nullable legacy token plus optional auth payload.
@@ -81,13 +82,11 @@ import com.example.infinite_track.data.soucre.network.request.RefreshRequest
 import com.example.infinite_track.data.soucre.network.response.LoginResponse
 import com.example.infinite_track.data.soucre.network.response.RefreshErrorResponse
 import com.example.infinite_track.data.soucre.network.response.RefreshResponse
-import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
 import com.google.gson.Gson
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import retrofit2.http.Headers
 
 class AuthApiContractTest {
     private val gson = Gson()
@@ -227,18 +226,6 @@ class AuthApiContractTest {
     }
 
     @Test
-    fun `auth session refresh endpoint uses canonical mobile client type header`() {
-        val method = AuthSessionApiService::class.java.getMethod(
-            "refreshSession",
-            com.example.infinite_track.data.soucre.network.request.RefreshSessionRequest::class.java
-        )
-        val headers = method.getAnnotation(Headers::class.java)?.value?.toList().orEmpty()
-
-        assertTrue(headers.contains("X-Client-Type: mobile"))
-        assertFalse(headers.any { it.equals("X-Client-Type: android", ignoreCase = true) })
-    }
-
-    @Test
     fun `refresh error response parses auth code for 401 handling`() {
         val json = """
             {
@@ -265,7 +252,7 @@ Run:
 ./gradlew app:testDebugUnitTest --tests "com.example.infinite_track.data.soucre.network.AuthApiContractTest"
 ```
 
-Expected before implementation: FAIL with unresolved `resolvedAccessToken` / `resolvedRefreshToken`, missing `AuthPayload`, or header assertion failure. If Gradle exits before test execution with `Unable to establish loopback connection`, record environment-blocked verification and continue with the code changes.
+Expected before implementation: FAIL with unresolved `resolvedAccessToken` / `resolvedRefreshToken` or missing `AuthPayload`. If Gradle exits before test execution with `Unable to establish loopback connection`, record environment-blocked verification and continue with the code changes.
 
 - [ ] **Step 3: Add shared auth payload DTO**
 
@@ -351,7 +338,7 @@ Run:
 ./gradlew app:testDebugUnitTest --tests "com.example.infinite_track.data.soucre.network.AuthApiContractTest"
 ```
 
-Expected after DTO changes and before Task 3: token parsing tests PASS; header test FAIL while `AuthSessionApiService` still uses `android`. If the header is already corrected during this task, all tests PASS.
+Expected after DTO changes: all Task 1 contract parsing tests PASS. If Gradle loopback blocks execution, record environment-blocked verification.
 
 - [ ] **Step 7: Commit DTO and contract tests**
 
@@ -649,10 +636,35 @@ git commit -m "fix: prefer backend auth payload in Android session flow" \
 - Test: `app/src/test/java/com/example/infinite_track/di/auth/RefreshSingleFlightCoordinatorTest.kt`
 
 **Interfaces:**
-- Consumes: `AuthApiContractTest.auth session refresh endpoint uses canonical mobile client type header` from Task 1.
+- Consumes: `AuthApiContractTest` plus a header-focused contract test added in this task before changing the header.
 - Produces: `AuthSessionApiService.refreshSession()` annotation uses `@Headers("X-Client-Type: mobile")`.
 
-- [ ] **Step 1: Run the header contract test and verify failure before header change**
+- [ ] **Step 1: Add the header-focused contract test before changing the header**
+
+In `app/src/test/java/com/example/infinite_track/data/soucre/network/AuthApiContractTest.kt`, add these imports back:
+
+```kotlin
+import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
+import retrofit2.http.Headers
+```
+
+Then add this test method before changing the header:
+
+```kotlin
+@Test
+fun `auth session refresh endpoint uses canonical mobile client type header`() {
+    val method = AuthSessionApiService::class.java.getMethod(
+        "refreshSession",
+        com.example.infinite_track.data.soucre.network.request.RefreshSessionRequest::class.java
+    )
+    val headers = method.getAnnotation(Headers::class.java)?.value?.toList().orEmpty()
+
+    assertTrue(headers.contains("X-Client-Type: mobile"))
+    assertFalse(headers.any { it.equals("X-Client-Type: android", ignoreCase = true) })
+}
+```
+
+- [ ] **Step 2: Run the header contract test and verify failure before header change**
 
 Run:
 
@@ -662,7 +674,7 @@ Run:
 
 Expected before header change: FAIL because `AuthSessionApiService.refreshSession()` contains `X-Client-Type: android`.
 
-- [ ] **Step 2: Change auth-session client type header**
+- [ ] **Step 3: Change auth-session client type header**
 
 In `app/src/main/java/com/example/infinite_track/data/soucre/network/retrofit/AuthSessionApiService.kt`, replace:
 
@@ -676,7 +688,7 @@ with:
 @Headers("X-Client-Type: mobile")
 ```
 
-- [ ] **Step 3: Run header and orchestration tests**
+- [ ] **Step 4: Run header and orchestration tests**
 
 Run:
 
