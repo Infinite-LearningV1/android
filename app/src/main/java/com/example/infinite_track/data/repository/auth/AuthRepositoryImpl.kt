@@ -7,7 +7,7 @@ import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
 import com.example.infinite_track.data.soucre.network.request.LogoutRequest
-import com.example.infinite_track.data.soucre.network.request.RefreshRequest
+import com.example.infinite_track.data.soucre.network.request.RefreshSessionRequest
 import com.example.infinite_track.data.soucre.network.response.ErrorResponse
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
@@ -55,12 +55,12 @@ class AuthRepositoryImpl @Inject constructor(
                 )
             }
 
-            val refreshData = apiService.refresh(
-                RefreshRequest(refreshToken = existingRefreshToken)
+            val refreshData = authSessionApiService.refreshSession(
+                RefreshSessionRequest(refreshToken = existingRefreshToken)
             ).data
+            val accessToken = refreshData.resolvedAccessToken()
 
-            val accessToken = refreshData.resolvedAccessToken().takeIf { it.isNotBlank() }
-            if (accessToken == null || refreshData.id <= 0) {
+            if (accessToken.isBlank() || refreshData.id <= 0) {
                 val error = IllegalStateException("Invalid refresh session payload")
                 safeLogError("Refresh session returned invalid payload", error)
                 return Result.failure(
