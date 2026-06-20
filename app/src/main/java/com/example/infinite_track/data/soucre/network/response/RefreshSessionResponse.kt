@@ -11,9 +11,20 @@ data class RefreshResponse(
 
 data class AuthData(
     @SerializedName("id") val id: Int,
-    @SerializedName("token") val token: String,
-    @SerializedName("refresh_token") val refreshToken: String? = null
-)
+    @SerializedName("token") val token: String? = null,
+    @SerializedName("refresh_token") val refreshToken: String? = null,
+    @SerializedName("auth") val auth: AuthPayload? = null
+) {
+    fun resolvedAccessToken(): String {
+        return auth?.accessToken?.takeIf { it.isNotBlank() }
+            ?: token.orEmpty()
+    }
+
+    fun resolvedRefreshToken(): String? {
+        return auth?.refreshToken?.takeIf { it.isNotBlank() }
+            ?: refreshToken?.takeIf { it.isNotBlank() }
+    }
+}
 
 data class RefreshErrorResponse(
     @SerializedName("success") val success: Boolean,

@@ -59,7 +59,8 @@ class AuthRepositoryImpl @Inject constructor(
                 RefreshRequest(refreshToken = existingRefreshToken)
             ).data
 
-            if (refreshData.token.isBlank() || refreshData.id <= 0) {
+            val accessToken = refreshData.resolvedAccessToken().takeIf { it.isNotBlank() }
+            if (accessToken == null || refreshData.id <= 0) {
                 val error = IllegalStateException("Invalid refresh session payload")
                 safeLogError("Refresh session returned invalid payload", error)
                 return Result.failure(
@@ -73,17 +74,17 @@ class AuthRepositoryImpl @Inject constructor(
             }
 
             val refreshedUserId = refreshData.id.toString()
-            val refreshTokenToStore = refreshData.refreshToken?.takeIf { it.isNotBlank() } ?: existingRefreshToken
+            val refreshTokenToStore = refreshData.resolvedRefreshToken() ?: existingRefreshToken
 
             userPreference.saveSession(
-                token = refreshData.token,
+                token = accessToken,
                 userId = refreshedUserId,
                 refreshToken = refreshTokenToStore,
                 lastRefreshAt = System.currentTimeMillis()
             )
             Result.success(
                 AuthRefreshResult(
-                    token = refreshData.token,
+                    token = accessToken,
                     refreshToken = refreshTokenToStore,
                     userId = refreshedUserId
                 )
@@ -115,9 +116,9 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             val loginResponse = apiService.login(loginRequest)
             val loginData = loginResponse.data
-            val accessToken = loginData.token.takeIf { it.isNotBlank() }
+            val accessToken = loginData.resolvedAccessToken().takeIf { it.isNotBlank() }
                 ?: return Result.failure(IllegalStateException("Login response missing usable access token"))
-            val refreshToken = loginData.refreshToken?.takeIf { it.isNotBlank() }
+            val refreshToken = loginData.resolvedRefreshToken()
 
             userPreference.saveSession(
                 token = accessToken,
