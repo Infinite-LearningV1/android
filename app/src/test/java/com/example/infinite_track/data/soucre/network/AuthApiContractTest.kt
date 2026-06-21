@@ -11,9 +11,13 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.http.Headers
+import java.lang.reflect.Method
 
 class AuthApiContractTest {
     private val gson = Gson()
+
+    private fun authSessionMethod(name: String): Method =
+        AuthSessionApiService::class.java.declaredMethods.first { method -> method.name == name }
 
     @Test
     fun `mobile login response parses primary auth token payload`() {
@@ -168,8 +172,15 @@ class AuthApiContractTest {
 
     @Test
     fun `auth session refresh endpoint uses canonical mobile client type header`() {
-        val method = AuthSessionApiService::class.java.declaredMethods.first { it.name == "refreshSession" }
-        val headers = method.getAnnotation(Headers::class.java)?.value?.toList().orEmpty()
+        val headers = authSessionMethod("refreshSession").getAnnotation(Headers::class.java)?.value?.toList().orEmpty()
+
+        assertTrue(headers.contains("X-Client-Type: mobile"))
+        assertFalse(headers.any { it.equals("X-Client-Type: android", ignoreCase = true) })
+    }
+
+    @Test
+    fun `auth session logout endpoint uses canonical mobile client type header`() {
+        val headers = authSessionMethod("logout").getAnnotation(Headers::class.java)?.value?.toList().orEmpty()
 
         assertTrue(headers.contains("X-Client-Type: mobile"))
         assertFalse(headers.any { it.equals("X-Client-Type: android", ignoreCase = true) })

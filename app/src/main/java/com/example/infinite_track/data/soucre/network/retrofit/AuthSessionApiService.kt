@@ -14,6 +14,7 @@ interface AuthSessionApiService {
     @POST("api/auth/refresh")
     suspend fun refreshSession(@Body request: RefreshSessionRequest): RefreshSessionResponse
 
+    @Headers("X-Client-Type: mobile")
     @POST("api/auth/logout")
     suspend fun logout(): LogoutResponse
 }
