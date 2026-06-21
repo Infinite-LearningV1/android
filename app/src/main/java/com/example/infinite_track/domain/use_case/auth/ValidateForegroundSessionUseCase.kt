@@ -20,6 +20,8 @@ class ValidateForegroundSessionUseCase(
     private val sessionManager: SessionManager
 ) {
     suspend operator fun invoke(): ForegroundSessionValidationResult {
+        existingForcedReauthResult()?.let { return it }
+
         val accessToken = userPreference.getAuthToken().first()
         val refreshToken = userPreference.getRefreshToken().first()
 

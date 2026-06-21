@@ -57,6 +57,24 @@ class ValidateForegroundSessionUseCaseTest {
     }
 
     @Test
+    fun `returns existing reauth before skipped when tokens are blank`() = runBlocking {
+        val sessionManager = SessionManager().also {
+            it.triggerForcedReauth(SessionManager.ReauthReason.REFRESH_INVALID)
+        }
+        val userPreference = createUserPreference()
+        val repository = FakeAuthRepository()
+
+        val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
+
+        assertEquals(
+            ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_INVALID),
+            result
+        )
+        assertEquals(0, repository.syncCallCount)
+        assertEquals(0, repository.refreshCallCount)
+    }
+
+    @Test
     fun `skips while bootstrap session is already in progress`() = runBlocking {
         val sessionManager = SessionManager().also { it.beginBootstrapSession() }
         val userPreference = createUserPreference().also {
@@ -67,6 +85,48 @@ class ValidateForegroundSessionUseCaseTest {
         val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
 
         assertEquals(ForegroundSessionValidationResult.Skipped, result)
+        assertEquals(0, repository.syncCallCount)
+        assertEquals(0, repository.refreshCallCount)
+    }
+
+    @Test
+    fun `returns existing reauth before valid when profile sync would succeed`() = runBlocking {
+        val sessionManager = SessionManager().also {
+            it.triggerForcedReauth(SessionManager.ReauthReason.REFRESH_REVOKED)
+        }
+        val userPreference = createUserPreference().also {
+            it.saveSession("access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+        }
+        val repository = FakeAuthRepository(syncResults = mutableListOf(ProfileSyncResult.Success(sampleUser())))
+
+        val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
+
+        assertEquals(
+            ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_REVOKED),
+            result
+        )
+        assertEquals(0, repository.syncCallCount)
+        assertEquals(0, repository.refreshCallCount)
+    }
+
+    @Test
+    fun `returns existing reauth before temporary failure when profile sync would fail temporarily`() = runBlocking {
+        val sessionManager = SessionManager().also {
+            it.triggerForcedReauth(SessionManager.ReauthReason.INACTIVITY_EXPIRED)
+        }
+        val userPreference = createUserPreference().also {
+            it.saveSession("access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+        }
+        val repository = FakeAuthRepository(
+            syncResults = mutableListOf(ProfileSyncResult.TemporaryFailure(message = "offline", cause = null))
+        )
+
+        val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
+
+        assertEquals(
+            ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.INACTIVITY_EXPIRED),
+            result
+        )
         assertEquals(0, repository.syncCallCount)
         assertEquals(0, repository.refreshCallCount)
     }
@@ -144,7 +204,7 @@ class ValidateForegroundSessionUseCaseTest {
         )
         assertEquals(true, sessionManager.sessionExpired.value)
         assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
-        assertEquals(1, repository.syncCallCount)
+        assertEquals(0, repository.syncCallCount)
         assertEquals(0, repository.refreshCallCount)
     }
 
@@ -166,7 +226,7 @@ class ValidateForegroundSessionUseCaseTest {
         )
         assertEquals(true, sessionManager.sessionExpired.value)
         assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
-        assertEquals(1, repository.syncCallCount)
+        assertEquals(0, repository.syncCallCount)
         assertEquals(0, repository.refreshCallCount)
     }
 
@@ -264,7 +324,7 @@ class ValidateForegroundSessionUseCaseTest {
         )
         assertEquals(true, sessionManager.sessionExpired.value)
         assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
-        assertEquals(1, repository.syncCallCount)
+        assertEquals(0, repository.syncCallCount)
         assertEquals(0, repository.refreshCallCount)
     }
 
