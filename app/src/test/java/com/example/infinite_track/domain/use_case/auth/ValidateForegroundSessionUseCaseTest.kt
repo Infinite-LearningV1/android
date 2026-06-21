@@ -7,8 +7,6 @@ import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.model.auth.UserModel
-import com.example.infinite_track.domain.repository.AuthRefreshException
-import com.example.infinite_track.domain.repository.AuthRefreshFailureKind
 import com.example.infinite_track.domain.repository.AuthRefreshFailureReason
 import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
@@ -74,7 +72,7 @@ class ValidateForegroundSessionUseCaseTest {
     }
 
     @Test
-    fun `returns valid when profile sync succeeds without refresh`() = runBlocking {
+    fun `returns valid when profile sync succeeds through interceptor path`() = runBlocking {
         val sessionManager = SessionManager()
         val userPreference = createUserPreference().also {
             it.saveSession("access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
@@ -89,40 +87,98 @@ class ValidateForegroundSessionUseCaseTest {
     }
 
     @Test
-    fun `returns refreshed when sync is unauthorized but refresh and retry succeed`() = runBlocking {
+    fun `returns temporary failure when interceptor-backed profile sync remains access-expired unauthorized`() = runBlocking {
         val sessionManager = SessionManager()
         val userPreference = createUserPreference().also {
             it.saveSession("expired-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
         }
         val repository = FakeAuthRepository(
             syncResults = mutableListOf(
-                ProfileSyncResult.Unauthorized(),
-                ProfileSyncResult.Success(sampleUser())
-            ),
-            refreshSessionResult = Result.success(AuthRefreshResult("new-access", "new-refresh", "1"))
+                ProfileSyncResult.Unauthorized(AuthRefreshFailureReason.ACCESS_EXPIRED)
+            )
         )
 
         val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
 
-        assertEquals(ForegroundSessionValidationResult.Refreshed, result)
-        assertEquals(2, repository.syncCallCount)
-        assertEquals(1, repository.refreshCallCount)
+        assertTrue(result is ForegroundSessionValidationResult.TemporaryFailure)
+        assertEquals(1, repository.syncCallCount)
+        assertEquals(0, repository.refreshCallCount)
+        assertEquals(false, sessionManager.sessionExpired.value)
     }
 
     @Test
-    fun `returns reauth required when refresh fails with non refreshable reason`() = runBlocking {
+    fun `returns temporary failure when interceptor-backed profile sync remains generic unauthorized`() = runBlocking {
+        val sessionManager = SessionManager()
+        val userPreference = createUserPreference().also {
+            it.saveSession("expired-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+        }
+        val repository = FakeAuthRepository(syncResults = mutableListOf(ProfileSyncResult.Unauthorized()))
+
+        val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
+
+        assertTrue(result is ForegroundSessionValidationResult.TemporaryFailure)
+        assertEquals(1, repository.syncCallCount)
+        assertEquals(0, repository.refreshCallCount)
+        assertEquals(false, sessionManager.sessionExpired.value)
+    }
+
+    @Test
+    fun `returns existing reauth when interceptor already handled access-expired unauthorized terminal refresh failure`() = runBlocking {
+        val sessionManager = SessionManager().also {
+            it.triggerForcedReauth(SessionManager.ReauthReason.REFRESH_INVALID)
+        }
+        val userPreference = createUserPreference().also {
+            it.saveSession("expired-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+        }
+        val repository = FakeAuthRepository(
+            syncResults = mutableListOf(
+                ProfileSyncResult.Unauthorized(AuthRefreshFailureReason.ACCESS_EXPIRED)
+            )
+        )
+
+        val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
+
+        assertEquals(
+            ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_INVALID),
+            result
+        )
+        assertEquals(true, sessionManager.sessionExpired.value)
+        assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
+        assertEquals(1, repository.syncCallCount)
+        assertEquals(0, repository.refreshCallCount)
+    }
+
+    @Test
+    fun `returns existing reauth when interceptor already handled generic unauthorized terminal refresh failure`() = runBlocking {
+        val sessionManager = SessionManager().also {
+            it.triggerForcedReauth(SessionManager.ReauthReason.REFRESH_REVOKED)
+        }
+        val userPreference = createUserPreference().also {
+            it.saveSession("expired-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+        }
+        val repository = FakeAuthRepository(syncResults = mutableListOf(ProfileSyncResult.Unauthorized()))
+
+        val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
+
+        assertEquals(
+            ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_REVOKED),
+            result
+        )
+        assertEquals(true, sessionManager.sessionExpired.value)
+        assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
+        assertEquals(1, repository.syncCallCount)
+        assertEquals(0, repository.refreshCallCount)
+    }
+
+    @Test
+    fun `returns reauth required when profile sync reports refresh revoked`() = runBlocking {
         val sessionManager = SessionManager()
         val userPreference = createUserPreference().also {
             it.saveSession("expired-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
         }
         val repository = FakeAuthRepository(
-            syncResults = mutableListOf(ProfileSyncResult.Unauthorized()),
-            refreshSessionResult = Result.failure(
-                AuthRefreshException(
-                    kind = AuthRefreshFailureKind.NON_REFRESHABLE,
-                    reason = AuthRefreshFailureReason.REFRESH_REVOKED,
-                    message = "revoked"
-                )
+            syncResults = mutableListOf(
+                ProfileSyncResult.Unauthorized(AuthRefreshFailureReason.REFRESH_REVOKED)
             )
         )
 
@@ -135,11 +191,35 @@ class ValidateForegroundSessionUseCaseTest {
         assertEquals(true, sessionManager.sessionExpired.value)
         assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
         assertEquals(1, repository.syncCallCount)
-        assertEquals(1, repository.refreshCallCount)
+        assertEquals(0, repository.refreshCallCount)
     }
 
     @Test
-    fun `returns reauth required when profile sync reports terminal auth reason`() = runBlocking {
+    fun `returns reauth required when profile sync reports refresh invalid`() = runBlocking {
+        val sessionManager = SessionManager()
+        val userPreference = createUserPreference().also {
+            it.saveSession("expired-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+        }
+        val repository = FakeAuthRepository(
+            syncResults = mutableListOf(
+                ProfileSyncResult.Unauthorized(AuthRefreshFailureReason.REFRESH_INVALID)
+            )
+        )
+
+        val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
+
+        assertEquals(
+            ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_INVALID),
+            result
+        )
+        assertEquals(true, sessionManager.sessionExpired.value)
+        assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
+        assertEquals(1, repository.syncCallCount)
+        assertEquals(0, repository.refreshCallCount)
+    }
+
+    @Test
+    fun `returns reauth required when profile sync reports inactive session`() = runBlocking {
         val sessionManager = SessionManager()
         val userPreference = createUserPreference().also {
             it.saveSession("expired-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
@@ -147,13 +227,6 @@ class ValidateForegroundSessionUseCaseTest {
         val repository = FakeAuthRepository(
             syncResults = mutableListOf(
                 ProfileSyncResult.Unauthorized(AuthRefreshFailureReason.INACTIVITY_EXPIRED)
-            ),
-            refreshSessionResult = Result.failure(
-                AuthRefreshException(
-                    kind = AuthRefreshFailureKind.TRANSPORT,
-                    reason = AuthRefreshFailureReason.TRANSPORT_ERROR,
-                    message = "offline"
-                )
             )
         )
 
@@ -170,44 +243,40 @@ class ValidateForegroundSessionUseCaseTest {
     }
 
     @Test
-    fun `returns temporary failure when refresh transport error occurs`() = runBlocking {
-        val sessionManager = SessionManager()
+    fun `preserves existing forced reauth reason when interceptor already handled terminal auth`() = runBlocking {
+        val sessionManager = SessionManager().also {
+            it.triggerForcedReauth(SessionManager.ReauthReason.REFRESH_REVOKED)
+        }
         val userPreference = createUserPreference().also {
             it.saveSession("expired-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
         }
         val repository = FakeAuthRepository(
-            syncResults = mutableListOf(ProfileSyncResult.Unauthorized()),
-            refreshSessionResult = Result.failure(
-                AuthRefreshException(
-                    kind = AuthRefreshFailureKind.TRANSPORT,
-                    reason = AuthRefreshFailureReason.TRANSPORT_ERROR,
-                    message = "offline"
-                )
+            syncResults = mutableListOf(
+                ProfileSyncResult.Unauthorized(AuthRefreshFailureReason.REFRESH_INVALID)
             )
         )
 
         val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
 
-        assertTrue(result is ForegroundSessionValidationResult.TemporaryFailure)
+        assertEquals(
+            ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_REVOKED),
+            result
+        )
+        assertEquals(true, sessionManager.sessionExpired.value)
+        assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
         assertEquals(1, repository.syncCallCount)
-        assertEquals(1, repository.refreshCallCount)
-        assertEquals(false, sessionManager.sessionExpired.value)
+        assertEquals(0, repository.refreshCallCount)
     }
 
     @Test
-    fun `returns temporary failure when refresh transient error occurs`() = runBlocking {
+    fun `returns temporary failure when profile sync reports transport failure`() = runBlocking {
         val sessionManager = SessionManager()
         val userPreference = createUserPreference().also {
-            it.saveSession("expired-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+            it.saveSession("access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
         }
         val repository = FakeAuthRepository(
-            syncResults = mutableListOf(ProfileSyncResult.Unauthorized()),
-            refreshSessionResult = Result.failure(
-                AuthRefreshException(
-                    kind = AuthRefreshFailureKind.TRANSIENT,
-                    reason = AuthRefreshFailureReason.INVALID_PAYLOAD,
-                    message = "invalid payload"
-                )
+            syncResults = mutableListOf(
+                ProfileSyncResult.TemporaryFailure(message = "offline", cause = null)
             )
         )
 
@@ -215,7 +284,7 @@ class ValidateForegroundSessionUseCaseTest {
 
         assertTrue(result is ForegroundSessionValidationResult.TemporaryFailure)
         assertEquals(1, repository.syncCallCount)
-        assertEquals(1, repository.refreshCallCount)
+        assertEquals(0, repository.refreshCallCount)
         assertEquals(false, sessionManager.sessionExpired.value)
     }
 
@@ -242,10 +311,7 @@ class ValidateForegroundSessionUseCaseTest {
     )
 
     private class FakeAuthRepository(
-        private val syncResults: MutableList<ProfileSyncResult> = mutableListOf(),
-        private val refreshSessionResult: Result<AuthRefreshResult> = Result.success(
-            AuthRefreshResult("token", "refresh", "1")
-        )
+        private val syncResults: MutableList<ProfileSyncResult> = mutableListOf()
     ) : AuthRepository {
         var syncCallCount: Int = 0
         var refreshCallCount: Int = 0
@@ -260,7 +326,7 @@ class ValidateForegroundSessionUseCaseTest {
 
         override suspend fun refreshSession(): Result<AuthRefreshResult> {
             refreshCallCount += 1
-            return refreshSessionResult
+            error("Foreground validation must rely on syncUserProfile interceptor handling")
         }
 
         override suspend fun syncUserProfile(): ProfileSyncResult {

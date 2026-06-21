@@ -2,8 +2,6 @@ package com.example.infinite_track.domain.use_case.auth
 
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.domain.manager.SessionManager
-import com.example.infinite_track.domain.repository.AuthRefreshException
-import com.example.infinite_track.domain.repository.AuthRefreshFailureKind
 import com.example.infinite_track.domain.repository.AuthRefreshFailureReason
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.ProfileSyncResult
@@ -12,7 +10,6 @@ import kotlinx.coroutines.flow.first
 sealed class ForegroundSessionValidationResult {
     data object Skipped : ForegroundSessionValidationResult()
     data object Valid : ForegroundSessionValidationResult()
-    data object Refreshed : ForegroundSessionValidationResult()
     data class ReauthRequired(val reason: SessionManager.ReauthReason) : ForegroundSessionValidationResult()
     data class TemporaryFailure(val message: String?, val cause: Throwable?) : ForegroundSessionValidationResult()
 }
@@ -44,78 +41,50 @@ class ValidateForegroundSessionUseCase(
         }
     }
 
-    private suspend fun handleUnauthorized(
-        initialReason: AuthRefreshFailureReason?
+    private fun handleUnauthorized(
+        reason: AuthRefreshFailureReason?
     ): ForegroundSessionValidationResult {
-        if (initialReason?.isTerminalReason() == true) {
-            return reauthRequired(reauthReasonFor(initialReason))
+        existingForcedReauthResult()?.let { return it }
+
+        val reauthReason = reason?.toTerminalReauthReason()
+        if (reauthReason != null) {
+            return reauthRequired(reauthReason)
         }
 
-        val refreshResult = authRepository.refreshSession()
-        if (refreshResult.isSuccess) {
-            return when (val retrySync = authRepository.syncUserProfile()) {
-                is ProfileSyncResult.Success -> ForegroundSessionValidationResult.Refreshed
-                is ProfileSyncResult.TemporaryFailure -> ForegroundSessionValidationResult.TemporaryFailure(
-                    message = retrySync.message,
-                    cause = retrySync.cause
-                )
-                is ProfileSyncResult.Unauthorized -> reauthRequired(
-                    reason = reauthReasonFor(preferredUnauthorizedReason(retrySync.reason, initialReason))
-                )
-            }
-        }
-
-        val refreshException = refreshResult.exceptionOrNull() as? AuthRefreshException
-        return when (refreshException?.kind) {
-            AuthRefreshFailureKind.NON_REFRESHABLE -> reauthRequired(
-                reason = reauthReasonFor(preferredUnauthorizedReason(refreshException.reason, initialReason))
-            )
-            AuthRefreshFailureKind.TRANSPORT,
-            AuthRefreshFailureKind.TRANSIENT,
-            null -> ForegroundSessionValidationResult.TemporaryFailure(
-                message = refreshException?.message,
-                cause = refreshException
-            )
-        }
+        return ForegroundSessionValidationResult.TemporaryFailure(
+            message = "Foreground profile sync remained unauthorized after interceptor handling",
+            cause = null
+        )
     }
 
     private fun reauthRequired(
         reason: SessionManager.ReauthReason
     ): ForegroundSessionValidationResult.ReauthRequired {
+        existingForcedReauthResult()?.let { return it }
+
         sessionManager.triggerForcedReauth(reason)
         return ForegroundSessionValidationResult.ReauthRequired(reason)
     }
 
-    private fun preferredUnauthorizedReason(
-        laterReason: AuthRefreshFailureReason?,
-        initialReason: AuthRefreshFailureReason?
-    ): AuthRefreshFailureReason {
-        val fallbackReason = laterReason ?: AuthRefreshFailureReason.REFRESH_INVALID
-        return when {
-            initialReason == null -> fallbackReason
-            initialReason.isTerminalReason() && fallbackReason.isGenericReason() -> initialReason
-            else -> fallbackReason
+    private fun existingForcedReauthResult(): ForegroundSessionValidationResult.ReauthRequired? {
+        val existingReason = sessionManager.reauthReason.value
+        return if (sessionManager.sessionExpired.value && existingReason != null) {
+            ForegroundSessionValidationResult.ReauthRequired(existingReason)
+        } else {
+            null
         }
     }
 
-    private fun AuthRefreshFailureReason.isTerminalReason(): Boolean {
-        return this == AuthRefreshFailureReason.INACTIVITY_EXPIRED ||
-            this == AuthRefreshFailureReason.REFRESH_INVALID ||
-            this == AuthRefreshFailureReason.REFRESH_REVOKED
-    }
-
-    private fun AuthRefreshFailureReason.isGenericReason(): Boolean {
-        return this == AuthRefreshFailureReason.REFRESH_INVALID ||
-            this == AuthRefreshFailureReason.UNKNOWN
-    }
-
-    private fun reauthReasonFor(reason: AuthRefreshFailureReason): SessionManager.ReauthReason {
-        return when (reason) {
+    private fun AuthRefreshFailureReason.toTerminalReauthReason(): SessionManager.ReauthReason? {
+        return when (this) {
             AuthRefreshFailureReason.INACTIVITY_EXPIRED -> SessionManager.ReauthReason.INACTIVITY_EXPIRED
             AuthRefreshFailureReason.REFRESH_INVALID,
             AuthRefreshFailureReason.MISSING_REFRESH_TOKEN -> SessionManager.ReauthReason.REFRESH_INVALID
             AuthRefreshFailureReason.REFRESH_REVOKED -> SessionManager.ReauthReason.REFRESH_REVOKED
-            else -> SessionManager.ReauthReason.UNKNOWN
+            AuthRefreshFailureReason.ACCESS_EXPIRED,
+            AuthRefreshFailureReason.TRANSPORT_ERROR,
+            AuthRefreshFailureReason.INVALID_PAYLOAD,
+            AuthRefreshFailureReason.UNKNOWN -> null
         }
     }
 }
