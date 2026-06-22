@@ -6,5 +6,8 @@ data class BookingHistoryItem(
     val scheduleDate: String,
     val status: String,
     val notes: String,
-    val suitabilityLabel: String
+    val suitabilityLabel: String,
+    val bookingId: Int = 0,
+    val scheduleDateRaw: String = "",
+    val statusRaw: String = ""
 )
