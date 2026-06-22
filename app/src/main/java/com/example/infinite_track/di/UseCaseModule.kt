@@ -24,6 +24,7 @@ import com.example.infinite_track.domain.use_case.auth.LoginUseCase
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
 import com.example.infinite_track.domain.use_case.auth.VerifyFaceUseCase
 import com.example.infinite_track.domain.use_case.booking.GetBookingHistoryUseCase
+import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingIdUseCase
 import com.example.infinite_track.domain.use_case.booking.SubmitWfaBookingUseCase
 import com.example.infinite_track.domain.use_case.contact.GetContactsUseCase
 import com.example.infinite_track.domain.use_case.history.GetAttendanceHistoryUseCase
@@ -180,6 +181,13 @@ object UseCaseModule {
         bookingRepository: BookingRepository
     ): SubmitWfaBookingUseCase {
         return SubmitWfaBookingUseCase(bookingRepository)
+    }
+
+    @Provides
+    fun provideResolveTodayApprovedWfaBookingIdUseCase(
+        bookingRepository: BookingRepository
+    ): ResolveTodayApprovedWfaBookingIdUseCase {
+        return ResolveTodayApprovedWfaBookingIdUseCase(bookingRepository)
     }
 
     // Provide the Check In Use Case

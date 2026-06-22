@@ -13,7 +13,10 @@ fun BookingItem.toDomain(): BookingHistoryItem {
 		scheduleDate = formatScheduleDateId(this.scheduleDate),
 		status = formatStatusTitle(this.status),
 		notes = this.notes ?: "",
-		suitabilityLabel = this.suitabilityLabel ?: mapSuitabilityLabelId(this.suitabilityScore)
+		suitabilityLabel = this.suitabilityLabel ?: mapSuitabilityLabelId(this.suitabilityScore),
+		bookingId = this.bookingId,
+		scheduleDateRaw = this.scheduleDate,
+		statusRaw = this.status
 	)
 }
 

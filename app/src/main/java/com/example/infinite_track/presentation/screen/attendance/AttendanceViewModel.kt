@@ -13,6 +13,7 @@ import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
 import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
+import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingIdUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinatesUseCase
 import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
@@ -74,6 +75,7 @@ class AttendanceViewModel @Inject constructor(
     private val attendancePreference: AttendancePreference,
     private val geofenceManager: GeofenceManager,
     private val getLoggedInUserUseCase: GetLoggedInUserUseCase,
+    private val resolveTodayApprovedWfaBookingIdUseCase: ResolveTodayApprovedWfaBookingIdUseCase,
     // Add UseCase dependencies for attendance operations
     private val checkInUseCase: CheckInUseCase,
     private val checkOutUseCase: CheckOutUseCase
@@ -762,15 +764,44 @@ class AttendanceViewModel @Inject constructor(
                         else -> 1 // Default to WFO
                     }
 
-                    // Create attendance request model with proper parameters
-                    val attendanceRequest = AttendanceRequestModel(
-                        categoryId = categoryId, // Use correct category ID based on work mode
-                        latitude = 0.0, // Will be updated by UseCase with real-time GPS
-                        longitude = 0.0, // Will be updated by UseCase with real-time GPS
-                        notes = "Check-in via mobile app",
-                        bookingId = null, // No booking for regular check-in
-                        type = "checkin"
-                    )
+                    val bookingId = if (categoryId == 3) {
+                        val scheduleDateIso = _uiState.value.todayStatus?.todayDate
+                        if (scheduleDateIso.isNullOrBlank()) {
+                            _uiState.value = _uiState.value.copy(
+                                activeDialog = DialogState.Error(
+                                    "Tanggal attendance hari ini tidak tersedia untuk memvalidasi booking WFA."
+                                )
+                            )
+                            return@collect
+                        }
+
+                        resolveTodayApprovedWfaBookingIdUseCase(scheduleDateIso)
+                            .getOrElse { exception ->
+                                _uiState.value = _uiState.value.copy(
+                                    activeDialog = DialogState.Error(
+                                        exception.message
+                                            ?: "Booking WFA yang sudah disetujui untuk hari ini tidak ditemukan."
+                                    )
+                                )
+                                return@collect
+                            }
+                    } else {
+                        null
+                    }
+
+                    val attendanceRequest = try {
+                        AttendanceCheckInRequestFactory.create(
+                            selectedWorkMode = _uiState.value.selectedWorkMode,
+                            bookingId = bookingId
+                        )
+                    } catch (exception: IllegalArgumentException) {
+                        _uiState.value = _uiState.value.copy(
+                            activeDialog = DialogState.Error(
+                                exception.message ?: "Payload check-in WFA tidak valid."
+                            )
+                        )
+                        return@collect
+                    }
 
                     // Call CheckInUseCase with both request and target location
                     checkInUseCase(attendanceRequest, targetLocation).onSuccess { activeSession ->
