@@ -40,6 +40,20 @@ Android maps backend/session outcomes to `SessionManager.ReauthReason`:
 - Tests cover model parsing, persistence, repository refresh classification, single-flight refresh, interceptor retry, session manager reason state, bootstrap behavior, login banner mapping, and logout fallback.
 - Runtime evidence must redact token, email, full name, and identifiers before being committed.
 
+## Foreground / Resume Validation Ownership
+
+Android now owns an explicit foreground/resume validation lane for Family A.
+
+This lane exists in addition to:
+
+- cold-start splash bootstrap validation; and
+- reactive protected-request refresh on `401`.
+
+When the app transitions from background to foreground, Android attempts a bounded contract-aware session validation.
+
+Terminal backend auth/session outcomes still route to forced re-auth.
+Temporary transport failures such as offline or server-down do not trigger false logout and do not clear local session state.
+
 ## References
 
 - INF-145
