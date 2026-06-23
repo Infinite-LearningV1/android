@@ -4,17 +4,23 @@ import com.example.infinite_track.data.soucre.network.request.RefreshRequest
 import com.example.infinite_track.data.soucre.network.response.LoginResponse
 import com.example.infinite_track.data.soucre.network.response.RefreshErrorResponse
 import com.example.infinite_track.data.soucre.network.response.RefreshResponse
+import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
 import com.google.gson.Gson
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import retrofit2.http.Headers
+import java.lang.reflect.Method
 
 class AuthApiContractTest {
     private val gson = Gson()
 
+    private fun authSessionMethod(name: String): Method =
+        AuthSessionApiService::class.java.declaredMethods.first { method -> method.name == name }
+
     @Test
-    fun `mobile login response parses required refresh token from json data`() {
+    fun `mobile login response parses primary auth token payload`() {
         val json = """
             {
               "success": true,
@@ -38,8 +44,10 @@ class AuthApiContractTest {
                   "description": "Redacted office",
                   "category_name": "Office"
                 },
-                "token": "access-token-redacted",
-                "refresh_token": "refresh-token-redacted"
+                "auth": {
+                  "access_token": "primary-access-token-redacted",
+                  "refresh_token": "primary-refresh-token-redacted"
+                }
               }
             }
         """.trimIndent()
@@ -47,8 +55,46 @@ class AuthApiContractTest {
         val response = gson.fromJson(json, LoginResponse::class.java)
 
         assertTrue(response.success)
-        assertEquals("access-token-redacted", response.data.token)
-        assertEquals("refresh-token-redacted", response.data.refreshToken)
+        assertEquals("primary-access-token-redacted", response.data.resolvedAccessToken())
+        assertEquals("primary-refresh-token-redacted", response.data.resolvedRefreshToken())
+    }
+
+    @Test
+    fun `mobile login response falls back to legacy direct token fields`() {
+        val json = """
+            {
+              "success": true,
+              "message": "Login success",
+              "data": {
+                "id": 147,
+                "full_name": "Redacted User",
+                "email": "redacted@example.test",
+                "role_name": "Student",
+                "position_name": "Learner",
+                "program_name": "Infinite Learning",
+                "division_name": "Mobile",
+                "nip_nim": "NIM-REDACTED",
+                "phone": "0000000000",
+                "photo": "https://example.test/avatar.png",
+                "photo_updated_at": "2026-05-30T00:00:00Z",
+                "location": {
+                  "latitude": -6.2,
+                  "longitude": 106.8,
+                  "radius": 100,
+                  "description": "Redacted office",
+                  "category_name": "Office"
+                },
+                "token": "legacy-access-token-redacted",
+                "refresh_token": "legacy-refresh-token-redacted"
+              }
+            }
+        """.trimIndent()
+
+        val response = gson.fromJson(json, LoginResponse::class.java)
+
+        assertTrue(response.success)
+        assertEquals("legacy-access-token-redacted", response.data.resolvedAccessToken())
+        assertEquals("legacy-refresh-token-redacted", response.data.resolvedRefreshToken())
     }
 
     @Test
@@ -59,7 +105,7 @@ class AuthApiContractTest {
     }
 
     @Test
-    fun `refresh success response parses access and rotated refresh token`() {
+    fun `refresh success response parses primary auth token payload`() {
         val json = """
             {
               "success": true,
@@ -67,8 +113,10 @@ class AuthApiContractTest {
               "message": "Refresh success",
               "data": {
                 "id": 147,
-                "token": "new-access-token-redacted",
-                "refresh_token": "new-refresh-token-redacted"
+                "auth": {
+                  "access_token": "primary-new-access-token-redacted",
+                  "refresh_token": "primary-new-refresh-token-redacted"
+                }
               }
             }
         """.trimIndent()
@@ -77,9 +125,32 @@ class AuthApiContractTest {
 
         assertTrue(response.success)
         assertEquals(147, response.data.id)
-        assertEquals("new-access-token-redacted", response.data.token)
-        assertEquals("new-refresh-token-redacted", response.data.refreshToken)
+        assertEquals("primary-new-access-token-redacted", response.data.resolvedAccessToken())
+        assertEquals("primary-new-refresh-token-redacted", response.data.resolvedRefreshToken())
         assertEquals("Refresh success", response.message)
+    }
+
+    @Test
+    fun `refresh success response falls back to legacy direct token fields`() {
+        val json = """
+            {
+              "success": true,
+              "code": null,
+              "message": "Refresh success",
+              "data": {
+                "id": 147,
+                "token": "legacy-new-access-token-redacted",
+                "refresh_token": "legacy-new-refresh-token-redacted"
+              }
+            }
+        """.trimIndent()
+
+        val response = gson.fromJson(json, RefreshResponse::class.java)
+
+        assertTrue(response.success)
+        assertEquals(147, response.data.id)
+        assertEquals("legacy-new-access-token-redacted", response.data.resolvedAccessToken())
+        assertEquals("legacy-new-refresh-token-redacted", response.data.resolvedRefreshToken())
     }
 
     @Test
@@ -97,5 +168,21 @@ class AuthApiContractTest {
         assertFalse(response.success)
         assertEquals("AUTH_SESSION_INACTIVE", response.code)
         assertEquals("Session inactive for more than 48 hours", response.message)
+    }
+
+    @Test
+    fun `auth session refresh endpoint uses canonical mobile client type header`() {
+        val headers = authSessionMethod("refreshSession").getAnnotation(Headers::class.java)?.value?.toList().orEmpty()
+
+        assertTrue(headers.contains("X-Client-Type: mobile"))
+        assertFalse(headers.any { it.equals("X-Client-Type: android", ignoreCase = true) })
+    }
+
+    @Test
+    fun `auth session logout endpoint uses canonical mobile client type header`() {
+        val headers = authSessionMethod("logout").getAnnotation(Headers::class.java)?.value?.toList().orEmpty()
+
+        assertTrue(headers.contains("X-Client-Type: mobile"))
+        assertFalse(headers.any { it.equals("X-Client-Type: android", ignoreCase = true) })
     }
 }

@@ -10,10 +10,11 @@ import javax.inject.Singleton
 
 @Singleton
 interface AuthSessionApiService {
-    @Headers("X-Client-Type: android")
+    @Headers("X-Client-Type: mobile")
     @POST("api/auth/refresh")
     suspend fun refreshSession(@Body request: RefreshSessionRequest): RefreshSessionResponse
 
+    @Headers("X-Client-Type: mobile")
     @POST("api/auth/logout")
     suspend fun logout(): LogoutResponse
 }

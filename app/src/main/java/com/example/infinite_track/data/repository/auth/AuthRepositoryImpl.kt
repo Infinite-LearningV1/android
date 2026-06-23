@@ -7,7 +7,7 @@ import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
 import com.example.infinite_track.data.soucre.network.request.LogoutRequest
-import com.example.infinite_track.data.soucre.network.request.RefreshRequest
+import com.example.infinite_track.data.soucre.network.request.RefreshSessionRequest
 import com.example.infinite_track.data.soucre.network.response.ErrorResponse
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
@@ -55,11 +55,12 @@ class AuthRepositoryImpl @Inject constructor(
                 )
             }
 
-            val refreshData = apiService.refresh(
-                RefreshRequest(refreshToken = existingRefreshToken)
+            val refreshData = authSessionApiService.refreshSession(
+                RefreshSessionRequest(refreshToken = existingRefreshToken)
             ).data
+            val accessToken = refreshData.resolvedAccessToken()
 
-            if (refreshData.token.isBlank() || refreshData.id <= 0) {
+            if (accessToken.isBlank() || refreshData.id <= 0) {
                 val error = IllegalStateException("Invalid refresh session payload")
                 safeLogError("Refresh session returned invalid payload", error)
                 return Result.failure(
@@ -73,17 +74,17 @@ class AuthRepositoryImpl @Inject constructor(
             }
 
             val refreshedUserId = refreshData.id.toString()
-            val refreshTokenToStore = refreshData.refreshToken?.takeIf { it.isNotBlank() } ?: existingRefreshToken
+            val refreshTokenToStore = refreshData.resolvedRefreshToken() ?: existingRefreshToken
 
             userPreference.saveSession(
-                token = refreshData.token,
+                token = accessToken,
                 userId = refreshedUserId,
                 refreshToken = refreshTokenToStore,
                 lastRefreshAt = System.currentTimeMillis()
             )
             Result.success(
                 AuthRefreshResult(
-                    token = refreshData.token,
+                    token = accessToken,
                     refreshToken = refreshTokenToStore,
                     userId = refreshedUserId
                 )
@@ -115,9 +116,9 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             val loginResponse = apiService.login(loginRequest)
             val loginData = loginResponse.data
-            val accessToken = loginData.token.takeIf { it.isNotBlank() }
+            val accessToken = loginData.resolvedAccessToken().takeIf { it.isNotBlank() }
                 ?: return Result.failure(IllegalStateException("Login response missing usable access token"))
-            val refreshToken = loginData.refreshToken?.takeIf { it.isNotBlank() }
+            val refreshToken = loginData.resolvedRefreshToken()
 
             userPreference.saveSession(
                 token = accessToken,

@@ -15,6 +15,7 @@ import com.example.infinite_track.data.soucre.network.request.RefreshSessionRequ
 import com.example.infinite_track.data.soucre.network.response.AttendanceHistoryResponse
 import com.example.infinite_track.data.soucre.network.response.AttendanceResponse
 import com.example.infinite_track.data.soucre.network.response.ErrorResponse
+import com.example.infinite_track.data.soucre.network.response.AuthPayload
 import com.example.infinite_track.data.soucre.network.response.LoginResponse
 import com.example.infinite_track.data.soucre.network.response.LogoutResponse
 import com.example.infinite_track.data.soucre.network.response.LocationData
@@ -92,6 +93,30 @@ class AuthRepositoryImplRefreshSessionTest {
         assertTrue(userPreference.getRefreshToken().first().isBlank())
         assertEquals("10", userPreference.getUserId().first())
         assertEquals(1, userDao.insertedUsers.size)
+    }
+
+    @Test
+    fun `login persists primary auth token payload before legacy direct fields`() = runBlocking {
+        val userPreference = createUserPreference()
+        val userDao = CapturingUserDao()
+        val repository = createLoginRepository(
+            userPreference = userPreference,
+            userDao = userDao,
+            userData = createUserData(refreshToken = "legacy-refresh").copy(
+                token = "legacy-access",
+                auth = AuthPayload(
+                    accessToken = "primary-access",
+                    refreshToken = "primary-refresh"
+                )
+            )
+        )
+
+        val result = repository.login(LoginRequest(email = "user@example.com", password = "secret"))
+
+        assertTrue(result.isSuccess)
+        assertEquals("primary-access", userPreference.getAuthToken().first())
+        assertEquals("primary-refresh", userPreference.getRefreshToken().first())
+        assertEquals("10", userPreference.getUserId().first())
     }
 
     @Test
@@ -680,6 +705,47 @@ class AuthRepositoryImplRefreshSessionTest {
     }
 
     @Test
+    fun `refresh session uses auth session api and stores primary auth token payload`() = runBlocking {
+        val userPreference = createUserPreference()
+        userPreference.saveSession(token = "old-access", userId = "10", refreshToken = "old-refresh")
+        val fakeAuthSessionApi = FakeAuthSessionApiService(
+            refreshSessionBlock = {
+                RefreshSessionResponse(
+                    success = true,
+                    message = "ok",
+                    data = RefreshSessionData(
+                        id = 10,
+                        token = "legacy-new-access",
+                        refreshToken = "legacy-new-refresh",
+                        auth = AuthPayload(
+                            accessToken = "primary-new-access",
+                            refreshToken = "primary-new-refresh"
+                        )
+                    )
+                )
+            }
+        )
+
+        val repository = AuthRepositoryImpl(
+            userPreference = userPreference,
+            apiService = FakeApiService(
+                refreshBlock = { _ ->
+                    throw AssertionError("refresh must use AuthSessionApiService, not protected ApiService")
+                }
+            ),
+            authSessionApiService = fakeAuthSessionApi,
+            userDao = FakeUserDao()
+        )
+
+        val result = repository.refreshSession()
+
+        assertTrue(result.isSuccess)
+        assertEquals("primary-new-access", userPreference.getAuthToken().first())
+        assertEquals("primary-new-refresh", userPreference.getRefreshToken().first())
+        assertEquals("old-refresh", fakeAuthSessionApi.lastRefreshRequest?.refreshToken)
+    }
+
+    @Test
     fun `refresh session success stores latest tokens`() = runBlocking {
         val userPreference = createUserPreference()
         userPreference.saveSession(token = "old-access", userId = "10", refreshToken = "old-refresh")
@@ -991,7 +1057,8 @@ class AuthRepositoryImplRefreshSessionTest {
                 categoryName = "WFO"
             ),
             token = "access-token",
-            refreshToken = refreshToken
+            refreshToken = refreshToken,
+            auth = null
         )
     }
 

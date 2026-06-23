@@ -22,6 +22,7 @@ import com.example.infinite_track.domain.use_case.auth.GenerateAndSaveEmbeddingU
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.auth.LoginUseCase
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
+import com.example.infinite_track.domain.use_case.auth.ValidateForegroundSessionUseCase
 import com.example.infinite_track.domain.use_case.auth.VerifyFaceUseCase
 import com.example.infinite_track.domain.use_case.booking.GetBookingHistoryUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingIdUseCase
@@ -93,6 +94,15 @@ object UseCaseModule {
     @Provides
     fun provideLogoutUseCase(authRepository: AuthRepository): LogoutUseCase {
         return LogoutUseCase(authRepository)
+    }
+
+    @Provides
+    fun provideValidateForegroundSessionUseCase(
+        authRepository: AuthRepository,
+        userPreference: UserPreference,
+        sessionManager: SessionManager
+    ): ValidateForegroundSessionUseCase {
+        return ValidateForegroundSessionUseCase(authRepository, userPreference, sessionManager)
     }
 
     // Provide the Contacts Use Case
