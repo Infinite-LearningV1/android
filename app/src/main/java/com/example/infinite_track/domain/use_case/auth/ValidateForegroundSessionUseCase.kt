@@ -14,12 +14,12 @@ sealed class ForegroundSessionValidationResult {
     data class TemporaryFailure(val message: String?, val cause: Throwable?) : ForegroundSessionValidationResult()
 }
 
-class ValidateForegroundSessionUseCase(
+open class ValidateForegroundSessionUseCase(
     private val authRepository: AuthRepository,
     private val userPreference: UserPreference,
     private val sessionManager: SessionManager
 ) {
-    suspend operator fun invoke(): ForegroundSessionValidationResult {
+    open suspend operator fun invoke(): ForegroundSessionValidationResult {
         existingForcedReauthResult()?.let { return it }
 
         val accessToken = userPreference.getAuthToken().first()

@@ -16,15 +16,13 @@ import javax.inject.Provider
 import javax.inject.Singleton
 
 @Singleton
-class ForegroundSessionLifecycleObserver internal constructor(
+class ForegroundSessionLifecycleObserver private constructor(
     private val validateForegroundSessionUseCase: ValidateForegroundSessionUseCase,
     private val sessionManager: SessionManager,
     private val logoutUseCaseProvider: Provider<LogoutUseCase>,
     private val applicationScope: CoroutineScope,
-    private val gate: ForegroundSessionResumeGate = ForegroundSessionResumeGate(),
-    private val unexpectedFailureLogger: (Throwable) -> Unit = { throwable ->
-        Log.w(TAG, "Foreground session validation failed unexpectedly; preserving local session state", throwable)
-    }
+    private val gate: ForegroundSessionResumeGate,
+    private val unexpectedFailureLogger: (Throwable) -> Unit
 ) : DefaultLifecycleObserver {
 
     @Inject
@@ -37,8 +35,36 @@ class ForegroundSessionLifecycleObserver internal constructor(
         validateForegroundSessionUseCase = validateForegroundSessionUseCase,
         sessionManager = sessionManager,
         logoutUseCaseProvider = logoutUseCaseProvider,
-        applicationScope = applicationScope
+        applicationScope = applicationScope,
+        gate = ForegroundSessionResumeGate(),
+        unexpectedFailureLogger = { throwable ->
+            Log.w(TAG, "Foreground session validation failed unexpectedly; preserving local session state", throwable)
+        }
     )
+
+    companion object {
+        private const val TAG = "ForegroundSession"
+
+        internal fun createForTest(
+            validateForegroundSessionUseCase: ValidateForegroundSessionUseCase,
+            sessionManager: SessionManager,
+            logoutUseCaseProvider: Provider<LogoutUseCase>,
+            applicationScope: CoroutineScope,
+            gate: ForegroundSessionResumeGate,
+            unexpectedFailureLogger: (Throwable) -> Unit = { throwable ->
+                Log.w(TAG, "Foreground session validation failed unexpectedly; preserving local session state", throwable)
+            }
+        ): ForegroundSessionLifecycleObserver {
+            return ForegroundSessionLifecycleObserver(
+                validateForegroundSessionUseCase = validateForegroundSessionUseCase,
+                sessionManager = sessionManager,
+                logoutUseCaseProvider = logoutUseCaseProvider,
+                applicationScope = applicationScope,
+                gate = gate,
+                unexpectedFailureLogger = unexpectedFailureLogger
+            )
+        }
+    }
 
     internal var validationCount: Int = 0
         private set
@@ -78,7 +104,4 @@ class ForegroundSessionLifecycleObserver internal constructor(
         }
     }
 
-    private companion object {
-        const val TAG = "ForegroundSession"
-    }
 }

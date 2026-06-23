@@ -15,6 +15,7 @@ import com.example.infinite_track.domain.repository.AuthRefreshFailureReason
 import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.ProfileSyncResult
+import com.example.infinite_track.domain.use_case.auth.ForegroundSessionValidationResult
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
 import com.example.infinite_track.domain.use_case.auth.ValidateForegroundSessionUseCase
 import kotlinx.coroutines.Job
@@ -45,7 +46,7 @@ class ForegroundSessionLifecycleObserverTest {
             syncResults = mutableListOf(ProfileSyncResult.Success(sampleUser()))
         )
         val logoutRepository = FakeLogoutRepository()
-        val observer = ForegroundSessionLifecycleObserver(
+        val observer = ForegroundSessionLifecycleObserver.createForTest(
             validateForegroundSessionUseCase = ValidateForegroundSessionUseCase(
                 authRepository = validationRepository,
                 userPreference = userPreference,
@@ -71,19 +72,9 @@ class ForegroundSessionLifecycleObserverTest {
     fun `onStart validates once and ignores re-entry while running`() = runTest {
         val scope = TestScope(StandardTestDispatcher(testScheduler) + Job())
         val sessionManager = SessionManager()
-        val userPreference = createUserPreference().also {
-            it.saveSession("access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
-        }
-        val validationRepository = FakeValidationRepository(
-            syncResults = mutableListOf(ProfileSyncResult.Success(sampleUser()))
-        )
         val logoutRepository = FakeLogoutRepository()
-        val observer = ForegroundSessionLifecycleObserver(
-            validateForegroundSessionUseCase = ValidateForegroundSessionUseCase(
-                authRepository = validationRepository,
-                userPreference = userPreference,
-                sessionManager = sessionManager
-            ),
+        val observer = ForegroundSessionLifecycleObserver.createForTest(
+            validateForegroundSessionUseCase = FixedForegroundValidationUseCase(ForegroundSessionValidationResult.Valid),
             sessionManager = sessionManager,
             logoutUseCaseProvider = Provider { LogoutUseCase(logoutRepository) },
             applicationScope = scope,
@@ -97,7 +88,7 @@ class ForegroundSessionLifecycleObserverTest {
         scope.advanceUntilIdle()
 
         assertEquals(1, observer.validationCount)
-        assertEquals(1, validationRepository.syncCallCount)
+        assertEquals(0, logoutRepository.logoutCallCount)
         assertFalse(sessionManager.sessionExpired.value)
     }
 
@@ -105,21 +96,10 @@ class ForegroundSessionLifecycleObserverTest {
     fun `reauth required triggers logout and forced reauth state`() = runTest {
         val scope = TestScope(StandardTestDispatcher(testScheduler) + Job())
         val sessionManager = SessionManager()
-        val userPreference = createUserPreference().also {
-            it.saveSession("access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
-        }
-        val validationRepository = FakeValidationRepository(
-            syncResults = mutableListOf(
-                ProfileSyncResult.Unauthorized(AuthRefreshFailureReason.REFRESH_INVALID)
-            ),
-            refreshFailureReason = AuthRefreshFailureReason.REFRESH_INVALID
-        )
         val logoutRepository = FakeLogoutRepository()
-        val observer = ForegroundSessionLifecycleObserver(
-            validateForegroundSessionUseCase = ValidateForegroundSessionUseCase(
-                authRepository = validationRepository,
-                userPreference = userPreference,
-                sessionManager = sessionManager
+        val observer = ForegroundSessionLifecycleObserver.createForTest(
+            validateForegroundSessionUseCase = FixedForegroundValidationUseCase(
+                ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_INVALID)
             ),
             sessionManager = sessionManager,
             logoutUseCaseProvider = Provider { LogoutUseCase(logoutRepository) },
@@ -141,18 +121,10 @@ class ForegroundSessionLifecycleObserverTest {
     fun `temporary failure does not trigger logout or forced reauth`() = runTest {
         val scope = TestScope(StandardTestDispatcher(testScheduler) + Job())
         val sessionManager = SessionManager()
-        val userPreference = createUserPreference().also {
-            it.saveSession("access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
-        }
-        val validationRepository = FakeValidationRepository(
-            syncResults = mutableListOf(ProfileSyncResult.TemporaryFailure(message = "offline"))
-        )
         val logoutRepository = FakeLogoutRepository()
-        val observer = ForegroundSessionLifecycleObserver(
-            validateForegroundSessionUseCase = ValidateForegroundSessionUseCase(
-                authRepository = validationRepository,
-                userPreference = userPreference,
-                sessionManager = sessionManager
+        val observer = ForegroundSessionLifecycleObserver.createForTest(
+            validateForegroundSessionUseCase = FixedForegroundValidationUseCase(
+                ForegroundSessionValidationResult.TemporaryFailure("offline", null)
             ),
             sessionManager = sessionManager,
             logoutUseCaseProvider = Provider { LogoutUseCase(logoutRepository) },
@@ -174,21 +146,11 @@ class ForegroundSessionLifecycleObserverTest {
     fun `unexpected validation exception is bounded as temporary no-op`() = runTest {
         val scope = TestScope(StandardTestDispatcher(testScheduler) + Job())
         val sessionManager = SessionManager()
-        val userPreference = createUserPreference().also {
-            it.saveSession("access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
-        }
-        val validationRepository = FakeValidationRepository(
-            syncResults = mutableListOf(),
-            syncException = IllegalStateException("unexpected validator failure")
-        )
         val logoutRepository = FakeLogoutRepository()
         val loggedFailures = mutableListOf<Throwable>()
-        val observer = ForegroundSessionLifecycleObserver(
-            validateForegroundSessionUseCase = ValidateForegroundSessionUseCase(
-                authRepository = validationRepository,
-                userPreference = userPreference,
-                sessionManager = sessionManager
-            ),
+        val expectedFailure = IllegalStateException("unexpected validator failure")
+        val observer = ForegroundSessionLifecycleObserver.createForTest(
+            validateForegroundSessionUseCase = ThrowingForegroundValidationUseCase(expectedFailure),
             sessionManager = sessionManager,
             logoutUseCaseProvider = Provider { LogoutUseCase(logoutRepository) },
             applicationScope = scope,
@@ -202,9 +164,8 @@ class ForegroundSessionLifecycleObserverTest {
         scope.advanceUntilIdle()
 
         assertEquals(1, observer.validationCount)
-        assertEquals(1, validationRepository.syncCallCount)
         assertEquals(1, loggedFailures.size)
-        assertSame(validationRepository.syncException, loggedFailures.single())
+        assertSame(expectedFailure, loggedFailures.single())
         assertEquals(0, logoutRepository.logoutCallCount)
         assertFalse(sessionManager.sessionExpired.value)
         assertEquals(null, sessionManager.reauthReason.value)
@@ -227,16 +188,59 @@ class ForegroundSessionLifecycleObserverTest {
         email = "redacted@example.test",
         roleName = "Employee",
         positionName = "Engineer",
+        programName = null,
         divisionName = "Mobile",
         nipNim = "EMP-001",
         phone = "08123456789",
         photoUrl = "https://example.test/photo.png",
-        workLocation = null,
-        programName = null,
-        employeeType = null,
         photoUpdatedAt = "2026-06-21T00:00:00Z",
+        latitude = null,
+        longitude = null,
+        radius = null,
+        locationDescription = null,
+        locationCategoryName = null,
         faceEmbedding = null
     )
+}
+
+private class FixedForegroundValidationUseCase(
+    private val result: ForegroundSessionValidationResult
+) : ValidateForegroundSessionUseCase(
+    authRepository = FakeValidationRepository(syncResults = mutableListOf()),
+    userPreference = run {
+        val tempDir = createTempDir(prefix = "foreground-observer-fixed-")
+        val appContext = object : ContextWrapper(null) {
+            override fun getFilesDir(): File = tempDir
+        }
+        val dataStore = PreferenceDataStoreFactory.create(
+            produceFile = { File(appContext.filesDir, "user.preferences_pb") }
+        )
+        UserPreference(dataStore)
+    },
+    sessionManager = SessionManager()
+) {
+    override suspend fun invoke(): ForegroundSessionValidationResult = result
+}
+
+private class ThrowingForegroundValidationUseCase(
+    private val throwable: Throwable
+) : ValidateForegroundSessionUseCase(
+    authRepository = FakeValidationRepository(syncResults = mutableListOf()),
+    userPreference = run {
+        val tempDir = createTempDir(prefix = "foreground-observer-throwing-")
+        val appContext = object : ContextWrapper(null) {
+            override fun getFilesDir(): File = tempDir
+        }
+        val dataStore = PreferenceDataStoreFactory.create(
+            produceFile = { File(appContext.filesDir, "user.preferences_pb") }
+        )
+        UserPreference(dataStore)
+    },
+    sessionManager = SessionManager()
+) {
+    override suspend fun invoke(): ForegroundSessionValidationResult {
+        throw throwable
+    }
 }
 
 private class TestLifecycleOwner : LifecycleOwner {
