@@ -26,12 +26,46 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 import javax.inject.Provider
 
 class ForegroundSessionLifecycleObserverTest {
+
+    @Test
+    fun `onStart suppresses initial cold start validation`() = runTest {
+        val scope = TestScope(StandardTestDispatcher(testScheduler) + Job())
+        val sessionManager = SessionManager()
+        val userPreference = createUserPreference().also {
+            it.saveSession("access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+        }
+        val validationRepository = FakeValidationRepository(
+            syncResults = mutableListOf(ProfileSyncResult.Success(sampleUser()))
+        )
+        val logoutRepository = FakeLogoutRepository()
+        val observer = ForegroundSessionLifecycleObserver(
+            validateForegroundSessionUseCase = ValidateForegroundSessionUseCase(
+                authRepository = validationRepository,
+                userPreference = userPreference,
+                sessionManager = sessionManager
+            ),
+            sessionManager = sessionManager,
+            logoutUseCaseProvider = Provider { LogoutUseCase(logoutRepository) },
+            applicationScope = scope,
+            gate = ForegroundSessionResumeGate(nowMillis = { 10_000L }, debounceWindowMs = 2_000L)
+        )
+        val owner = TestLifecycleOwner()
+
+        observer.onStart(owner)
+        scope.advanceUntilIdle()
+
+        assertEquals(0, observer.validationCount)
+        assertEquals(0, validationRepository.syncCallCount)
+        assertEquals(0, logoutRepository.logoutCallCount)
+        assertFalse(sessionManager.sessionExpired.value)
+    }
 
     @Test
     fun `onStart validates once and ignores re-entry while running`() = runTest {
@@ -57,6 +91,7 @@ class ForegroundSessionLifecycleObserverTest {
         )
         val owner = TestLifecycleOwner()
 
+        observer.onStart(owner)
         observer.onStart(owner)
         observer.onStart(owner)
         scope.advanceUntilIdle()
@@ -94,6 +129,7 @@ class ForegroundSessionLifecycleObserverTest {
         val owner = TestLifecycleOwner()
 
         observer.onStart(owner)
+        observer.onStart(owner)
         scope.advanceUntilIdle()
 
         assertEquals(1, logoutRepository.logoutCallCount)
@@ -126,6 +162,7 @@ class ForegroundSessionLifecycleObserverTest {
         val owner = TestLifecycleOwner()
 
         observer.onStart(owner)
+        observer.onStart(owner)
         scope.advanceUntilIdle()
 
         assertEquals(0, logoutRepository.logoutCallCount)
@@ -145,6 +182,7 @@ class ForegroundSessionLifecycleObserverTest {
             syncException = IllegalStateException("unexpected validator failure")
         )
         val logoutRepository = FakeLogoutRepository()
+        val loggedFailures = mutableListOf<Throwable>()
         val observer = ForegroundSessionLifecycleObserver(
             validateForegroundSessionUseCase = ValidateForegroundSessionUseCase(
                 authRepository = validationRepository,
@@ -154,15 +192,19 @@ class ForegroundSessionLifecycleObserverTest {
             sessionManager = sessionManager,
             logoutUseCaseProvider = Provider { LogoutUseCase(logoutRepository) },
             applicationScope = scope,
-            gate = ForegroundSessionResumeGate(nowMillis = { 10_000L }, debounceWindowMs = 2_000L)
+            gate = ForegroundSessionResumeGate(nowMillis = { 10_000L }, debounceWindowMs = 2_000L),
+            unexpectedFailureLogger = { loggedFailures += it }
         )
         val owner = TestLifecycleOwner()
 
+        observer.onStart(owner)
         observer.onStart(owner)
         scope.advanceUntilIdle()
 
         assertEquals(1, observer.validationCount)
         assertEquals(1, validationRepository.syncCallCount)
+        assertEquals(1, loggedFailures.size)
+        assertSame(validationRepository.syncException, loggedFailures.single())
         assertEquals(0, logoutRepository.logoutCallCount)
         assertFalse(sessionManager.sessionExpired.value)
         assertEquals(null, sessionManager.reauthReason.value)
@@ -204,7 +246,7 @@ private class TestLifecycleOwner : LifecycleOwner {
 private class FakeValidationRepository(
     private val syncResults: MutableList<ProfileSyncResult>,
     private val refreshFailureReason: AuthRefreshFailureReason? = null,
-    private val syncException: Throwable? = null
+    val syncException: Throwable? = null
 ) : AuthRepository {
     var syncCallCount: Int = 0
         private set

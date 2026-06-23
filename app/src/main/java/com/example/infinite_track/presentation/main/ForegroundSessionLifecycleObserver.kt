@@ -1,5 +1,6 @@
 package com.example.infinite_track.presentation.main
 
+import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.example.infinite_track.di.ApplicationCoroutineScope
@@ -20,7 +21,10 @@ class ForegroundSessionLifecycleObserver internal constructor(
     private val sessionManager: SessionManager,
     private val logoutUseCaseProvider: Provider<LogoutUseCase>,
     private val applicationScope: CoroutineScope,
-    private val gate: ForegroundSessionResumeGate = ForegroundSessionResumeGate()
+    private val gate: ForegroundSessionResumeGate = ForegroundSessionResumeGate(),
+    private val unexpectedFailureLogger: (Throwable) -> Unit = { throwable ->
+        Log.w(TAG, "Foreground session validation failed unexpectedly; preserving local session state", throwable)
+    }
 ) : DefaultLifecycleObserver {
 
     @Inject
@@ -65,11 +69,16 @@ class ForegroundSessionLifecycleObserver internal constructor(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
+                    unexpectedFailureLogger(e)
                     // Treat unexpected validator failures like temporary foreground transport failures.
                 }
             } finally {
                 gate.release()
             }
         }
+    }
+
+    private companion object {
+        const val TAG = "ForegroundSession"
     }
 }
