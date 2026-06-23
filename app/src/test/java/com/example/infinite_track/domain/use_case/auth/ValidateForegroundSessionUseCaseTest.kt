@@ -231,7 +231,7 @@ class ValidateForegroundSessionUseCaseTest {
     }
 
     @Test
-    fun `returns reauth required when profile sync reports refresh revoked`() = runBlocking {
+    fun `returns reauth required without publishing forced state when profile sync reports refresh revoked`() = runBlocking {
         val sessionManager = SessionManager()
         val userPreference = createUserPreference().also {
             it.saveSession("expired-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
@@ -248,14 +248,14 @@ class ValidateForegroundSessionUseCaseTest {
             ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_REVOKED),
             result
         )
-        assertEquals(true, sessionManager.sessionExpired.value)
-        assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
+        assertEquals(false, sessionManager.sessionExpired.value)
+        assertEquals(null, sessionManager.reauthReason.value)
         assertEquals(1, repository.syncCallCount)
         assertEquals(0, repository.refreshCallCount)
     }
 
     @Test
-    fun `returns reauth required when profile sync reports refresh invalid`() = runBlocking {
+    fun `returns reauth required without publishing forced state when profile sync reports refresh invalid`() = runBlocking {
         val sessionManager = SessionManager()
         val userPreference = createUserPreference().also {
             it.saveSession("expired-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
@@ -272,14 +272,14 @@ class ValidateForegroundSessionUseCaseTest {
             ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_INVALID),
             result
         )
-        assertEquals(true, sessionManager.sessionExpired.value)
-        assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
+        assertEquals(false, sessionManager.sessionExpired.value)
+        assertEquals(null, sessionManager.reauthReason.value)
         assertEquals(1, repository.syncCallCount)
         assertEquals(0, repository.refreshCallCount)
     }
 
     @Test
-    fun `returns reauth required when profile sync reports inactive session`() = runBlocking {
+    fun `returns reauth required without publishing forced state when profile sync reports inactive session`() = runBlocking {
         val sessionManager = SessionManager()
         val userPreference = createUserPreference().also {
             it.saveSession("expired-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
@@ -296,8 +296,8 @@ class ValidateForegroundSessionUseCaseTest {
             ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.INACTIVITY_EXPIRED),
             result
         )
-        assertEquals(true, sessionManager.sessionExpired.value)
-        assertEquals(SessionManager.ReauthReason.INACTIVITY_EXPIRED, sessionManager.reauthReason.value)
+        assertEquals(false, sessionManager.sessionExpired.value)
+        assertEquals(null, sessionManager.reauthReason.value)
         assertEquals(1, repository.syncCallCount)
         assertEquals(0, repository.refreshCallCount)
     }

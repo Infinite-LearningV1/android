@@ -64,7 +64,6 @@ class ValidateForegroundSessionUseCase(
     ): ForegroundSessionValidationResult.ReauthRequired {
         existingForcedReauthResult()?.let { return it }
 
-        sessionManager.triggerForcedReauth(reason)
         return ForegroundSessionValidationResult.ReauthRequired(reason)
     }
 

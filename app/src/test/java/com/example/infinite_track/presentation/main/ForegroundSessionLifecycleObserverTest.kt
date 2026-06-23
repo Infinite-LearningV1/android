@@ -133,6 +133,41 @@ class ForegroundSessionLifecycleObserverTest {
         assertEquals(null, sessionManager.reauthReason.value)
     }
 
+    @Test
+    fun `unexpected validation exception is bounded as temporary no-op`() = runTest {
+        val scope = TestScope(StandardTestDispatcher(testScheduler) + Job())
+        val sessionManager = SessionManager()
+        val userPreference = createUserPreference().also {
+            it.saveSession("access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+        }
+        val validationRepository = FakeValidationRepository(
+            syncResults = mutableListOf(),
+            syncException = IllegalStateException("unexpected validator failure")
+        )
+        val logoutRepository = FakeLogoutRepository()
+        val observer = ForegroundSessionLifecycleObserver(
+            validateForegroundSessionUseCase = ValidateForegroundSessionUseCase(
+                authRepository = validationRepository,
+                userPreference = userPreference,
+                sessionManager = sessionManager
+            ),
+            sessionManager = sessionManager,
+            logoutUseCaseProvider = Provider { LogoutUseCase(logoutRepository) },
+            applicationScope = scope,
+            gate = ForegroundSessionResumeGate(nowMillis = { 10_000L }, debounceWindowMs = 2_000L)
+        )
+        val owner = TestLifecycleOwner()
+
+        observer.onStart(owner)
+        scope.advanceUntilIdle()
+
+        assertEquals(1, observer.validationCount)
+        assertEquals(1, validationRepository.syncCallCount)
+        assertEquals(0, logoutRepository.logoutCallCount)
+        assertFalse(sessionManager.sessionExpired.value)
+        assertEquals(null, sessionManager.reauthReason.value)
+    }
+
     private fun createUserPreference(): UserPreference {
         val tempDir = createTempDir(prefix = "foreground-observer-")
         val appContext = object : ContextWrapper(null) {
@@ -168,7 +203,8 @@ private class TestLifecycleOwner : LifecycleOwner {
 
 private class FakeValidationRepository(
     private val syncResults: MutableList<ProfileSyncResult>,
-    private val refreshFailureReason: AuthRefreshFailureReason? = null
+    private val refreshFailureReason: AuthRefreshFailureReason? = null,
+    private val syncException: Throwable? = null
 ) : AuthRepository {
     var syncCallCount: Int = 0
         private set
@@ -197,6 +233,7 @@ private class FakeValidationRepository(
 
     override suspend fun syncUserProfile(): ProfileSyncResult {
         syncCallCount += 1
+        syncException?.let { throw it }
         return syncResults.removeAt(0)
     }
 

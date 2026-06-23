@@ -7,6 +7,7 @@ import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.use_case.auth.ForegroundSessionValidationResult
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
 import com.example.infinite_track.domain.use_case.auth.ValidateForegroundSessionUseCase
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -45,20 +46,26 @@ class ForegroundSessionLifecycleObserver internal constructor(
 
         applicationScope.launch {
             try {
-                validationCount += 1
-                when (val result = validateForegroundSessionUseCase()) {
-                    ForegroundSessionValidationResult.Skipped -> Unit
-                    ForegroundSessionValidationResult.Valid -> Unit
-                    is ForegroundSessionValidationResult.TemporaryFailure -> Unit
-                    is ForegroundSessionValidationResult.ReauthRequired -> {
-                        if (sessionManager.beginSessionExpiryHandling()) {
-                            try {
-                                logoutUseCaseProvider.get().invoke()
-                            } finally {
-                                sessionManager.triggerForcedReauth(result.reason)
+                try {
+                    validationCount += 1
+                    when (val result = validateForegroundSessionUseCase()) {
+                        ForegroundSessionValidationResult.Skipped -> Unit
+                        ForegroundSessionValidationResult.Valid -> Unit
+                        is ForegroundSessionValidationResult.TemporaryFailure -> Unit
+                        is ForegroundSessionValidationResult.ReauthRequired -> {
+                            if (sessionManager.beginSessionExpiryHandling()) {
+                                try {
+                                    logoutUseCaseProvider.get().invoke()
+                                } finally {
+                                    sessionManager.triggerForcedReauth(result.reason)
+                                }
                             }
                         }
                     }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Treat unexpected validator failures like temporary foreground transport failures.
                 }
             } finally {
                 gate.release()
