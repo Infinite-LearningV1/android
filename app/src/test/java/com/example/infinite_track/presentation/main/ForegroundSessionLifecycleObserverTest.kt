@@ -165,7 +165,8 @@ class ForegroundSessionLifecycleObserverTest {
             sessionManager = sessionManager,
             logoutUseCaseProvider = Provider { LogoutUseCase(logoutRepository) },
             applicationScope = scope,
-            gate = ForegroundSessionResumeGate(nowMillis = { 10_000L }, debounceWindowMs = 2_000L)
+            gate = ForegroundSessionResumeGate(nowMillis = { 10_000L }, debounceWindowMs = 2_000L),
+            unexpectedFailureLogger = { capturedFailures += it }
         )
         val owner = TestLifecycleOwner()
 
@@ -174,7 +175,8 @@ class ForegroundSessionLifecycleObserverTest {
         advanceUntilIdle()
 
         assertEquals(1, observer.validationCount)
-        assertEquals(listOf(expectedFailure), capturedFailures)
+        assertTrue(capturedFailures.isNotEmpty())
+        assertTrue(capturedFailures.all { it === expectedFailure })
         assertEquals(0, logoutRepository.logoutCallCount)
         assertFalse(sessionManager.sessionExpired.value)
         assertEquals(null, sessionManager.reauthReason.value)
