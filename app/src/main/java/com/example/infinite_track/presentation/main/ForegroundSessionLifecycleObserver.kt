@@ -14,12 +14,12 @@ import javax.inject.Provider
 import javax.inject.Singleton
 
 @Singleton
-class ForegroundSessionLifecycleObserver private constructor(
+class ForegroundSessionLifecycleObserver internal constructor(
     private val validateForegroundSessionUseCase: ValidateForegroundSessionUseCase,
     private val sessionManager: SessionManager,
     private val logoutUseCaseProvider: Provider<LogoutUseCase>,
     private val applicationScope: CoroutineScope,
-    private val gate: ForegroundSessionResumeGate
+    private val gate: ForegroundSessionResumeGate = ForegroundSessionResumeGate()
 ) : DefaultLifecycleObserver {
 
     @Inject
@@ -32,22 +32,7 @@ class ForegroundSessionLifecycleObserver private constructor(
         validateForegroundSessionUseCase = validateForegroundSessionUseCase,
         sessionManager = sessionManager,
         logoutUseCaseProvider = logoutUseCaseProvider,
-        applicationScope = applicationScope,
-        gate = ForegroundSessionResumeGate()
-    )
-
-    internal constructor(
-        validateForegroundSessionUseCase: ValidateForegroundSessionUseCase,
-        sessionManager: SessionManager,
-        logoutUseCaseProvider: Provider<LogoutUseCase>,
-        applicationScope: CoroutineScope,
-        gate: ForegroundSessionResumeGate
-    ) : this(
-        validateForegroundSessionUseCase = validateForegroundSessionUseCase,
-        sessionManager = sessionManager,
-        logoutUseCaseProvider = logoutUseCaseProvider,
-        applicationScope = applicationScope,
-        gate = gate
+        applicationScope = applicationScope
     )
 
     internal var validationCount: Int = 0
