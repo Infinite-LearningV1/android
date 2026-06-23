@@ -18,7 +18,10 @@ import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.use_case.auth.ForegroundSessionValidationResult
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
 import com.example.infinite_track.domain.use_case.auth.ValidateForegroundSessionUseCase
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -27,7 +30,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -93,10 +95,11 @@ class ForegroundSessionLifecycleObserverTest {
     }
 
     @Test
-    fun `reauth required triggers logout and forced reauth state`() = runTest {
+    fun `reauth required publishes forced reauth before logout completes`() = runTest {
         val scope = TestScope(StandardTestDispatcher(testScheduler) + Job())
         val sessionManager = SessionManager()
-        val logoutRepository = FakeLogoutRepository()
+        val logoutCompletion = CompletableDeferred<Unit>()
+        val logoutRepository = FakeLogoutRepository(logoutCompletion)
         val observer = ForegroundSessionLifecycleObserver.createForTest(
             validateForegroundSessionUseCase = FixedForegroundValidationUseCase(
                 ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_INVALID)
@@ -115,6 +118,9 @@ class ForegroundSessionLifecycleObserverTest {
         assertEquals(1, logoutRepository.logoutCallCount)
         assertTrue(sessionManager.sessionExpired.value)
         assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
+
+        logoutCompletion.complete(Unit)
+        scope.advanceUntilIdle()
     }
 
     @Test
@@ -143,29 +149,32 @@ class ForegroundSessionLifecycleObserverTest {
     }
 
     @Test
-    fun `unexpected validation exception is bounded as temporary no-op`() = runTest {
-        val scope = TestScope(StandardTestDispatcher(testScheduler) + Job())
+    fun `unexpected validation exception is not swallowed as temporary failure`() = runTest {
+        val capturedFailures = mutableListOf<Throwable>()
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val scope = kotlinx.coroutines.CoroutineScope(
+            dispatcher + SupervisorJob() + CoroutineExceptionHandler { _, throwable ->
+                capturedFailures += throwable
+            }
+        )
         val sessionManager = SessionManager()
         val logoutRepository = FakeLogoutRepository()
-        val loggedFailures = mutableListOf<Throwable>()
         val expectedFailure = IllegalStateException("unexpected validator failure")
         val observer = ForegroundSessionLifecycleObserver.createForTest(
             validateForegroundSessionUseCase = ThrowingForegroundValidationUseCase(expectedFailure),
             sessionManager = sessionManager,
             logoutUseCaseProvider = Provider { LogoutUseCase(logoutRepository) },
             applicationScope = scope,
-            gate = ForegroundSessionResumeGate(nowMillis = { 10_000L }, debounceWindowMs = 2_000L),
-            unexpectedFailureLogger = { loggedFailures += it }
+            gate = ForegroundSessionResumeGate(nowMillis = { 10_000L }, debounceWindowMs = 2_000L)
         )
         val owner = TestLifecycleOwner()
 
         observer.onStart(owner)
         observer.onStart(owner)
-        scope.advanceUntilIdle()
+        advanceUntilIdle()
 
         assertEquals(1, observer.validationCount)
-        assertEquals(1, loggedFailures.size)
-        assertSame(expectedFailure, loggedFailures.single())
+        assertEquals(listOf(expectedFailure), capturedFailures)
         assertEquals(0, logoutRepository.logoutCallCount)
         assertFalse(sessionManager.sessionExpired.value)
         assertEquals(null, sessionManager.reauthReason.value)
@@ -294,7 +303,9 @@ private class FakeValidationRepository(
     }
 }
 
-private class FakeLogoutRepository : AuthRepository {
+private class FakeLogoutRepository(
+    private val logoutCompletion: CompletableDeferred<Unit>? = null
+) : AuthRepository {
     var logoutCallCount: Int = 0
         private set
 
@@ -304,6 +315,7 @@ private class FakeLogoutRepository : AuthRepository {
 
     override suspend fun logout(): Result<Unit> {
         logoutCallCount += 1
+        logoutCompletion?.await()
         return Result.success(Unit)
     }
 
