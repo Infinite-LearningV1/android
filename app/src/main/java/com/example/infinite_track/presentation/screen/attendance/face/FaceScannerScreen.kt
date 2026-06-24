@@ -56,12 +56,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.infinite_track.presentation.components.button.ButtonStateType
-import com.example.infinite_track.presentation.screen.attendance.FACE_VERIFICATION_RESULT_KEY
-import com.example.infinite_track.presentation.screen.attendance.FaceVerificationResult
 import com.example.infinite_track.presentation.components.button.ButtonStyle
 import com.example.infinite_track.presentation.components.button.StatefulButton
 import com.example.infinite_track.presentation.components.cameras.FaceBoundingBox
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
+import com.example.infinite_track.presentation.screen.attendance.FACE_VERIFICATION_RESULT_KEY
+import com.example.infinite_track.presentation.screen.attendance.FaceVerificationResult
 import com.example.infinite_track.presentation.theme.Blue_500
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -72,11 +72,38 @@ import java.util.concurrent.Executors
 import androidx.camera.core.Preview as CameraPreview
 
 private fun NavController.finishFaceScanner(result: FaceVerificationResult) {
-    previousBackStackEntry?.savedStateHandle?.set(
-        FACE_VERIFICATION_RESULT_KEY,
-        result.savedStateValue
-    )
-    popBackStack()
+    val targetEntry = previousBackStackEntry
+    if (targetEntry == null) {
+        android.util.Log.e(
+            "FaceScannerScreen",
+            "Cannot deliver face verification result=${result.savedStateValue}: previousBackStackEntry is null"
+        )
+        val navigatedUp = navigateUp()
+        if (!navigatedUp) {
+            android.util.Log.e(
+                "FaceScannerScreen",
+                "Failed to close FaceScanner after missing previousBackStackEntry for result=${result.savedStateValue}"
+            )
+        }
+        return
+    }
+
+    targetEntry.savedStateHandle[FACE_VERIFICATION_RESULT_KEY] = result.savedStateValue
+
+    val popped = popBackStack()
+    if (!popped) {
+        android.util.Log.e(
+            "FaceScannerScreen",
+            "Failed to pop FaceScanner after delivering result=${result.savedStateValue}"
+        )
+        val navigatedUp = navigateUp()
+        if (!navigatedUp) {
+            android.util.Log.e(
+                "FaceScannerScreen",
+                "Failed to close FaceScanner after fallback navigateUp for result=${result.savedStateValue}"
+            )
+        }
+    }
 }
 
 private fun NavController.finishFaceScanner(state: LivenessState) {
@@ -125,7 +152,6 @@ fun FaceScannerScreen(
                 navController.finishFaceScanner(FaceVerificationResult.SUCCESS)
             }
 
-            // FAILURE and TIMEOUT stay on screen to allow explicit retry or close
             LivenessState.FAILURE,
             LivenessState.TIMEOUT -> Unit
 

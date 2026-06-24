@@ -8,7 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import com.example.infinite_track.presentation.components.dialog.WfaBookingDialog
-import com.example.infinite_track.presentation.navigation.Screen
+import com.example.infinite_track.presentation.navigation.model.Screen
 import com.example.infinite_track.utils.DialogHelper
 
 @Composable

@@ -35,7 +35,7 @@ import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinates
 import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
 import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
-import com.example.infinite_track.presentation.navigation.Screen
+import com.example.infinite_track.presentation.navigation.model.Screen
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.flow.Flow

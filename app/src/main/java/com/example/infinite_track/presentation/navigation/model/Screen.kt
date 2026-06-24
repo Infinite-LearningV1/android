@@ -1,4 +1,4 @@
-package com.example.infinite_track.presentation.navigation
+package com.example.infinite_track.presentation.navigation.model
 
 sealed class Screen(val route: String) {
     data object Home : Screen("home")

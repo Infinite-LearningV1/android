@@ -30,7 +30,7 @@ import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.presentation.components.base.BaseLayout
 import com.example.infinite_track.presentation.navigation.AppNavigator
 import com.example.infinite_track.presentation.navigation.NavigationEvent
-import com.example.infinite_track.presentation.navigation.Screen
+import com.example.infinite_track.presentation.navigation.model.Screen
 import com.example.infinite_track.presentation.navigation.appNavGraph
 import com.example.infinite_track.presentation.screen.splash.SplashViewModel
 import com.example.infinite_track.utils.DialogHelper
