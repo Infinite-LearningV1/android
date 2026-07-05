@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.fail
 import org.junit.Test
 
 class ClearAuthenticatedRuntimeUseCaseTest {
@@ -52,6 +53,54 @@ class ClearAuthenticatedRuntimeUseCaseTest {
         todayStatusPreference.saveTodayStatusCache(sampleCachedTodayStatus())
 
         useCase()
+
+        assertEquals("", userPreference.getAuthToken().first())
+        assertEquals("", userPreference.getUserId().first())
+        assertEquals("", userPreference.getRefreshToken().first())
+        assertEquals(0L, userPreference.getLastRefreshAt().first())
+        assertEquals(0L, userPreference.getLastProfileSyncAt().first())
+        assertNull(userDao.getUserProfile())
+        assertNull(attendancePreference.getActiveAttendanceId().first())
+        assertEquals(false, attendancePreference.isUserInsideGeofence().first())
+        assertNull(attendancePreference.getLastGeofenceParams().first())
+        assertNull(todayStatusPreference.getTodayStatusCache().first())
+        assertEquals(1, removeAllGeofencesCalls)
+    }
+
+    @Test
+    fun `clear runtime continues best effort after one step fails and reports failure`() = runTest {
+        val userPreference = UserPreference(createDataStore("clear_runtime_user_failure"))
+        val attendancePreference = AttendancePreference(createDataStore("clear_runtime_attendance_failure"))
+        val todayStatusPreference = TodayStatusPreference(createDataStore("clear_runtime_today_status_failure"), Gson())
+        val userDao = ThrowingUserDao()
+        var removeAllGeofencesCalls = 0
+        val useCase = ClearAuthenticatedRuntimeUseCase(
+            userPreference = userPreference,
+            userDao = userDao,
+            attendancePreference = attendancePreference,
+            todayStatusPreference = todayStatusPreference,
+            removeAllGeofences = { removeAllGeofencesCalls += 1 }
+        )
+
+        userPreference.saveSession(
+            token = "SENTINEL_TOKEN_BETA",
+            userId = "SENTINEL_USER_BETA",
+            refreshToken = "SENTINEL_REFRESH_BETA",
+            lastRefreshAt = 321L
+        )
+        userPreference.saveLastProfileSyncAt(654L)
+        userDao.insertOrUpdateUserProfile(sampleUserEntity())
+        attendancePreference.saveActiveAttendanceId(100)
+        attendancePreference.setUserInsideGeofence(true)
+        attendancePreference.saveLastGeofenceParams("attendance-geofence", -1.0, 120.0, 150f)
+        todayStatusPreference.saveTodayStatusCache(sampleCachedTodayStatus())
+
+        try {
+            useCase()
+            fail("Expected cleanup failure")
+        } catch (e: IllegalStateException) {
+            assertEquals("Failed to clear authenticated runtime; completed with 1 cleanup error(s)", e.message)
+        }
 
         assertEquals("", userPreference.getAuthToken().first())
         assertEquals("", userPreference.getUserId().first())
@@ -132,6 +181,23 @@ class ClearAuthenticatedRuntimeUseCaseTest {
 
         override suspend fun clearUserProfile() {
             profile = null
+        }
+    }
+
+    private class ThrowingUserDao : UserDao {
+        private var profile: UserEntity? = null
+
+        override suspend fun insertOrUpdateUserProfile(userEntity: UserEntity) {
+            profile = userEntity
+        }
+
+        override fun getUserProfileFlow(): Flow<UserEntity?> = flowOf(profile)
+
+        override suspend fun getUserProfile(): UserEntity? = profile
+
+        override suspend fun clearUserProfile() {
+            profile = null
+            throw IllegalStateException("user profile cleanup failed")
         }
     }
 }

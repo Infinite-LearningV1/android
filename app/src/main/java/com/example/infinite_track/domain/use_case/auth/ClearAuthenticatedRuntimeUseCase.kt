@@ -28,10 +28,45 @@ class ClearAuthenticatedRuntimeUseCase internal constructor(
     )
 
     suspend operator fun invoke() {
-        userPreference.clearAuthData()
-        userDao.clearUserProfile()
-        todayStatusPreference.clearTodayStatusCache()
-        attendancePreference.clearAttendanceRuntimeState()
-        removeAllGeofences()
+        val failures = mutableListOf<Throwable>()
+
+        runBestEffort("userPreference.clearAuthData", failures) {
+            userPreference.clearAuthData()
+        }
+        runBestEffort("userDao.clearUserProfile", failures) {
+            userDao.clearUserProfile()
+        }
+        runBestEffort("todayStatusPreference.clearTodayStatusCache", failures) {
+            todayStatusPreference.clearTodayStatusCache()
+        }
+        runBestEffort("attendancePreference.clearAttendanceRuntimeState", failures) {
+            attendancePreference.clearAttendanceRuntimeState()
+        }
+        runBestEffort("removeAllGeofences", failures) {
+            removeAllGeofences()
+        }
+
+        if (failures.isNotEmpty()) {
+            throw IllegalStateException(
+                "Failed to clear authenticated runtime; completed with ${failures.size} cleanup error(s)",
+                failures.first()
+            ).apply {
+                failures.drop(1).forEach(::addSuppressed)
+            }
+        }
+    }
+
+    private inline fun runBestEffort(
+        stepName: String,
+        failures: MutableList<Throwable>,
+        block: () -> Unit
+    ) {
+        try {
+            block()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            failures += IllegalStateException("$stepName failed", e)
+        }
     }
 }

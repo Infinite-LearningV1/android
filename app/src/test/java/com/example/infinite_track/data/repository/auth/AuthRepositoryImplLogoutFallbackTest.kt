@@ -24,6 +24,7 @@ import com.example.infinite_track.data.soucre.network.response.booking.BookingHi
 import com.example.infinite_track.data.soucre.network.response.booking.BookingResponse
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -86,6 +87,39 @@ class AuthRepositoryImplLogoutFallbackTest {
         val result = repository.logoutRemote()
 
         assertTrue(result.isFailure)
+        assertEquals("refresh-token-redacted", apiService.lastLogoutRequest?.refreshToken)
+        assertEquals("expired-access-redacted", userPreference.getAuthToken().first())
+        assertEquals("refresh-token-redacted", userPreference.getRefreshToken().first())
+    }
+
+    @Test
+    fun `logout remote rethrows cancellation from backend logout and preserves local session`() = runBlocking {
+        val userPreference = createUserPreference().also {
+            it.saveSession(
+                token = "expired-access-redacted",
+                userId = "147",
+                refreshToken = "refresh-token-redacted",
+                lastRefreshAt = 1L
+            )
+        }
+        val cancellation = CancellationException("cancelled")
+        val apiService = LogoutFallbackFakeApiService(
+            logoutBlock = { throw cancellation }
+        )
+        val repository = AuthRepositoryImpl(
+            userPreference = userPreference,
+            apiService = apiService,
+            authSessionApiService = LogoutFallbackFakeAuthSessionApiService(),
+            userDao = LogoutFallbackFakeUserDao()
+        )
+
+        try {
+            repository.logoutRemote()
+            org.junit.Assert.fail("Expected CancellationException")
+        } catch (e: CancellationException) {
+            assertTrue(e === cancellation)
+        }
+
         assertEquals("refresh-token-redacted", apiService.lastLogoutRequest?.refreshToken)
         assertEquals("expired-access-redacted", userPreference.getAuthToken().first())
         assertEquals("refresh-token-redacted", userPreference.getRefreshToken().first())

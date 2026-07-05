@@ -211,6 +211,8 @@ class AuthRepositoryImpl @Inject constructor(
             }
             safeLogDebug("Server logout successful")
             Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             safeLogError("Server logout failed", e)
             Result.failure(e)
