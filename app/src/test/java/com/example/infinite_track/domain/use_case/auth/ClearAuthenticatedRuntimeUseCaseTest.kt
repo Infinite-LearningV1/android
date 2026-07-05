@@ -39,9 +39,9 @@ class ClearAuthenticatedRuntimeUseCaseTest {
         )
 
         userPreference.saveSession(
-            token = "access-token",
-            userId = "42",
-            refreshToken = "refresh-token",
+            token = "SENTINEL_TOKEN_ALPHA",
+            userId = "SENTINEL_USER_ALPHA",
+            refreshToken = "SENTINEL_REFRESH_ALPHA",
             lastRefreshAt = 123L
         )
         userPreference.saveLastProfileSyncAt(456L)
@@ -73,8 +73,8 @@ class ClearAuthenticatedRuntimeUseCaseTest {
 
     private fun sampleCachedTodayStatus(): CachedTodayStatusPayload {
         return CachedTodayStatusPayload(
-            userId = "42",
-            todayDate = "2026-07-05",
+            userId = "SENTINEL_USER_ALPHA",
+            todayDate = "2099-01-01",
             attendanceSessionStateId = 1,
             attendanceSessionStateKey = "checked_in",
             activeAttendanceId = 99,
@@ -99,15 +99,15 @@ class ClearAuthenticatedRuntimeUseCaseTest {
 
     private fun sampleUserEntity(): UserEntity {
         return UserEntity(
-            id = 42,
-            fullName = "Test User",
-            email = "user@example.test",
+            id = 900_001,
+            fullName = "SENTINEL_NAME_ALPHA",
+            email = "SENTINEL_EMAIL_ALPHA",
             roleName = "staff",
             positionName = "Engineer",
             programName = "Program",
             divisionName = "Division",
-            nipNim = "EMP-42",
-            phone = "08123456789",
+            nipNim = "SENTINEL_ID_ALPHA",
+            phone = "SENTINEL_PHONE_ALPHA",
             photo = null,
             photoUpdatedAt = null,
             latitude = null,
