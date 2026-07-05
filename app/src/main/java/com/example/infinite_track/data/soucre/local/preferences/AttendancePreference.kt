@@ -183,6 +183,18 @@ class AttendancePreference @Inject constructor(
 				.mapNotNull { it.deserializeToReminder() }
 		}
 	}
+
+	suspend fun clearAttendanceRuntimeState() {
+		dataStore.edit { preferences ->
+			preferences.remove(ACTIVE_ATTENDANCE_ID_KEY)
+			preferences.remove(IS_INSIDE_GEOFENCE_KEY)
+			preferences.remove(LAST_GEOFENCE_REQUEST_ID_KEY)
+			preferences.remove(LAST_GEOFENCE_LAT_KEY)
+			preferences.remove(LAST_GEOFENCE_LNG_KEY)
+			preferences.remove(LAST_GEOFENCE_RADIUS_KEY)
+			preferences.remove(REMINDER_GEOFENCES_KEY)
+		}
+	}
 }
 
 data class ReminderGeofence(
