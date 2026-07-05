@@ -15,7 +15,11 @@ class ForceReauthUseCase internal constructor(
 
     suspend operator fun invoke(reason: SessionManager.ReauthReason) {
         if (!sessionManager.beginSessionExpiryHandling()) return
-        clearAuthenticatedRuntime()
-        sessionManager.triggerForcedReauth(reason)
+
+        try {
+            clearAuthenticatedRuntime()
+        } finally {
+            sessionManager.triggerForcedReauth(reason)
+        }
     }
 }

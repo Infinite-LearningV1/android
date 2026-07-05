@@ -1,6 +1,7 @@
 package com.example.infinite_track.domain.use_case.auth
 
 import com.example.infinite_track.domain.repository.AuthRepository
+import java.util.concurrent.CancellationException
 import javax.inject.Inject
 
 /**
@@ -25,6 +26,8 @@ class LogoutUseCase private constructor(
         return try {
             clearAuthenticatedRuntime()
             Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -18,7 +18,9 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
+import java.util.concurrent.CancellationException
 
 class LogoutUseCaseTest {
 
@@ -45,6 +47,22 @@ class LogoutUseCaseTest {
         val result = useCase()
 
         assertTrue(result.isFailure)
+        assertEquals(1, repository.logoutRemoteCalls)
+    }
+
+    @Test
+    fun `logout use case rethrows cancellation when local cleanup is cancelled`() = runTest {
+        val repository = FakeAuthRepository(logoutRemoteResult = Result.success(Unit))
+        val clearRuntime = createClearRuntimeUseCase { throw CancellationException("cancelled") }
+        val useCase = LogoutUseCase(repository, clearRuntime)
+
+        try {
+            useCase()
+            fail("Expected cancellation exception")
+        } catch (_: CancellationException) {
+            // Expected.
+        }
+
         assertEquals(1, repository.logoutRemoteCalls)
     }
 

@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
 import org.junit.Test
 
 class ForceReauthUseCaseTest {
@@ -43,6 +44,27 @@ class ForceReauthUseCaseTest {
 
         assertEquals(1, clearRuntimeCalls)
         assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
+    }
+
+    @Test
+    fun `force reauth still publishes terminal state when cleanup fails`() = runTest {
+        var clearRuntimeCalls = 0
+        val sessionManager = SessionManager()
+        val useCase = ForceReauthUseCase(sessionManager) {
+            clearRuntimeCalls += 1
+            error("cleanup failed")
+        }
+
+        try {
+            useCase(SessionManager.ReauthReason.REFRESH_REVOKED)
+            fail("Expected cleanup failure")
+        } catch (_: IllegalStateException) {
+            // Expected.
+        }
+
+        assertEquals(1, clearRuntimeCalls)
+        assertEquals(true, sessionManager.sessionExpired.value)
+        assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
     }
 
     private fun createClearRuntimeUseCase(onRemoveAllGeofences: () -> Unit): ClearAuthenticatedRuntimeUseCase {
