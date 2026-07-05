@@ -16,10 +16,11 @@ import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.use_case.auth.ForegroundSessionValidationResult
-import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
+import com.example.infinite_track.domain.use_case.auth.ForceReauthUseCase
 import com.example.infinite_track.domain.use_case.auth.ValidateForegroundSessionUseCase
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
@@ -55,7 +56,7 @@ class ForegroundSessionLifecycleObserverTest {
                 sessionManager = sessionManager
             ),
             sessionManager = sessionManager,
-            logoutUseCaseProvider = Provider { LogoutUseCase(logoutRepository) },
+            forceReauthUseCaseProvider = forceReauthProvider(sessionManager),
             applicationScope = scope,
             gate = ForegroundSessionResumeGate(nowMillis = { 10_000L }, debounceWindowMs = 2_000L)
         )
@@ -78,7 +79,7 @@ class ForegroundSessionLifecycleObserverTest {
         val observer = ForegroundSessionLifecycleObserver.createForTest(
             validateForegroundSessionUseCase = FixedForegroundValidationUseCase(ForegroundSessionValidationResult.Valid),
             sessionManager = sessionManager,
-            logoutUseCaseProvider = Provider { LogoutUseCase(logoutRepository) },
+            forceReauthUseCaseProvider = forceReauthProvider(sessionManager),
             applicationScope = scope,
             gate = ForegroundSessionResumeGate(nowMillis = { 10_000L }, debounceWindowMs = 2_000L)
         )
@@ -95,17 +96,16 @@ class ForegroundSessionLifecycleObserverTest {
     }
 
     @Test
-    fun `reauth required publishes forced reauth before logout completes`() = runTest {
+    fun `reauth required clears local runtime and triggers forced reauth`() = runTest {
         val scope = TestScope(StandardTestDispatcher(testScheduler) + Job())
         val sessionManager = SessionManager()
-        val logoutCompletion = CompletableDeferred<Unit>()
-        val logoutRepository = FakeLogoutRepository(logoutCompletion)
+        var localRuntimeClearCalls = 0
         val observer = ForegroundSessionLifecycleObserver.createForTest(
             validateForegroundSessionUseCase = FixedForegroundValidationUseCase(
                 ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_INVALID)
             ),
             sessionManager = sessionManager,
-            logoutUseCaseProvider = Provider { LogoutUseCase(logoutRepository) },
+            forceReauthUseCaseProvider = forceReauthProvider(sessionManager) { localRuntimeClearCalls += 1 },
             applicationScope = scope,
             gate = ForegroundSessionResumeGate(nowMillis = { 10_000L }, debounceWindowMs = 2_000L)
         )
@@ -114,13 +114,16 @@ class ForegroundSessionLifecycleObserverTest {
         observer.onStart(owner)
         observer.onStart(owner)
         scope.advanceUntilIdle()
+        withTimeout(2_000) {
+            while (localRuntimeClearCalls != 1) {
+                delay(10)
+                scope.advanceUntilIdle()
+            }
+        }
 
-        assertEquals(1, logoutRepository.logoutCallCount)
+        assertEquals(1, localRuntimeClearCalls)
         assertTrue(sessionManager.sessionExpired.value)
         assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
-
-        logoutCompletion.complete(Unit)
-        scope.advanceUntilIdle()
     }
 
     @Test
@@ -133,7 +136,7 @@ class ForegroundSessionLifecycleObserverTest {
                 ForegroundSessionValidationResult.TemporaryFailure("offline", null)
             ),
             sessionManager = sessionManager,
-            logoutUseCaseProvider = Provider { LogoutUseCase(logoutRepository) },
+            forceReauthUseCaseProvider = forceReauthProvider(sessionManager),
             applicationScope = scope,
             gate = ForegroundSessionResumeGate(nowMillis = { 10_000L }, debounceWindowMs = 2_000L)
         )
@@ -163,7 +166,7 @@ class ForegroundSessionLifecycleObserverTest {
         val observer = ForegroundSessionLifecycleObserver.createForTest(
             validateForegroundSessionUseCase = ThrowingForegroundValidationUseCase(expectedFailure),
             sessionManager = sessionManager,
-            logoutUseCaseProvider = Provider { LogoutUseCase(logoutRepository) },
+            forceReauthUseCaseProvider = forceReauthProvider(sessionManager),
             applicationScope = scope,
             gate = ForegroundSessionResumeGate(nowMillis = { 10_000L }, debounceWindowMs = 2_000L),
             unexpectedFailureLogger = { capturedFailures += it }
@@ -192,6 +195,18 @@ class ForegroundSessionLifecycleObserverTest {
         )
         return UserPreference(dataStore)
     }
+
+    private fun forceReauthProvider(
+        sessionManager: SessionManager,
+        onClearRuntime: () -> Unit = {}
+    ): Provider<ForceReauthUseCase> {
+        return Provider {
+            ForceReauthUseCase(sessionManager) {
+                onClearRuntime()
+            }
+        }
+    }
+
 
     private fun sampleUser(): UserModel = UserModel(
         id = 1,
@@ -258,6 +273,7 @@ private class TestLifecycleOwner : LifecycleOwner {
     override val lifecycle: Lifecycle = LifecycleRegistry(this)
 }
 
+
 private class FakeValidationRepository(
     private val syncResults: MutableList<ProfileSyncResult>,
     private val refreshFailureReason: AuthRefreshFailureReason? = null,
@@ -305,9 +321,7 @@ private class FakeValidationRepository(
     }
 }
 
-private class FakeLogoutRepository(
-    private val logoutCompletion: CompletableDeferred<Unit>? = null
-) : AuthRepository {
+private class FakeLogoutRepository : AuthRepository {
     var logoutCallCount: Int = 0
         private set
 
@@ -317,7 +331,6 @@ private class FakeLogoutRepository(
 
     override suspend fun logout(): Result<Unit> {
         logoutCallCount += 1
-        logoutCompletion?.await()
         return Result.success(Unit)
     }
 
