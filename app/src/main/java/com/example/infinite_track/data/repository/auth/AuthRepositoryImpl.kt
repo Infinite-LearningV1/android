@@ -198,35 +198,27 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Logout the current user
-     * @return Result indicating success or failure
+     * Attempts server-side logout without clearing local runtime state.
+     * Local cleanup is orchestrated by LogoutUseCase or ForceReauthUseCase.
      */
-    override suspend fun logout(): Result<Unit> {
+    override suspend fun logoutRemote(): Result<Unit> {
         return try {
-            try {
-                val refreshToken = userPreference.getRefreshToken().first()
-                if (refreshToken.isNotBlank()) {
-                    apiService.logoutWithRefresh(LogoutRequest(refreshToken = refreshToken))
-                } else {
-                    authSessionApiService.logout()
-                }
-                safeLogDebug("Server logout successful")
-            } catch (e: Exception) {
-                // Log the error but continue with local logout
-                safeLogError("Server logout failed, proceeding with local logout", e)
-            } finally {
-                // Always clear local data, regardless of API call result
-                userPreference.clearAuthData()
-                userDao.clearUserProfile()
-                safeLogDebug("Local data cleared successfully")
+            val refreshToken = userPreference.getRefreshToken().first()
+            if (refreshToken.isNotBlank()) {
+                apiService.logoutWithRefresh(LogoutRequest(refreshToken = refreshToken))
+            } else {
+                authSessionApiService.logout()
             }
+            safeLogDebug("Server logout successful")
             Result.success(Unit)
         } catch (e: Exception) {
-            // This would only happen if clearing local data fails
-            safeLogError("Critical error during logout", e)
+            safeLogError("Server logout failed", e)
             Result.failure(e)
         }
     }
+
+    @Suppress("DEPRECATION")
+    override suspend fun logout(): Result<Unit> = logoutRemote()
 
     /**
      * Get the currently logged in user as a Flow

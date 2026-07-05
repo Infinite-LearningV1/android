@@ -38,9 +38,20 @@ interface AuthRepository {
     suspend fun syncUserProfileForBootstrap(): ProfileSyncResult = syncUserProfile()
 
     /**
+     * Attempt to invalidate the current server-side auth session.
+     *
+     * This does not clear local authenticated runtime state. User-initiated logout
+     * orchestration belongs in LogoutUseCase, and forced re-auth cleanup belongs in
+     * ForceReauthUseCase.
+     */
+    @Suppress("DEPRECATION")
+    suspend fun logoutRemote(): Result<Unit> = logout()
+
+    /**
      * Logout the current user
      * @return Result indicating success or failure
      */
+    @Deprecated("Use LogoutUseCase for user-initiated logout orchestration")
     suspend fun logout(): Result<Unit>
 
     /**

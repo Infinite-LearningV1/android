@@ -4,16 +4,29 @@ import com.example.infinite_track.domain.repository.AuthRepository
 import javax.inject.Inject
 
 /**
- * Use case for handling user logout
+ * User-initiated logout orchestration.
+ *
+ * Remote logout is best-effort and local authenticated runtime cleanup always runs.
  */
-class LogoutUseCase @Inject constructor(
-    private val authRepository: AuthRepository
+class LogoutUseCase private constructor(
+    private val authRepository: AuthRepository,
+    private val clearAuthenticatedRuntime: suspend () -> Unit
 ) {
-    /**
-     * Invokes the logout process
-     * @return Result<Unit> indicating success or failure
-     */
+    @Inject
+    constructor(
+        authRepository: AuthRepository,
+        clearAuthenticatedRuntimeUseCase: ClearAuthenticatedRuntimeUseCase
+    ) : this(authRepository, clearAuthenticatedRuntimeUseCase::invoke)
+
+    internal constructor(authRepository: AuthRepository) : this(authRepository, {})
+
     suspend operator fun invoke(): Result<Unit> {
-        return authRepository.logout()
+        authRepository.logoutRemote()
+        return try {
+            clearAuthenticatedRuntime()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }

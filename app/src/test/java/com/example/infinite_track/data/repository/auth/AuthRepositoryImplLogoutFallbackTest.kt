@@ -38,7 +38,7 @@ import java.io.File
 
 class AuthRepositoryImplLogoutFallbackTest {
     @Test
-    fun `logout sends refresh token body before clearing local session`() = runBlocking {
+    fun `logout remote sends refresh token body without clearing local session`() = runBlocking {
         val userPreference = createUserPreference().also {
             it.saveSession(
                 token = "expired-access-redacted",
@@ -55,16 +55,16 @@ class AuthRepositoryImplLogoutFallbackTest {
             userDao = LogoutFallbackFakeUserDao()
         )
 
-        val result = repository.logout()
+        val result = repository.logoutRemote()
 
         assertTrue(result.isSuccess)
         assertEquals("refresh-token-redacted", apiService.lastLogoutRequest?.refreshToken)
-        assertEquals("", userPreference.getAuthToken().first())
-        assertEquals("", userPreference.getRefreshToken().first())
+        assertEquals("expired-access-redacted", userPreference.getAuthToken().first())
+        assertEquals("refresh-token-redacted", userPreference.getRefreshToken().first())
     }
 
     @Test
-    fun `logout clears local session even when backend fallback rejects expired access`() = runBlocking {
+    fun `logout remote returns failure when backend fallback rejects expired access and preserves local session`() = runBlocking {
         val userPreference = createUserPreference().also {
             it.saveSession(
                 token = "expired-access-redacted",
@@ -83,12 +83,12 @@ class AuthRepositoryImplLogoutFallbackTest {
             userDao = LogoutFallbackFakeUserDao()
         )
 
-        val result = repository.logout()
+        val result = repository.logoutRemote()
 
-        assertTrue(result.isSuccess)
+        assertTrue(result.isFailure)
         assertEquals("refresh-token-redacted", apiService.lastLogoutRequest?.refreshToken)
-        assertEquals("", userPreference.getAuthToken().first())
-        assertEquals("", userPreference.getRefreshToken().first())
+        assertEquals("expired-access-redacted", userPreference.getAuthToken().first())
+        assertEquals("refresh-token-redacted", userPreference.getRefreshToken().first())
     }
 
     private fun createUserPreference(): UserPreference {
