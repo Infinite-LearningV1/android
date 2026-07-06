@@ -66,7 +66,7 @@ class SplashViewModel @Inject constructor(
             is SessionBootstrapFailure.ReAuthRequired -> {
                 try {
                     bootstrapGate.runTerminalLogoutIfOwner {
-                        clearAuthenticatedRuntimeUseCase()
+                        runCatching { clearAuthenticatedRuntimeUseCase() }
                     }
                 } finally {
                     _navigationState.value = SplashNavigationState.NavigateToLogin

@@ -17,17 +17,20 @@ class ForceReauthUseCase internal constructor(
     suspend operator fun invoke(reason: SessionManager.ReauthReason) {
         if (!sessionManager.beginSessionExpiryHandling()) return
 
+        var cancellation: CancellationException? = null
         try {
             clearAuthenticatedRuntime()
         } catch (e: CancellationException) {
-            throw e
+            cancellation = e
         } catch (_: Exception) {
             // Forced re-auth is driven by a terminal backend/session outcome. Best-effort
             // local cleanup failures must not replace that outcome for interceptor or
             // foreground callers; ClearAuthenticatedRuntimeUseCase still attempts every
             // cleanup step before surfacing its aggregate failure here.
+        } finally {
+            sessionManager.triggerForcedReauth(reason)
         }
 
-        sessionManager.triggerForcedReauth(reason)
+        cancellation?.let { throw it }
     }
 }

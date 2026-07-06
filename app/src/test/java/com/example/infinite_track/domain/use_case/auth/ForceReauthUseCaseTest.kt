@@ -64,7 +64,7 @@ class ForceReauthUseCaseTest {
     }
 
     @Test
-    fun `force reauth rethrows cancellation from cleanup`() = runTest {
+    fun `force reauth still publishes terminal state before rethrowing cancellation`() = runTest {
         val sessionManager = SessionManager()
         val cancellation = CancellationException("cancelled")
         val useCase = ForceReauthUseCase(sessionManager) {
@@ -78,7 +78,8 @@ class ForceReauthUseCaseTest {
             assertEquals(cancellation, e)
         }
 
-        assertEquals(false, sessionManager.sessionExpired.value)
+        assertEquals(true, sessionManager.sessionExpired.value)
+        assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
     }
 
     private fun createClearRuntimeUseCase(onRemoveAllGeofences: () -> Unit): ClearAuthenticatedRuntimeUseCase {

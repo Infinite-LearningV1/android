@@ -113,6 +113,46 @@ class SplashViewModelBootstrapReauthTest {
         produceFile = { File.createTempFile(name, ".preferences_pb").also { it.delete() } }
     )
 
+    @Test
+    fun `bootstrap reauth still navigates to login when local cleanup fails`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val sessionManager = SessionManager()
+            val repository = TerminalRefreshRepository()
+            val viewModel = SplashViewModel(
+                checkSessionUseCase = CheckSessionUseCase(
+                    authRepository = repository,
+                    generateAndSaveEmbeddingUseCase = GenerateAndSaveEmbeddingUseCase(
+                        faceProcessor = FaceProcessor(appContext = ContextWrapper(null)),
+                        authRepository = repository
+                    ),
+                    userPreference = UserPreference(createDataStore("splash_bootstrap_user_fail")),
+                    sessionManager = sessionManager
+                ),
+                clearAuthenticatedRuntimeUseCase = ClearAuthenticatedRuntimeUseCase(
+                    userPreference = UserPreference(createDataStore("splash_bootstrap_user_fail_cleanup")),
+                    userDao = FakeUserDao(),
+                    attendancePreference = AttendancePreference(createDataStore("splash_bootstrap_attendance_fail")),
+                    todayStatusPreference = TodayStatusPreference(createDataStore("splash_bootstrap_today_fail"), Gson()),
+                    removeAllGeofences = { error("cleanup failed") }
+                )
+            )
+
+            val terminalState = withContext(Dispatchers.Default.limitedParallelism(1)) {
+                withTimeout(5_000) {
+                    while (viewModel.navigationState.value == SplashNavigationState.Loading) {
+                        mainDispatcherRule.dispatcher.scheduler.advanceUntilIdle()
+                        delay(10)
+                    }
+                    viewModel.navigationState.value
+                }
+            }
+
+            assertEquals(SplashNavigationState.NavigateToLogin, terminalState)
+            assertFalse(sessionManager.sessionExpired.value)
+            assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
+            assertFalse(repository.logoutRemoteCalled)
+        }
+
     private class FakeUserDao : UserDao {
         override suspend fun insertOrUpdateUserProfile(userEntity: UserEntity) = Unit
         override fun getUserProfileFlow(): Flow<UserEntity?> = flowOf(null)
