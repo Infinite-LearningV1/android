@@ -9,6 +9,8 @@ object WfaShellNavigationContract {
         Screen.DetailMyAttendance.route,
         Screen.DetailListTimeOff.route,
         Screen.TimeOffRequest.route,
+        Screen.TimeOffReq.route,
+        Screen.MyLeave.route,
         Screen.FAQ.route,
         Screen.FaceScanner.route,
         Screen.LocationSearch.route,

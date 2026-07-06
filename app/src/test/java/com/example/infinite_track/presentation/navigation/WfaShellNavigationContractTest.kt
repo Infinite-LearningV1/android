@@ -62,6 +62,8 @@ class WfaShellNavigationContractTest {
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.Attendance.route))
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.LocationSearch.route))
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.WfaBooking.route))
+        assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.TimeOffReq.route))
+        assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.MyLeave.route))
         assertTrue(WfaShellNavigationContract.shouldShowBottomBar(Screen.Wfa.route))
     }
 }
