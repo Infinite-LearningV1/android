@@ -5,12 +5,16 @@ import com.example.infinite_track.data.mapper.attendance.toActiveSession
 import com.example.infinite_track.data.mapper.attendance.toDomain
 import com.example.infinite_track.data.mapper.attendance.toDto
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
+import com.example.infinite_track.data.soucre.local.preferences.CachedTodayStatusPayload
+import com.example.infinite_track.data.soucre.local.preferences.TodayStatusPreference
+import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.network.request.CheckOutRequestDto
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.domain.model.attendance.ActiveAttendanceSession
 import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
 import com.example.infinite_track.domain.model.attendance.TodayStatus
+import com.example.infinite_track.domain.model.auth.AuthRuntimePolicy
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import kotlinx.coroutines.flow.first
 import org.json.JSONObject
@@ -21,11 +25,14 @@ import javax.inject.Singleton
 @Singleton
 class AttendanceRepositoryImpl @Inject constructor(
     private val apiService: ApiService,
-    private val attendancePreference: AttendancePreference
+    private val attendancePreference: AttendancePreference,
+    private val todayStatusPreference: TodayStatusPreference,
+    private val userPreference: UserPreference
 ) : AttendanceRepository {
 
     companion object {
         private const val TAG = "AttendanceRepository"
+        private val CLEAR_EMPTY_ATTENDANCE_STATES = setOf("not_started", "completed")
     }
 
     /**
@@ -53,12 +60,33 @@ class AttendanceRepositoryImpl @Inject constructor(
     /**
      * Gets the current day's attendance status
      */
-    override suspend fun getTodayStatus(): Result<TodayStatus> {
+    override suspend fun getTodayStatus(forceRefresh: Boolean): Result<TodayStatus> {
         return try {
+            val userId = userPreference.getUserId().first()
+            val now = System.currentTimeMillis()
+            val cached = todayStatusPreference.getTodayStatusCache().first()
+
+            if (!forceRefresh && cached != null && isCacheValid(cached, userId, now)) {
+                return Result.success(cached.status)
+            }
+
             val response = apiService.getTodayStatus()
             if (response.success) {
-                // Convert DTO to domain model using mapper
-                Result.success(response.data.toDomain())
+                val status = response.toDomain()
+                syncActiveAttendanceId(status)
+                todayStatusPreference.saveTodayStatusCache(
+                    CachedTodayStatusPayload(
+                        userId = userId,
+                        todayDate = status.todayDate,
+                        attendanceSessionStateId = status.attendanceSessionState?.id,
+                        attendanceSessionStateKey = status.attendanceSessionState?.key,
+                        activeAttendanceId = status.activeAttendanceId,
+                        fetchedAtMillis = now,
+                        ttlSeconds = status.cacheTtlSeconds,
+                        status = status
+                    )
+                )
+                Result.success(status)
             } else {
                 Result.failure(Exception(response.message ?: "Unknown error"))
             }
@@ -70,6 +98,10 @@ class AttendanceRepositoryImpl @Inject constructor(
             Log.e(TAG, "Error getting today's status", e)
             Result.failure(e)
         }
+    }
+
+    override suspend fun clearTodayStatusCache() {
+        todayStatusPreference.clearTodayStatusCache()
     }
 
     /**
@@ -87,11 +119,7 @@ class AttendanceRepositoryImpl @Inject constructor(
             if (response.success) {
                 // Save the attendance ID for later checkout
                 attendancePreference.saveActiveAttendanceId(response.data.idAttendance)
-                Log.d(
-                    TAG,
-                    "Check-in successful, saved attendance ID: ${response.data.idAttendance}"
-                )
-
+                todayStatusPreference.clearTodayStatusCache()
                 // Convert DTO to ActiveAttendanceSession domain model using mapper
                 Result.success(response.data.toActiveSession())
             } else {
@@ -129,8 +157,7 @@ class AttendanceRepositoryImpl @Inject constructor(
             if (response.success) {
                 // Clear the active attendance ID
                 attendancePreference.clearActiveAttendanceId()
-                Log.d(TAG, "Check-out successful, cleared attendance ID")
-
+                todayStatusPreference.clearTodayStatusCache()
                 // Convert DTO to ActiveAttendanceSession domain model using mapper
                 Result.success(response.data.toActiveSession())
             } else {
@@ -169,6 +196,26 @@ class AttendanceRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Error sending location event", e)
             Result.failure(e)
+        }
+    }
+
+    private fun isCacheValid(cache: CachedTodayStatusPayload, userId: String, now: Long): Boolean {
+        if (cache.userId != userId) return false
+        if (cache.todayDate != cache.status.todayDate) return false
+
+        val ttlMillis = (cache.ttlSeconds.takeIf { it > 0 } ?: AuthRuntimePolicy.SHARED_TTL_SECONDS) * 1000L
+        return now - cache.fetchedAtMillis < ttlMillis
+    }
+
+    private suspend fun syncActiveAttendanceId(status: TodayStatus) {
+        val activeAttendanceId = status.activeAttendanceId
+        when {
+            activeAttendanceId != null && activeAttendanceId > 0 -> {
+                attendancePreference.saveActiveAttendanceId(activeAttendanceId)
+            }
+            activeAttendanceId == null && status.attendanceSessionState?.key in CLEAR_EMPTY_ATTENDANCE_STATES -> {
+                attendancePreference.clearActiveAttendanceId()
+            }
         }
     }
 }

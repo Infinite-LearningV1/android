@@ -10,7 +10,7 @@ import javax.inject.Inject
 class GetTodayStatusUseCase @Inject constructor(
     private val attendanceRepository: AttendanceRepository
 ) {
-    suspend operator fun invoke(): Result<TodayStatus> {
-        return attendanceRepository.getTodayStatus()
+    suspend operator fun invoke(forceRefresh: Boolean = false): Result<TodayStatus> {
+        return attendanceRepository.getTodayStatus(forceRefresh)
     }
 }
