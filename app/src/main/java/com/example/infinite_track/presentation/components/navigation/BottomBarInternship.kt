@@ -103,25 +103,25 @@ fun BottomBarInternship(navController: NavController) {
             val currentRoute = navBackStackEntry?.destination?.route
             val navigationItems = listOf(
                 NavigationItem(
-                    tittle = stringResource(R.string.bottom_menu_home),
+                    tittle = R.string.bottom_menu_home,
                     selectedIcon = R.drawable.ic_menu_home_selected,
                     unselectedIcon = R.drawable.ic_menu_home,
                     screen = Screen.Home
                 ),
                 NavigationItem(
-                    tittle = stringResource(R.string.bottom_menu_contact),
+                    tittle = R.string.bottom_menu_contact,
                     selectedIcon = R.drawable.ic_contact_selected,
                     unselectedIcon = R.drawable.ic_contact,
                     screen = Screen.Contact
                 ),
                 NavigationItem(
-                    tittle = stringResource(R.string.bottom_menu_history),
+                    tittle = R.string.bottom_menu_history,
                     selectedIcon = R.drawable.ic_history_selected,
                     unselectedIcon = R.drawable.ic_history,
                     screen = Screen.History
                 ),
                 NavigationItem(
-                    tittle = stringResource(R.string.bottom_menu_profile),
+                    tittle = R.string.bottom_menu_profile,
                     selectedIcon = R.drawable.ic_profile_selected,
                     unselectedIcon = R.drawable.ic_profile,
                     screen = Screen.Profile
@@ -133,10 +133,10 @@ fun BottomBarInternship(navController: NavController) {
                     icon = {
                         Icon(
                             painter = painterResource(id = if (selected) item.selectedIcon else item.unselectedIcon),
-                            contentDescription = item.tittle,
+                            contentDescription = stringResource(item.tittle),
                         )
                     },
-                    label = { Text(item.tittle, style = body1) },
+                    label = { Text(stringResource(item.tittle), style = body1) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Blue_500,
                         selectedTextColor = Blue_500,
