@@ -17,7 +17,6 @@ import com.example.infinite_track.presentation.screen.home.HomeViewModel
 import com.example.infinite_track.presentation.screen.wfa.BookingHistoryPaginationEffect
 import com.example.infinite_track.presentation.screen.wfa.InitializeBookingHistoryEffect
 import com.example.infinite_track.presentation.screen.wfa.WfaBookingHistoryContent
-import com.example.infinite_track.presentation.screen.wfa.retryStatusFilter
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +53,7 @@ fun DetailsMyBooking(
             uiState = uiState,
             listState = listState,
             onStatusSelected = viewModel::onBookingStatusFilterChanged,
-            onRetryClick = { viewModel.onBookingStatusFilterChanged(uiState.retryStatusFilter()) },
+            onRetryClick = viewModel::retryBookingHistoryLoad,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)

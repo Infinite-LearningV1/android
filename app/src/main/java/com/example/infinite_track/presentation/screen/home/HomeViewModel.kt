@@ -241,6 +241,22 @@ class HomeViewModel @Inject constructor(
 		}
 	}
 
+	fun retryBookingHistoryLoad() {
+		val currentState = _bookingHistoryDetailsState.value
+		if (currentState.isLoading) return
+
+		val shouldRetryNextPage = currentState.bookings.isNotEmpty() && currentState.error != null
+		val retryPage = if (shouldRetryNextPage) currentState.currentPage + 1 else 1
+
+		loadBookingHistory(
+			status = currentState.selectedStatus,
+			page = retryPage,
+			sortBy = currentState.sortBy,
+			sortOrder = currentState.sortOrder,
+			appendToExisting = shouldRetryNextPage
+		)
+	}
+
 	/**
 	 * Function to initialize detailed booking history (call when entering DetailsMyBooking screen)
 	 */

@@ -104,29 +104,39 @@ fun ProfileScreen(
         ) {
             when (profileState) {
                 is UiState.Loading -> {
-                    // Show loading indicator
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(
-                            color = Purple_500,
-                            modifier = Modifier.size(48.dp)
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                color = Purple_500,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            EmployeesAccessShortcut(onClick = navigateToContacts)
+                        }
                     }
                 }
 
                 is UiState.Error -> {
-                    // Show error message
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = (profileState as UiState.Error).errorMessage,
-                            style = headline3,
-                            color = Color.Red
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(
+                                text = (profileState as UiState.Error).errorMessage,
+                                style = headline3,
+                                color = Color.Red
+                            )
+                            EmployeesAccessShortcut(onClick = navigateToContacts)
+                        }
                     }
                 }
 
@@ -196,11 +206,7 @@ fun ProfileScreen(
                                 onClick = navigateToMyDocument,
                                 icon = R.drawable.ic_mydocument
                             )
-                            ProfileBar(
-                                label = stringResource(R.string.employees),
-                                onClick = navigateToContacts,
-                                icon = R.drawable.ic_contactus
-                            )
+                            EmployeesAccessShortcut(onClick = navigateToContacts)
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
@@ -306,6 +312,15 @@ fun ProfileScreen(
             }
         }
     }
+}
+
+@Composable
+private fun EmployeesAccessShortcut(onClick: () -> Unit) {
+    ProfileBar(
+        label = stringResource(R.string.employees),
+        onClick = onClick,
+        icon = R.drawable.ic_contactus
+    )
 }
 
 @Composable
