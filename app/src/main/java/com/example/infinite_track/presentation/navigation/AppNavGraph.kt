@@ -1,16 +1,10 @@
 package com.example.infinite_track.presentation.navigation
 
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
-import androidx.navigation.navArgument
-import com.example.infinite_track.presentation.screen.attendance.search.LocationSearchScreen
 import com.example.infinite_track.presentation.screen.auth.LoginScreen
-import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingScreen
-import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingViewModel
 import com.example.infinite_track.presentation.screen.splash.SplashScreen
 import com.example.infinite_track.presentation.screen.splash.SplashViewModel
 
@@ -48,33 +42,6 @@ fun NavGraphBuilder.appNavGraph(
         }
     }
 
-    // Location Search Screen - untuk pencarian lokasi attendance
-    composable(Screen.LocationSearch.route) {
-        LocationSearchScreen(
-            navController = navController,
-            onLocationSelected = {
-                // Handle location selection - bisa dikembangkan untuk menyimpan lokasi terpilih
-                // Untuk sementara, kembali ke AttendanceScreen
-                navController.navigateUp()
-            }
-        )
-    }
-
-    // WFA Booking Screen
-    composable(
-        route = Screen.WfaBooking.route,
-        arguments = listOf(
-            navArgument("latitude") { type = NavType.FloatType }, // Changed to FloatType
-            navArgument("longitude") { type = NavType.FloatType } // Changed to FloatType
-            // address argument removed - WfaBookingViewModel will fetch it
-        )
-    ) { backStackEntry ->
-        val viewModel: WfaBookingViewModel = hiltViewModel()
-        WfaBookingScreen(
-            viewModel = viewModel,
-            navController = navController
-        )
-    }
-
-    // Note: FaceScannerScreen moved to MainContentNavGraph.kt
+    // Note: Attendance-related action routes live in MainContentNavGraph.kt
+    // so the root graph stays focused on app entry and auth concerns.
 }

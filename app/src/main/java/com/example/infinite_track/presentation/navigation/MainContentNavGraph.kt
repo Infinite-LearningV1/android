@@ -30,6 +30,7 @@ import com.example.infinite_track.presentation.screen.profile.details.contactUs.
 import com.example.infinite_track.presentation.screen.profile.details.edit_profile.EditProfile
 import com.example.infinite_track.presentation.screen.profile.details.my_document.MyDocumentScreen
 import com.example.infinite_track.presentation.screen.profile.details.pay_slip.PaySlipScreen
+import com.example.infinite_track.presentation.screen.wfa.WfaHistoryScreen
 import com.example.infinite_track.utils.safeNavigate
 
 @ExperimentalGetImage
@@ -91,6 +92,10 @@ fun NavGraphBuilder.mainContentNavGraph(
         }
     }
 
+    composable(Screen.Wfa.route) {
+        WfaHistoryScreen()
+    }
+
     // Profile Feature Flow
     navigation(
         startDestination = Screen.Profile.route,
@@ -100,6 +105,7 @@ fun NavGraphBuilder.mainContentNavGraph(
             ProfileScreen(
                 navigateToEditProfile = { navController.safeNavigate(Screen.EditProfile.route) },
                 navigateToContactUs = { navController.safeNavigate(Screen.ContactUs.route) },
+                navigateToContacts = { navController.navigate(Screen.Contact.route) },
                 navigateToMyDocument = { navController.safeNavigate(Screen.MyDocument.route) },
                 navigateToPaySlip = { navController.safeNavigate(Screen.PaySlip.route) },
                 navHostController = navController,
