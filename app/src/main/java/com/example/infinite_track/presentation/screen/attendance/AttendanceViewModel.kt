@@ -172,7 +172,10 @@ class AttendanceViewModel @Inject constructor(
     private suspend fun fetchTodayStatus() {
         try {
             getTodayStatusUseCase().onSuccess { todayStatus ->
-                Log.d(TAG, "Today status fetched successfully: $todayStatus")
+                Log.d(
+                    TAG,
+                    "Today status fetched successfully: mode=${todayStatus.activeMode}, canCheckIn=${todayStatus.canCheckIn}, canCheckOut=${todayStatus.canCheckOut}, state=${todayStatus.attendanceSessionState?.key}"
+                )
 
                 val isBookingEnabled = todayStatus.activeMode.isNotEmpty()
                 val selectedMode = todayStatus.activeMode.ifEmpty { "Work From Office" }
