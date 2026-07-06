@@ -5,6 +5,7 @@ import android.util.Log
 import com.example.infinite_track.data.repository.attendance.AttendanceHistoryRepositoryImpl
 import com.example.infinite_track.data.repository.attendance.AttendanceRepositoryImpl
 import com.example.infinite_track.data.repository.auth.AuthRepositoryImpl
+import com.example.infinite_track.data.repository.auth.AuthRuntimeCleanerImpl
 import com.example.infinite_track.data.repository.booking.BookingRepositoryImpl
 import com.example.infinite_track.data.repository.contact.ContactRepositoryImpl
 import com.example.infinite_track.data.repository.localization.LocalizationRepositoryImpl
@@ -22,12 +23,14 @@ import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.repository.AuthRepository
+import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
 import com.example.infinite_track.domain.repository.BookingRepository
 import com.example.infinite_track.domain.repository.ContactRepository
 import com.example.infinite_track.domain.repository.LocalizationRepository
 import com.example.infinite_track.domain.repository.LocationRepository
 import com.example.infinite_track.domain.repository.ProfileRepository
 import com.example.infinite_track.domain.repository.WfaRepository
+import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.gson.Gson
 import dagger.Module
@@ -50,6 +53,24 @@ object RepositoryModule {
         userDao: UserDao
     ): AuthRepository {
         return AuthRepositoryImpl(userPreference, apiService, authSessionApiService, userDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAuthRuntimeCleaner(
+        userPreference: UserPreference,
+        userDao: UserDao,
+        attendancePreference: AttendancePreference,
+        todayStatusPreference: TodayStatusPreference,
+        geofenceManager: GeofenceManager
+    ): AuthRuntimeCleaner {
+        return AuthRuntimeCleanerImpl(
+            userPreference = userPreference,
+            userDao = userDao,
+            attendancePreference = attendancePreference,
+            todayStatusPreference = todayStatusPreference,
+            geofenceManager = geofenceManager
+        )
     }
 
     @Provides

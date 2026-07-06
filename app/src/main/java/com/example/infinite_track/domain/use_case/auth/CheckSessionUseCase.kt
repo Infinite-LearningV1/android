@@ -3,6 +3,7 @@ package com.example.infinite_track.domain.use_case.auth
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.model.auth.AuthRuntimePolicy
+import com.example.infinite_track.domain.model.auth.ReauthReason
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRefreshException
 import com.example.infinite_track.domain.repository.AuthRefreshFailureKind
@@ -182,13 +183,13 @@ class CheckSessionUseCase @Inject constructor(
             this == AuthRefreshFailureReason.UNKNOWN
     }
 
-    private fun reauthReasonFor(reason: AuthRefreshFailureReason): SessionManager.ReauthReason {
+    private fun reauthReasonFor(reason: AuthRefreshFailureReason): ReauthReason {
         return when (reason) {
-            AuthRefreshFailureReason.INACTIVITY_EXPIRED -> SessionManager.ReauthReason.INACTIVITY_EXPIRED
+            AuthRefreshFailureReason.INACTIVITY_EXPIRED -> ReauthReason.INACTIVITY_EXPIRED
             AuthRefreshFailureReason.REFRESH_INVALID,
-            AuthRefreshFailureReason.MISSING_REFRESH_TOKEN -> SessionManager.ReauthReason.REFRESH_INVALID
-            AuthRefreshFailureReason.REFRESH_REVOKED -> SessionManager.ReauthReason.REFRESH_REVOKED
-            else -> SessionManager.ReauthReason.UNKNOWN
+            AuthRefreshFailureReason.MISSING_REFRESH_TOKEN -> ReauthReason.REFRESH_INVALID
+            AuthRefreshFailureReason.REFRESH_REVOKED -> ReauthReason.REFRESH_REVOKED
+            else -> ReauthReason.UNKNOWN
         }
     }
 }

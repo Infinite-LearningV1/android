@@ -8,11 +8,12 @@ import com.example.infinite_track.data.soucre.local.preferences.TodayStatusPrefe
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.local.room.UserEntity
-import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
+import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
 import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
 import com.example.infinite_track.domain.use_case.auth.ClearAuthenticatedRuntimeUseCase
@@ -97,11 +98,7 @@ class SplashViewModelTest {
 
     private fun createClearRuntimeUseCase(): ClearAuthenticatedRuntimeUseCase {
         return ClearAuthenticatedRuntimeUseCase(
-            userPreference = UserPreference(createDataStore("splash_reauth_user")),
-            userDao = FakeUserDao(),
-            attendancePreference = AttendancePreference(createDataStore("splash_reauth_attendance")),
-            todayStatusPreference = TodayStatusPreference(createDataStore("splash_reauth_today_status"), Gson()),
-            removeAllGeofences = {}
+            AuthRuntimeCleaner {}
         )
     }
 
@@ -146,7 +143,7 @@ class SplashViewModelTest {
             AuthRefreshResult("new-access", "new-refresh", "1")
         )
 
-        override suspend fun login(loginRequest: LoginRequest): Result<UserModel> {
+        override suspend fun login(credentials: LoginCredentials): Result<UserModel> {
             throw NotImplementedError()
         }
 

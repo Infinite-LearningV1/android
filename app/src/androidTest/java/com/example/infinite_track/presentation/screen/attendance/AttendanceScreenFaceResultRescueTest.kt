@@ -11,7 +11,7 @@ import com.example.infinite_track.data.soucre.local.preferences.AttendancePrefer
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.local.room.UserEntity
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
-import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.domain.model.attendance.ActiveAttendanceSession
 import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
 import com.example.infinite_track.domain.model.attendance.CheckinWindow
@@ -403,7 +403,7 @@ class AttendanceScreenFaceResultRescueTest {
             throw UnsupportedOperationException("Session refresh is outside this regression")
         }
 
-        override suspend fun login(loginRequest: LoginRequest): Result<UserModel> {
+        override suspend fun login(credentials: LoginCredentials): Result<UserModel> {
             throw UnsupportedOperationException("Login is outside this regression")
         }
 

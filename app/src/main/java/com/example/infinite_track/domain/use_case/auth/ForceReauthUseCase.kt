@@ -1,6 +1,7 @@
 package com.example.infinite_track.domain.use_case.auth
 
 import com.example.infinite_track.domain.manager.SessionManager
+import com.example.infinite_track.domain.model.auth.ReauthReason
 import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 
@@ -14,7 +15,7 @@ class ForceReauthUseCase internal constructor(
         clearAuthenticatedRuntimeUseCase: ClearAuthenticatedRuntimeUseCase
     ) : this(sessionManager, clearAuthenticatedRuntimeUseCase::invoke)
 
-    suspend operator fun invoke(reason: SessionManager.ReauthReason) {
+    suspend operator fun invoke(reason: ReauthReason) {
         if (!sessionManager.beginSessionExpiryHandling()) return
 
         var cancellation: CancellationException? = null

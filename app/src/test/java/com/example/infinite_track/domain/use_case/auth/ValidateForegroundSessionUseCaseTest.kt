@@ -4,7 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
-import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRefreshFailureReason
@@ -59,7 +59,7 @@ class ValidateForegroundSessionUseCaseTest {
     @Test
     fun `returns existing reauth before skipped when tokens are blank`() = runBlocking {
         val sessionManager = SessionManager().also {
-            it.triggerForcedReauth(SessionManager.ReauthReason.REFRESH_INVALID)
+            it.triggerForcedReauth(ReauthReason.REFRESH_INVALID)
         }
         val userPreference = createUserPreference()
         val repository = FakeAuthRepository()
@@ -67,7 +67,7 @@ class ValidateForegroundSessionUseCaseTest {
         val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
 
         assertEquals(
-            ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_INVALID),
+            ForegroundSessionValidationResult.ReauthRequired(ReauthReason.REFRESH_INVALID),
             result
         )
         assertEquals(0, repository.syncCallCount)
@@ -92,7 +92,7 @@ class ValidateForegroundSessionUseCaseTest {
     @Test
     fun `returns existing reauth before valid when profile sync would succeed`() = runBlocking {
         val sessionManager = SessionManager().also {
-            it.triggerForcedReauth(SessionManager.ReauthReason.REFRESH_REVOKED)
+            it.triggerForcedReauth(ReauthReason.REFRESH_REVOKED)
         }
         val userPreference = createUserPreference().also {
             it.saveSession("access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
@@ -102,7 +102,7 @@ class ValidateForegroundSessionUseCaseTest {
         val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
 
         assertEquals(
-            ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_REVOKED),
+            ForegroundSessionValidationResult.ReauthRequired(ReauthReason.REFRESH_REVOKED),
             result
         )
         assertEquals(0, repository.syncCallCount)
@@ -112,7 +112,7 @@ class ValidateForegroundSessionUseCaseTest {
     @Test
     fun `returns existing reauth before temporary failure when profile sync would fail temporarily`() = runBlocking {
         val sessionManager = SessionManager().also {
-            it.triggerForcedReauth(SessionManager.ReauthReason.INACTIVITY_EXPIRED)
+            it.triggerForcedReauth(ReauthReason.INACTIVITY_EXPIRED)
         }
         val userPreference = createUserPreference().also {
             it.saveSession("access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
@@ -124,7 +124,7 @@ class ValidateForegroundSessionUseCaseTest {
         val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
 
         assertEquals(
-            ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.INACTIVITY_EXPIRED),
+            ForegroundSessionValidationResult.ReauthRequired(ReauthReason.INACTIVITY_EXPIRED),
             result
         )
         assertEquals(0, repository.syncCallCount)
@@ -201,7 +201,7 @@ class ValidateForegroundSessionUseCaseTest {
     @Test
     fun `returns existing reauth when interceptor already handled access-expired unauthorized terminal refresh failure`() = runBlocking {
         val sessionManager = SessionManager().also {
-            it.triggerForcedReauth(SessionManager.ReauthReason.REFRESH_INVALID)
+            it.triggerForcedReauth(ReauthReason.REFRESH_INVALID)
         }
         val userPreference = createUserPreference().also {
             it.saveSession("expired-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
@@ -215,11 +215,11 @@ class ValidateForegroundSessionUseCaseTest {
         val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
 
         assertEquals(
-            ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_INVALID),
+            ForegroundSessionValidationResult.ReauthRequired(ReauthReason.REFRESH_INVALID),
             result
         )
         assertEquals(true, sessionManager.sessionExpired.value)
-        assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
         assertEquals(0, repository.syncCallCount)
         assertEquals(0, repository.refreshCallCount)
     }
@@ -227,7 +227,7 @@ class ValidateForegroundSessionUseCaseTest {
     @Test
     fun `returns existing reauth when interceptor already handled generic unauthorized terminal refresh failure`() = runBlocking {
         val sessionManager = SessionManager().also {
-            it.triggerForcedReauth(SessionManager.ReauthReason.REFRESH_REVOKED)
+            it.triggerForcedReauth(ReauthReason.REFRESH_REVOKED)
         }
         val userPreference = createUserPreference().also {
             it.saveSession("expired-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
@@ -237,11 +237,11 @@ class ValidateForegroundSessionUseCaseTest {
         val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
 
         assertEquals(
-            ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_REVOKED),
+            ForegroundSessionValidationResult.ReauthRequired(ReauthReason.REFRESH_REVOKED),
             result
         )
         assertEquals(true, sessionManager.sessionExpired.value)
-        assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
         assertEquals(0, repository.syncCallCount)
         assertEquals(0, repository.refreshCallCount)
     }
@@ -261,7 +261,7 @@ class ValidateForegroundSessionUseCaseTest {
         val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
 
         assertEquals(
-            ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_REVOKED),
+            ForegroundSessionValidationResult.ReauthRequired(ReauthReason.REFRESH_REVOKED),
             result
         )
         assertEquals(false, sessionManager.sessionExpired.value)
@@ -285,7 +285,7 @@ class ValidateForegroundSessionUseCaseTest {
         val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
 
         assertEquals(
-            ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_INVALID),
+            ForegroundSessionValidationResult.ReauthRequired(ReauthReason.REFRESH_INVALID),
             result
         )
         assertEquals(false, sessionManager.sessionExpired.value)
@@ -309,7 +309,7 @@ class ValidateForegroundSessionUseCaseTest {
         val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
 
         assertEquals(
-            ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.INACTIVITY_EXPIRED),
+            ForegroundSessionValidationResult.ReauthRequired(ReauthReason.INACTIVITY_EXPIRED),
             result
         )
         assertEquals(false, sessionManager.sessionExpired.value)
@@ -321,7 +321,7 @@ class ValidateForegroundSessionUseCaseTest {
     @Test
     fun `preserves existing forced reauth reason when interceptor already handled terminal auth`() = runBlocking {
         val sessionManager = SessionManager().also {
-            it.triggerForcedReauth(SessionManager.ReauthReason.REFRESH_REVOKED)
+            it.triggerForcedReauth(ReauthReason.REFRESH_REVOKED)
         }
         val userPreference = createUserPreference().also {
             it.saveSession("expired-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
@@ -335,11 +335,11 @@ class ValidateForegroundSessionUseCaseTest {
         val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
 
         assertEquals(
-            ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_REVOKED),
+            ForegroundSessionValidationResult.ReauthRequired(ReauthReason.REFRESH_REVOKED),
             result
         )
         assertEquals(true, sessionManager.sessionExpired.value)
-        assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
         assertEquals(0, repository.syncCallCount)
         assertEquals(0, repository.refreshCallCount)
     }
@@ -392,7 +392,7 @@ class ValidateForegroundSessionUseCaseTest {
         var syncCallCount: Int = 0
         var refreshCallCount: Int = 0
 
-        override suspend fun login(loginRequest: LoginRequest): Result<UserModel> {
+        override suspend fun login(credentials: LoginCredentials): Result<UserModel> {
             error("Not used in this test")
         }
 

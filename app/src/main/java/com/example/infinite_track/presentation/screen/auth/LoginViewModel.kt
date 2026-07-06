@@ -3,6 +3,7 @@ package com.example.infinite_track.presentation.screen.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.domain.manager.SessionManager
+import com.example.infinite_track.domain.model.auth.ReauthReason
 import com.example.infinite_track.domain.use_case.auth.LoginUseCase
 import com.example.infinite_track.utils.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -69,17 +70,17 @@ class LoginViewModel @Inject constructor(
         _loginState.value = UiState.Idle
     }
 
-    private fun SessionManager.ReauthReason.toBannerMessage(): String {
+    private fun ReauthReason.toBannerMessage(): String {
         return when (this) {
-            SessionManager.ReauthReason.INACTIVITY_EXPIRED ->
+            ReauthReason.INACTIVITY_EXPIRED ->
                 "Sesi tidak aktif lebih dari 48 jam. Silakan login lagi."
-            SessionManager.ReauthReason.REFRESH_INVALID ->
+            ReauthReason.REFRESH_INVALID ->
                 "Sesi tidak valid lagi. Silakan login lagi."
-            SessionManager.ReauthReason.REFRESH_REVOKED ->
+            ReauthReason.REFRESH_REVOKED ->
                 "Sesi sudah berakhir. Silakan login lagi."
-            SessionManager.ReauthReason.NETWORK_OFFLINE_AT_REFRESH ->
+            ReauthReason.NETWORK_OFFLINE_AT_REFRESH ->
                 "Tidak dapat memvalidasi sesi karena jaringan. Coba lagi setelah online."
-            SessionManager.ReauthReason.UNKNOWN ->
+            ReauthReason.UNKNOWN ->
                 "Sesi Anda telah berakhir. Silakan login kembali."
         }
     }

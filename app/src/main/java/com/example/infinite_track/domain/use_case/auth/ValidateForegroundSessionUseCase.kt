@@ -3,6 +3,7 @@ package com.example.infinite_track.domain.use_case.auth
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.model.auth.AuthRuntimePolicy
+import com.example.infinite_track.domain.model.auth.ReauthReason
 import com.example.infinite_track.domain.repository.AuthRefreshFailureReason
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.ProfileSyncResult
@@ -11,7 +12,7 @@ import kotlinx.coroutines.flow.first
 sealed class ForegroundSessionValidationResult {
     data object Skipped : ForegroundSessionValidationResult()
     data object Valid : ForegroundSessionValidationResult()
-    data class ReauthRequired(val reason: SessionManager.ReauthReason) : ForegroundSessionValidationResult()
+    data class ReauthRequired(val reason: ReauthReason) : ForegroundSessionValidationResult()
     data class TemporaryFailure(val message: String?, val cause: Throwable?) : ForegroundSessionValidationResult()
 }
 
@@ -74,7 +75,7 @@ open class ValidateForegroundSessionUseCase(
     }
 
     private fun reauthRequired(
-        reason: SessionManager.ReauthReason
+        reason: ReauthReason
     ): ForegroundSessionValidationResult.ReauthRequired {
         existingForcedReauthResult()?.let { return it }
 
@@ -90,12 +91,12 @@ open class ValidateForegroundSessionUseCase(
         }
     }
 
-    private fun AuthRefreshFailureReason.toTerminalReauthReason(): SessionManager.ReauthReason? {
+    private fun AuthRefreshFailureReason.toTerminalReauthReason(): ReauthReason? {
         return when (this) {
-            AuthRefreshFailureReason.INACTIVITY_EXPIRED -> SessionManager.ReauthReason.INACTIVITY_EXPIRED
+            AuthRefreshFailureReason.INACTIVITY_EXPIRED -> ReauthReason.INACTIVITY_EXPIRED
             AuthRefreshFailureReason.REFRESH_INVALID,
-            AuthRefreshFailureReason.MISSING_REFRESH_TOKEN -> SessionManager.ReauthReason.REFRESH_INVALID
-            AuthRefreshFailureReason.REFRESH_REVOKED -> SessionManager.ReauthReason.REFRESH_REVOKED
+            AuthRefreshFailureReason.MISSING_REFRESH_TOKEN -> ReauthReason.REFRESH_INVALID
+            AuthRefreshFailureReason.REFRESH_REVOKED -> ReauthReason.REFRESH_REVOKED
             AuthRefreshFailureReason.ACCESS_EXPIRED,
             AuthRefreshFailureReason.TRANSPORT_ERROR,
             AuthRefreshFailureReason.INVALID_PAYLOAD,

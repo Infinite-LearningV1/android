@@ -9,6 +9,7 @@ import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.repository.AuthRepository
+import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
 import com.example.infinite_track.domain.repository.BookingRepository
 import com.example.infinite_track.domain.repository.ContactRepository
 import com.example.infinite_track.domain.repository.LocalizationRepository
@@ -38,7 +39,6 @@ import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinates
 import com.example.infinite_track.domain.use_case.location.SearchLocationUseCase
 import com.example.infinite_track.domain.use_case.profile.UpdateProfileUseCase
 import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
-import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.google.android.gms.location.FusedLocationProviderClient
 import dagger.Module
 import dagger.Provides
@@ -94,19 +94,9 @@ object UseCaseModule {
 
     @Provides
     fun provideClearAuthenticatedRuntimeUseCase(
-        userPreference: UserPreference,
-        userDao: UserDao,
-        attendancePreference: AttendancePreference,
-        todayStatusPreference: TodayStatusPreference,
-        geofenceManager: GeofenceManager
+        authRuntimeCleaner: AuthRuntimeCleaner
     ): ClearAuthenticatedRuntimeUseCase {
-        return ClearAuthenticatedRuntimeUseCase(
-            userPreference = userPreference,
-            userDao = userDao,
-            attendancePreference = attendancePreference,
-            todayStatusPreference = todayStatusPreference,
-            geofenceManager = geofenceManager
-        )
+        return ClearAuthenticatedRuntimeUseCase(authRuntimeCleaner)
     }
 
     // Provide the Logout Use Case

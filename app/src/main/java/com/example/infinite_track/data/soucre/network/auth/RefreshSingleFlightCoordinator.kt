@@ -1,4 +1,4 @@
-package com.example.infinite_track.di.auth
+package com.example.infinite_track.data.soucre.network.auth
 
 import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository

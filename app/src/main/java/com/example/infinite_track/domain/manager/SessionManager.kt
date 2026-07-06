@@ -1,5 +1,6 @@
 package com.example.infinite_track.domain.manager
 
+import com.example.infinite_track.domain.model.auth.ReauthReason
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,14 +13,6 @@ import javax.inject.Singleton
  */
 @Singleton
 class SessionManager @Inject constructor() {
-    enum class ReauthReason {
-        INACTIVITY_EXPIRED,
-        REFRESH_INVALID,
-        REFRESH_REVOKED,
-        NETWORK_OFFLINE_AT_REFRESH,
-        UNKNOWN
-    }
-
     private val _sessionExpired = MutableStateFlow(false)
     val sessionExpired: StateFlow<Boolean> = _sessionExpired.asStateFlow()
 

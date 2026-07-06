@@ -7,6 +7,7 @@ import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.local.room.UserEntity
 import com.example.infinite_track.domain.manager.SessionManager
+import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
 import com.google.gson.Gson
 import java.io.File
 import kotlinx.coroutines.CancellationException
@@ -26,11 +27,11 @@ class ForceReauthUseCaseTest {
         val sessionManager = SessionManager()
         val useCase = ForceReauthUseCase(sessionManager, clearRuntime)
 
-        useCase(SessionManager.ReauthReason.REFRESH_INVALID)
+        useCase(ReauthReason.REFRESH_INVALID)
 
         assertEquals(1, clearRuntimeCalls)
         assertEquals(true, sessionManager.sessionExpired.value)
-        assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
     }
 
     @Test
@@ -40,11 +41,11 @@ class ForceReauthUseCaseTest {
         val sessionManager = SessionManager()
         val useCase = ForceReauthUseCase(sessionManager, clearRuntime)
 
-        useCase(SessionManager.ReauthReason.REFRESH_INVALID)
-        useCase(SessionManager.ReauthReason.REFRESH_REVOKED)
+        useCase(ReauthReason.REFRESH_INVALID)
+        useCase(ReauthReason.REFRESH_REVOKED)
 
         assertEquals(1, clearRuntimeCalls)
-        assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
     }
 
     @Test
@@ -56,11 +57,11 @@ class ForceReauthUseCaseTest {
             error("cleanup failed")
         }
 
-        useCase(SessionManager.ReauthReason.REFRESH_REVOKED)
+        useCase(ReauthReason.REFRESH_REVOKED)
 
         assertEquals(1, clearRuntimeCalls)
         assertEquals(true, sessionManager.sessionExpired.value)
-        assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
     }
 
     @Test
@@ -72,23 +73,21 @@ class ForceReauthUseCaseTest {
         }
 
         try {
-            useCase(SessionManager.ReauthReason.REFRESH_INVALID)
+            useCase(ReauthReason.REFRESH_INVALID)
             fail("Expected cancellation")
         } catch (e: CancellationException) {
             assertEquals(cancellation, e)
         }
 
         assertEquals(true, sessionManager.sessionExpired.value)
-        assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
     }
 
     private fun createClearRuntimeUseCase(onRemoveAllGeofences: () -> Unit): ClearAuthenticatedRuntimeUseCase {
         return ClearAuthenticatedRuntimeUseCase(
-            userPreference = UserPreference(createDataStore("force_reauth_user")),
-            userDao = FakeUserDao(),
-            attendancePreference = AttendancePreference(createDataStore("force_reauth_attendance")),
-            todayStatusPreference = TodayStatusPreference(createDataStore("force_reauth_today_status"), Gson()),
-            removeAllGeofences = onRemoveAllGeofences
+            AuthRuntimeCleaner {
+                onRemoveAllGeofences()
+            }
         )
     }
 

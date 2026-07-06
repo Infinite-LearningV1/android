@@ -1,6 +1,6 @@
 package com.example.infinite_track.domain.manager
 
-import com.example.infinite_track.domain.manager.SessionManager.ReauthReason
+import com.example.infinite_track.domain.model.auth.ReauthReason
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

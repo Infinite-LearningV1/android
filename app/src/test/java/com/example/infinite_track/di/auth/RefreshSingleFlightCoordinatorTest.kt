@@ -1,6 +1,6 @@
-package com.example.infinite_track.di.auth
+package com.example.infinite_track.data.soucre.network.auth
 
-import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
@@ -37,7 +37,7 @@ class RefreshSingleFlightCoordinatorTest {
                 )
             }
 
-            override suspend fun login(loginRequest: LoginRequest): Result<UserModel> = Result.failure(NotImplementedError())
+            override suspend fun login(credentials: LoginCredentials): Result<UserModel> = Result.failure(NotImplementedError())
             override suspend fun syncUserProfile(): ProfileSyncResult = ProfileSyncResult.TemporaryFailure(NotImplementedError())
             override suspend fun logout(): Result<Unit> = Result.failure(NotImplementedError())
             override fun getLoggedInUser(): Flow<UserModel?> = flowOf(null)

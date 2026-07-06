@@ -11,6 +11,7 @@ import com.example.infinite_track.data.soucre.network.request.RefreshSessionRequ
 import com.example.infinite_track.data.soucre.network.response.ErrorResponse
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
+import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRefreshException
 import com.example.infinite_track.domain.repository.AuthRefreshFailureKind
@@ -109,12 +110,17 @@ class AuthRepositoryImpl @Inject constructor(
 
     /**
      * Login a user with provided credentials
-     * @param loginRequest Login credentials
+     * @param credentials Domain login credentials
      * @return Result containing User domain model
      */
-    override suspend fun login(loginRequest: LoginRequest): Result<UserModel> {
+    override suspend fun login(credentials: LoginCredentials): Result<UserModel> {
         return try {
-            val loginResponse = apiService.login(loginRequest)
+            val loginResponse = apiService.login(
+                LoginRequest(
+                    email = credentials.email,
+                    password = credentials.password
+                )
+            )
             val loginData = loginResponse.data
             val accessToken = loginData.resolvedAccessToken().takeIf { it.isNotBlank() }
                 ?: return Result.failure(IllegalStateException("Login response missing usable access token"))

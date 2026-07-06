@@ -8,7 +8,7 @@ import com.example.infinite_track.data.soucre.network.request.AttendanceRequest
 import com.example.infinite_track.data.soucre.network.request.BookingRequest
 import com.example.infinite_track.data.soucre.network.request.CheckOutRequestDto
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
-import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.data.soucre.network.request.LogoutRequest
 import com.example.infinite_track.data.soucre.network.request.ProfileUpdateRequest
 import com.example.infinite_track.data.soucre.network.request.RefreshSessionRequest
@@ -65,7 +65,7 @@ class AuthRepositoryImplRefreshSessionTest {
             userData = createUserData(refreshToken = null)
         )
 
-        val result = repository.login(LoginRequest(email = "user@example.com", password = "secret"))
+        val result = repository.login(LoginCredentials(email = "user@example.com", password = "secret"))
 
         assertTrue(result.isSuccess)
         assertEquals("user@example.com", result.getOrNull()?.email)
@@ -85,7 +85,7 @@ class AuthRepositoryImplRefreshSessionTest {
             userData = createUserData(refreshToken = "   ")
         )
 
-        val result = repository.login(LoginRequest(email = "user@example.com", password = "secret"))
+        val result = repository.login(LoginCredentials(email = "user@example.com", password = "secret"))
 
         assertTrue(result.isSuccess)
         assertEquals("user@example.com", result.getOrNull()?.email)
@@ -111,7 +111,7 @@ class AuthRepositoryImplRefreshSessionTest {
             )
         )
 
-        val result = repository.login(LoginRequest(email = "user@example.com", password = "secret"))
+        val result = repository.login(LoginCredentials(email = "user@example.com", password = "secret"))
 
         assertTrue(result.isSuccess)
         assertEquals("primary-access", userPreference.getAuthToken().first())
@@ -129,7 +129,7 @@ class AuthRepositoryImplRefreshSessionTest {
             userData = createUserData(refreshToken = "refresh-token").copy(token = "   ")
         )
 
-        val result = repository.login(LoginRequest(email = "user@example.com", password = "secret"))
+        val result = repository.login(LoginCredentials(email = "user@example.com", password = "secret"))
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull()?.message?.contains("access token", ignoreCase = true) == true)
@@ -1123,7 +1123,7 @@ private class FakeApiService(
 ) : ApiService {
     var lastRefreshRequest: RefreshSessionRequest? = null
 
-    override suspend fun login(loginRequest: LoginRequest): LoginResponse {
+    override suspend fun login(credentials: LoginCredentials): LoginResponse {
         return loginBlock(loginRequest)
     }
 
