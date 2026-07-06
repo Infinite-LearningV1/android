@@ -54,6 +54,13 @@ When the app transitions from background to foreground, Android attempts a bound
 Terminal backend auth/session outcomes still route to forced re-auth.
 Temporary transport failures such as offline or server-down do not trigger false logout and do not clear local session state.
 
+## INF-207 Runtime Boundary Update
+
+- Forced reauth now clears local authenticated runtime without calling backend logout.
+- User-initiated logout still attempts backend logout before local cleanup.
+- `/api/auth/me` freshness uses a bounded 300-second optimization window.
+- `status-today` uses a bounded 300-second cache and is invalidated after check-in, checkout, logout, forced reauth, and user/date/session changes.
+
 ## References
 
 - INF-145

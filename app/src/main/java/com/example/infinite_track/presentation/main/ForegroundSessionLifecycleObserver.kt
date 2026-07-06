@@ -6,7 +6,7 @@ import androidx.lifecycle.LifecycleOwner
 import com.example.infinite_track.di.ApplicationCoroutineScope
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.use_case.auth.ForegroundSessionValidationResult
-import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
+import com.example.infinite_track.domain.use_case.auth.ForceReauthUseCase
 import com.example.infinite_track.domain.use_case.auth.ValidateForegroundSessionUseCase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -19,7 +19,7 @@ import javax.inject.Singleton
 class ForegroundSessionLifecycleObserver private constructor(
     private val validateForegroundSessionUseCase: ValidateForegroundSessionUseCase,
     private val sessionManager: SessionManager,
-    private val logoutUseCaseProvider: Provider<LogoutUseCase>,
+    private val forceReauthUseCaseProvider: Provider<ForceReauthUseCase>,
     private val applicationScope: CoroutineScope,
     private val gate: ForegroundSessionResumeGate,
     private val unexpectedFailureLogger: (Throwable) -> Unit
@@ -29,12 +29,12 @@ class ForegroundSessionLifecycleObserver private constructor(
     constructor(
         validateForegroundSessionUseCase: ValidateForegroundSessionUseCase,
         sessionManager: SessionManager,
-        logoutUseCaseProvider: Provider<LogoutUseCase>,
+        forceReauthUseCaseProvider: Provider<ForceReauthUseCase>,
         @ApplicationCoroutineScope applicationScope: CoroutineScope
     ) : this(
         validateForegroundSessionUseCase = validateForegroundSessionUseCase,
         sessionManager = sessionManager,
-        logoutUseCaseProvider = logoutUseCaseProvider,
+        forceReauthUseCaseProvider = forceReauthUseCaseProvider,
         applicationScope = applicationScope,
         gate = ForegroundSessionResumeGate(),
         unexpectedFailureLogger = { throwable ->
@@ -48,7 +48,7 @@ class ForegroundSessionLifecycleObserver private constructor(
         internal fun createForTest(
             validateForegroundSessionUseCase: ValidateForegroundSessionUseCase,
             sessionManager: SessionManager,
-            logoutUseCaseProvider: Provider<LogoutUseCase>,
+            forceReauthUseCaseProvider: Provider<ForceReauthUseCase>,
             applicationScope: CoroutineScope,
             gate: ForegroundSessionResumeGate,
             unexpectedFailureLogger: (Throwable) -> Unit = { throwable ->
@@ -58,7 +58,7 @@ class ForegroundSessionLifecycleObserver private constructor(
             return ForegroundSessionLifecycleObserver(
                 validateForegroundSessionUseCase = validateForegroundSessionUseCase,
                 sessionManager = sessionManager,
-                logoutUseCaseProvider = logoutUseCaseProvider,
+                forceReauthUseCaseProvider = forceReauthUseCaseProvider,
                 applicationScope = applicationScope,
                 gate = gate,
                 unexpectedFailureLogger = unexpectedFailureLogger
@@ -82,10 +82,7 @@ class ForegroundSessionLifecycleObserver private constructor(
                     ForegroundSessionValidationResult.Valid -> Unit
                     is ForegroundSessionValidationResult.TemporaryFailure -> Unit
                     is ForegroundSessionValidationResult.ReauthRequired -> {
-                        if (sessionManager.beginSessionExpiryHandling()) {
-                            sessionManager.triggerForcedReauth(result.reason)
-                            logoutUseCaseProvider.get().invoke()
-                        }
+                        forceReauthUseCaseProvider.get().invoke(result.reason)
                     }
                 }
             } catch (e: CancellationException) {

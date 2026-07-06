@@ -250,8 +250,6 @@ dependencies {
     // UI COMPONENTS
     // ============================================================================
     
-    implementation(libs.library)  // SweetAlert dialog
-
 
     // Jetpack Compose core libraries
     implementation(libs.androidx.ui.v150)

@@ -3,7 +3,7 @@ package com.example.infinite_track.presentation.screen.splash
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
-import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
+import com.example.infinite_track.domain.use_case.auth.ClearAuthenticatedRuntimeUseCase
 import com.example.infinite_track.domain.use_case.auth.SessionBootstrapFailure
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +23,7 @@ sealed class SplashNavigationState {
 @HiltViewModel
 class SplashViewModel @Inject constructor(
     private val checkSessionUseCase: CheckSessionUseCase,
-    private val logoutUseCase: LogoutUseCase
+    private val clearAuthenticatedRuntimeUseCase: ClearAuthenticatedRuntimeUseCase
 ) : ViewModel() {
 
     private val bootstrapGate = SplashBootstrapGate()
@@ -66,7 +66,7 @@ class SplashViewModel @Inject constructor(
             is SessionBootstrapFailure.ReAuthRequired -> {
                 try {
                     bootstrapGate.runTerminalLogoutIfOwner {
-                        logoutUseCase()
+                        runCatching { clearAuthenticatedRuntimeUseCase() }
                     }
                 } finally {
                     _navigationState.value = SplashNavigationState.NavigateToLogin

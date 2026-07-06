@@ -74,6 +74,18 @@ class UserPreference @Inject constructor(private val dataUserStore: DataStore<Pr
         }
     }
 
+    fun getLastProfileSyncAt(): Flow<Long> {
+        return dataUserStore.data.map { preferences ->
+            preferences[LAST_PROFILE_SYNC_AT_KEY] ?: 0L
+        }
+    }
+
+    suspend fun saveLastProfileSyncAt(timestampMillis: Long) {
+        dataUserStore.edit { preferences ->
+            preferences[LAST_PROFILE_SYNC_AT_KEY] = timestampMillis
+        }
+    }
+
     /**
      * Clear all authentication data
      */
@@ -83,6 +95,7 @@ class UserPreference @Inject constructor(private val dataUserStore: DataStore<Pr
             preferences.remove(USER_ID_KEY)
             preferences.remove(REFRESH_TOKEN_KEY)
             preferences.remove(LAST_REFRESH_AT_KEY)
+            preferences.remove(LAST_PROFILE_SYNC_AT_KEY)
         }
     }
 
@@ -95,5 +108,6 @@ class UserPreference @Inject constructor(private val dataUserStore: DataStore<Pr
         private val USER_ID_KEY = stringPreferencesKey("user_id")
         private val REFRESH_TOKEN_KEY = stringPreferencesKey("refresh_token")
         private val LAST_REFRESH_AT_KEY = longPreferencesKey("last_refresh_at")
+        private val LAST_PROFILE_SYNC_AT_KEY = longPreferencesKey("last_profile_sync_at")
     }
 }

@@ -14,7 +14,12 @@ interface AttendanceRepository {
     /**
      * Gets the current day's attendance status
      */
-    suspend fun getTodayStatus(): Result<TodayStatus>
+    suspend fun getTodayStatus(forceRefresh: Boolean = false): Result<TodayStatus>
+
+    /**
+     * Clears the cached current day's attendance status.
+     */
+    suspend fun clearTodayStatusCache()
 
     /**
      * Performs check-in operation

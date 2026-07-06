@@ -17,23 +17,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.zIndex
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.presentation.components.base.BaseLayout
+import com.example.infinite_track.presentation.components.status.InfiniteTrackStatusDialog
+import com.example.infinite_track.presentation.components.status.StatusStates
 import com.example.infinite_track.presentation.navigation.AppNavigator
 import com.example.infinite_track.presentation.navigation.NavigationEvent
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.navigation.appNavGraph
 import com.example.infinite_track.presentation.screen.splash.SplashViewModel
-import com.example.infinite_track.utils.DialogHelper
 import com.example.infinite_track.utils.LocalLocationPermissionHelper
 import com.example.infinite_track.utils.LocationPermissionHelper
 import kotlinx.coroutines.flow.collectLatest
@@ -50,33 +51,33 @@ fun InfiniteTrackApp(
 ) {
     // Root level NavController - handles top-level navigation
     val navController = rememberNavController()
-    val context = LocalContext.current
-
     // Observe session expiration state
     val sessionExpired by sessionManager?.sessionExpired?.collectAsState() ?: remember { androidx.compose.runtime.mutableStateOf(false) }
-    var pendingAttendanceNavigation by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var pendingAttendanceNavigation by remember { mutableStateOf(false) }
+    var showSessionExpiredDialog by remember { mutableStateOf(false) }
 
     // Handle session expiration
     LaunchedEffect(sessionExpired) {
         if (sessionExpired) {
-            // Show session expired dialog
-            DialogHelper.showDialogError(
-                context = context,
-                title = "Sesi Berakhir",
-                textContent = "Sesi Anda telah berakhir. Silakan login kembali untuk melanjutkan.",
-                onConfirm = {
-                    // Reset session expired state
-                    sessionManager?.resetSessionExpired()
-
-                    // Navigate to login and clear back stack
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(0) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                }
-            )
+            showSessionExpiredDialog = true
         }
     }
+
+    InfiniteTrackStatusDialog(
+        status = StatusStates.Error,
+        title = "Sesi Berakhir",
+        message = "Sesi Anda telah berakhir. Silakan login kembali untuk melanjutkan.",
+        showDialog = showSessionExpiredDialog,
+        onDismiss = { showSessionExpiredDialog = false },
+        onConfirm = {
+            showSessionExpiredDialog = false
+            sessionManager?.resetSessionExpired()
+            navController.navigate(Screen.Login.route) {
+                popUpTo(0) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    )
 
     // Handle navigation events from AppNavigator
     LaunchedEffect(appNavigator) {

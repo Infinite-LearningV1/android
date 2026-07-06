@@ -132,6 +132,22 @@ class ValidateForegroundSessionUseCaseTest {
     }
 
     @Test
+    fun `returns valid without syncing profile when freshness is still active`() = runBlocking {
+        val sessionManager = SessionManager()
+        val userPreference = createUserPreference().also {
+            it.saveSession("access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+            it.saveLastProfileSyncAt(System.currentTimeMillis())
+        }
+        val repository = FakeAuthRepository(syncResults = mutableListOf(ProfileSyncResult.Success(sampleUser())))
+
+        val result = ValidateForegroundSessionUseCase(repository, userPreference, sessionManager)()
+
+        assertEquals(ForegroundSessionValidationResult.Valid, result)
+        assertEquals(0, repository.syncCallCount)
+        assertEquals(0, repository.refreshCallCount)
+    }
+
+    @Test
     fun `returns valid when profile sync succeeds through interceptor path`() = runBlocking {
         val sessionManager = SessionManager()
         val userPreference = createUserPreference().also {

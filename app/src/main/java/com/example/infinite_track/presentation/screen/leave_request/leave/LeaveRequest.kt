@@ -62,7 +62,6 @@
 //import com.example.infinite_track.presentation.core.headline3
 //import com.example.infinite_track.presentation.core.headline4
 //import com.example.infinite_track.presentation.theme.Purple_300
-//import com.example.infinite_track.utils.DialogHelper
 //import com.example.infinite_track.utils.toMultipartBodyPart
 //import kotlinx.coroutines.launch
 //
@@ -350,14 +349,7 @@
 //                    is NetworkResponse.Success -> {
 //                        val message =
 //                            (leaveRequestState as NetworkResponse.Success<LeaveRequestResponse>).data.message
-//                        DialogHelper.showDialogSuccess(
-//                            context = context,
-//                            title = "Leave Request",
-//                            textContent = message,
-//                            imageRes = R.drawable.img_login,
-//                            onConfirm = {
-//                            }
-//                        )
+//                        Legacy success dialog removed during status dialog migration.
 //                    }
 //
 //                    is NetworkResponse.Error -> {

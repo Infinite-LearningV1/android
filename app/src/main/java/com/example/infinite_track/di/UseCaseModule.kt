@@ -2,6 +2,7 @@ package com.example.infinite_track.di
 
 import com.example.infinite_track.data.face.FaceProcessor
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
+import com.example.infinite_track.data.soucre.local.preferences.TodayStatusPreference
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.data.soucre.local.room.UserDao
@@ -18,6 +19,7 @@ import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
 import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
 import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
+import com.example.infinite_track.domain.use_case.auth.ClearAuthenticatedRuntimeUseCase
 import com.example.infinite_track.domain.use_case.auth.GenerateAndSaveEmbeddingUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.auth.LoginUseCase
@@ -90,10 +92,30 @@ object UseCaseModule {
         )
     }
 
+    @Provides
+    fun provideClearAuthenticatedRuntimeUseCase(
+        userPreference: UserPreference,
+        userDao: UserDao,
+        attendancePreference: AttendancePreference,
+        todayStatusPreference: TodayStatusPreference,
+        geofenceManager: GeofenceManager
+    ): ClearAuthenticatedRuntimeUseCase {
+        return ClearAuthenticatedRuntimeUseCase(
+            userPreference = userPreference,
+            userDao = userDao,
+            attendancePreference = attendancePreference,
+            todayStatusPreference = todayStatusPreference,
+            geofenceManager = geofenceManager
+        )
+    }
+
     // Provide the Logout Use Case
     @Provides
-    fun provideLogoutUseCase(authRepository: AuthRepository): LogoutUseCase {
-        return LogoutUseCase(authRepository)
+    fun provideLogoutUseCase(
+        authRepository: AuthRepository,
+        clearAuthenticatedRuntimeUseCase: ClearAuthenticatedRuntimeUseCase
+    ): LogoutUseCase {
+        return LogoutUseCase(authRepository, clearAuthenticatedRuntimeUseCase)
     }
 
     @Provides

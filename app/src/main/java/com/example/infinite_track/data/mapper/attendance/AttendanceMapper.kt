@@ -4,17 +4,29 @@ import com.example.infinite_track.data.soucre.network.request.AttendanceRequest
 import com.example.infinite_track.data.soucre.network.response.ActiveLocation
 import com.example.infinite_track.data.soucre.network.response.AttendanceData
 import com.example.infinite_track.data.soucre.network.response.TodayStatusData
+import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
 import com.example.infinite_track.domain.model.attendance.ActiveAttendanceSession
 import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
+import com.example.infinite_track.domain.model.attendance.AttendanceSessionState
 import com.example.infinite_track.domain.model.attendance.CheckinWindow
 import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.TodayStatus
+import com.example.infinite_track.domain.model.auth.AuthRuntimePolicy
 import com.example.infinite_track.data.soucre.network.response.CheckinWindow as CheckinWindowDto
+
+/**
+ * Extension function to convert TodayStatusResponse (DTO) to TodayStatus (Domain model)
+ */
+fun TodayStatusResponse.toDomain(): TodayStatus {
+    return data.toDomain(cacheTtlSeconds = AuthRuntimePolicy.SHARED_TTL_SECONDS)
+}
 
 /**
  * Extension function to convert TodayStatusData (DTO) to TodayStatus (Domain model)
  */
-fun TodayStatusData.toDomain(): TodayStatus {
+fun TodayStatusData.toDomain(
+    cacheTtlSeconds: Int = AuthRuntimePolicy.SHARED_TTL_SECONDS
+): TodayStatus {
     return TodayStatus(
         canCheckIn = this.canCheckIn,
         canCheckOut = this.canCheckOut == true, // Handle null with default false
@@ -27,7 +39,16 @@ fun TodayStatusData.toDomain(): TodayStatus {
         holidayCheckinEnabled = this.holidayCheckinEnabled,
         currentTime = this.currentTime,
         checkinWindow = this.checkinWindow.toDomain(),
-        checkoutAutoTime = this.checkoutAutoTime
+        checkoutAutoTime = this.checkoutAutoTime,
+        attendanceSessionState = this.attendanceSessionState?.let { state ->
+            AttendanceSessionState(
+                id = state.id,
+                key = state.key,
+                label = state.label
+            )
+        },
+        activeAttendanceId = this.activeAttendanceId,
+        cacheTtlSeconds = cacheTtlSeconds
     )
 }
 

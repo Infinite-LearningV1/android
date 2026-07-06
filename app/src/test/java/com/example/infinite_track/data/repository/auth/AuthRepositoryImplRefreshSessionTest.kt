@@ -478,7 +478,7 @@ class AuthRepositoryImplRefreshSessionTest {
     }
 
     @Test
-    fun `logout uses auth session api service and clears local state`() = runBlocking {
+    fun `logout remote uses auth session api service without clearing local state`() = runBlocking {
         val userPreference = createUserPreference()
         userPreference.saveSession(token = "access-token", userId = "10", refreshToken = null)
         val userDao = CapturingUserDao()
@@ -496,13 +496,13 @@ class AuthRepositoryImplRefreshSessionTest {
             userDao = userDao
         )
 
-        val result = repository.logout()
+        val result = repository.logoutRemote()
 
         assertTrue(result.isSuccess)
         assertEquals(1, fakeAuthSessionApi.logoutCallCount)
-        assertTrue(userPreference.getAuthToken().first().isBlank())
+        assertEquals("access-token", userPreference.getAuthToken().first())
         assertTrue(userPreference.getRefreshToken().first().isBlank())
-        assertTrue(userPreference.getUserId().first().isBlank())
+        assertEquals("10", userPreference.getUserId().first())
     }
 
     @Test

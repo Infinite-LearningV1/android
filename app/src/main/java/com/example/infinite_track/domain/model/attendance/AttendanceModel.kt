@@ -1,5 +1,7 @@
 package com.example.infinite_track.domain.model.attendance
 
+import com.example.infinite_track.domain.model.auth.AuthRuntimePolicy
+
 /**
  * Domain model representing the current day's attendance status
  * Clean and free from external dependencies
@@ -16,7 +18,19 @@ data class TodayStatus(
     val holidayCheckinEnabled: Boolean,
     val currentTime: String,
     val checkinWindow: CheckinWindow,
-    val checkoutAutoTime: String
+    val checkoutAutoTime: String,
+    val attendanceSessionState: AttendanceSessionState? = null,
+    val activeAttendanceId: Int? = null,
+    val cacheTtlSeconds: Int = AuthRuntimePolicy.SHARED_TTL_SECONDS
+)
+
+/**
+ * Domain model representing backend attendance session state.
+ */
+data class AttendanceSessionState(
+    val id: Int?,
+    val key: String?,
+    val label: String?
 )
 
 /**

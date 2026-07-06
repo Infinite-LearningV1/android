@@ -13,7 +13,15 @@ data class TodayStatusResponse(
     // Walaupun tidak ada di contoh, message biasanya ada.
     // Dibuat nullable untuk keamanan.
     @field:SerializedName("message")
-    val message: String? = null
+    val message: String? = null,
+
+    @field:SerializedName("meta")
+    val meta: TodayStatusMeta? = null
+)
+
+data class TodayStatusMeta(
+    @field:SerializedName("cache_ttl_seconds")
+    val cacheTtlSeconds: Int? = null
 )
 
 // Kelas yang merepresentasikan objek "data"
@@ -52,7 +60,24 @@ data class TodayStatusData(
     val checkinWindow: CheckinWindow,
 
     @field:SerializedName("checkout_auto_time")
-    val checkoutAutoTime: String
+    val checkoutAutoTime: String,
+
+    @field:SerializedName("attendance_session_state")
+    val attendanceSessionState: AttendanceSessionStateDto? = null,
+
+    @field:SerializedName("active_attendance_id")
+    val activeAttendanceId: Int? = null
+)
+
+data class AttendanceSessionStateDto(
+    @field:SerializedName("id")
+    val id: Int? = null,
+
+    @field:SerializedName("key")
+    val key: String? = null,
+
+    @field:SerializedName("label")
+    val label: String? = null
 )
 
 
