@@ -13,6 +13,7 @@ import com.example.infinite_track.domain.model.attendance.CheckinWindow
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.google.gson.Gson
 import java.io.File
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -65,6 +66,28 @@ class ClearAuthenticatedRuntimeUseCaseTest {
         assertNull(attendancePreference.getLastGeofenceParams().first())
         assertNull(todayStatusPreference.getTodayStatusCache().first())
         assertEquals(1, removeAllGeofencesCalls)
+    }
+
+    @Test
+    fun `clear runtime awaits geofence cleanup before returning`() = runTest {
+        val userPreference = UserPreference(createDataStore("clear_runtime_user_await"))
+        val attendancePreference = AttendancePreference(createDataStore("clear_runtime_attendance_await"))
+        val todayStatusPreference = TodayStatusPreference(createDataStore("clear_runtime_today_status_await"), Gson())
+        var geofenceCleanupCompleted = false
+        val useCase = ClearAuthenticatedRuntimeUseCase(
+            userPreference = userPreference,
+            userDao = FakeUserDao(),
+            attendancePreference = attendancePreference,
+            todayStatusPreference = todayStatusPreference,
+            removeAllGeofences = {
+                delay(10)
+                geofenceCleanupCompleted = true
+            }
+        )
+
+        useCase()
+
+        assertEquals(true, geofenceCleanupCompleted)
     }
 
     @Test

@@ -17,15 +17,21 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.Task
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlin.math.max
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 @Singleton
 class GeofenceManager @Inject constructor(
@@ -87,22 +93,36 @@ class GeofenceManager @Inject constructor(
     }
 
     /**
-     * Remove all geofences registered by this application
-     * This ensures we never hit the system limit of ~100 geofences
+     * Remove all geofences registered by this application.
+     * Existing fire-and-forget callers keep their non-blocking behavior.
      */
     fun removeAllGeofences() {
-        geofencingClient.removeGeofences(geofencePendingIntent).run {
-            addOnSuccessListener {
-                Log.d(TAG, "Semua geofence berhasil dihapus")
-                ioScope.launch {
-                    attendancePreference.clearLastGeofenceRequestId()
-                    attendancePreference.clearLastGeofenceParams()
-                    attendancePreference.clearReminderGeofences()
-                }
-            }
-            addOnFailureListener { exception ->
+        ioScope.launch {
+            try {
+                removeAllGeofencesAwait()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (exception: Exception) {
                 Log.e(TAG, "Gagal menghapus semua geofence", exception)
             }
+        }
+    }
+
+    /**
+     * Awaitable geofence cleanup for auth/runtime teardown semantics.
+     */
+    suspend fun removeAllGeofencesAwait() {
+        try {
+            geofencingClient.removeGeofences(geofencePendingIntent).awaitTask()
+            Log.d(TAG, "Semua geofence berhasil dihapus")
+            attendancePreference.clearLastGeofenceRequestId()
+            attendancePreference.clearLastGeofenceParams()
+            attendancePreference.clearReminderGeofences()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (exception: Exception) {
+            Log.e(TAG, "Gagal menghapus semua geofence", exception)
+            throw exception
         }
     }
 
@@ -275,6 +295,24 @@ class GeofenceManager @Inject constructor(
                 ioScope.launch { attendancePreference.removeReminderGeofence(id) }
             }
             addOnFailureListener { Log.e(TAG, "Gagal menghapus reminder geofence: $id", it) }
+        }
+    }
+}
+
+private suspend fun <T> Task<T>.awaitTask(): T = suspendCancellableCoroutine { continuation ->
+    addOnSuccessListener { result ->
+        if (continuation.isActive) {
+            continuation.resume(result)
+        }
+    }
+    addOnFailureListener { exception ->
+        if (continuation.isActive) {
+            continuation.resumeWithException(exception)
+        }
+    }
+    addOnCanceledListener {
+        if (continuation.isActive) {
+            continuation.cancel(CancellationException("Google Play services task was cancelled"))
         }
     }
 }

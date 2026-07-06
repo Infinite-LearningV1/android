@@ -11,7 +11,7 @@ class ClearAuthenticatedRuntimeUseCase internal constructor(
     private val userDao: UserDao,
     private val attendancePreference: AttendancePreference,
     private val todayStatusPreference: TodayStatusPreference,
-    private val removeAllGeofences: () -> Unit
+    private val removeAllGeofences: suspend () -> Unit
 ) {
     constructor(
         userPreference: UserPreference,
@@ -24,7 +24,7 @@ class ClearAuthenticatedRuntimeUseCase internal constructor(
         userDao = userDao,
         attendancePreference = attendancePreference,
         todayStatusPreference = todayStatusPreference,
-        removeAllGeofences = geofenceManager::removeAllGeofences
+        removeAllGeofences = geofenceManager::removeAllGeofencesAwait
     )
 
     suspend operator fun invoke() {
@@ -56,10 +56,10 @@ class ClearAuthenticatedRuntimeUseCase internal constructor(
         }
     }
 
-    private inline fun runBestEffort(
+    private suspend inline fun runBestEffort(
         stepName: String,
         failures: MutableList<Throwable>,
-        block: () -> Unit
+        block: suspend () -> Unit
     ) {
         try {
             block()

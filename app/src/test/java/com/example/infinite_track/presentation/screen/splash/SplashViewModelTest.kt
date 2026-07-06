@@ -16,7 +16,6 @@ import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
 import com.example.infinite_track.domain.use_case.auth.ClearAuthenticatedRuntimeUseCase
-import com.example.infinite_track.domain.use_case.auth.ForceReauthUseCase
 import com.example.infinite_track.domain.use_case.auth.GenerateAndSaveEmbeddingUseCase
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
@@ -86,10 +85,7 @@ class SplashViewModelTest {
                 userPreference = userPreference,
                 sessionManager = sessionManager
             ),
-            forceReauthUseCase = ForceReauthUseCase(
-                sessionManager = sessionManager,
-                clearAuthenticatedRuntimeUseCase = createClearRuntimeUseCase()
-            )
+            clearAuthenticatedRuntimeUseCase = createClearRuntimeUseCase()
         )
     }
 

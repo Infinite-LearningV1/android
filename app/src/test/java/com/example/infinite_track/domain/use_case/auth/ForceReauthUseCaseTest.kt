@@ -9,6 +9,7 @@ import com.example.infinite_track.data.soucre.local.room.UserEntity
 import com.example.infinite_track.domain.manager.SessionManager
 import com.google.gson.Gson
 import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -55,16 +56,29 @@ class ForceReauthUseCaseTest {
             error("cleanup failed")
         }
 
-        try {
-            useCase(SessionManager.ReauthReason.REFRESH_REVOKED)
-            fail("Expected cleanup failure")
-        } catch (_: IllegalStateException) {
-            // Expected.
-        }
+        useCase(SessionManager.ReauthReason.REFRESH_REVOKED)
 
         assertEquals(1, clearRuntimeCalls)
         assertEquals(true, sessionManager.sessionExpired.value)
         assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
+    }
+
+    @Test
+    fun `force reauth rethrows cancellation from cleanup`() = runTest {
+        val sessionManager = SessionManager()
+        val cancellation = CancellationException("cancelled")
+        val useCase = ForceReauthUseCase(sessionManager) {
+            throw cancellation
+        }
+
+        try {
+            useCase(SessionManager.ReauthReason.REFRESH_INVALID)
+            fail("Expected cancellation")
+        } catch (e: CancellationException) {
+            assertEquals(cancellation, e)
+        }
+
+        assertEquals(false, sessionManager.sessionExpired.value)
     }
 
     private fun createClearRuntimeUseCase(onRemoveAllGeofences: () -> Unit): ClearAuthenticatedRuntimeUseCase {
