@@ -48,7 +48,6 @@ foundationAndroid = "1.7.2"
 uiToolingPreview = "1.5.0"
 uiVersion = "1.5.0"
 runtimeLivedata = "1.7.5"
-library = "1.6.2"
 googleGmsGoogleServices = "4.4.2"
 firebaseMessaging = "24.0.3"
 roomCompiler = "2.6.1"
@@ -68,7 +67,6 @@ mapboxMapsSdk = { module = "com.mapbox.maps:android", version.ref = "mapboxMapsS
 mapboxMapsComposeExtension = { module = "com.mapbox.extension:maps-compose", version.ref = "mapboxMapsComposeExtension" } # Corrected module name
 androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlinStdlib" }
-library = { module = "com.github.f0ris.sweetalert:library", version.ref = "library" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cameraCamera2" }
 androidx-camera-core = { module = "androidx.camera:camera-core", version.ref = "cameraCamera2" }

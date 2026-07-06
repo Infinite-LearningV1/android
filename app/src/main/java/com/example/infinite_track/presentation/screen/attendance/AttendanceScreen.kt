@@ -52,10 +52,11 @@ import com.example.infinite_track.presentation.components.maps.MarkerView
 import com.example.infinite_track.presentation.components.dialog.LocationPermissionDialog
 import com.example.infinite_track.utils.LocalLocationPermissionHelper
 import com.example.infinite_track.presentation.components.maps.MarkerViewWfa
+import com.example.infinite_track.presentation.components.status.InfiniteTrackStatusDialog
+import com.example.infinite_track.presentation.components.status.StatusStates
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
-import com.example.infinite_track.utils.DialogHelper
 import com.example.infinite_track.utils.UiState
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
@@ -461,58 +462,47 @@ fun AttendanceScreen(
         }
     }
 
-    // =======================================================
-    // NEW: State-driven LaunchedEffect for Dialog Handling
-    // =======================================================
-    LaunchedEffect(uiState.activeDialog) {
-        uiState.activeDialog?.let { dialog ->
-            when (dialog) {
-                is DialogState.Success -> {
-                    // Show success dialog with dynamic message from server
-                    DialogHelper.showDialogSuccess(
-                        context = navController.context,
-                        title = "Absensi Berhasil",
-                        textContent = dialog.message,
-                        imageRes = R.drawable.icon_success,
-                        onConfirm = {
-                            // Navigate to HomeScreen after success
-                            navController.navigate(Screen.Home.route) {
-                                // Clear backstack to prevent going back to attendance
-                                popUpTo(Screen.Home.route) {
-                                    inclusive = false
-                                }
+    uiState.activeDialog?.let { dialog ->
+        when (dialog) {
+            is DialogState.Success -> {
+                InfiniteTrackStatusDialog(
+                    status = StatusStates.Success,
+                    title = "Absensi Berhasil",
+                    message = dialog.message,
+                    showDialog = true,
+                    imageRes = R.drawable.icon_success,
+                    onDismiss = { viewModel.onDialogDismissed() },
+                    onConfirm = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Home.route) {
+                                inclusive = false
                             }
-                            // Notify ViewModel that dialog has been handled
-                            viewModel.onDialogDismissed()
                         }
-                    )
-                }
+                        viewModel.onDialogDismissed()
+                    }
+                )
+            }
 
-                is DialogState.Error -> {
-                    // Show error dialog with dynamic message from server
-                    DialogHelper.showDialogError(
-                        context = navController.context,
-                        title = "Absensi Gagal",
-                        textContent = dialog.message,
-                        onConfirm = {
-                            // Stay on AttendanceScreen - no navigation needed
-                            // User can try again
-                            viewModel.onDialogDismissed()
-                        }
-                    )
-                }
+            is DialogState.Error -> {
+                InfiniteTrackStatusDialog(
+                    status = StatusStates.Error,
+                    title = "Absensi Gagal",
+                    message = dialog.message,
+                    showDialog = true,
+                    onDismiss = { viewModel.onDialogDismissed() },
+                    onConfirm = { viewModel.onDialogDismissed() }
+                )
+            }
 
-                is DialogState.LocationError -> {
-                    // Show location error dialog
-                    DialogHelper.showDialogError(
-                        context = navController.context,
-                        title = "Error Lokasi",
-                        textContent = dialog.message,
-                        onConfirm = {
-                            viewModel.onDialogDismissed()
-                        }
-                    )
-                }
+            is DialogState.LocationError -> {
+                InfiniteTrackStatusDialog(
+                    status = StatusStates.Error,
+                    title = "Error Lokasi",
+                    message = dialog.message,
+                    showDialog = true,
+                    onDismiss = { viewModel.onDialogDismissed() },
+                    onConfirm = { viewModel.onDialogDismissed() }
+                )
             }
         }
     }

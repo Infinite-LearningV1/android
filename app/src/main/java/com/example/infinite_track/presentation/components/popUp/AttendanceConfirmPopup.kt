@@ -32,6 +32,7 @@ import com.example.infinite_track.presentation.core.body1
 import com.example.infinite_track.presentation.core.body2
 import com.example.infinite_track.presentation.core.headline0
 import com.example.infinite_track.presentation.core.headline4
+import com.example.infinite_track.presentation.components.status.StatusStateSpec
 import com.example.infinite_track.presentation.theme.Blue_700
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
@@ -42,18 +43,19 @@ fun AttendanceConfirmPopup(
     showDialog: Boolean,
     onDismiss: () -> Unit,
 ) {
+    val statusSpec = when (status.lowercase()) {
+        "confirmed" -> StatusStateSpec(id = "success", value = "Confirmed")
+        "overtime" -> StatusStateSpec(id = "info", value = "You Worked Over Time")
+        "late" -> StatusStateSpec(id = "warning", value = "You Are Late!")
+        else -> StatusStateSpec(id = "error", value = "Status Not Found!")
+    }
     val popupImage = when (status.lowercase()) {
         "confirmed" -> R.drawable.ic_attendance_confirmed
         "overtime" -> R.drawable.ic_attendance_overtime
         "late" -> R.drawable.ic_attendance_late
         else -> R.drawable.ic_profile
     }
-    val popupText = when (status.lowercase()) {
-        "confirmed" -> "Confirmed"
-        "overtime" -> "You Worked Over Time"
-        "late" -> "You Are Late!"
-        else -> "Status Not Found!"
-    }
+    val popupText = statusSpec.value
     val imageModifier = when (status.lowercase()) {
         "confirmed" -> Modifier.size(147.dp)
         "overtime" -> Modifier
