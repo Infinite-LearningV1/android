@@ -54,7 +54,7 @@ object WfaShellNavigationContract {
     fun isSelected(item: NavigationItem, currentRoute: String?): Boolean {
         return when (item.screen) {
             Screen.History -> currentRoute == Screen.History.route || currentRoute == Screen.HistoryFlow.route || currentRoute == Screen.DetailMyAttendance.route
-            Screen.Profile -> currentRoute == Screen.Profile.route || currentRoute == Screen.ProfileFlow.route || currentRoute == Screen.EditProfile.route || currentRoute == Screen.ContactUs.route || currentRoute == Screen.PaySlip.route || currentRoute == Screen.MyDocument.route
+            Screen.Profile -> currentRoute == Screen.Profile.route || currentRoute == Screen.ProfileFlow.route || currentRoute == Screen.EditProfile.route || currentRoute == Screen.Contact.route || currentRoute == Screen.ContactUs.route || currentRoute == Screen.PaySlip.route || currentRoute == Screen.MyDocument.route
             Screen.Wfa -> currentRoute in wfaSelectedRoutes
             else -> currentRoute == item.screen.route
         }
