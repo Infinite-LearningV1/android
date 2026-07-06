@@ -205,7 +205,7 @@ class AttendanceRepositoryImpl @Inject constructor(
         if (cache.todayDate != LocalDate.now().toString()) return false
         if (cache.todayDate != cache.status.todayDate) return false
 
-        val ttlMillis = (cache.ttlSeconds.takeIf { it > 0 } ?: AuthRuntimePolicy.SHARED_TTL_SECONDS) * 1000L
+        val ttlMillis = AuthRuntimePolicy.SHARED_TTL_SECONDS * 1000L
         return now - cache.fetchedAtMillis < ttlMillis
     }
 
