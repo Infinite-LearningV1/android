@@ -7,8 +7,7 @@ import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiSer
 import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
 import com.example.infinite_track.di.auth.AuthRefreshInterceptor
 import com.example.infinite_track.di.auth.RefreshSingleFlightCoordinator
-import com.example.infinite_track.domain.manager.SessionManager
-import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
+import com.example.infinite_track.domain.use_case.auth.ForceReauthUseCase
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
@@ -50,14 +49,12 @@ object NetworkModule {
     fun provideAuthInterceptor(
         userPreference: UserPreference,
         refreshSingleFlightCoordinator: RefreshSingleFlightCoordinator,
-        logoutUseCaseProvider: Provider<LogoutUseCase>,
-        sessionManagerProvider: Provider<SessionManager>
+        forceReauthUseCaseProvider: Provider<ForceReauthUseCase>
     ): Interceptor {
         return AuthRefreshInterceptor(
             userPreference = userPreference,
             refreshSingleFlightCoordinator = refreshSingleFlightCoordinator,
-            logoutUseCaseProvider = logoutUseCaseProvider,
-            sessionManagerProvider = sessionManagerProvider
+            forceReauthUseCaseProvider = forceReauthUseCaseProvider
         )
     }
 

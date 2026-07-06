@@ -2,6 +2,7 @@ package com.example.infinite_track.domain.use_case.auth
 
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.domain.manager.SessionManager
+import com.example.infinite_track.domain.model.auth.AuthRuntimePolicy
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRefreshException
 import com.example.infinite_track.domain.repository.AuthRefreshFailureKind
@@ -25,6 +26,8 @@ class CheckSessionUseCase @Inject constructor(
             if (bootstrapRefreshResult != null) {
                 return bootstrapRefreshResult
             }
+
+            freshLocalUserOrNull()?.let { return Result.success(it) }
 
             val syncResult = resolveSyncResult(authRepository.syncUserProfileForBootstrap())
 
@@ -52,6 +55,7 @@ class CheckSessionUseCase @Inject constructor(
                 }
             }
 
+            userPreference.saveLastProfileSyncAt(System.currentTimeMillis())
             syncResult
         } catch (e: CancellationException) {
             throw e
@@ -62,6 +66,15 @@ class CheckSessionUseCase @Inject constructor(
         } finally {
             sessionManager.endBootstrapSession()
         }
+    }
+
+    private suspend fun freshLocalUserOrNull(): UserModel? {
+        val lastProfileSyncAt = userPreference.getLastProfileSyncAt().first()
+        val currentUser = authRepository.getLoggedInUser().first()
+        val isFresh = lastProfileSyncAt > 0L &&
+            (System.currentTimeMillis() - lastProfileSyncAt) < AuthRuntimePolicy.SHARED_TTL_MILLIS
+
+        return if (isFresh && currentUser != null) currentUser else null
     }
 
     private suspend fun validateRefreshSessionIfAvailable(): Result<UserModel>? {

@@ -13,6 +13,7 @@ import com.example.infinite_track.data.repository.profile.ProfileRepositoryImpl
 import com.example.infinite_track.data.repository.wfa.WfaRepositoryImpl
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
 import com.example.infinite_track.data.soucre.local.preferences.LocalizationPreference
+import com.example.infinite_track.data.soucre.local.preferences.TodayStatusPreference
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
@@ -55,11 +56,16 @@ object RepositoryModule {
     @Singleton
     fun provideAttendanceRepository(
         apiService: ApiService,
-        attendancePreference: AttendancePreference
+        attendancePreference: AttendancePreference,
+        todayStatusPreference: TodayStatusPreference,
+        userPreference: UserPreference
     ): AttendanceRepository {
         try {
             return AttendanceRepositoryImpl(
-                apiService, attendancePreference
+                apiService = apiService,
+                attendancePreference = attendancePreference,
+                todayStatusPreference = todayStatusPreference,
+                userPreference = userPreference
             )
         } catch (e: Exception) {
             Log.e("RepositoryModule", "Error providing AttendanceRepository: ${e.message}", e)

@@ -7,7 +7,7 @@ import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.repository.AuthRefreshException
 import com.example.infinite_track.domain.repository.AuthRefreshFailureKind
 import com.example.infinite_track.domain.repository.AuthRefreshFailureReason
-import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
+import com.example.infinite_track.domain.use_case.auth.ForceReauthUseCase
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import kotlinx.coroutines.CancellationException
@@ -24,8 +24,7 @@ import javax.inject.Singleton
 class AuthRefreshInterceptor @Inject constructor(
     private val userPreference: UserPreference,
     private val refreshSingleFlightCoordinator: RefreshSingleFlightCoordinator,
-    private val logoutUseCaseProvider: Provider<LogoutUseCase>,
-    private val sessionManagerProvider: Provider<SessionManager>
+    private val forceReauthUseCaseProvider: Provider<ForceReauthUseCase>
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -123,12 +122,8 @@ class AuthRefreshInterceptor @Inject constructor(
             return
         }
 
-        val sessionManager = sessionManagerProvider.get()
-        if (sessionManager.beginSessionExpiryHandling()) {
-            runBlocking {
-                logoutUseCaseProvider.get().invoke()
-            }
-            sessionManager.triggerForcedReauth(reason)
+        runBlocking {
+            forceReauthUseCaseProvider.get().invoke(reason)
         }
     }
 

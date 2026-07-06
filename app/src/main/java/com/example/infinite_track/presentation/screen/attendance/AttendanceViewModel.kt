@@ -169,10 +169,13 @@ class AttendanceViewModel @Inject constructor(
      * Fetch today status to get WFO location
      * FIXED: Now uses isButtonEnabled from calculateDynamicButtonState directly
      */
-    private suspend fun fetchTodayStatus() {
+    private suspend fun fetchTodayStatus(forceRefresh: Boolean = false) {
         try {
-            getTodayStatusUseCase().onSuccess { todayStatus ->
-                Log.d(TAG, "Today status fetched successfully: $todayStatus")
+            getTodayStatusUseCase(forceRefresh).onSuccess { todayStatus ->
+                Log.d(
+                    TAG,
+                    "Today status fetched successfully: mode=${todayStatus.activeMode}, canCheckIn=${todayStatus.canCheckIn}, canCheckOut=${todayStatus.canCheckOut}, state=${todayStatus.attendanceSessionState?.key}"
+                )
 
                 val isBookingEnabled = todayStatus.activeMode.isNotEmpty()
                 val selectedMode = todayStatus.activeMode.ifEmpty { "Work From Office" }
@@ -807,8 +810,8 @@ class AttendanceViewModel @Inject constructor(
                     checkInUseCase(attendanceRequest, targetLocation).onSuccess { activeSession ->
                         Log.d(TAG, "Check-in successful: $activeSession")
 
-                        // Refresh today's status to get updated data
-                        fetchTodayStatus()
+                        // Refresh today's status from backend after mutation invalidates local cache.
+                        fetchTodayStatus(forceRefresh = true)
 
                         // Send success event to UI with appropriate message
                         _uiState.value = _uiState.value.copy(
@@ -853,7 +856,8 @@ class AttendanceViewModel @Inject constructor(
                 checkOutUseCase().onSuccess { activeSession ->
                     Log.d(TAG, "Check-out successful: $activeSession")
 
-                    fetchTodayStatus()
+                    // Refresh today's status from backend after mutation invalidates local cache.
+                    fetchTodayStatus(forceRefresh = true)
 
                     // Send success event to UI with appropriate message
                     _uiState.value = _uiState.value.copy(

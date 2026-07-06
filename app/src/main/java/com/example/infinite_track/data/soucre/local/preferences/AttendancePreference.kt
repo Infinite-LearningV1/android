@@ -19,10 +19,13 @@ import javax.inject.Singleton
 private val Context.attendanceDataStore: DataStore<Preferences> by preferencesDataStore(name = "attendance_session")
 
 @Singleton
-class AttendancePreference @Inject constructor(
-	@ApplicationContext private val context: Context
+class AttendancePreference internal constructor(
+	private val dataStore: DataStore<Preferences>
 ) {
-	private val dataStore = context.attendanceDataStore
+	@Inject
+	constructor(
+		@ApplicationContext context: Context
+	) : this(context.attendanceDataStore)
 
 	companion object {
 		private val ACTIVE_ATTENDANCE_ID_KEY = intPreferencesKey("active_attendance_id")
@@ -33,8 +36,6 @@ class AttendancePreference @Inject constructor(
 		private val LAST_GEOFENCE_RADIUS_KEY = floatPreferencesKey("last_geofence_radius")
 		private val REMINDER_GEOFENCES_KEY = stringSetPreferencesKey("reminder_geofences")
 	}
-
-
 
 	/**
 	 * Save the active attendance ID to DataStore
@@ -181,6 +182,18 @@ class AttendancePreference @Inject constructor(
 		return dataStore.data.map { preferences ->
 			(preferences[REMINDER_GEOFENCES_KEY] ?: emptySet())
 				.mapNotNull { it.deserializeToReminder() }
+		}
+	}
+
+	suspend fun clearAttendanceRuntimeState() {
+		dataStore.edit { preferences ->
+			preferences.remove(ACTIVE_ATTENDANCE_ID_KEY)
+			preferences.remove(IS_INSIDE_GEOFENCE_KEY)
+			preferences.remove(LAST_GEOFENCE_REQUEST_ID_KEY)
+			preferences.remove(LAST_GEOFENCE_LAT_KEY)
+			preferences.remove(LAST_GEOFENCE_LNG_KEY)
+			preferences.remove(LAST_GEOFENCE_RADIUS_KEY)
+			preferences.remove(REMINDER_GEOFENCES_KEY)
 		}
 	}
 }

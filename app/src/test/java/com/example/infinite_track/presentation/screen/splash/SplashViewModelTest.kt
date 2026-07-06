@@ -3,7 +3,11 @@ package com.example.infinite_track.presentation.screen.splash
 import android.content.ContextWrapper
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.example.infinite_track.data.face.FaceProcessor
+import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
+import com.example.infinite_track.data.soucre.local.preferences.TodayStatusPreference
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
+import com.example.infinite_track.data.soucre.local.room.UserDao
+import com.example.infinite_track.data.soucre.local.room.UserEntity
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.model.auth.UserModel
@@ -11,8 +15,9 @@ import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
+import com.example.infinite_track.domain.use_case.auth.ClearAuthenticatedRuntimeUseCase
 import com.example.infinite_track.domain.use_case.auth.GenerateAndSaveEmbeddingUseCase
-import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
+import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -80,7 +85,7 @@ class SplashViewModelTest {
                 userPreference = userPreference,
                 sessionManager = sessionManager
             ),
-            logoutUseCase = LogoutUseCase(repository)
+            clearAuthenticatedRuntimeUseCase = createClearRuntimeUseCase()
         )
     }
 
@@ -90,18 +95,32 @@ class SplashViewModelTest {
         return UserPreference(dataStore)
     }
 
+    private fun createClearRuntimeUseCase(): ClearAuthenticatedRuntimeUseCase {
+        return ClearAuthenticatedRuntimeUseCase(
+            userPreference = UserPreference(createDataStore("splash_reauth_user")),
+            userDao = FakeUserDao(),
+            attendancePreference = AttendancePreference(createDataStore("splash_reauth_attendance")),
+            todayStatusPreference = TodayStatusPreference(createDataStore("splash_reauth_today_status"), Gson()),
+            removeAllGeofences = {}
+        )
+    }
+
+    private fun createDataStore(name: String) = PreferenceDataStoreFactory.create(
+        produceFile = { File.createTempFile(name, ".preferences_pb").also { it.delete() } }
+    )
+
     private fun sampleUser(): UserModel = UserModel(
-        id = 1,
-        fullName = "User",
-        email = "user@example.com",
+        id = 900_002,
+        fullName = "SENTINEL_NAME_BETA",
+        email = "SENTINEL_EMAIL_BETA",
         roleName = "staff",
         positionName = "Engineer",
         programName = "Program",
         divisionName = "Division",
-        nipNim = "123",
-        phone = "0812",
-        photoUrl = "https://example.com/photo.jpg",
-        photoUpdatedAt = "2026-01-01T00:00:00Z",
+        nipNim = "SENTINEL_ID_BETA",
+        phone = "SENTINEL_PHONE_BETA",
+        photoUrl = "https://example.invalid/sentinel-photo.png",
+        photoUpdatedAt = "2099-12-31T23:59:59Z",
         latitude = null,
         longitude = null,
         radius = null,
@@ -109,6 +128,13 @@ class SplashViewModelTest {
         locationCategoryName = null,
         faceEmbedding = byteArrayOf(1, 2, 3)
     )
+
+    private class FakeUserDao : UserDao {
+        override suspend fun insertOrUpdateUserProfile(userEntity: UserEntity) = Unit
+        override fun getUserProfileFlow(): Flow<UserEntity?> = flowOf(null)
+        override suspend fun getUserProfile(): UserEntity? = null
+        override suspend fun clearUserProfile() = Unit
+    }
 
     private class FakeAuthRepository(
         private val syncResult: ProfileSyncResult,
