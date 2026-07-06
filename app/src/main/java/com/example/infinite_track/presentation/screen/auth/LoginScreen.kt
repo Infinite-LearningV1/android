@@ -11,7 +11,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -26,19 +29,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import cn.pedant.SweetAlert.SweetAlertDialog
 import com.example.infinite_track.R
 import com.example.infinite_track.presentation.components.button.InfiniteTrackButton
+import com.example.infinite_track.presentation.components.loading.LoadingAnimation
+import com.example.infinite_track.presentation.components.status.InfiniteTrackStatusDialog
+import com.example.infinite_track.presentation.components.status.StatusStateSpec
+import com.example.infinite_track.presentation.components.status.StatusStates
 import com.example.infinite_track.presentation.components.textfield.ThriveInInputText
 import com.example.infinite_track.presentation.core.body1
-import com.example.infinite_track.utils.DialogHelper
 import com.example.infinite_track.utils.UiState
 import kotlinx.coroutines.launch
 
@@ -53,10 +58,8 @@ fun LoginScreen(
 
     var password by rememberSaveable { mutableStateOf("") }
 
-    val context = LocalContext.current
-
-    var dialog by remember { mutableStateOf<SweetAlertDialog?>(null) }
-
+    var showLoadingDialog by remember { mutableStateOf(false) }
+    var statusDialog by remember { mutableStateOf<LoginStatusDialog?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -74,38 +77,50 @@ fun LoginScreen(
             }
 
             is UiState.Loading -> {
-                dialog?.dismissWithAnimation()
-                dialog = DialogHelper.showDialogLoading(
-                    context = context,
-                    textContent = "Please wait"
-                )
+                statusDialog = null
+                showLoadingDialog = true
             }
 
             is UiState.Success -> {
-                dialog?.dismissWithAnimation()
-                dialog = DialogHelper.showDialogSuccess(
-                    context = context,
+                showLoadingDialog = false
+                statusDialog = LoginStatusDialog(
+                    status = StatusStates.Success,
                     title = "Complete your Profile",
-                    textContent = "Please head to Setting and complete your profile",
+                    message = "Please head to Setting and complete your profile",
                     imageRes = R.drawable.img_login,
                     onConfirm = {
-                        // First navigate to home
                         navigateToHome()
-                        // Then reset the state to prevent dialog from showing again if user comes back
                         loginViewModel.resetState()
+                        statusDialog = null
                     }
                 )
             }
 
             is UiState.Error -> {
-                dialog?.dismissWithAnimation()
-                dialog = DialogHelper.showDialogError(
-                    context = context,
+                showLoadingDialog = false
+                statusDialog = LoginStatusDialog(
+                    status = StatusStates.Error,
                     title = "Failed",
-                    textContent = (loginState as UiState.Error).errorMessage
+                    message = (loginState as UiState.Error).errorMessage,
+                    onConfirm = { statusDialog = null }
                 )
             }
         }
+    }
+
+
+    LoginLoadingDialog(showDialog = showLoadingDialog)
+
+    statusDialog?.let { dialog ->
+        InfiniteTrackStatusDialog(
+            status = dialog.status,
+            title = dialog.title,
+            message = dialog.message,
+            showDialog = true,
+            imageRes = dialog.imageRes,
+            onDismiss = { statusDialog = null },
+            onConfirm = dialog.onConfirm
+        )
     }
 
     Scaffold(
@@ -230,4 +245,41 @@ fun LoginScreen(
             }
         }
     )
+}
+
+private data class LoginStatusDialog(
+    val status: StatusStateSpec,
+    val title: String,
+    val message: String,
+    val imageRes: Int? = null,
+    val onConfirm: () -> Unit
+)
+
+@Composable
+private fun LoginLoadingDialog(showDialog: Boolean) {
+    if (!showDialog) return
+
+    Dialog(onDismissRequest = { }) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier.height(72.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    LoadingAnimation()
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Please wait",
+                    style = body1
+                )
+            }
+        }
+    }
 }

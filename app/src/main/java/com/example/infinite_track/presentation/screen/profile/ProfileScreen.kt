@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -36,20 +38,23 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
-import cn.pedant.SweetAlert.SweetAlertDialog
 import coil.compose.AsyncImage
 import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.auth.UserModel
+import com.example.infinite_track.presentation.components.loading.LoadingAnimation
 import com.example.infinite_track.presentation.components.popUp.LanguagePopUp
+import com.example.infinite_track.presentation.components.status.InfiniteTrackConfirmDialog
+import com.example.infinite_track.presentation.components.status.StatusStates
 import com.example.infinite_track.presentation.core.headline2
 import com.example.infinite_track.presentation.core.headline3
 import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.theme.Purple_300
 import com.example.infinite_track.presentation.theme.Purple_500
-import com.example.infinite_track.utils.DialogHelper
+import com.example.infinite_track.presentation.theme.White
 import com.example.infinite_track.utils.UiState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -68,7 +73,8 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var dialog by remember { mutableStateOf<SweetAlertDialog?>(null) }
+    var showLogoutConfirmDialog by remember { mutableStateOf(false) }
+    var showLogoutLoadingDialog by remember { mutableStateOf(false) }
 
     // Collect all states from the ViewModel
     val profileState by profileViewModel.profileState.collectAsStateWithLifecycle()
@@ -92,6 +98,40 @@ fun ProfileScreen(
         }
     )
 
+
+    InfiniteTrackConfirmDialog(
+        status = StatusStates.Warning,
+        title = "Log out",
+        message = "Are you sure you want to log out?",
+        showDialog = showLogoutConfirmDialog,
+        confirmText = "Log out",
+        cancelText = "Cancel",
+        isDestructive = true,
+        onDismiss = { showLogoutConfirmDialog = false },
+        onConfirm = {
+            showLogoutConfirmDialog = false
+            showLogoutLoadingDialog = true
+            scope.launch {
+                delay(2000)
+                showLogoutLoadingDialog = false
+                profileViewModel.onConfirmLogout()
+                rootNavController.navigate("auth_graph") {
+                    popUpTo(rootNavController.graph.startDestinationId) {
+                        inclusive = true
+                    }
+                    launchSingleTop = true
+                }
+                Toast.makeText(
+                    context,
+                    "Log out success",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    )
+
+    ProfileLoadingDialog(showDialog = showLogoutLoadingDialog)
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = Color.Transparent
@@ -103,15 +143,11 @@ fun ProfileScreen(
         ) {
             when (profileState) {
                 is UiState.Loading -> {
-                    // Show loading indicator
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(
-                            color = Purple_500,
-                            modifier = Modifier.size(48.dp)
-                        )
+                        LoadingAnimation()
                     }
                 }
 
@@ -260,35 +296,7 @@ fun ProfileScreen(
                                 label = stringResource(R.string.logOut),
                                 icon = R.drawable.ic_logout,
                                 onClick = {
-                                    dialog = DialogHelper.showDialogWarning(
-                                        context = context,
-                                        title = "Log out",
-                                        textContent = "Are you sure you want to log out?",
-                                        onDismis = { dialog?.dismissWithAnimation() },
-                                        onConfirm = {
-                                            dialog?.dismissWithAnimation()
-                                            dialog = DialogHelper.showDialogLoading(
-                                                context = context,
-                                                textContent = "Please wait"
-                                            )
-                                            scope.launch {
-                                                delay(2000)
-                                                dialog?.dismissWithAnimation()
-                                                profileViewModel.onConfirmLogout()
-                                                rootNavController.navigate("auth_graph") {
-                                                    popUpTo(rootNavController.graph.startDestinationId) {
-                                                        inclusive = true
-                                                    }
-                                                    launchSingleTop = true
-                                                }
-                                                Toast.makeText(
-                                                    context,
-                                                    "Log out success",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            }
-                                        }
-                                    )
+                                    showLogoutConfirmDialog = true
                                 }
                             )
                         }
@@ -332,5 +340,34 @@ fun ProfileBar(
             contentDescription = null,
             modifier = Modifier.size(16.dp)
         )
+    }
+}
+
+@Composable
+private fun ProfileLoadingDialog(showDialog: Boolean) {
+    if (!showDialog) return
+
+    Dialog(onDismissRequest = { }) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = White)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier.height(72.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    LoadingAnimation()
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Please wait",
+                    style = headline4
+                )
+            }
+        }
     }
 }
