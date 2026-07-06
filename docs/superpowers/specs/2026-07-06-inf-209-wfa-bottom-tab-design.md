@@ -2,7 +2,9 @@
 
 ## Status
 
-Approved design for the Android navigation update where the primary bottom tab contract changes from `Home | History | Contact | Profile` to `Home | History | WFA | Profile`.
+Approved and revalidated design for the Android navigation update where the primary bottom tab contract changes from `Home | History | Contact | Profile` to `Home | History | WFA | Profile`.
+
+Revalidated in-session after resume recovery: `WFA` remains the third primary tab replacing `Contact`, and WFA request creation remains owned by `AttendanceScreen`.
 
 ## Context
 
