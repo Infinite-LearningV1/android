@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,6 +33,7 @@ fun WfaBookingHistoryContent(
     uiState: HomeViewModel.BookingHistoryDetailsState,
     listState: LazyListState,
     onStatusSelected: (String) -> Unit,
+    onRetryClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -63,6 +65,10 @@ fun WfaBookingHistoryContent(
                             style = headline4,
                             color = MaterialTheme.colorScheme.error
                         )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = onRetryClick) {
+                            Text(text = "Coba Lagi")
+                        }
                     }
                 }
             }

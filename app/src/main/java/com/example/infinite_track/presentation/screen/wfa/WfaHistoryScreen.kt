@@ -51,6 +51,7 @@ fun WfaHistoryScreen(
             uiState = uiState,
             listState = listState,
             onStatusSelected = viewModel::onBookingStatusFilterChanged,
+            onRetryClick = { viewModel.onBookingStatusFilterChanged(uiState.retryStatusFilter()) },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
@@ -98,6 +99,8 @@ fun BookingHistoryPaginationEffect(
         }
     }
 }
+
+fun HomeViewModel.BookingHistoryDetailsState.retryStatusFilter(): String = selectedStatus ?: "all"
 
 private fun HomeViewModel.BookingHistoryDetailsState.hasNotStartedDetailedBookingLoad(): Boolean =
     isLoading &&

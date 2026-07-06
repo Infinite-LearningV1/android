@@ -11,7 +11,8 @@ object WfaShellNavigationContract {
         Screen.TimeOffRequest.route,
         Screen.FAQ.route,
         Screen.FaceScanner.route,
-        Screen.LocationSearch.route
+        Screen.LocationSearch.route,
+        Screen.WfaBooking.route
     )
 
     private val wfaSelectedRoutes = setOf(

@@ -59,6 +59,7 @@ import kotlinx.coroutines.launch
 fun ProfileScreen(
     navigateToEditProfile: () -> Unit,
     navigateToContactUs: () -> Unit,
+    navigateToContacts: () -> Unit,
 //    navigateToFAQ: () -> Unit,
     navigateToMyDocument: () -> Unit,
     navigateToPaySlip: () -> Unit,
@@ -194,6 +195,11 @@ fun ProfileScreen(
                                 label = stringResource(R.string.my_document),
                                 onClick = navigateToMyDocument,
                                 icon = R.drawable.ic_mydocument
+                            )
+                            ProfileBar(
+                                label = stringResource(R.string.employees),
+                                onClick = navigateToContacts,
+                                icon = R.drawable.ic_contactus
                             )
                         }
 
