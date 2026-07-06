@@ -2,6 +2,7 @@ package com.example.infinite_track.domain.use_case.auth
 
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.domain.manager.SessionManager
+import com.example.infinite_track.domain.model.auth.AuthRuntimePolicy
 import com.example.infinite_track.domain.repository.AuthRefreshFailureReason
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.ProfileSyncResult
@@ -33,14 +34,27 @@ open class ValidateForegroundSessionUseCase(
             return ForegroundSessionValidationResult.Skipped
         }
 
+        if (isProfileFresh()) {
+            return ForegroundSessionValidationResult.Valid
+        }
+
         return when (val syncResult = authRepository.syncUserProfile()) {
-            is ProfileSyncResult.Success -> ForegroundSessionValidationResult.Valid
+            is ProfileSyncResult.Success -> {
+                userPreference.saveLastProfileSyncAt(System.currentTimeMillis())
+                ForegroundSessionValidationResult.Valid
+            }
             is ProfileSyncResult.TemporaryFailure -> ForegroundSessionValidationResult.TemporaryFailure(
                 message = syncResult.message,
                 cause = syncResult.cause
             )
             is ProfileSyncResult.Unauthorized -> handleUnauthorized(syncResult.reason)
         }
+    }
+
+    private suspend fun isProfileFresh(): Boolean {
+        val lastProfileSyncAt = userPreference.getLastProfileSyncAt().first()
+        return lastProfileSyncAt > 0L &&
+            (System.currentTimeMillis() - lastProfileSyncAt) < AuthRuntimePolicy.SHARED_TTL_MILLIS
     }
 
     private fun handleUnauthorized(

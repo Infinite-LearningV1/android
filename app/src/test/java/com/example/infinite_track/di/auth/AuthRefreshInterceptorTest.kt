@@ -60,7 +60,7 @@ class AuthRefreshInterceptorTest {
 
         assertEquals(200, response.code)
         assertEquals(0, fixture.refreshCalls.get())
-        assertEquals(0, fixture.logoutCalls.get())
+        assertEquals(0, fixture.logoutRemoteCalls.get())
         assertFalse(fixture.sessionManager.sessionExpired.value)
         response.close()
     }
@@ -94,7 +94,7 @@ class AuthRefreshInterceptorTest {
         assertEquals(2, proceedCalls.get())
         assertEquals(1, fixture.refreshCalls.get())
         assertEquals(listOf("Bearer old-access", "Bearer new-access"), observedAuthHeaders)
-        assertEquals(0, fixture.logoutCalls.get())
+        assertEquals(0, fixture.logoutRemoteCalls.get())
         assertFalse(fixture.sessionManager.sessionExpired.value)
         response.close()
     }
@@ -128,28 +128,23 @@ class AuthRefreshInterceptorTest {
         }
 
         assertEquals(0, fixture.refreshCalls.get())
-        assertEquals(0, fixture.logoutCalls.get())
+        assertEquals(0, fixture.logoutRemoteCalls.get())
         assertFalse(fixture.sessionManager.sessionExpired.value)
     }
 
     @Test
-    fun `401 on protected request with reauth required clears local runtime and triggers forced reauth`() = runBlocking {
+    fun `401 on protected request with reauth required clears session and triggers forced reauth`() = runBlocking {
         val fixture = TestFixture(refreshResult = nonRefreshable(AuthRefreshFailureReason.REFRESH_INVALID))
         fixture.userPreference.saveSession("token-a", "10", "refresh-a")
 
-        val interceptor = fixture.createInterceptor()
-        val chain = FakeChain(
-            request = request("https://example.com/api/attendance/status-today"),
-            proceedBlock = { req -> okResponse(req, 401) }
+        val response = fixture.createInterceptor().intercept(
+            FakeChain(request("https://example.com/api/attendance/status-today")) { req -> okResponse(req, 401) }
         )
 
-        val response = interceptor.intercept(chain)
         delay(100)
 
-        assertEquals(401, response.code)
-        assertEquals(1, fixture.refreshCalls.get())
-        assertEquals(0, fixture.logoutCalls.get())
-        assertEquals(1, fixture.localRuntimeClearCalls.get())
+        assertEquals(1, fixture.forceReauthCalls.get())
+        assertEquals(0, fixture.logoutRemoteCalls.get())
         assertTrue(fixture.sessionManager.sessionExpired.value)
         response.close()
     }
@@ -180,7 +175,7 @@ class AuthRefreshInterceptorTest {
 
         assertEquals(401, response.code)
         assertEquals(0, fixture.refreshCalls.get())
-        assertEquals(0, fixture.logoutCalls.get())
+        assertEquals(0, fixture.logoutRemoteCalls.get())
         assertFalse(fixture.sessionManager.sessionExpired.value)
         response.close()
     }
@@ -211,7 +206,7 @@ class AuthRefreshInterceptorTest {
 
         assertEquals(401, response.code)
         assertEquals(0, fixture.refreshCalls.get())
-        assertEquals(0, fixture.logoutCalls.get())
+        assertEquals(0, fixture.logoutRemoteCalls.get())
         assertFalse(fixture.sessionManager.sessionExpired.value)
         assertEquals(null, fixture.sessionManager.reauthReason.value)
         assertEquals("token-a", fixture.userPreference.getAuthToken().first())
@@ -234,7 +229,7 @@ class AuthRefreshInterceptorTest {
 
         assertEquals(401, response.code)
         assertEquals(1, fixture.refreshCalls.get())
-        assertEquals(0, fixture.logoutCalls.get())
+        assertEquals(0, fixture.logoutRemoteCalls.get())
         assertFalse(fixture.sessionManager.sessionExpired.value)
         assertEquals(null, fixture.sessionManager.reauthReason.value)
         assertEquals("token-a", fixture.userPreference.getAuthToken().first())
@@ -258,7 +253,7 @@ class AuthRefreshInterceptorTest {
 
         assertEquals(401, response.code)
         assertEquals(1, fixture.refreshCalls.get())
-        assertEquals(0, fixture.logoutCalls.get())
+        assertEquals(0, fixture.logoutRemoteCalls.get())
         assertEquals(1, fixture.localRuntimeClearCalls.get())
         assertTrue(fixture.sessionManager.sessionExpired.value)
         response.close()
@@ -281,7 +276,7 @@ class AuthRefreshInterceptorTest {
 
         assertEquals(401, response.code)
         assertEquals(1, fixture.refreshCalls.get())
-        assertEquals(0, fixture.logoutCalls.get())
+        assertEquals(0, fixture.logoutRemoteCalls.get())
         assertFalse(fixture.sessionManager.sessionExpired.value)
         assertEquals("token-a", fixture.userPreference.getAuthToken().first())
         assertEquals("refresh-a", fixture.userPreference.getRefreshToken().first())
@@ -306,7 +301,7 @@ class AuthRefreshInterceptorTest {
 
         assertEquals(401, response.code)
         assertEquals(1, fixture.refreshCalls.get())
-        assertEquals(0, fixture.logoutCalls.get())
+        assertEquals(0, fixture.logoutRemoteCalls.get())
         assertFalse(fixture.sessionManager.sessionExpired.value)
         assertEquals("token-a", fixture.userPreference.getAuthToken().first())
         assertEquals("refresh-a", fixture.userPreference.getRefreshToken().first())
@@ -437,7 +432,7 @@ class AuthRefreshInterceptorTest {
             }
 
             assertEquals(1, fixture.refreshCalls.get())
-            assertEquals(0, fixture.logoutCalls.get())
+            assertEquals(0, fixture.logoutRemoteCalls.get())
             assertEquals(1, fixture.localRuntimeClearCalls.get())
             assertTrue(fixture.sessionManager.sessionExpired.value)
         } finally {
@@ -476,7 +471,7 @@ class AuthRefreshInterceptorTest {
             firstWavePool.shutdownNow()
         }
 
-        assertEquals(0, fixture.logoutCalls.get())
+        assertEquals(0, fixture.logoutRemoteCalls.get())
         assertEquals(1, fixture.localRuntimeClearCalls.get())
         assertTrue(fixture.sessionManager.sessionExpired.value)
 
@@ -493,7 +488,7 @@ class AuthRefreshInterceptorTest {
         )
         secondWaveResponse.close()
 
-        assertEquals(0, fixture.logoutCalls.get())
+        assertEquals(0, fixture.logoutRemoteCalls.get())
         assertEquals(2, fixture.localRuntimeClearCalls.get())
         assertTrue(fixture.sessionManager.sessionExpired.value)
     }
@@ -544,7 +539,8 @@ private class TestFixture(
     private val refreshResult: Result<AuthRefreshResult>
 ) {
     val refreshCalls = AtomicInteger(0)
-    val logoutCalls = AtomicInteger(0)
+    val logoutRemoteCalls = AtomicInteger(0)
+    val forceReauthCalls = AtomicInteger(0)
     val localRuntimeClearCalls = AtomicInteger(0)
     var onRefresh: (suspend () -> Unit)? = null
 
@@ -563,8 +559,13 @@ private class TestFixture(
             return refreshResult
         }
 
+        override suspend fun logoutRemote(): Result<Unit> {
+            logoutRemoteCalls.incrementAndGet()
+            return Result.success(Unit)
+        }
+
         override suspend fun logout(): Result<Unit> {
-            logoutCalls.incrementAndGet()
+            logoutRemoteCalls.incrementAndGet()
             userPreference.clearAuthData()
             return Result.success(Unit)
         }
@@ -581,7 +582,10 @@ private class TestFixture(
             userPreference = userPreference,
             refreshSingleFlightCoordinator = coordinator,
             forceReauthUseCaseProvider = Provider {
-                ForceReauthUseCase(sessionManager, createClearRuntimeUseCase())
+                ForceReauthUseCase(sessionManager) {
+                    forceReauthCalls.incrementAndGet()
+                    createClearRuntimeUseCase().invoke()
+                }
             }
         )
     }

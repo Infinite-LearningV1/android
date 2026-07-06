@@ -51,6 +51,30 @@ class CheckSessionUseCaseTest {
     }
 
     @Test
+    fun `bootstrap returns fresh local user without profile sync when freshness is still active`() = runBlocking {
+        val user = sampleUser()
+        val userPreference = createUserPreference().also {
+            it.saveSession("old-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
+            it.saveLastProfileSyncAt(System.currentTimeMillis())
+        }
+        val repository = FakeAuthRepository(
+            syncResults = mutableListOf(ProfileSyncResult.Success(user)),
+            refreshSessionResult = Result.success(AuthRefreshResult("new-access", "new-refresh", "1")),
+            loggedInUser = user
+        )
+        val sessionManager = SessionManager()
+
+        val result = createUseCase(repository, userPreference, sessionManager)()
+
+        assertTrue(result.isSuccess)
+        assertEquals(user, result.getOrNull())
+        assertEquals(1, repository.refreshCallCount)
+        assertEquals(0, repository.syncCallCount)
+        assertEquals(0, repository.bootstrapSyncCallCount)
+        assertEquals(null, sessionManager.reauthReason.value)
+    }
+
+    @Test
     fun `bootstrap forced reauth on non refreshable refresh failure`() = runBlocking {
         val userPreference = createUserPreference().also {
             it.saveSession("old-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
