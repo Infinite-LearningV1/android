@@ -19,12 +19,12 @@ class TodayStatusResponseTest {
     }
 
     @Test
-    fun `maps positive backend cache ttl from meta`() {
+    fun `always uses shared ttl for status today cache`() {
         val response = createResponse(meta = TodayStatusMeta(cacheTtlSeconds = 120))
 
         val domain = response.toDomain()
 
-        assertEquals(120, domain.cacheTtlSeconds)
+        assertEquals(AuthRuntimePolicy.SHARED_TTL_SECONDS, domain.cacheTtlSeconds)
     }
 
     @Test

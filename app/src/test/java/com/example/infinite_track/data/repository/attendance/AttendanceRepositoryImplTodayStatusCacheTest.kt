@@ -50,6 +50,7 @@ import org.junit.Before
 import org.junit.Test
 import retrofit2.Response
 import java.io.File
+import java.time.LocalDate
 
 class AttendanceRepositoryImplTodayStatusCacheTest {
     private lateinit var tempFiles: List<File>
@@ -89,7 +90,7 @@ class AttendanceRepositoryImplTodayStatusCacheTest {
         todayStatusPreference.saveTodayStatusCache(
             CachedTodayStatusPayload(
                 userId = "42",
-                todayDate = "2026-07-05",
+                todayDate = LocalDate.now().toString(),
                 attendanceSessionStateId = 2,
                 attendanceSessionStateKey = "active",
                 activeAttendanceId = 123,
@@ -118,7 +119,33 @@ class AttendanceRepositoryImplTodayStatusCacheTest {
         createTodayStatusPreference().saveTodayStatusCache(
             CachedTodayStatusPayload(
                 userId = "different-user",
-                todayDate = "2026-07-05",
+                todayDate = LocalDate.now().toString(),
+                attendanceSessionStateId = 2,
+                attendanceSessionStateKey = "active",
+                activeAttendanceId = 123,
+                fetchedAtMillis = System.currentTimeMillis(),
+                ttlSeconds = AuthRuntimePolicy.SHARED_TTL_SECONDS,
+                status = createTodayStatusResponse(activeAttendanceId = 123, stateKey = "active").data.toDomainForTest()
+            )
+        )
+
+        val refreshed = repository.getTodayStatus()
+
+        assertTrue(refreshed.isSuccess)
+        assertEquals(456, refreshed.getOrThrow().activeAttendanceId)
+        assertEquals(1, apiService.todayStatusCalls)
+    }
+
+    @Test
+    fun `refreshes when cached today date is stale even if ttl is valid`() = runTest {
+        val apiService = FakeApiService(
+            todayStatusResponses = ArrayDeque(listOf(createTodayStatusResponse(activeAttendanceId = 456, stateKey = "active")))
+        )
+        val repository = createRepository(apiService)
+        createTodayStatusPreference().saveTodayStatusCache(
+            CachedTodayStatusPayload(
+                userId = "42",
+                todayDate = LocalDate.now().minusDays(1).toString(),
                 attendanceSessionStateId = 2,
                 attendanceSessionStateKey = "active",
                 activeAttendanceId = 123,
@@ -169,7 +196,7 @@ class AttendanceRepositoryImplTodayStatusCacheTest {
         val todayStatusPreference = createTodayStatusPreference()
         val cachedPayload = CachedTodayStatusPayload(
             userId = "42",
-            todayDate = "2026-07-05",
+            todayDate = LocalDate.now().toString(),
             attendanceSessionStateId = 2,
             attendanceSessionStateKey = "active",
             activeAttendanceId = 123,
@@ -220,6 +247,7 @@ class AttendanceRepositoryImplTodayStatusCacheTest {
 }
 
 private fun createTodayStatusResponse(activeAttendanceId: Int?, stateKey: String): TodayStatusResponse {
+    val today = LocalDate.now().toString()
     return TodayStatusResponse(
         success = true,
         data = TodayStatusData(
@@ -229,10 +257,10 @@ private fun createTodayStatusResponse(activeAttendanceId: Int?, stateKey: String
             checkedOutAt = null,
             activeMode = "Work From Office",
             activeLocation = null,
-            todayDate = "2026-07-05",
+            todayDate = today,
             isHoliday = false,
             holidayCheckinEnabled = false,
-            currentTime = "2026-07-05T18:49:51.000Z",
+            currentTime = "${today}T18:49:51.000Z",
             checkinWindow = CheckinWindow("07:00:00", "22:00:00"),
             checkoutAutoTime = "23:50:00",
             attendanceSessionState = AttendanceSessionStateDto(id = 2, key = stateKey, label = stateKey),

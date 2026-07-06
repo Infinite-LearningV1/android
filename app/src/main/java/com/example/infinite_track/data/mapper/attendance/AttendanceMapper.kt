@@ -18,8 +18,7 @@ import com.example.infinite_track.data.soucre.network.response.CheckinWindow as 
  * Extension function to convert TodayStatusResponse (DTO) to TodayStatus (Domain model)
  */
 fun TodayStatusResponse.toDomain(): TodayStatus {
-    val ttlSeconds = meta?.cacheTtlSeconds?.takeIf { it > 0 } ?: AuthRuntimePolicy.SHARED_TTL_SECONDS
-    return data.toDomain(cacheTtlSeconds = ttlSeconds)
+    return data.toDomain(cacheTtlSeconds = AuthRuntimePolicy.SHARED_TTL_SECONDS)
 }
 
 /**

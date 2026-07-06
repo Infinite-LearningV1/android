@@ -19,6 +19,7 @@ import com.example.infinite_track.domain.repository.AttendanceRepository
 import kotlinx.coroutines.flow.first
 import org.json.JSONObject
 import retrofit2.HttpException
+import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -201,6 +202,7 @@ class AttendanceRepositoryImpl @Inject constructor(
 
     private fun isCacheValid(cache: CachedTodayStatusPayload, userId: String, now: Long): Boolean {
         if (cache.userId != userId) return false
+        if (cache.todayDate != LocalDate.now().toString()) return false
         if (cache.todayDate != cache.status.todayDate) return false
 
         val ttlMillis = (cache.ttlSeconds.takeIf { it > 0 } ?: AuthRuntimePolicy.SHARED_TTL_SECONDS) * 1000L
