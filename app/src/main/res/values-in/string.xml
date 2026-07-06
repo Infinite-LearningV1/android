@@ -7,6 +7,7 @@
     <string name="bottom_menu_history">Riwayat</string>
     <string name="bottom_menu_MyLeave">Cuti Saya</string>
     <string name="bottom_menu_contact">Kontak</string>
+    <string name="bottom_menu_wfa">WFA</string>
     <string name="bottom_menu_profile">Profil</string>
     <string name="forgot_password">Lupa Kata Sandi?</string>
     <string name="email_password_empty_error">Email dan Kata Sandi Tidak Boleh Kosong</string>

@@ -21,6 +21,7 @@ import com.example.infinite_track.presentation.components.button.customfab.Custo
 import com.example.infinite_track.presentation.components.navigation.BottomBarInternship
 import com.example.infinite_track.presentation.components.navigation.BottomBarStaff
 import com.example.infinite_track.presentation.navigation.Screen
+import com.example.infinite_track.presentation.navigation.WfaShellNavigationContract
 import com.example.infinite_track.presentation.navigation.mainContentNavGraph
 import com.example.infinite_track.utils.safeNavigate
 
@@ -38,7 +39,7 @@ fun MainScreen(
 
     // Get the current route for visibility decisions
     val navBackStackEntry by mainContentNavController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route ?: ""
+    val currentRoute = navBackStackEntry?.destination?.route
 
     // Collect user role from MainViewModel
     val userRole by mainViewModel.userRole.collectAsState()
@@ -53,19 +54,7 @@ fun MainScreen(
         }
     }
 
-    // Screens that should not display the bottom bar
-    val screensWithoutBottomBar = listOf(
-        Screen.Attendance.route,
-        Screen.EditProfile.route,
-        Screen.DetailMyAttendance.route,
-        Screen.DetailListTimeOff.route,
-        Screen.TimeOffRequest.route,
-        Screen.FAQ.route,
-        Screen.FaceScanner.route, // Hide bottom bar for face scanner
-        Screen.LocationSearch.route // Hide bottom bar for location search
-    )
-
-    val isBottomBarVisible = currentRoute !in screensWithoutBottomBar
+    val isBottomBarVisible = WfaShellNavigationContract.shouldShowBottomBar(currentRoute)
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),

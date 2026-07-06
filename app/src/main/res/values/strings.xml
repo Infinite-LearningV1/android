@@ -4,7 +4,7 @@
     <!--  Navigation  -->
     <string name="bottom_menu_home">Home</string>
     <string name="bottom_menu_inbox">Inbox</string>
-    <string name="bottom_menu_history">history</string>
+    <string name="bottom_menu_history">History</string>
     <string name="bottom_menu_MyLeave">My Leave</string>
     <string name="bottom_menu_contact">contact</string>
     <string name="bottom_menu_wfa">WFA</string>

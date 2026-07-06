@@ -28,10 +28,9 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.infinite_track.R
 import com.example.infinite_track.presentation.core.body1
-import com.example.infinite_track.presentation.navigation.NavigationItem
 import com.example.infinite_track.presentation.navigation.Screen
+import com.example.infinite_track.presentation.navigation.WfaShellNavigationContract
 import com.example.infinite_track.presentation.theme.Blue_500
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import com.example.infinite_track.presentation.theme.Purple_500
@@ -42,8 +41,9 @@ fun BottomBarStaff(navController: NavController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    if (currentRoute != Screen.Attendance.route) {
-        Box(
+    if (!WfaShellNavigationContract.shouldShowBottomBar(currentRoute)) return
+
+    Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(90.dp)
@@ -103,34 +103,8 @@ fun BottomBarStaff(navController: NavController) {
                 contentColor = Color.Transparent,
                 containerColor = Color.Transparent,
             ) {
-                val navigationItems = listOf<NavigationItem>(
-                    NavigationItem(
-                        tittle = R.string.bottom_menu_home,
-                        selectedIcon = R.drawable.ic_menu_home_selected,
-                        unselectedIcon = R.drawable.ic_menu_home,
-                        screen = Screen.Home
-                    ),
-                    NavigationItem(
-                        tittle = R.string.bottom_menu_contact,
-                        selectedIcon = R.drawable.ic_contact_selected,
-                        unselectedIcon = R.drawable.ic_contact,
-                        screen = Screen.Contact
-                    ),
-                    NavigationItem(
-                        tittle = R.string.bottom_menu_MyLeave,
-                        selectedIcon = R.drawable.ic_myleave,
-                        unselectedIcon = R.drawable.ic_myleave,
-                        screen = Screen.MyLeave
-                    ),
-                    NavigationItem(
-                        tittle = R.string.bottom_menu_profile,
-                        selectedIcon = R.drawable.ic_profile_selected,
-                        unselectedIcon = R.drawable.ic_profile,
-                        screen = Screen.Profile
-                    ),
-                )
-                navigationItems.map { item ->
-                    val selected = currentRoute == item.screen.route
+                WfaShellNavigationContract.staffItems().forEach { item ->
+                    val selected = WfaShellNavigationContract.isSelected(item, currentRoute)
                     NavigationBarItem(
                         icon = {
                             Icon(
@@ -170,7 +144,6 @@ fun BottomBarStaff(navController: NavController) {
                 }
             }
         }
-    }
 }
 
 @Composable
