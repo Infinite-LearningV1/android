@@ -48,6 +48,16 @@ class WfaShellNavigationContractTest {
     }
 
     @Test
+    fun `profile tab stays selected for profile-owned routes including employees`() {
+        val profileItem = WfaShellNavigationContract.staffItems()[3]
+
+        assertTrue(WfaShellNavigationContract.isSelected(profileItem, Screen.Profile.route))
+        assertTrue(WfaShellNavigationContract.isSelected(profileItem, Screen.ProfileFlow.route))
+        assertTrue(WfaShellNavigationContract.isSelected(profileItem, Screen.Contact.route))
+        assertTrue(WfaShellNavigationContract.isSelected(profileItem, Screen.ContactUs.route))
+    }
+
+    @Test
     fun `bottom bar stays hidden on attendance and location flow routes`() {
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.Attendance.route))
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.LocationSearch.route))

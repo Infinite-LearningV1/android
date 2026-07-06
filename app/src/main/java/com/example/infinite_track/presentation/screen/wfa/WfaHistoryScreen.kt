@@ -8,9 +8,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -18,6 +18,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.infinite_track.presentation.core.headline2
 import com.example.infinite_track.presentation.screen.home.HomeViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
 fun WfaHistoryScreen(
@@ -78,25 +79,25 @@ fun BookingHistoryPaginationEffect(
     listState: LazyListState,
     onLoadMoreBookings: () -> Unit
 ) {
-    val shouldLoadMore by remember(
-        listState,
-        uiState.bookings.size,
-        uiState.canLoadMore,
-        uiState.isLoading
-    ) {
-        derivedStateOf {
-            val lastVisibleItemIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
-            lastVisibleItemIndex != null &&
-                lastVisibleItemIndex >= uiState.bookings.size - 3 &&
-                uiState.canLoadMore &&
-                !uiState.isLoading
-        }
-    }
+    val latestUiState by rememberUpdatedState(uiState)
 
-    LaunchedEffect(shouldLoadMore) {
-        if (shouldLoadMore) {
-            onLoadMoreBookings()
-        }
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .distinctUntilChanged()
+            .collect { lastVisibleItemIndex ->
+                val currentState = latestUiState
+                val shouldLoadMore =
+                    lastVisibleItemIndex != null &&
+                        currentState.error == null &&
+                        currentState.bookings.isNotEmpty() &&
+                        lastVisibleItemIndex >= currentState.bookings.size - 3 &&
+                        currentState.canLoadMore &&
+                        !currentState.isLoading
+
+                if (shouldLoadMore) {
+                    onLoadMoreBookings()
+                }
+            }
     }
 }
 

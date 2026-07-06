@@ -105,7 +105,7 @@ fun NavGraphBuilder.mainContentNavGraph(
             ProfileScreen(
                 navigateToEditProfile = { navController.safeNavigate(Screen.EditProfile.route) },
                 navigateToContactUs = { navController.safeNavigate(Screen.ContactUs.route) },
-                navigateToContacts = { navController.safeNavigate(Screen.Contact.route) },
+                navigateToContacts = { navController.navigate(Screen.Contact.route) },
                 navigateToMyDocument = { navController.safeNavigate(Screen.MyDocument.route) },
                 navigateToPaySlip = { navController.safeNavigate(Screen.PaySlip.route) },
                 navHostController = navController,
