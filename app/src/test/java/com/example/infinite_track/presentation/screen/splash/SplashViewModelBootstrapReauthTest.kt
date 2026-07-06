@@ -118,6 +118,20 @@ class SplashViewModelBootstrapReauthTest {
         runTest(mainDispatcherRule.dispatcher) {
             val sessionManager = SessionManager()
             val repository = TerminalRefreshRepository()
+            val bootstrapUserPreference = UserPreference(createDataStore("splash_bootstrap_user_fail"))
+            bootstrapUserPreference.saveSession(
+                token = "expired-access-sentinel",
+                userId = "147",
+                refreshToken = "refresh-revoked-sentinel",
+                lastRefreshAt = 1L
+            )
+            val cleanupUserPreference = UserPreference(createDataStore("splash_bootstrap_user_fail_cleanup"))
+            cleanupUserPreference.saveSession(
+                token = "cleanup-access-sentinel",
+                userId = "147",
+                refreshToken = "cleanup-refresh-sentinel",
+                lastRefreshAt = 1L
+            )
             val viewModel = SplashViewModel(
                 checkSessionUseCase = CheckSessionUseCase(
                     authRepository = repository,
@@ -125,11 +139,11 @@ class SplashViewModelBootstrapReauthTest {
                         faceProcessor = FaceProcessor(appContext = ContextWrapper(null)),
                         authRepository = repository
                     ),
-                    userPreference = UserPreference(createDataStore("splash_bootstrap_user_fail")),
+                    userPreference = bootstrapUserPreference,
                     sessionManager = sessionManager
                 ),
                 clearAuthenticatedRuntimeUseCase = ClearAuthenticatedRuntimeUseCase(
-                    userPreference = UserPreference(createDataStore("splash_bootstrap_user_fail_cleanup")),
+                    userPreference = cleanupUserPreference,
                     userDao = FakeUserDao(),
                     attendancePreference = AttendancePreference(createDataStore("splash_bootstrap_attendance_fail")),
                     todayStatusPreference = TodayStatusPreference(createDataStore("splash_bootstrap_today_fail"), Gson()),
