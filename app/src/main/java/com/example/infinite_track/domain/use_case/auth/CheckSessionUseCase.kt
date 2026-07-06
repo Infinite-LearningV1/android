@@ -35,7 +35,6 @@ class CheckSessionUseCase @Inject constructor(
                 return syncResult
             }
 
-            userPreference.saveLastProfileSyncAt(System.currentTimeMillis())
             val newUserData = syncResult.getOrThrow()
             val currentUser = authRepository.getLoggedInUser().first()
 
@@ -56,6 +55,7 @@ class CheckSessionUseCase @Inject constructor(
                 }
             }
 
+            userPreference.saveLastProfileSyncAt(System.currentTimeMillis())
             syncResult
         } catch (e: CancellationException) {
             throw e

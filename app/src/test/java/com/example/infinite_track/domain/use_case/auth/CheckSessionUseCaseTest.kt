@@ -75,6 +75,22 @@ class CheckSessionUseCaseTest {
     }
 
     @Test
+    fun `bootstrap does not persist freshness when face embedding recovery fails`() = runBlocking {
+        val userPreference = createUserPreference()
+        val repository = FakeAuthRepository(
+            syncResults = mutableListOf(ProfileSyncResult.Success(sampleUser(photoUrl = null))),
+            refreshSessionResult = Result.success(AuthRefreshResult("new-access", "new-refresh", "1")),
+            loggedInUser = sampleUser(faceEmbedding = null)
+        )
+
+        val result = createUseCase(repository, userPreference, SessionManager())()
+
+        assertTrue(result.isFailure)
+        assertEquals(0L, userPreference.getLastProfileSyncAt().first())
+        assertEquals(1, repository.bootstrapSyncCallCount)
+    }
+
+    @Test
     fun `bootstrap forced reauth on non refreshable refresh failure`() = runBlocking {
         val userPreference = createUserPreference().also {
             it.saveSession("old-access", userId = "1", refreshToken = "refresh", lastRefreshAt = 1L)
@@ -387,7 +403,10 @@ class CheckSessionUseCaseTest {
         return UserPreference(dataStore)
     }
 
-    private fun sampleUser(): UserModel = UserModel(
+    private fun sampleUser(
+        photoUrl: String? = "https://example.com/photo.jpg",
+        faceEmbedding: ByteArray? = byteArrayOf(1, 2, 3)
+    ): UserModel = UserModel(
         id = 1,
         fullName = "User",
         email = "user@example.com",
@@ -397,14 +416,14 @@ class CheckSessionUseCaseTest {
         divisionName = "Division",
         nipNim = "123",
         phone = "0812",
-        photoUrl = "https://example.com/photo.jpg",
+        photoUrl = photoUrl,
         photoUpdatedAt = "2026-01-01T00:00:00Z",
         latitude = null,
         longitude = null,
         radius = null,
         locationDescription = null,
         locationCategoryName = null,
-        faceEmbedding = byteArrayOf(1, 2, 3)
+        faceEmbedding = faceEmbedding
     )
 
     private class FakeAuthRepository(
