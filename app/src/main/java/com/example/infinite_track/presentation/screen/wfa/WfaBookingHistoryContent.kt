@@ -110,7 +110,28 @@ fun WfaBookingHistoryContent(
                         }
                     }
 
-                    if (!uiState.canLoadMore && uiState.bookings.isNotEmpty()) {
+                    if (uiState.error != null && uiState.bookings.isNotEmpty()) {
+                        item {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = uiState.error ?: "Unknown error",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Button(onClick = onRetryClick) {
+                                    Text(text = "Coba Lagi")
+                                }
+                            }
+                        }
+                    }
+
+                    if (!uiState.canLoadMore && uiState.error == null && uiState.bookings.isNotEmpty()) {
                         item {
                             Box(
                                 modifier = Modifier
