@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.infinite_track.R
 import com.example.infinite_track.presentation.components.button.InfiniteTrackButton
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
+import com.example.infinite_track.presentation.components.status.InfiniteTrackInlineAlert
 import com.example.infinite_track.presentation.components.status.InfiniteTrackStatusDialog
 import com.example.infinite_track.presentation.components.status.StatusStateSpec
 import com.example.infinite_track.presentation.components.status.StatusStates
@@ -142,18 +143,15 @@ fun LoginScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     reauthBannerMessage?.let { message ->
-                        Text(
-                            text = message,
-                            color = Color.Red,
-                            style = body1,
+                        InfiniteTrackInlineAlert(
+                            status = StatusStates.Error,
+                            title = "Sesi perlu login ulang",
+                            message = message,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 8.dp)
+                                .padding(bottom = 12.dp),
+                            onDismiss = { loginViewModel.dismissReauthBanner() }
                         )
-                        Button(onClick = { loginViewModel.dismissReauthBanner() }) {
-                            Text(text = "Tutup")
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
                     }
 
                     Image(

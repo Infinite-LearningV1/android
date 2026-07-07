@@ -49,6 +49,10 @@ class ProfileViewModel @Inject constructor(
     private val _isLoggingOut = MutableStateFlow(false)
     val isLoggingOut: StateFlow<Boolean> = _isLoggingOut.asStateFlow()
 
+    // Logout result state
+    private val _logoutState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
+    val logoutState: StateFlow<UiState<Unit>> = _logoutState.asStateFlow()
+
     init {
         loadUserProfile()
         loadSelectedLanguage()
@@ -108,18 +112,27 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoggingOut.value = true
             _showLogoutDialog.value = false
+            _logoutState.value = UiState.Loading
 
             logoutUseCase()
                 .onSuccess {
                     _isLoggingOut.value = false
+                    _logoutState.value = UiState.Success(Unit)
                     _navigateToLogin.value = true
                 }
-                .onFailure {
-                    // Even if logout fails, we should still navigate to login
-                    // as the token is probably invalid or there's a network issue
+                .onFailure { exception ->
+                    // Keep navigation behavior, but expose state so UI can render
+                    // a consistent status-state surface instead of falling back to Toast.
                     _isLoggingOut.value = false
+                    _logoutState.value = UiState.Error(
+                        exception.message ?: "Logout selesai dengan masalah jaringan. Silakan login kembali."
+                    )
                     _navigateToLogin.value = true
                 }
         }
+    }
+
+    fun resetLogoutState() {
+        _logoutState.value = UiState.Idle
     }
 }

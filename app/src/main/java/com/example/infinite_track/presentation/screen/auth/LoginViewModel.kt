@@ -71,17 +71,6 @@ class LoginViewModel @Inject constructor(
     }
 
     private fun ReauthReason.toBannerMessage(): String {
-        return when (this) {
-            ReauthReason.INACTIVITY_EXPIRED ->
-                "Sesi tidak aktif lebih dari 48 jam. Silakan login lagi."
-            ReauthReason.REFRESH_INVALID ->
-                "Sesi tidak valid lagi. Silakan login lagi."
-            ReauthReason.REFRESH_REVOKED ->
-                "Sesi sudah berakhir. Silakan login lagi."
-            ReauthReason.NETWORK_OFFLINE_AT_REFRESH ->
-                "Tidak dapat memvalidasi sesi karena jaringan. Coba lagi setelah online."
-            ReauthReason.UNKNOWN ->
-                "Sesi Anda telah berakhir. Silakan login kembali."
-        }
+        return toReauthUiCopy().bannerMessage
     }
 }

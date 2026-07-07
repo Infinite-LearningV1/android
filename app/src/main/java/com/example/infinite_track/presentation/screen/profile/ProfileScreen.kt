@@ -1,7 +1,6 @@
 package com.example.infinite_track.presentation.screen.profile
 
 import android.annotation.SuppressLint
-import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,6 +48,7 @@ import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
 import com.example.infinite_track.presentation.components.popUp.LanguagePopUp
 import com.example.infinite_track.presentation.components.status.InfiniteTrackConfirmDialog
+import com.example.infinite_track.presentation.components.status.InfiniteTrackStatusDialog
 import com.example.infinite_track.presentation.components.status.StatusStates
 import com.example.infinite_track.presentation.core.headline2
 import com.example.infinite_track.presentation.core.headline3
@@ -82,6 +82,7 @@ fun ProfileScreen(
     val profileState by profileViewModel.profileState.collectAsStateWithLifecycle()
     val language by profileViewModel.languageState.collectAsStateWithLifecycle()
     val showLanguageDialog by profileViewModel.showLanguageDialog.collectAsStateWithLifecycle()
+    val logoutState by profileViewModel.logoutState.collectAsStateWithLifecycle()
 
     // Show language selection dialog using LanguagePopUp
     LanguagePopUp(
@@ -117,22 +118,65 @@ fun ProfileScreen(
                 delay(2000)
                 showLogoutLoadingDialog = false
                 profileViewModel.onConfirmLogout()
+            }
+        }
+    )
+
+    ProfileLoadingDialog(showDialog = showLogoutLoadingDialog || logoutState is UiState.Loading)
+
+    if (logoutState is UiState.Success) {
+        InfiniteTrackStatusDialog(
+            status = StatusStates.Success,
+            title = "Log out berhasil",
+            message = "Sampai jumpa kembali.",
+            showDialog = true,
+            onDismiss = {
+                profileViewModel.resetLogoutState()
                 rootNavController.navigate("auth_graph") {
                     popUpTo(rootNavController.graph.startDestinationId) {
                         inclusive = true
                     }
                     launchSingleTop = true
                 }
-                Toast.makeText(
-                    context,
-                    "Log out success",
-                    Toast.LENGTH_SHORT
-                ).show()
+            },
+            onConfirm = {
+                profileViewModel.resetLogoutState()
+                rootNavController.navigate("auth_graph") {
+                    popUpTo(rootNavController.graph.startDestinationId) {
+                        inclusive = true
+                    }
+                    launchSingleTop = true
+                }
             }
-        }
-    )
+        )
+    }
 
-    ProfileLoadingDialog(showDialog = showLogoutLoadingDialog)
+    if (logoutState is UiState.Error) {
+        InfiniteTrackStatusDialog(
+            status = StatusStates.Warning,
+            title = "Log out selesai dengan peringatan",
+            message = (logoutState as UiState.Error).errorMessage,
+            showDialog = true,
+            onDismiss = {
+                profileViewModel.resetLogoutState()
+                rootNavController.navigate("auth_graph") {
+                    popUpTo(rootNavController.graph.startDestinationId) {
+                        inclusive = true
+                    }
+                    launchSingleTop = true
+                }
+            },
+            onConfirm = {
+                profileViewModel.resetLogoutState()
+                rootNavController.navigate("auth_graph") {
+                    popUpTo(rootNavController.graph.startDestinationId) {
+                        inclusive = true
+                    }
+                    launchSingleTop = true
+                }
+            }
+        )
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
