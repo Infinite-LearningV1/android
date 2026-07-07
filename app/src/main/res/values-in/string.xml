@@ -162,6 +162,25 @@
     <string name="account_hub_logout_description">Keluar dengan aman dari akun ini</string>
     <string name="account_hub_not_available">Tidak tersedia</string>
     <string name="account_hub_identifier">NIP/NIM %1$s</string>
+    <string name="edit_profile_title">Ubah Profil</string>
+    <string name="edit_profile_full_name">Nama Lengkap</string>
+    <string name="edit_profile_nip_nim">NIP / NIM</string>
+    <string name="edit_profile_phone_number">Nomor Telepon</string>
+    <string name="edit_profile_division">Divisi</string>
+    <string name="edit_profile_position">Posisi</string>
+    <string name="edit_profile_email">Email</string>
+    <string name="edit_profile_read_only">Hanya baca</string>
+    <string name="edit_profile_save_changes">Simpan Perubahan</string>
+    <string name="edit_profile_saving">Menyimpan...</string>
+    <string name="edit_profile_cancel">Batal</string>
+    <string name="edit_profile_success_title">Profil berhasil diperbarui.</string>
+    <string name="edit_profile_success_message">Perubahan profil Anda sudah disimpan.</string>
+    <string name="edit_profile_error_title">Tidak dapat memperbarui profil.</string>
+    <string name="edit_profile_error_message">Silakan coba lagi.</string>
+    <string name="edit_profile_no_position">Tidak ada posisi</string>
+    <string name="edit_profile_no_division">Tidak ada divisi</string>
+    <string name="edit_profile_no_phone">Nomor telepon belum tersedia</string>
+    <string name="edit_profile_photo_action_disabled">Ubah foto profil belum tersedia</string>
 
     <!--  TimeOff Screen  -->
     //TimeOff Screen
