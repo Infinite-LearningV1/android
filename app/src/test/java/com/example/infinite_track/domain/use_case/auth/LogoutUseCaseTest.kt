@@ -6,10 +6,11 @@ import com.example.infinite_track.data.soucre.local.preferences.TodayStatusPrefe
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.local.room.UserEntity
-import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
+import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
 import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.google.gson.Gson
 import java.io.File
@@ -68,11 +69,9 @@ class LogoutUseCaseTest {
 
     private fun createClearRuntimeUseCase(onRemoveAllGeofences: () -> Unit): ClearAuthenticatedRuntimeUseCase {
         return ClearAuthenticatedRuntimeUseCase(
-            userPreference = UserPreference(createDataStore("logout_user")),
-            userDao = FakeUserDao(),
-            attendancePreference = AttendancePreference(createDataStore("logout_attendance")),
-            todayStatusPreference = TodayStatusPreference(createDataStore("logout_today_status"), Gson()),
-            removeAllGeofences = onRemoveAllGeofences
+            AuthRuntimeCleaner {
+                onRemoveAllGeofences()
+            }
         )
     }
 
@@ -93,7 +92,7 @@ class LogoutUseCaseTest {
         var logoutRemoteCalls: Int = 0
 
         override suspend fun refreshSession(): Result<AuthRefreshResult> = error("Not used in this test")
-        override suspend fun login(loginRequest: LoginRequest): Result<UserModel> = error("Not used in this test")
+        override suspend fun login(credentials: LoginCredentials): Result<UserModel> = error("Not used in this test")
         override suspend fun syncUserProfile(): ProfileSyncResult = error("Not used in this test")
 
         override suspend fun logoutRemote(): Result<Unit> {

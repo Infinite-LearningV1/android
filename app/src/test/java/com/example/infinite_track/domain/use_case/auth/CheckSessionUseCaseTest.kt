@@ -4,8 +4,9 @@ import android.content.ContextWrapper
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.example.infinite_track.data.face.FaceProcessor
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
-import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.domain.manager.SessionManager
+import com.example.infinite_track.domain.model.auth.ReauthReason
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRefreshException
 import com.example.infinite_track.domain.repository.AuthRefreshFailureKind
@@ -112,7 +113,7 @@ class CheckSessionUseCaseTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
-        assertEquals(SessionManager.ReauthReason.INACTIVITY_EXPIRED, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.INACTIVITY_EXPIRED, sessionManager.reauthReason.value)
         assertFalse(sessionManager.sessionExpired.value)
         assertEquals(1, repository.refreshCallCount)
         assertEquals(0, repository.syncCallCount)
@@ -137,7 +138,7 @@ class CheckSessionUseCaseTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
-        assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
         assertFalse(sessionManager.sessionExpired.value)
         assertEquals(2, repository.refreshCallCount)
         assertEquals(0, repository.syncCallCount)
@@ -163,7 +164,7 @@ class CheckSessionUseCaseTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
-        assertEquals(SessionManager.ReauthReason.INACTIVITY_EXPIRED, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.INACTIVITY_EXPIRED, sessionManager.reauthReason.value)
         assertFalse(sessionManager.sessionExpired.value)
         assertEquals(2, repository.refreshCallCount)
         assertEquals(0, repository.syncCallCount)
@@ -189,7 +190,7 @@ class CheckSessionUseCaseTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
-        assertEquals(SessionManager.ReauthReason.INACTIVITY_EXPIRED, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.INACTIVITY_EXPIRED, sessionManager.reauthReason.value)
         assertFalse(sessionManager.sessionExpired.value)
         assertEquals(2, repository.refreshCallCount)
         assertEquals(0, repository.syncCallCount)
@@ -215,7 +216,7 @@ class CheckSessionUseCaseTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
-        assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
         assertFalse(sessionManager.sessionExpired.value)
         assertEquals(2, repository.refreshCallCount)
         assertEquals(0, repository.syncCallCount)
@@ -241,7 +242,7 @@ class CheckSessionUseCaseTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
-        assertEquals(SessionManager.ReauthReason.INACTIVITY_EXPIRED, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.INACTIVITY_EXPIRED, sessionManager.reauthReason.value)
         assertFalse(sessionManager.sessionExpired.value)
         assertEquals(2, repository.refreshCallCount)
         assertEquals(0, repository.syncCallCount)
@@ -267,7 +268,7 @@ class CheckSessionUseCaseTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
-        assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
         assertFalse(sessionManager.sessionExpired.value)
         assertEquals(2, repository.refreshCallCount)
         assertEquals(0, repository.syncCallCount)
@@ -296,7 +297,7 @@ class CheckSessionUseCaseTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
-        assertEquals(SessionManager.ReauthReason.INACTIVITY_EXPIRED, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.INACTIVITY_EXPIRED, sessionManager.reauthReason.value)
         assertFalse(sessionManager.sessionExpired.value)
         assertEquals(1, repository.refreshCallCount)
         assertEquals(0, repository.syncCallCount)
@@ -325,7 +326,7 @@ class CheckSessionUseCaseTest {
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull() is SessionBootstrapFailure.ReAuthRequired)
-        assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
         assertFalse(sessionManager.sessionExpired.value)
         assertEquals(1, repository.refreshCallCount)
         assertEquals(0, repository.syncCallCount)
@@ -443,7 +444,7 @@ class CheckSessionUseCaseTest {
             return refreshSessionResult
         }
 
-        override suspend fun login(loginRequest: LoginRequest): Result<UserModel> {
+        override suspend fun login(credentials: LoginCredentials): Result<UserModel> {
             throw NotImplementedError()
         }
 

@@ -1,6 +1,7 @@
 package com.example.infinite_track.presentation.screen.splash
 
 import com.example.infinite_track.domain.manager.SessionManager
+import com.example.infinite_track.domain.model.auth.ReauthReason
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -112,8 +113,8 @@ class SplashBootstrapGateTest {
 
         assertEquals(1, logoutCalls)
         assertTrue(sessionManager.beginSessionExpiryHandling())
-        sessionManager.triggerForcedReauth(SessionManager.ReauthReason.REFRESH_REVOKED)
+        sessionManager.triggerForcedReauth(ReauthReason.REFRESH_REVOKED)
         assertTrue(sessionManager.sessionExpired.value)
-        assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
     }
 }

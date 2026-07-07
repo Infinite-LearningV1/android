@@ -1,6 +1,6 @@
 package com.example.infinite_track.domain.repository
 
-import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.domain.model.auth.UserModel
 import kotlinx.coroutines.flow.Flow
 
@@ -19,10 +19,10 @@ interface AuthRepository {
 
     /**
      * Login a user with credentials
-     * @param loginRequest The login credentials
+     * @param credentials The domain login credentials
      * @return Result containing User domain model if successful
      */
-    suspend fun login(loginRequest: LoginRequest): Result<UserModel>
+    suspend fun login(credentials: LoginCredentials): Result<UserModel>
 
     /**
      * Sync user profile from the server

@@ -1,10 +1,10 @@
 package com.example.infinite_track.domain.use_case.auth
 
-import com.example.infinite_track.domain.manager.SessionManager
+import com.example.infinite_track.domain.model.auth.ReauthReason
 
 sealed class SessionBootstrapFailure(message: String? = null, cause: Throwable? = null) : Exception(message, cause) {
     class ReAuthRequired(
-        val reason: SessionManager.ReauthReason
+        val reason: ReauthReason
     ) : SessionBootstrapFailure("Session requires re-authentication")
 
     class TemporaryFailure(

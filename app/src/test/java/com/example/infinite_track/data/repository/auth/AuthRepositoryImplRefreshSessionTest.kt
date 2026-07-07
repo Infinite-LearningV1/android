@@ -25,6 +25,7 @@ import com.example.infinite_track.data.soucre.network.response.ProfileUpdateResp
 import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
 import com.example.infinite_track.data.soucre.network.response.UserData
 import com.example.infinite_track.data.soucre.network.response.WfaRecommendationResponse
+import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.data.soucre.network.response.booking.BookingHistoryResponse
 import com.example.infinite_track.data.soucre.network.response.booking.BookingResponse
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
@@ -65,7 +66,7 @@ class AuthRepositoryImplRefreshSessionTest {
             userData = createUserData(refreshToken = null)
         )
 
-        val result = repository.login(LoginRequest(email = "user@example.com", password = "secret"))
+        val result = repository.login(LoginCredentials(email = "user@example.com", password = "secret"))
 
         assertTrue(result.isSuccess)
         assertEquals("user@example.com", result.getOrNull()?.email)
@@ -85,7 +86,7 @@ class AuthRepositoryImplRefreshSessionTest {
             userData = createUserData(refreshToken = "   ")
         )
 
-        val result = repository.login(LoginRequest(email = "user@example.com", password = "secret"))
+        val result = repository.login(LoginCredentials(email = "user@example.com", password = "secret"))
 
         assertTrue(result.isSuccess)
         assertEquals("user@example.com", result.getOrNull()?.email)
@@ -111,7 +112,7 @@ class AuthRepositoryImplRefreshSessionTest {
             )
         )
 
-        val result = repository.login(LoginRequest(email = "user@example.com", password = "secret"))
+        val result = repository.login(LoginCredentials(email = "user@example.com", password = "secret"))
 
         assertTrue(result.isSuccess)
         assertEquals("primary-access", userPreference.getAuthToken().first())
@@ -129,7 +130,7 @@ class AuthRepositoryImplRefreshSessionTest {
             userData = createUserData(refreshToken = "refresh-token").copy(token = "   ")
         )
 
-        val result = repository.login(LoginRequest(email = "user@example.com", password = "secret"))
+        val result = repository.login(LoginCredentials(email = "user@example.com", password = "secret"))
 
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull()?.message?.contains("access token", ignoreCase = true) == true)

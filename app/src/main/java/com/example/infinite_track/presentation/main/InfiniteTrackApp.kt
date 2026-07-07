@@ -30,6 +30,7 @@ import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.presentation.components.base.BaseLayout
 import com.example.infinite_track.presentation.components.status.InfiniteTrackStatusDialog
 import com.example.infinite_track.presentation.components.status.StatusStates
+import com.example.infinite_track.presentation.screen.auth.toReauthUiCopy
 import com.example.infinite_track.presentation.navigation.AppNavigator
 import com.example.infinite_track.presentation.navigation.NavigationEvent
 import com.example.infinite_track.presentation.navigation.Screen
@@ -53,6 +54,7 @@ fun InfiniteTrackApp(
     val navController = rememberNavController()
     // Observe session expiration state
     val sessionExpired by sessionManager?.sessionExpired?.collectAsState() ?: remember { androidx.compose.runtime.mutableStateOf(false) }
+    val reauthReason by sessionManager?.reauthReason?.collectAsState() ?: remember { androidx.compose.runtime.mutableStateOf(null) }
     var pendingAttendanceNavigation by remember { mutableStateOf(false) }
     var showSessionExpiredDialog by remember { mutableStateOf(false) }
 
@@ -63,10 +65,12 @@ fun InfiniteTrackApp(
         }
     }
 
+    val reauthUiCopy = reauthReason?.toReauthUiCopy()
+
     InfiniteTrackStatusDialog(
         status = StatusStates.Error,
-        title = "Sesi Berakhir",
-        message = "Sesi Anda telah berakhir. Silakan login kembali untuk melanjutkan.",
+        title = reauthUiCopy?.dialogTitle ?: "Sesi Berakhir",
+        message = reauthUiCopy?.dialogMessage ?: "Sesi Anda telah berakhir. Silakan login kembali untuk melanjutkan.",
         showDialog = showSessionExpiredDialog,
         onDismiss = { showSessionExpiredDialog = false },
         onConfirm = {

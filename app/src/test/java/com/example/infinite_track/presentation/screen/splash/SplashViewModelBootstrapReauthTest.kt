@@ -8,14 +8,16 @@ import com.example.infinite_track.data.soucre.local.preferences.TodayStatusPrefe
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.local.room.UserEntity
-import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.model.auth.UserModel
+import com.example.infinite_track.domain.model.auth.ReauthReason
 import com.example.infinite_track.domain.repository.AuthRefreshException
 import com.example.infinite_track.domain.repository.AuthRefreshFailureKind
 import com.example.infinite_track.domain.repository.AuthRefreshFailureReason
 import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
+import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
 import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
 import com.example.infinite_track.domain.use_case.auth.ClearAuthenticatedRuntimeUseCase
@@ -79,11 +81,13 @@ class SplashViewModelBootstrapReauthTest {
                     sessionManager = sessionManager
                 ),
                 clearAuthenticatedRuntimeUseCase = ClearAuthenticatedRuntimeUseCase(
-                    userPreference = userPreference,
-                    userDao = userDao,
-                    attendancePreference = attendancePreference,
-                    todayStatusPreference = todayStatusPreference,
-                    removeAllGeofences = { removeAllGeofencesCalls += 1 }
+                    AuthRuntimeCleaner {
+                        userPreference.clearAuthData()
+                        userDao.clearUserProfile()
+                        attendancePreference.clearAttendanceRuntimeState()
+                        todayStatusPreference.clearTodayStatusCache()
+                        removeAllGeofencesCalls += 1
+                    }
                 )
             )
 
@@ -106,7 +110,7 @@ class SplashViewModelBootstrapReauthTest {
             assertEquals(1, repository.refreshCalls)
             assertFalse(repository.logoutRemoteCalled)
             assertFalse(sessionManager.sessionExpired.value)
-            assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
+            assertEquals(ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
         }
 
     private fun createDataStore(name: String) = PreferenceDataStoreFactory.create(
@@ -143,11 +147,9 @@ class SplashViewModelBootstrapReauthTest {
                     sessionManager = sessionManager
                 ),
                 clearAuthenticatedRuntimeUseCase = ClearAuthenticatedRuntimeUseCase(
-                    userPreference = cleanupUserPreference,
-                    userDao = FakeUserDao(),
-                    attendancePreference = AttendancePreference(createDataStore("splash_bootstrap_attendance_fail")),
-                    todayStatusPreference = TodayStatusPreference(createDataStore("splash_bootstrap_today_fail"), Gson()),
-                    removeAllGeofences = { error("cleanup failed") }
+                    AuthRuntimeCleaner {
+                        error("cleanup failed")
+                    }
                 )
             )
 
@@ -163,7 +165,7 @@ class SplashViewModelBootstrapReauthTest {
 
             assertEquals(SplashNavigationState.NavigateToLogin, terminalState)
             assertFalse(sessionManager.sessionExpired.value)
-            assertEquals(SessionManager.ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
+            assertEquals(ReauthReason.REFRESH_REVOKED, sessionManager.reauthReason.value)
             assertFalse(repository.logoutRemoteCalled)
         }
 
@@ -189,7 +191,7 @@ class SplashViewModelBootstrapReauthTest {
             )
         }
 
-        override suspend fun login(loginRequest: LoginRequest): Result<UserModel> = error("Not used in this test")
+        override suspend fun login(credentials: LoginCredentials): Result<UserModel> = error("Not used in this test")
         override suspend fun syncUserProfile(): ProfileSyncResult = error("Not used in this test")
         override suspend fun logoutRemote(): Result<Unit> {
             logoutRemoteCalled = true

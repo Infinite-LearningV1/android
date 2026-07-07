@@ -1,7 +1,7 @@
 package com.example.infinite_track.domain.use_case.auth
 
 import com.example.infinite_track.data.face.FaceProcessor
-import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRepository
 import javax.inject.Inject
@@ -20,8 +20,8 @@ class LoginUseCase @Inject constructor(
      */
     suspend operator fun invoke(email: String, password: String): Result<UserModel> {
         // First, perform the login via repository
-        val loginRequest = LoginRequest(email, password)
-        val loginResult = authRepository.login(loginRequest)
+        val credentials = LoginCredentials(email, password)
+        val loginResult = authRepository.login(credentials)
 
         // If login is successful, process the user's photo to generate face embedding
         if (loginResult.isSuccess) {

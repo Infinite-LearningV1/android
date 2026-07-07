@@ -5,8 +5,8 @@ import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
 import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
-import com.example.infinite_track.di.auth.AuthRefreshInterceptor
-import com.example.infinite_track.di.auth.RefreshSingleFlightCoordinator
+import com.example.infinite_track.data.soucre.network.auth.AuthRefreshInterceptor
+import com.example.infinite_track.data.soucre.network.auth.RefreshSingleFlightCoordinator
 import com.example.infinite_track.domain.use_case.auth.ForceReauthUseCase
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder

@@ -9,6 +9,7 @@ import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.repository.AuthRepository
+import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
 import com.example.infinite_track.domain.repository.BookingRepository
 import com.example.infinite_track.domain.repository.ContactRepository
 import com.example.infinite_track.domain.repository.LocalizationRepository
@@ -94,19 +95,9 @@ object UseCaseModule {
 
     @Provides
     fun provideClearAuthenticatedRuntimeUseCase(
-        userPreference: UserPreference,
-        userDao: UserDao,
-        attendancePreference: AttendancePreference,
-        todayStatusPreference: TodayStatusPreference,
-        geofenceManager: GeofenceManager
+        authRuntimeCleaner: AuthRuntimeCleaner
     ): ClearAuthenticatedRuntimeUseCase {
-        return ClearAuthenticatedRuntimeUseCase(
-            userPreference = userPreference,
-            userDao = userDao,
-            attendancePreference = attendancePreference,
-            todayStatusPreference = todayStatusPreference,
-            geofenceManager = geofenceManager
-        )
+        return ClearAuthenticatedRuntimeUseCase(authRuntimeCleaner)
     }
 
     // Provide the Logout Use Case

@@ -6,8 +6,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
-import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.domain.manager.SessionManager
+import com.example.infinite_track.domain.model.auth.ReauthReason
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRefreshException
 import com.example.infinite_track.domain.repository.AuthRefreshFailureKind
@@ -102,7 +103,7 @@ class ForegroundSessionLifecycleObserverTest {
         var localRuntimeClearCalls = 0
         val observer = ForegroundSessionLifecycleObserver.createForTest(
             validateForegroundSessionUseCase = FixedForegroundValidationUseCase(
-                ForegroundSessionValidationResult.ReauthRequired(SessionManager.ReauthReason.REFRESH_INVALID)
+                ForegroundSessionValidationResult.ReauthRequired(ReauthReason.REFRESH_INVALID)
             ),
             sessionManager = sessionManager,
             forceReauthUseCaseProvider = forceReauthProvider(sessionManager) { localRuntimeClearCalls += 1 },
@@ -123,7 +124,7 @@ class ForegroundSessionLifecycleObserverTest {
 
         assertEquals(1, localRuntimeClearCalls)
         assertTrue(sessionManager.sessionExpired.value)
-        assertEquals(SessionManager.ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
+        assertEquals(ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
     }
 
     @Test
@@ -282,7 +283,7 @@ private class FakeValidationRepository(
     var syncCallCount: Int = 0
         private set
 
-    override suspend fun login(loginRequest: LoginRequest): Result<UserModel> {
+    override suspend fun login(credentials: LoginCredentials): Result<UserModel> {
         error("Not used")
     }
 
@@ -325,7 +326,7 @@ private class FakeLogoutRepository : AuthRepository {
     var logoutCallCount: Int = 0
         private set
 
-    override suspend fun login(loginRequest: LoginRequest): Result<UserModel> {
+    override suspend fun login(credentials: LoginCredentials): Result<UserModel> {
         error("Not used")
     }
 

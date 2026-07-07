@@ -1,4 +1,4 @@
-package com.example.infinite_track.di.auth
+package com.example.infinite_track.data.soucre.network.auth
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
@@ -6,7 +6,7 @@ import com.example.infinite_track.data.soucre.local.preferences.TodayStatusPrefe
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.local.room.UserEntity
-import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.model.auth.UserModel
@@ -15,6 +15,7 @@ import com.example.infinite_track.domain.repository.AuthRefreshFailureKind
 import com.example.infinite_track.domain.repository.AuthRefreshFailureReason
 import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
+import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
 import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.use_case.auth.ClearAuthenticatedRuntimeUseCase
 import com.example.infinite_track.domain.use_case.auth.ForceReauthUseCase
@@ -570,7 +571,7 @@ private class TestFixture(
             return Result.success(Unit)
         }
 
-        override suspend fun login(loginRequest: LoginRequest): Result<UserModel> = Result.failure(NotImplementedError())
+        override suspend fun login(credentials: LoginCredentials): Result<UserModel> = Result.failure(NotImplementedError())
         override suspend fun syncUserProfile(): ProfileSyncResult = ProfileSyncResult.TemporaryFailure(NotImplementedError())
         override fun getLoggedInUser(): Flow<UserModel?> = flowOf(null)
         override suspend fun saveFaceEmbedding(userId: Int, embedding: ByteArray): Result<Unit> = Result.failure(NotImplementedError())
@@ -592,11 +593,9 @@ private class TestFixture(
 
     private fun createClearRuntimeUseCase(): ClearAuthenticatedRuntimeUseCase {
         return ClearAuthenticatedRuntimeUseCase(
-            userPreference = userPreference,
-            userDao = FakeUserDao(),
-            attendancePreference = AttendancePreference(createDataStore("auth_refresh_attendance")),
-            todayStatusPreference = TodayStatusPreference(createDataStore("auth_refresh_today_status"), Gson()),
-            removeAllGeofences = { localRuntimeClearCalls.incrementAndGet() }
+            AuthRuntimeCleaner {
+                localRuntimeClearCalls.incrementAndGet()
+            }
         )
     }
 }
