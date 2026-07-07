@@ -11,6 +11,7 @@ import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.local.room.UserEntity
 import com.example.infinite_track.domain.model.attendance.CheckinWindow
 import com.example.infinite_track.domain.model.attendance.TodayStatus
+import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
 import com.google.gson.Gson
 import java.io.File
 import kotlinx.coroutines.delay
@@ -33,11 +34,13 @@ class ClearAuthenticatedRuntimeUseCaseTest {
         val userDao = FakeUserDao()
         var removeAllGeofencesCalls = 0
         val useCase = ClearAuthenticatedRuntimeUseCase(
-            userPreference = userPreference,
-            userDao = userDao,
-            attendancePreference = attendancePreference,
-            todayStatusPreference = todayStatusPreference,
-            removeAllGeofences = { removeAllGeofencesCalls += 1 }
+            AuthRuntimeCleaner {
+                userPreference.clearAuthData()
+                userDao.clearUserProfile()
+                todayStatusPreference.clearTodayStatusCache()
+                attendancePreference.clearAttendanceRuntimeState()
+                removeAllGeofencesCalls += 1
+            }
         )
 
         userPreference.saveSession(
@@ -70,24 +73,17 @@ class ClearAuthenticatedRuntimeUseCaseTest {
 
     @Test
     fun `clear runtime awaits geofence cleanup before returning`() = runTest {
-        val userPreference = UserPreference(createDataStore("clear_runtime_user_await"))
-        val attendancePreference = AttendancePreference(createDataStore("clear_runtime_attendance_await"))
-        val todayStatusPreference = TodayStatusPreference(createDataStore("clear_runtime_today_status_await"), Gson())
-        var geofenceCleanupCompleted = false
+        val geofenceCleanupCompleted = kotlinx.coroutines.CompletableDeferred<Boolean>()
         val useCase = ClearAuthenticatedRuntimeUseCase(
-            userPreference = userPreference,
-            userDao = FakeUserDao(),
-            attendancePreference = attendancePreference,
-            todayStatusPreference = todayStatusPreference,
-            removeAllGeofences = {
+            AuthRuntimeCleaner {
                 delay(10)
-                geofenceCleanupCompleted = true
+                geofenceCleanupCompleted.complete(true)
             }
         )
 
         useCase()
 
-        assertEquals(true, geofenceCleanupCompleted)
+        assertEquals(true, geofenceCleanupCompleted.await())
     }
 
     @Test
@@ -98,11 +94,13 @@ class ClearAuthenticatedRuntimeUseCaseTest {
         val userDao = ThrowingUserDao()
         var removeAllGeofencesCalls = 0
         val useCase = ClearAuthenticatedRuntimeUseCase(
-            userPreference = userPreference,
-            userDao = userDao,
-            attendancePreference = attendancePreference,
-            todayStatusPreference = todayStatusPreference,
-            removeAllGeofences = { removeAllGeofencesCalls += 1 }
+            AuthRuntimeCleaner {
+                userPreference.clearAuthData()
+                userDao.clearUserProfile()
+                todayStatusPreference.clearTodayStatusCache()
+                attendancePreference.clearAttendanceRuntimeState()
+                removeAllGeofencesCalls += 1
+            }
         )
 
         userPreference.saveSession(
