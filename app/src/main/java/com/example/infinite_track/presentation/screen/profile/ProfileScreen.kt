@@ -81,6 +81,7 @@ fun ProfileScreen(
 //    navigateToFAQ: () -> Unit,
     navigateToMyDocument: () -> Unit,
     navigateToPaySlip: () -> Unit,
+    navigateToAbout: () -> Unit,
     navHostController: NavHostController,
     rootNavController: NavHostController,
     profileViewModel: ProfileViewModel = hiltViewModel()
@@ -248,6 +249,7 @@ fun ProfileScreen(
                         onPaySlip = navigateToPaySlip,
                         onContactSupport = navigateToContactUs,
                         onEmployees = navigateToContacts,
+                        onAbout = navigateToAbout,
                         onLogout = { showLogoutConfirmDialog = true }
                     )
                 }
@@ -269,6 +271,7 @@ private fun AccountHubContent(
     onPaySlip: () -> Unit,
     onContactSupport: () -> Unit,
     onEmployees: () -> Unit,
+    onAbout: () -> Unit,
     onLogout: () -> Unit
 ) {
     val unavailable = stringResource(R.string.account_hub_not_available)
@@ -377,7 +380,7 @@ private fun AccountHubContent(
                 title = stringResource(R.string.account_hub_about_title),
                 description = stringResource(R.string.account_hub_about_description),
                 icon = R.drawable.ic_community,
-                onClick = {}
+                onClick = onAbout
             )
         }
 
