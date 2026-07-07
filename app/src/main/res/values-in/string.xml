@@ -142,6 +142,26 @@
     <string name="faq">FAQ</string>
     <string name="about_us">Tentang Kami</string>
     <string name="logOut">Keluar</string>
+    <string name="account_hub_title">Profil Saya</string>
+    <string name="account_hub_active_status">%1$s Aktif</string>
+    <string name="account_hub_role">Peran</string>
+    <string name="account_hub_division">Divisi</string>
+    <string name="account_hub_contact">Kontak</string>
+    <string name="account_hub_account_identity">Akun &amp; Identitas</string>
+    <string name="account_hub_company_access">Akses Perusahaan</string>
+    <string name="account_hub_help_information">Bantuan &amp; Informasi</string>
+    <string name="account_hub_security">Keamanan</string>
+    <string name="account_hub_edit_profile_description">Perbarui informasi pribadi Anda</string>
+    <string name="account_hub_language_description">Inggris / Indonesia</string>
+    <string name="account_hub_my_document_description">Lihat dokumen kerja dan perusahaan</string>
+    <string name="account_hub_pay_slip_description">Akses informasi penggajian</string>
+    <string name="account_hub_contact_support">Hubungi Dukungan</string>
+    <string name="account_hub_contact_support_description">Dapatkan bantuan dari admin atau HR</string>
+    <string name="account_hub_about_title">Tentang Infinite Track</string>
+    <string name="account_hub_about_description">Informasi aplikasi dan perusahaan</string>
+    <string name="account_hub_logout_description">Keluar dengan aman dari akun ini</string>
+    <string name="account_hub_not_available">Tidak tersedia</string>
+    <string name="account_hub_identifier">NIP/NIM %1$s</string>
 
     <!--  TimeOff Screen  -->
     //TimeOff Screen

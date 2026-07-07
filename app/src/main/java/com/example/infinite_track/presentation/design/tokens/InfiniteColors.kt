@@ -5,13 +5,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.example.infinite_track.presentation.theme.Blue_50
+import com.example.infinite_track.presentation.theme.Blue_100
 import com.example.infinite_track.presentation.theme.Blue_500
+import com.example.infinite_track.presentation.theme.Blue_600
 import com.example.infinite_track.presentation.theme.Blue_Accent_500
 import com.example.infinite_track.presentation.theme.Green_Success
 import com.example.infinite_track.presentation.theme.Orange_500
 import com.example.infinite_track.presentation.theme.Purple_500
+import com.example.infinite_track.presentation.theme.Purple_900
 import com.example.infinite_track.presentation.theme.Red_Error
+import com.example.infinite_track.presentation.theme.Violet_50
 import com.example.infinite_track.presentation.theme.Violet_100
+import com.example.infinite_track.presentation.theme.Violet_200
 import com.example.infinite_track.presentation.theme.White
 import com.example.infinite_track.presentation.theme.Yellow_Warning
 
@@ -36,6 +42,59 @@ object InfiniteColors {
     val Warning = Yellow_Warning
     val Error = Red_Error
     val Neutral = Color(0xFF746D74)
+
+    val AccountHubTitle = Purple_900
+    val AccountHubPrimary = Blue_500
+    val AccountHubPrimaryStrong = Blue_600
+    val AccountHubAccent = Blue_Accent_500
+    val AccountHubSurface = White
+    val AccountHubDivider = Purple_500
+    val AccountHubDestructive = Red_Error
+
+    val AccountHubBackgroundGradient: Brush
+        get() = Brush.verticalGradient(
+            colors = listOf(
+                Blue_50,
+                Violet_100,
+                Violet_50
+            )
+        )
+
+    val AccountHubHeroGradient: Brush
+        get() = Brush.linearGradient(
+            colors = listOf(
+                White.copy(alpha = 0.78f),
+                Blue_100.copy(alpha = 0.68f),
+                Blue_Accent_500.copy(alpha = 0.18f)
+            )
+        )
+
+    val AccountHubAvatarRingGradient: Brush
+        get() = Brush.linearGradient(
+            colors = listOf(
+                Blue_500.copy(alpha = 0.70f),
+                Blue_Accent_500.copy(alpha = 0.70f)
+            )
+        )
+
+    val AccountHubDecorativeTint = Blue_Accent_500.copy(alpha = 0.12f)
+    val AccountHubSectionAccent = Blue_600
+    val AccountHubMutedText = Purple_500.copy(alpha = 0.62f)
+    val AccountHubBodyText = Purple_500.copy(alpha = 0.82f)
+    val AccountHubIconText = Purple_500.copy(alpha = 0.76f)
+    val AccountHubOutline = White.copy(alpha = 0.88f)
+    val AccountHubStrongOutline = White.copy(alpha = 0.94f)
+    val AccountHubHeroOutline = White.copy(alpha = 0.92f)
+    val AccountHubHeroSurface = White.copy(alpha = 0.78f)
+    val AccountHubSummarySurface = White.copy(alpha = 0.76f)
+    val AccountHubIconSurface = White.copy(alpha = 0.86f)
+    val AccountHubFloatingSurface = White.copy(alpha = 0.82f)
+    val AccountHubPillContainer = Blue_500.copy(alpha = 0.10f)
+    val AccountHubPillBorder = Blue_500.copy(alpha = 0.22f)
+    val AccountHubIconBorder = Blue_500.copy(alpha = 0.14f)
+    val AccountHubDestructiveContainer = Red_Error.copy(alpha = 0.12f)
+    val AccountHubDestructiveArrow = Red_Error.copy(alpha = 0.82f)
+    val AccountHubDividerColor = Violet_200.copy(alpha = 0.62f)
 
     val GlassGradient: Brush
         get() = Brush.verticalGradient(

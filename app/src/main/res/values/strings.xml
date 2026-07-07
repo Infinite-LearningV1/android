@@ -144,6 +144,26 @@
     <string name="faq">FAQ</string>
     <string name="about_us">About Us</string>
     <string name="logOut">Log Out</string>
+    <string name="account_hub_title">My Profile</string>
+    <string name="account_hub_active_status">Active %1$s</string>
+    <string name="account_hub_role">Role</string>
+    <string name="account_hub_division">Division</string>
+    <string name="account_hub_contact">Contact</string>
+    <string name="account_hub_account_identity">Account &amp; Identity</string>
+    <string name="account_hub_company_access">Company Access</string>
+    <string name="account_hub_help_information">Help &amp; Information</string>
+    <string name="account_hub_security">Security</string>
+    <string name="account_hub_edit_profile_description">Update your personal information</string>
+    <string name="account_hub_language_description">English / Indonesia</string>
+    <string name="account_hub_my_document_description">View employment and company documents</string>
+    <string name="account_hub_pay_slip_description">Access payroll information</string>
+    <string name="account_hub_contact_support">Contact Support</string>
+    <string name="account_hub_contact_support_description">Get help from admin or HR</string>
+    <string name="account_hub_about_title">About Infinite Track</string>
+    <string name="account_hub_about_description">App and company information</string>
+    <string name="account_hub_logout_description">Securely sign out from this account</string>
+    <string name="account_hub_not_available">Not available</string>
+    <string name="account_hub_identifier">NIP/NIM %1$s</string>
 
 
     <!--  TimeOff Screen  -->
