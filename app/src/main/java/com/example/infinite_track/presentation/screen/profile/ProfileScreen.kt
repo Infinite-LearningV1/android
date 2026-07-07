@@ -1,10 +1,15 @@
 package com.example.infinite_track.presentation.screen.profile
 
 import android.annotation.SuppressLint
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,13 +18,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,7 +41,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -53,12 +61,16 @@ import com.example.infinite_track.presentation.components.status.StatusStates
 import com.example.infinite_track.presentation.core.headline2
 import com.example.infinite_track.presentation.core.headline3
 import com.example.infinite_track.presentation.core.headline4
-import com.example.infinite_track.presentation.theme.Purple_300
-import com.example.infinite_track.presentation.theme.Purple_500
-import com.example.infinite_track.presentation.theme.White
+import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
+import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
+import com.example.infinite_track.presentation.design.tokens.InfiniteColors
+import com.example.infinite_track.presentation.design.tokens.InfiniteSize
 import com.example.infinite_track.utils.UiState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+private const val DefaultAvatarUrl =
+    "https://w7.pngwing.com/pngs/177/551/png-transparent-user-interface-design-computer-icons-default-stephen-salazar-graphy-user-interface-design-computer-wallpaper-sphere-thumbnail.png"
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -73,7 +85,6 @@ fun ProfileScreen(
     rootNavController: NavHostController,
     profileViewModel: ProfileViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var showLogoutConfirmDialog by remember { mutableStateOf(false) }
     var showLogoutLoadingDialog by remember { mutableStateOf(false) }
@@ -94,7 +105,7 @@ fun ProfileScreen(
             // We do not persist here; persistence happens on confirm
             profileViewModel.onUpdateLanguage(newLanguage)
         },
-        onConfirm = { confirmedLanguage ->
+        onConfirm = { _ ->
             // Persist already done in onUpdateLanguage; ensure dialog closed
             // LanguagePopUp will call updateAppLanguage to apply runtime locale
             profileViewModel.onLanguageDialogDismiss()
@@ -185,7 +196,8 @@ fun ProfileScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .background(InfiniteColors.AccountHubBackgroundGradient)
+                .padding(horizontal = 16.dp, vertical = 18.dp)
         ) {
             when (profileState) {
                 is UiState.Loading -> {
@@ -198,7 +210,7 @@ fun ProfileScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             CircularProgressIndicator(
-                                color = Purple_500,
+                                color = InfiniteColors.AccountHubPrimary,
                                 modifier = Modifier.size(48.dp)
                             )
                             EmployeesAccessShortcut(onClick = navigateToContacts)
@@ -218,7 +230,7 @@ fun ProfileScreen(
                             Text(
                                 text = (profileState as UiState.Error).errorMessage,
                                 style = headline3,
-                                color = Color.Red
+                                color = InfiniteColors.AccountHubDestructive
                             )
                             EmployeesAccessShortcut(onClick = navigateToContacts)
                         }
@@ -226,142 +238,18 @@ fun ProfileScreen(
                 }
 
                 is UiState.Success -> {
-                    // Show profile content
                     val user = (profileState as UiState.Success<UserModel>).data
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Top,
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(
-                                modifier = Modifier.width(280.dp)
-                            ) {
-                                Text(
-                                    text = user.fullName ?: "N/A",
-                                    style = headline2,
-                                    color = Purple_500,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    text = user.positionName ?: "N/A",
-                                    style = headline4,
-                                    color = Purple_300,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                            AsyncImage(
-                                model = user.photoUrl
-                                    ?: "https://w7.pngwing.com/pngs/177/551/png-transparent-user-interface-design-computer-icons-default-stephen-salazar-graphy-user-interface-design-computer-wallpaper-sphere-thumbnail.png",
-                                contentDescription = "",
-                                modifier = Modifier
-                                    .padding(horizontal = 8.dp)
-                                    .height(60.dp)
-                                    .width(60.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = stringResource(R.string.account_information),
-                                style = headline3,
-                                fontWeight = FontWeight.Medium
-                            )
-                            ProfileBar(
-                                label = stringResource(R.string.edit_profile),
-                                onClick = navigateToEditProfile,
-                                icon = R.drawable.ic_pencil
-                            )
-                            ProfileBar(
-                                label = stringResource(R.string.pay_slip),
-                                onClick = navigateToPaySlip,
-                                icon = R.drawable.ic_payslip
-                            )
-                            ProfileBar(
-                                label = stringResource(R.string.my_document),
-                                onClick = navigateToMyDocument,
-                                icon = R.drawable.ic_mydocument
-                            )
-                            EmployeesAccessShortcut(onClick = navigateToContacts)
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // Settings Section
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = stringResource(R.string.setting),
-                                style = headline3,
-                                fontWeight = FontWeight.Medium
-                            )
-
-                            // Language Selector Row
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(50.dp)
-                                    .clickable { profileViewModel.onLanguageSettingsClicked() },
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_global),
-                                    contentDescription = stringResource(R.string.language),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Text(
-                                    text = stringResource(R.string.language),
-                                    style = headline4,
-                                )
-                                Spacer(modifier = Modifier.weight(1f))
-                                Text(
-                                    text = if (language == "en") "English" else "Indonesia",
-                                    style = headline4,
-                                )
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Icon(
-                                    painter = painterResource(R.drawable.right_arrow),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-
-                            // Other Settings Options
-                            ProfileBar(
-                                label = stringResource(R.string.contact_us),
-                                onClick = navigateToContactUs,
-                                icon = R.drawable.ic_contactus
-                            )
-//                            ProfileBar(
-//                                label = stringResource(R.string.faq),
-//                                onClick = navigateToFAQ,
-//                                icon = R.drawable.ic_faq
-//                            )
-                            ProfileBar(
-                                label = stringResource(R.string.about_us),
-                                onClick = {},
-                                icon = R.drawable.ic_community
-                            )
-                            ProfileBar(
-                                label = stringResource(R.string.logOut),
-                                icon = R.drawable.ic_logout,
-                                onClick = {
-                                    showLogoutConfirmDialog = true
-                                }
-                            )
-                        }
-                    }
+                    AccountHubContent(
+                        user = user,
+                        language = language,
+                        onEditProfile = navigateToEditProfile,
+                        onLanguageClick = { profileViewModel.onLanguageSettingsClicked() },
+                        onMyDocument = navigateToMyDocument,
+                        onPaySlip = navigateToPaySlip,
+                        onContactSupport = navigateToContactUs,
+                        onEmployees = navigateToContacts,
+                        onLogout = { showLogoutConfirmDialog = true }
+                    )
                 }
 
                 else -> { /* Idle state - do nothing */
@@ -372,9 +260,484 @@ fun ProfileScreen(
 }
 
 @Composable
+private fun AccountHubContent(
+    user: UserModel,
+    language: String,
+    onEditProfile: () -> Unit,
+    onLanguageClick: () -> Unit,
+    onMyDocument: () -> Unit,
+    onPaySlip: () -> Unit,
+    onContactSupport: () -> Unit,
+    onEmployees: () -> Unit,
+    onLogout: () -> Unit
+) {
+    val unavailable = stringResource(R.string.account_hub_not_available)
+    val role = user.roleName.ifBlank { unavailable }
+    val position = user.positionName.orEmpty().ifBlank { unavailable }
+    val division = user.divisionName.orEmpty().ifBlank {
+        user.programName.orEmpty().ifBlank { unavailable }
+    }
+    val contact = user.phone.orEmpty().ifBlank { unavailable }
+    val shouldShowPaySlip = remember(user.roleName) { user.roleName.shouldShowPayrollAccess() }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.account_hub_title),
+            style = headline2,
+            color = InfiniteColors.AccountHubTitle,
+            fontWeight = FontWeight.Bold
+        )
+
+        IdentityHeroCard(
+            user = user,
+            role = role,
+            position = position,
+            division = division,
+            onEditProfile = onEditProfile
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            AccountSummaryCard(
+                label = stringResource(R.string.account_hub_role),
+                value = role,
+                icon = R.drawable.ic_profile,
+                modifier = Modifier.weight(1f)
+            )
+            AccountSummaryCard(
+                label = stringResource(R.string.account_hub_division),
+                value = division,
+                icon = R.drawable.ic_division,
+                modifier = Modifier.weight(1f)
+            )
+            AccountSummaryCard(
+                label = stringResource(R.string.account_hub_contact),
+                value = contact,
+                icon = R.drawable.ic_phone,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        AccountHubSection(title = stringResource(R.string.account_hub_account_identity)) {
+            AccountHubMenuRow(
+                title = stringResource(R.string.edit_profile),
+                description = stringResource(R.string.account_hub_edit_profile_description),
+                icon = R.drawable.ic_pencil,
+                onClick = onEditProfile
+            )
+            AccountHubDivider()
+            AccountHubMenuRow(
+                title = stringResource(R.string.language),
+                description = currentLanguageLabel(language),
+                icon = R.drawable.ic_global,
+                onClick = onLanguageClick
+            )
+        }
+
+        AccountHubSection(title = stringResource(R.string.account_hub_company_access)) {
+            AccountHubMenuRow(
+                title = stringResource(R.string.my_document),
+                description = stringResource(R.string.account_hub_my_document_description),
+                icon = R.drawable.ic_mydocument,
+                onClick = onMyDocument
+            )
+            if (shouldShowPaySlip) {
+                AccountHubDivider()
+                AccountHubMenuRow(
+                    title = stringResource(R.string.pay_slip),
+                    description = stringResource(R.string.account_hub_pay_slip_description),
+                    icon = R.drawable.ic_payslip,
+                    onClick = onPaySlip
+                )
+            }
+            AccountHubDivider()
+            AccountHubMenuRow(
+                title = stringResource(R.string.employees),
+                description = stringResource(R.string.account_hub_contact_support_description),
+                icon = R.drawable.ic_contactus,
+                onClick = onEmployees
+            )
+        }
+
+        AccountHubSection(title = stringResource(R.string.account_hub_help_information)) {
+            AccountHubMenuRow(
+                title = stringResource(R.string.account_hub_contact_support),
+                description = stringResource(R.string.account_hub_contact_support_description),
+                icon = R.drawable.ic_contactus,
+                onClick = onContactSupport
+            )
+            AccountHubDivider()
+            AccountHubMenuRow(
+                title = stringResource(R.string.account_hub_about_title),
+                description = stringResource(R.string.account_hub_about_description),
+                icon = R.drawable.ic_community,
+                onClick = {}
+            )
+        }
+
+        AccountHubSection(title = stringResource(R.string.account_hub_security)) {
+            AccountHubMenuRow(
+                title = stringResource(R.string.logOut),
+                description = stringResource(R.string.account_hub_logout_description),
+                icon = R.drawable.ic_logout,
+                onClick = onLogout,
+                destructive = true
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+    }
+}
+
+@Composable
+private fun IdentityHeroCard(
+    user: UserModel,
+    role: String,
+    position: String,
+    division: String,
+    onEditProfile: () -> Unit
+) {
+    val unavailable = stringResource(R.string.account_hub_not_available)
+    val fullName = user.fullName.ifBlank { unavailable }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = InfiniteColors.AccountHubHeroSurface),
+        border = BorderStroke(1.dp, InfiniteColors.AccountHubHeroOutline),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(InfiniteColors.AccountHubHeroGradient)
+                .padding(20.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(124.dp)
+                    .clip(CircleShape)
+                    .background(InfiniteColors.AccountHubDecorativeTint)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .size(118.dp)
+                            .clip(CircleShape)
+                            .background(InfiniteColors.AccountHubAvatarRingGradient)
+                            .padding(4.dp)
+                    ) {
+                        AsyncImage(
+                            model = user.photoUrl ?: DefaultAvatarUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .border(3.dp, InfiniteColors.AccountHubOutline, CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                    InfiniteStatusPill(
+                        label = stringResource(R.string.account_hub_active_status, role),
+                        variant = InfiniteStatusVariant.Active,
+                        size = InfiniteSize.Small
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(9.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = fullName,
+                                style = headline2,
+                                color = InfiniteColors.AccountHubTitle,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = position,
+                                style = headline4,
+                                color = InfiniteColors.AccountHubSectionAccent,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        SoftIconButton(
+                            icon = R.drawable.ic_pencil,
+                            contentDescription = stringResource(R.string.edit_profile),
+                            onClick = onEditProfile
+                        )
+                    }
+
+                    SoftPill(text = role, icon = R.drawable.ic_profile)
+                    IdentityInfoRow(icon = R.drawable.ic_division, text = division)
+                    IdentityInfoRow(
+                        icon = R.drawable.ic_description,
+                        text = stringResource(R.string.account_hub_identifier, user.nipNim)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccountSummaryCard(
+    label: String,
+    value: String,
+    @DrawableRes icon: Int,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.height(92.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = InfiniteColors.AccountHubSummarySurface),
+        border = BorderStroke(1.dp, InfiniteColors.AccountHubOutline),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = InfiniteColors.AccountHubPrimary,
+                modifier = Modifier.size(26.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = headline4,
+                    color = InfiniteColors.AccountHubMutedText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = value,
+                    style = headline4,
+                    color = InfiniteColors.AccountHubTitle,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccountHubSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = InfiniteColors.AccountHubHeroSurface),
+        border = BorderStroke(1.dp, InfiniteColors.AccountHubOutline),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = title,
+                style = headline4,
+                color = InfiniteColors.AccountHubSectionAccent,
+                fontWeight = FontWeight.Bold
+            )
+            content()
+        }
+    }
+}
+
+@Composable
+private fun AccountHubMenuRow(
+    title: String,
+    description: String,
+    @DrawableRes icon: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    destructive: Boolean = false
+) {
+    val accent = if (destructive) InfiniteColors.AccountHubDestructive else InfiniteColors.AccountHubPrimary
+    val rowBackground = if (destructive) InfiniteColors.AccountHubDestructiveContainer else Color.Transparent
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(rowBackground)
+            .clickable { onClick() }
+            .padding(horizontal = 10.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = InfiniteColors.AccountHubIconSurface,
+            border = BorderStroke(1.dp, InfiniteColors.AccountHubIconBorder),
+            shadowElevation = 3.dp
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier
+                    .padding(12.dp)
+                    .size(24.dp)
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = headline3,
+                color = if (destructive) InfiniteColors.AccountHubDestructive else InfiniteColors.AccountHubTitle,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = description,
+                style = headline4,
+                color = InfiniteColors.AccountHubMutedText,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Icon(
+            painter = painterResource(R.drawable.right_arrow),
+            contentDescription = null,
+            tint = if (destructive) InfiniteColors.AccountHubDestructiveArrow else InfiniteColors.AccountHubTitle,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+@Composable
+private fun AccountHubDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 72.dp),
+        color = InfiniteColors.AccountHubDividerColor
+    )
+}
+
+@Composable
+private fun SoftIconButton(
+    @DrawableRes icon: Int,
+    contentDescription: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .size(52.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(18.dp),
+        color = InfiniteColors.AccountHubFloatingSurface,
+        border = BorderStroke(1.dp, InfiniteColors.AccountHubStrongOutline),
+        shadowElevation = 5.dp
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = contentDescription,
+                tint = InfiniteColors.AccountHubPrimary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SoftPill(
+    text: String,
+    @DrawableRes icon: Int
+) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = InfiniteColors.AccountHubPillContainer,
+        border = BorderStroke(1.dp, InfiniteColors.AccountHubPillBorder)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = InfiniteColors.AccountHubPrimary,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = text,
+                style = headline4,
+                color = InfiniteColors.AccountHubSectionAccent,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun IdentityInfoRow(
+    @DrawableRes icon: Int,
+    text: String
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = InfiniteColors.AccountHubIconText,
+            modifier = Modifier.size(20.dp)
+        )
+        Text(
+            text = text,
+            style = headline4,
+            color = InfiniteColors.AccountHubBodyText,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
 private fun EmployeesAccessShortcut(onClick: () -> Unit) {
-    ProfileBar(
-        label = stringResource(R.string.employees),
+    AccountHubMenuRow(
+        title = stringResource(R.string.employees),
+        description = stringResource(R.string.account_hub_contact_support_description),
         onClick = onClick,
         icon = R.drawable.ic_contactus
     )
@@ -387,30 +750,29 @@ fun ProfileBar(
     onClick: () -> Unit,
     icon: Int,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(50.dp)
-            .clickable { onClick() },
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-            modifier = Modifier.size(16.dp)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = label,
-            style = headline4,
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        Icon(
-            painter = painterResource(R.drawable.right_arrow),
-            contentDescription = null,
-            modifier = Modifier.size(16.dp)
-        )
+    AccountHubMenuRow(
+        title = label,
+        description = "",
+        onClick = onClick,
+        icon = icon,
+        modifier = modifier
+    )
+}
+
+@Composable
+private fun currentLanguageLabel(language: String): String {
+    return if (language == "en") {
+        stringResource(R.string.language_english)
+    } else {
+        stringResource(R.string.language_indonesia)
     }
+}
+
+private fun String.shouldShowPayrollAccess(): Boolean {
+    val normalized = lowercase()
+    return !normalized.contains("intern") &&
+        !normalized.contains("internship") &&
+        !normalized.contains("magang")
 }
 
 @Composable
@@ -420,7 +782,7 @@ private fun ProfileLoadingDialog(showDialog: Boolean) {
     Dialog(onDismissRequest = { }) {
         Card(
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = White)
+            colors = CardDefaults.cardColors(containerColor = InfiniteColors.AccountHubSurface)
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
