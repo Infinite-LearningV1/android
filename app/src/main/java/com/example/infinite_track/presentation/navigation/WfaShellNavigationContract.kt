@@ -2,6 +2,13 @@ package com.example.infinite_track.presentation.navigation
 
 import com.example.infinite_track.R
 
+/**
+ * Source-of-truth for the main shell bottom bar after INF-224.
+ *
+ * The primary tabs are Home | History | WFA | Profile. The WFA tab is a
+ * read-oriented booking/request history and status surface; WFA request creation,
+ * check-in, and check-out remain owned by the attendance flow.
+ */
 object WfaShellNavigationContract {
     private val hiddenRoutes = setOf(
         Screen.Attendance.route,
