@@ -297,8 +297,7 @@ private fun AccountHubContent(
             user = user,
             role = role,
             position = position,
-            division = division,
-            onEditProfile = onEditProfile
+            division = division
         )
 
         Row(
@@ -401,8 +400,7 @@ private fun IdentityHeroCard(
     user: UserModel,
     role: String,
     position: String,
-    division: String,
-    onEditProfile: () -> Unit
+    division: String
 ) {
     val unavailable = stringResource(R.string.account_hub_not_available)
     val fullName = user.fullName.ifBlank { unavailable }
@@ -462,32 +460,21 @@ private fun IdentityHeroCard(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(9.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = fullName,
-                                style = headline2,
-                                color = InfiniteColors.AccountHubTitle,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = position,
-                                style = headline4,
-                                color = InfiniteColors.AccountHubSectionAccent,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        SoftIconButton(
-                            icon = R.drawable.ic_pencil,
-                            contentDescription = stringResource(R.string.edit_profile),
-                            onClick = onEditProfile
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = fullName,
+                            style = headline2,
+                            color = InfiniteColors.AccountHubTitle,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = position,
+                            style = headline4,
+                            color = InfiniteColors.AccountHubSectionAccent,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
@@ -647,32 +634,6 @@ private fun AccountHubDivider() {
         modifier = Modifier.padding(start = 72.dp),
         color = InfiniteColors.AccountHubDividerColor
     )
-}
-
-@Composable
-private fun SoftIconButton(
-    @DrawableRes icon: Int,
-    contentDescription: String,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .size(52.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(18.dp),
-        color = InfiniteColors.AccountHubFloatingSurface,
-        border = BorderStroke(1.dp, InfiniteColors.AccountHubStrongOutline),
-        shadowElevation = 5.dp
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = contentDescription,
-                tint = InfiniteColors.AccountHubPrimary,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-    }
 }
 
 @Composable
