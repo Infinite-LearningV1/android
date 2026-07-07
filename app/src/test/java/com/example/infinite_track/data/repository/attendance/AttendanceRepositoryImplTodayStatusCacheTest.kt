@@ -12,7 +12,7 @@ import com.example.infinite_track.data.soucre.network.request.AttendanceRequest
 import com.example.infinite_track.data.soucre.network.request.BookingRequest
 import com.example.infinite_track.data.soucre.network.request.CheckOutRequestDto
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
-import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.data.soucre.network.request.LogoutRequest
 import com.example.infinite_track.data.soucre.network.request.ProfileUpdateRequest
 import com.example.infinite_track.data.soucre.network.request.RefreshRequest
@@ -308,7 +308,7 @@ private class FakeApiService(
 
     override suspend fun checkOut(attendanceId: Int, request: CheckOutRequestDto): AttendanceResponse = checkOutResponse
 
-    override suspend fun login(loginRequest: LoginRequest): LoginResponse = unsupported()
+    override suspend fun login(credentials: LoginCredentials): LoginResponse = unsupported()
 
     override suspend fun getUserProfile(bootstrapAuthRequest: String?): LoginResponse = unsupported()
 

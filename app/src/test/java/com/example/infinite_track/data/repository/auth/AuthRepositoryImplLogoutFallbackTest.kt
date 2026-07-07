@@ -8,7 +8,7 @@ import com.example.infinite_track.data.soucre.network.request.AttendanceRequest
 import com.example.infinite_track.data.soucre.network.request.BookingRequest
 import com.example.infinite_track.data.soucre.network.request.CheckOutRequestDto
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
-import com.example.infinite_track.data.soucre.network.request.LoginRequest
+import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.data.soucre.network.request.LogoutRequest
 import com.example.infinite_track.data.soucre.network.request.ProfileUpdateRequest
 import com.example.infinite_track.data.soucre.network.request.RefreshRequest
@@ -146,7 +146,7 @@ private class LogoutFallbackFakeApiService(
         return logoutBlock()
     }
 
-    override suspend fun login(loginRequest: LoginRequest): LoginResponse = throw NotImplementedError()
+    override suspend fun login(credentials: LoginCredentials): LoginResponse = throw NotImplementedError()
     override suspend fun getUserProfile(bootstrapAuthRequest: String?): LoginResponse = throw NotImplementedError()
     override suspend fun logout(): LogoutResponse = throw NotImplementedError()
     override suspend fun refresh(request: RefreshRequest): RefreshResponse = throw NotImplementedError()
