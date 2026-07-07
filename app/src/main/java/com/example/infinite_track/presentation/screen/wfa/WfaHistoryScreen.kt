@@ -10,10 +10,8 @@ import com.example.infinite_track.presentation.screen.home.HomeViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
-fun WfaHistoryScreen(
-    onOpenAttendance: () -> Unit
-) {
-    WfaRequestsScreen(onOpenAttendance = onOpenAttendance)
+fun WfaHistoryScreen() {
+    WfaRequestsScreen()
 }
 
 @Composable

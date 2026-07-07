@@ -92,9 +92,7 @@ fun NavGraphBuilder.mainContentNavGraph(
     }
 
     composable(Screen.Wfa.route) {
-        WfaHistoryScreen(
-            onOpenAttendance = { navController.safeNavigate(Screen.Attendance.route) }
-        )
+        WfaHistoryScreen()
     }
 
     // Profile Feature Flow
