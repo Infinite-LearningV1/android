@@ -27,10 +27,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -78,18 +78,9 @@ fun EditProfile(
     val phone by viewModel.phone.collectAsStateWithLifecycle()
     val nipNim by viewModel.nipNim.collectAsStateWithLifecycle()
     val updateProfileState by viewModel.updateProfileState.collectAsStateWithLifecycle()
+    val canSave by viewModel.canSave.collectAsStateWithLifecycle()
 
     val isSaving = updateProfileState is UiState.Loading
-    val hasChanges = userProfile?.let { user ->
-        fullName != user.fullName ||
-            nipNim != user.nipNim ||
-            phone != user.phone.orEmpty()
-    } ?: false
-    val canSave = userProfile != null &&
-        fullName.isNotBlank() &&
-        nipNim.isNotBlank() &&
-        hasChanges &&
-        !isSaving
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -397,8 +388,10 @@ private fun EditProfileField(
                 }
             },
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            colors = TextFieldDefaults.outlinedTextFieldColors(
-                containerColor = InfiniteColors.AccountHubIconSurface,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = InfiniteColors.AccountHubIconSurface,
+                unfocusedContainerColor = InfiniteColors.AccountHubIconSurface,
+                disabledContainerColor = InfiniteColors.AccountHubIconSurface,
                 focusedBorderColor = borderColor,
                 unfocusedBorderColor = borderColor,
                 disabledBorderColor = borderColor,

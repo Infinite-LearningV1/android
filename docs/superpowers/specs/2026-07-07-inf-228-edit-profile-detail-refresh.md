@@ -1,9 +1,6 @@
 # INF-228 — Android Edit Profile Detail Screen Refresh Spec
 
 Date: 2026-07-07
-Branch: `fix/android-profile-edit-detail-refresh`
-Worktree: `C:\Users\Febriyadi\.claude\worktrees\android-profile-edit-detail-refresh`
-Base: `develop` at `dec6435`
 
 ## Goal
 
@@ -11,25 +8,9 @@ Redesign only the Android `Profile > Edit Profile` detail screen with reusable M
 
 Android remains a trusted data-capture client. Backend remains authoritative for profile update behavior. INF-228 must not change backend contracts, auth/session behavior, Profile main screen scope, About screen scope, bottom navigation, or route graph semantics.
 
-## Worktree and branch mapping
+## Scope boundary
 
-Main checkout:
-
-- Path: `E:\skrisi\android`
-- Branch: `develop`
-- Head during mapping: `dec6435`
-- Dirty local files in main checkout are unrelated network/environment changes and must not be edited for INF-228:
-  - `app/src/main/java/com/example/infinite_track/di/NetworkModule.kt`
-  - `app/src/main/res/xml/network_security_config.xml`
-  - untracked `docs/superpowers/plans/2026-06-21-inf-164-inf-161-inf-162-layer3-truthful-consumption.md`
-
-Existing Profile worktrees found:
-
-- `android-account-hub-main-refresh` / `fix/android-account-hub-main-refresh`: stale INF-226 branch already merged.
-- `android-profile-detail-back-navigation` / `fix/profile-detail-back-navigation`: stale navigation fix branch already merged.
-- `android-about-infinite-track-screen` / `fix/android-about-infinite-track-screen`: relevant Profile/INF-227 workspace, but dirty with uncommitted About changes; unsafe to mix with INF-228.
-
-Decision: create fresh isolated INF-228 worktree from `develop`.
+INF-228 is intentionally limited to the Edit Profile detail screen. Existing Profile main screen work from INF-226, Profile navigation fixes, and About screen work are separate scopes and must not be mixed into this spec.
 
 ## Current repo facts verified
 

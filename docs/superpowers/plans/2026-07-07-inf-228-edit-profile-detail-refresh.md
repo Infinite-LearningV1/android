@@ -2,7 +2,6 @@
 
 Date: 2026-07-07
 Branch: `fix/android-profile-edit-detail-refresh`
-Worktree: `C:\Users\Febriyadi\.claude\worktrees\android-profile-edit-detail-refresh`
 Spec: `docs/superpowers/specs/2026-07-07-inf-228-edit-profile-detail-refresh.md`
 
 ## Guardrails
@@ -245,7 +244,7 @@ Possibly:
 
 ## PR / review note draft
 
-- Work done in isolated branch/worktree: `fix/android-profile-edit-detail-refresh` / `C:\Users\Febriyadi\.claude\worktrees\android-profile-edit-detail-refresh`.
+- Work done in isolated branch/worktree: `fix/android-profile-edit-detail-refresh`.
 - Redesigns Edit Profile detail screen only.
 - Editable fields remain Full Name, NIP/NIM, and Phone.
 - Read-only fields remain Division, Position, and Email with read-only indicators.

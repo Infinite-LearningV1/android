@@ -9,9 +9,12 @@ import com.example.infinite_track.domain.use_case.profile.UpdateProfileUseCase
 import com.example.infinite_track.utils.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -46,6 +49,29 @@ class EditProfileViewModel @Inject constructor(
     // Update profile state
     private val _updateProfileState = MutableStateFlow<UiState<UserModel>>(UiState.Idle)
     val updateProfileState: StateFlow<UiState<UserModel>> = _updateProfileState.asStateFlow()
+
+    val hasChanges: StateFlow<Boolean> = combine(
+        _userProfileState,
+        _fullName,
+        _nipNim,
+        _phone
+    ) { currentUser, fullName, nipNim, phone ->
+        currentUser?.let { isFormChanged(it, fullName, nipNim, phone) } ?: false
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val canSave: StateFlow<Boolean> = combine(
+        _userProfileState,
+        _fullName,
+        _nipNim,
+        hasChanges,
+        _updateProfileState
+    ) { currentUser, fullName, nipNim, hasChanges, updateState ->
+        currentUser != null &&
+                fullName.isNotBlank() &&
+                nipNim.isNotBlank() &&
+                hasChanges &&
+                updateState !is UiState.Loading
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     init {
         fetchUserProfile()
@@ -117,7 +143,7 @@ class EditProfileViewModel @Inject constructor(
             )
 
             // Only update if there are changes
-            if (isFormChanged(currentUser)) {
+            if (isFormChanged(currentUser, _fullName.value, _nipNim.value, _phone.value)) {
                 updateProfileUseCase(currentUser.id, request)
                     .onSuccess { updatedUser ->
                         _userProfileState.value = updatedUser
@@ -155,10 +181,15 @@ class EditProfileViewModel @Inject constructor(
     /**
      * Check if the form has changed compared to the current user data
      */
-    private fun isFormChanged(currentUser: UserModel): Boolean {
-        return _fullName.value != currentUser.fullName ||
-                _nipNim.value != currentUser.nipNim ||
-                _phone.value != currentUser.phone.orEmpty()
+    private fun isFormChanged(
+        currentUser: UserModel,
+        fullName: String,
+        nipNim: String,
+        phone: String
+    ): Boolean {
+        return fullName != currentUser.fullName ||
+                nipNim != currentUser.nipNim ||
+                phone != currentUser.phone.orEmpty()
     }
 
     /**
