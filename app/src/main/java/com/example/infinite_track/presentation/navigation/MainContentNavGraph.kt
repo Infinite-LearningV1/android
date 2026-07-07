@@ -102,11 +102,11 @@ fun NavGraphBuilder.mainContentNavGraph(
     ) {
         composable(Screen.Profile.route) {
             ProfileScreen(
-                navigateToEditProfile = { navController.safeNavigate(Screen.EditProfile.route) },
-                navigateToContactUs = { navController.safeNavigate(Screen.ContactUs.route) },
+                navigateToEditProfile = { navController.navigateToProfileDetail(Screen.EditProfile.route) },
+                navigateToContactUs = { navController.navigateToProfileDetail(Screen.ContactUs.route) },
                 navigateToContacts = { navController.navigate(Screen.Contact.route) },
-                navigateToMyDocument = { navController.safeNavigate(Screen.MyDocument.route) },
-                navigateToPaySlip = { navController.safeNavigate(Screen.PaySlip.route) },
+                navigateToMyDocument = { navController.navigateToProfileDetail(Screen.MyDocument.route) },
+                navigateToPaySlip = { navController.navigateToProfileDetail(Screen.PaySlip.route) },
                 navHostController = navController,
                 rootNavController = rootNavController
             )
@@ -114,7 +114,25 @@ fun NavGraphBuilder.mainContentNavGraph(
 
         composable(Screen.EditProfile.route) {
             EditProfile(
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.navigateBackToProfile() }
+            )
+        }
+
+        composable(Screen.ContactUs.route) {
+            ContactUsScreen(
+                onBackClick = { navController.navigateBackToProfile() }
+            )
+        }
+
+        composable(Screen.PaySlip.route) {
+            PaySlipScreen(
+                onBackClick = { navController.navigateBackToProfile() }
+            )
+        }
+
+        composable(Screen.MyDocument.route) {
+            MyDocumentScreen(
+                onBackClick = { navController.navigateBackToProfile() }
             )
         }
     }
@@ -154,26 +172,6 @@ fun NavGraphBuilder.mainContentNavGraph(
     // My Leave Screen
     composable(Screen.MyLeave.route) {
         MyLeave(
-            onBackClick = { navController.popBackStack() }
-        )
-    }
-
-    // Contact Us Screen
-    composable(Screen.ContactUs.route) {
-        ContactUsScreen(
-            onBackClick = { navController.popBackStack() }
-        )
-    }
-
-    // PaySlip and MyDocument screens - these are standalone screens
-    composable(Screen.PaySlip.route) {
-        PaySlipScreen(
-            onBackClick = { navController.popBackStack() }
-        )
-    }
-
-    composable(Screen.MyDocument.route) {
-        MyDocumentScreen(
             onBackClick = { navController.popBackStack() }
         )
     }
@@ -223,4 +221,21 @@ fun NavGraphBuilder.mainContentNavGraph(
 
     // Note: Commented out screens like Attendance, LeaveRequest, and FAQ
     // should be implemented here if needed
+}
+
+private fun NavHostController.navigateToProfileDetail(route: String) {
+    navigate(route) {
+        launchSingleTop = true
+    }
+}
+
+private fun NavHostController.navigateBackToProfile() {
+    if (!popBackStack(Screen.Profile.route, inclusive = false)) {
+        navigate(Screen.Profile.route) {
+            popUpTo(Screen.ProfileFlow.route) {
+                inclusive = false
+            }
+            launchSingleTop = true
+        }
+    }
 }

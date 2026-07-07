@@ -13,6 +13,9 @@ object WfaShellNavigationContract {
     private val hiddenRoutes = setOf(
         Screen.Attendance.route,
         Screen.EditProfile.route,
+        Screen.ContactUs.route,
+        Screen.PaySlip.route,
+        Screen.MyDocument.route,
         Screen.DetailMyAttendance.route,
         Screen.DetailListTimeOff.route,
         Screen.TimeOffRequest.route,
