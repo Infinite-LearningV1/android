@@ -95,11 +95,44 @@ class ClearAuthenticatedRuntimeUseCaseTest {
         var removeAllGeofencesCalls = 0
         val useCase = ClearAuthenticatedRuntimeUseCase(
             AuthRuntimeCleaner {
-                userPreference.clearAuthData()
-                userDao.clearUserProfile()
-                todayStatusPreference.clearTodayStatusCache()
-                attendancePreference.clearAttendanceRuntimeState()
-                removeAllGeofencesCalls += 1
+                val failures = mutableListOf<Throwable>()
+
+                try {
+                    userPreference.clearAuthData()
+                } catch (t: Throwable) {
+                    failures += t
+                }
+
+                try {
+                    userDao.clearUserProfile()
+                } catch (t: Throwable) {
+                    failures += t
+                }
+
+                try {
+                    todayStatusPreference.clearTodayStatusCache()
+                } catch (t: Throwable) {
+                    failures += t
+                }
+
+                try {
+                    attendancePreference.clearAttendanceRuntimeState()
+                } catch (t: Throwable) {
+                    failures += t
+                }
+
+                try {
+                    removeAllGeofencesCalls += 1
+                } catch (t: Throwable) {
+                    failures += t
+                }
+
+                if (failures.isNotEmpty()) {
+                    throw IllegalStateException(
+                        "Failed to clear authenticated runtime; completed with ${failures.size} cleanup error(s)",
+                        failures.first()
+                    )
+                }
             }
         )
 
