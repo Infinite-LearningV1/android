@@ -32,6 +32,7 @@ sealed class Screen(val route: String) {
     data object DetailsMyBooking : Screen("home/detailsBooking")
     data object PaySlip : Screen("profile/PaySlip")
     data object MyDocument : Screen("profile/MyDocument")
+    data object About : Screen("profile/about")
 
     // WFA Booking
     data object WfaBooking : Screen("wfa_booking/{latitude}/{longitude}") {

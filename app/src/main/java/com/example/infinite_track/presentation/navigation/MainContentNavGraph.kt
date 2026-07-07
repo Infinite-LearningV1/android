@@ -26,6 +26,7 @@ import com.example.infinite_track.presentation.screen.home.details.DetailsMyBook
 import com.example.infinite_track.presentation.screen.leave_request.my_leave.MyLeave
 import com.example.infinite_track.presentation.screen.leave_request.timeOff.TimeOffScreen
 import com.example.infinite_track.presentation.screen.profile.ProfileScreen
+import com.example.infinite_track.presentation.screen.profile.details.about.AboutScreen
 import com.example.infinite_track.presentation.screen.profile.details.contactUs.ContactUsScreen
 import com.example.infinite_track.presentation.screen.profile.details.edit_profile.EditProfile
 import com.example.infinite_track.presentation.screen.profile.details.my_document.MyDocumentScreen
@@ -107,6 +108,7 @@ fun NavGraphBuilder.mainContentNavGraph(
                 navigateToContacts = { navController.navigate(Screen.Contact.route) },
                 navigateToMyDocument = { navController.navigateToProfileDetail(Screen.MyDocument.route) },
                 navigateToPaySlip = { navController.navigateToProfileDetail(Screen.PaySlip.route) },
+                navigateToAbout = { navController.navigateToProfileDetail(Screen.About.route) },
                 navHostController = navController,
                 rootNavController = rootNavController
             )
@@ -132,6 +134,12 @@ fun NavGraphBuilder.mainContentNavGraph(
 
         composable(Screen.MyDocument.route) {
             MyDocumentScreen(
+                onBackClick = { navController.navigateBackToProfile() }
+            )
+        }
+
+        composable(Screen.About.route) {
+            AboutScreen(
                 onBackClick = { navController.navigateBackToProfile() }
             )
         }

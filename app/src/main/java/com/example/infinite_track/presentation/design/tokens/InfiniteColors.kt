@@ -36,6 +36,7 @@ object InfiniteColors {
     val Text = Purple_500
     val Background = Violet_100
     val Surface = White
+    val Transparent = Color.Transparent
     val SoftAlert = Color(0xFFFF6B6B)
     val Success = Green_Success
     val Info = Color(0xFF214CE0)
@@ -95,6 +96,27 @@ object InfiniteColors {
     val AccountHubDestructiveContainer = Red_Error.copy(alpha = 0.12f)
     val AccountHubDestructiveArrow = Red_Error.copy(alpha = 0.82f)
     val AccountHubDividerColor = Violet_200.copy(alpha = 0.62f)
+
+    val AboutPurple = Color(0xFF7B4DF3)
+    val AboutPurpleSoft = Color(0xFF8D5CFF)
+    val AboutCyan = Color(0xFF22C7D2)
+    val AboutCyanSoft = Color(0xFF8FEAF0)
+    val AboutLavender = Color(0xFFB9A7FF)
+    val AboutCreatorAvatar = Color(0xFF9D8BDC)
+    val AboutGold = Color(0xFFFFB300)
+    val AboutGoldStrong = Color(0xFFC08A00)
+    val AboutGoldMuted = Color(0xFF9D7000)
+    val AboutGoldSurface = Color(0xFFFFF7D7)
+    val AboutGoldBorder = Color(0xFFFFCF5A)
+    val AboutGoldGlow = Color(0xFFFFD24A)
+    val AboutGoldSoft = Color(0xFFFFE9A7)
+    val AboutGoldLight = Color(0xFFFFE39A)
+    val AboutGoldPale = Color(0xFFFFF9E7)
+    val AboutGlassSurface = White.copy(alpha = 0.58f)
+    val AboutGlassSurfaceStrong = White.copy(alpha = 0.82f)
+    val AboutGlassSurfaceMuted = White.copy(alpha = 0.46f)
+    val AboutGlassBorder = White.copy(alpha = 0.88f)
+    val AboutGlassBorderStrong = White.copy(alpha = 0.92f)
 
     val GlassGradient: Brush
         get() = Brush.verticalGradient(
