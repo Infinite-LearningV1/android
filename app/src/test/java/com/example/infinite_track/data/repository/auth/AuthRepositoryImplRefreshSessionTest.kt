@@ -747,6 +747,45 @@ class AuthRepositoryImplRefreshSessionTest {
     }
 
     @Test
+    fun `refresh session keeps stored user id when backend omits id but returns auth tokens`() = runBlocking {
+        val userPreference = createUserPreference()
+        userPreference.saveSession(token = "old-access", userId = "10", refreshToken = "old-refresh")
+        val fakeAuthSessionApi = FakeAuthSessionApiService(
+            refreshSessionBlock = {
+                RefreshSessionResponse(
+                    success = true,
+                    message = "ok",
+                    data = RefreshSessionData(
+                        id = 0,
+                        token = null,
+                        refreshToken = null,
+                        auth = AuthPayload(
+                            accessToken = "primary-new-access",
+                            refreshToken = "primary-new-refresh"
+                        )
+                    )
+                )
+            }
+        )
+
+        val repository = AuthRepositoryImpl(
+            userPreference = userPreference,
+            apiService = FakeApiService(
+                refreshBlock = { request -> fakeAuthSessionApi.refreshSession(request) }
+            ),
+            authSessionApiService = fakeAuthSessionApi,
+            userDao = FakeUserDao()
+        )
+
+        val result = repository.refreshSession()
+
+        assertTrue(result.isSuccess)
+        assertEquals("primary-new-access", userPreference.getAuthToken().first())
+        assertEquals("primary-new-refresh", userPreference.getRefreshToken().first())
+        assertEquals("10", userPreference.getUserId().first())
+    }
+
+    @Test
     fun `refresh session success stores latest tokens`() = runBlocking {
         val userPreference = createUserPreference()
         userPreference.saveSession(token = "old-access", userId = "10", refreshToken = "old-refresh")
@@ -851,7 +890,7 @@ class AuthRepositoryImplRefreshSessionTest {
     }
 
     @Test
-    fun `refresh session returns temporary failure and does not persist when user id is invalid`() = runBlocking {
+    fun `refresh session falls back to stored user id when payload omits id`() = runBlocking {
         val userPreference = createUserPreference()
         userPreference.saveSession(token = "old-access", userId = "10", refreshToken = "old-refresh")
 
@@ -879,9 +918,9 @@ class AuthRepositoryImplRefreshSessionTest {
 
         val result = repository.refreshSession()
 
-        assertTrue(result.isFailure)
-        assertEquals("old-access", userPreference.getAuthToken().first())
-        assertEquals("old-refresh", userPreference.getRefreshToken().first())
+        assertTrue(result.isSuccess)
+        assertEquals("new-access", userPreference.getAuthToken().first())
+        assertEquals("new-refresh", userPreference.getRefreshToken().first())
         assertEquals("10", userPreference.getUserId().first())
     }
 

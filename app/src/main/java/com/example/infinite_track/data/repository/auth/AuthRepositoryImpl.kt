@@ -60,8 +60,13 @@ class AuthRepositoryImpl @Inject constructor(
                 RefreshSessionRequest(refreshToken = existingRefreshToken)
             ).data
             val accessToken = refreshData.resolvedAccessToken()
+            val existingUserId = userPreference.getUserId().first()
+            val refreshedUserId = refreshData.id
+                .takeIf { it > 0 }
+                ?.toString()
+                ?: existingUserId.takeIf { it.isNotBlank() }
 
-            if (accessToken.isBlank() || refreshData.id <= 0) {
+            if (accessToken.isBlank() || refreshedUserId.isNullOrBlank()) {
                 val error = IllegalStateException("Invalid refresh session payload")
                 safeLogError("Refresh session returned invalid payload", error)
                 return Result.failure(
@@ -74,7 +79,6 @@ class AuthRepositoryImpl @Inject constructor(
                 )
             }
 
-            val refreshedUserId = refreshData.id.toString()
             val refreshTokenToStore = refreshData.resolvedRefreshToken() ?: existingRefreshToken
 
             userPreference.saveSession(
