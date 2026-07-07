@@ -79,3 +79,9 @@ val Green_Success = Color(0xFF56EBA1) // Success state color
 val Blue_Info = Color(0xFF214CE0)     // Information state color
 val Yellow_Warning = Color(0xFFFDE172) // Warning state color
 val Red_Error = Color(0xFFFF5C5C)     // Error state color
+
+// Shared request/status colors. Keep status surfaces aligned across reusable components.
+val Status_Approved = Blue_Accent_700
+val Status_Rejected = Red_Error
+val Status_Pending = Orange_500
+val Status_Default = Blue_500

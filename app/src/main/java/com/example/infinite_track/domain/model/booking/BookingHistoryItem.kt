@@ -9,5 +9,12 @@ data class BookingHistoryItem(
     val suitabilityLabel: String,
     val bookingId: Int = 0,
     val scheduleDateRaw: String = "",
-    val statusRaw: String = ""
+    val statusRaw: String = "",
+    val statusKey: String = statusRaw,
+    val statusLabel: String = status,
+    val suitabilityScore: Double? = null,
+    val createdAtRaw: String = "",
+    val createdAt: String = "-",
+    val processedAtRaw: String? = null,
+    val processedAt: String = "Not processed yet"
 )

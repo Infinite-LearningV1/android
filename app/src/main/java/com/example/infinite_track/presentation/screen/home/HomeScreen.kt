@@ -27,12 +27,9 @@ fun HomeScreen(
     navigateAttendance: () -> Unit = {},
     navigateTimeOffRequest: () -> Unit = {},
     navigateListMyAttendance: () -> Unit = {},
-    navigateToBookingHistory: () -> Unit = {},
 ) {
-    // Collect all state from centralized HomeViewModel
     val userProfile by viewModel.userProfileState.collectAsState()
     val attendanceState by viewModel.topAttendanceHistoryState.collectAsState()
-    val bookingHistoryState by viewModel.bookingHistoryState.collectAsState()
     val annualBalance by viewModel.annualBalance.collectAsState()
     val annualUsed by viewModel.annualUsed.collectAsState()
     val currentLocation by viewModel.currentAddressState.collectAsState()
@@ -50,10 +47,8 @@ fun HomeScreen(
                 contentAlignment = Alignment.Center
             ) {
                 if (userProfile == null) {
-                    // Show loading indicator when user profile is not yet loaded
                     LoadingAnimation()
                 } else {
-                    // Display content based on user role
                     Column(
                         modifier = modifier
                             .fillMaxSize()
@@ -61,37 +56,30 @@ fun HomeScreen(
                     ) {
                         when (userProfile?.roleName) {
                             "Internship" -> {
-                                // Use InternshipContent with both attendance and booking history data
                                 InternshipContent(
                                     user = userProfile,
                                     summaryData = internshipSummary,
                                     currentLocation = currentLocation,
                                     attendanceState = attendanceState,
-                                    bookingHistoryState = bookingHistoryState,
-                                    navigateToListMyAttendance = navigateListMyAttendance,
-                                    navigateToBookingHistory = navigateToBookingHistory
+                                    navigateToListMyAttendance = navigateListMyAttendance
                                 )
                             }
 
                             "Admin", "Employee", "Management" -> {
-                                // Use EmployeeAndManagerComponent with both attendance and booking history data
                                 EmployeeAndManagerComponent(
                                     user = userProfile,
                                     attendanceState = attendanceState,
-                                    bookingHistoryState = bookingHistoryState,
                                     annualBalance = annualBalance,
                                     annualUsed = annualUsed,
                                     currentLocation = currentLocation,
                                     isLoading = isLoading,
                                     navigateAttendance = navigateAttendance,
                                     navigateTimeOffRequest = navigateTimeOffRequest,
-                                    navigateListMyAttendance = navigateListMyAttendance,
-                                    navigateToBookingHistory = navigateToBookingHistory
+                                    navigateListMyAttendance = navigateListMyAttendance
                                 )
                             }
 
                             else -> {
-                                // Display a message for unknown role
                                 Text("Unknown user role: ${userProfile?.roleName}")
                             }
                         }

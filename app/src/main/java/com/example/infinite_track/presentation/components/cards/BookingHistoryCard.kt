@@ -31,6 +31,7 @@ import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import com.example.infinite_track.presentation.theme.Purple_300
 import com.example.infinite_track.presentation.theme.Purple_400
 import com.example.infinite_track.presentation.theme.Purple_500
+import com.example.infinite_track.presentation.theme.requestStatusColor
 
 @Composable
 fun BookingHistoryCard(
@@ -173,14 +174,7 @@ fun BookingHistoryCard(
 			modifier = Modifier
 				.align(Alignment.TopEnd)
 				.clip(RoundedCornerShape(topEnd = 16.dp, bottomStart = 8.dp))
-				.background(
-					when (booking.status) {
-						"Pending" -> Color(0xFFFFC107)
-						"Approved" -> Color(0xFF4CAF50)
-						"Rejected" -> Color(0xFFF44336)
-						else -> Color(0xFFFFC107)
-					}
-				)
+				.background(requestStatusColor(booking.statusKey.ifBlank { booking.status }))
 				.padding(horizontal = 12.dp, vertical = 4.dp)
 		) {
 			Text(

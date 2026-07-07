@@ -19,10 +19,8 @@ import androidx.compose.ui.unit.dp
 import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.attendance.AttendanceRecord
 import com.example.infinite_track.domain.model.auth.UserModel
-import com.example.infinite_track.domain.model.booking.BookingHistoryItem
 import com.example.infinite_track.presentation.components.button.SeeAllButton
 import com.example.infinite_track.presentation.components.cards.AttendanceHistoryC
-import com.example.infinite_track.presentation.components.cards.BookingHistoryCard
 import com.example.infinite_track.presentation.components.cards.MenuCard
 import com.example.infinite_track.presentation.components.empty.EmptyListAnimation
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
@@ -37,7 +35,6 @@ fun EmployeeAndManagerComponent(
     modifier: Modifier = Modifier,
     user: UserModel?,
     attendanceState: UiState<List<AttendanceRecord>>,
-    bookingHistoryState: UiState<List<BookingHistoryItem>>,
     annualBalance: Int,
     annualUsed: Int,
     currentLocation: String,
@@ -45,7 +42,6 @@ fun EmployeeAndManagerComponent(
     navigateAttendance: () -> Unit,
     navigateTimeOffRequest: () -> Unit,
     navigateListMyAttendance: () -> Unit,
-    navigateToBookingHistory: () -> Unit,
 ) {
     val annualLeft = annualBalance - annualUsed
 
@@ -81,7 +77,6 @@ fun EmployeeAndManagerComponent(
 
                 Spacer(modifier.height(12.dp))
 
-                // Loading (jika sedang memuat data)
                 if (isLoading) {
                     Box(
                         modifier = Modifier
@@ -94,7 +89,6 @@ fun EmployeeAndManagerComponent(
                 } else {
                     Spacer(modifier.height(12.dp))
 
-                    // Tombol lihat semua absensi
                     SeeAllButton(
                         label = stringResource(R.string.attendance_history),
                         onClickButton = navigateListMyAttendance
@@ -102,7 +96,6 @@ fun EmployeeAndManagerComponent(
 
                     Spacer(modifier.height(12.dp))
 
-                    // Data Absensi
                     when (attendanceState) {
                         is UiState.Success -> {
                             if (attendanceState.data.isEmpty()) {
@@ -112,9 +105,7 @@ fun EmployeeAndManagerComponent(
                                         .padding(vertical = 24.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                    ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         EmptyListAnimation(modifier = Modifier.size(150.dp))
                                         Text(
                                             text = "No attendance records found",
@@ -123,9 +114,7 @@ fun EmployeeAndManagerComponent(
                                     }
                                 }
                             } else {
-                                // Using Column instead of LazyColumn for better height management
-                                val attendanceItems =
-                                    attendanceState.data.take(5) // Max 5 items for employee/manager
+                                val attendanceItems = attendanceState.data.take(5)
                                 Column(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -142,9 +131,7 @@ fun EmployeeAndManagerComponent(
                                 modifier = Modifier.fillMaxWidth(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     EmptyListAnimation(modifier = Modifier.size(150.dp))
                                     Text(
                                         text = attendanceState.errorMessage,
@@ -165,91 +152,8 @@ fun EmployeeAndManagerComponent(
                             }
                         }
 
-                        is UiState.Idle -> {
-                            // Do nothing or show a placeholder if needed
-                        }
+                        is UiState.Idle -> Unit
                     }
-                    Spacer(modifier.height(12.dp))
-
-                    SeeAllButton(
-                        label = "Riwayat Booking WFA",
-                        onClickButton = navigateToBookingHistory
-                    )
-
-                    Spacer(modifier.height(12.dp))
-
-                    // Data Booking History
-                    when (bookingHistoryState) {
-                        is UiState.Success -> {
-                            if (bookingHistoryState.data.isEmpty()) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 24.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                    ) {
-                                        EmptyListAnimation(modifier = Modifier.size(150.dp))
-                                        Text(
-                                            text = "No booking records found",
-                                            style = headline4,
-                                        )
-                                    }
-                                }
-                            } else {
-                                // Using Column instead of LazyColumn for better height management
-                                val bookingItems = bookingHistoryState.data.take(3) // Max 3 items
-                                Column(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    bookingItems.forEach { booking ->
-                                        BookingHistoryCard(booking = booking)
-                                    }
-                                }
-                            }
-                        }
-
-                        is UiState.Error -> {
-                            Box(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                ) {
-                                    EmptyListAnimation(modifier = Modifier.size(150.dp))
-                                    Text(
-                                        text = bookingHistoryState.errorMessage,
-                                        style = headline4,
-                                    )
-                                }
-                            }
-                        }
-
-                        is UiState.Loading -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 24.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                LoadingAnimation()
-                            }
-                        }
-
-                        is UiState.Idle -> {
-                            // Do nothing or show a placeholder if needed
-                        }
-                    }
-
-                    // Dynamic spacing - only add spacer if there are booking items
-                    if (bookingHistoryState is UiState.Success && bookingHistoryState.data.isNotEmpty()) {
-                        Spacer(modifier.height(12.dp))
-                    }
-
                 }
             }
         }
