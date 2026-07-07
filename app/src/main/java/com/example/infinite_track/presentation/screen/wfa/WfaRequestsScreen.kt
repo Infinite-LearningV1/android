@@ -11,16 +11,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -35,7 +31,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -46,18 +41,17 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.infinite_track.presentation.components.loading.InlineRefreshingIndicator
+import com.example.infinite_track.presentation.core.headline3
 import com.example.infinite_track.presentation.screen.wfa.components.WfaRequestCard
 import com.example.infinite_track.presentation.screen.wfa.components.WfaRequestFilterChips
 import com.example.infinite_track.presentation.screen.wfa.components.WfaRequestStatusSummary
 import com.example.infinite_track.presentation.theme.Blue_500
-import com.example.infinite_track.presentation.theme.Blue_600
 import com.example.infinite_track.presentation.theme.Purple_300
 import com.example.infinite_track.presentation.theme.Purple_500
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
 fun WfaRequestsScreen(
-    onOpenAttendance: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: WfaRequestsViewModel = hiltViewModel()
 ) {
@@ -90,13 +84,7 @@ fun WfaRequestsScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = Color.Transparent,
-        bottomBar = {
-            OpenAttendanceAction(
-                onOpenAttendance = onOpenAttendance,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
-            )
-        }
+        containerColor = Color.Transparent
     ) { innerPadding ->
         LazyColumn(
             state = listState,
@@ -193,18 +181,15 @@ fun WfaRequestsScreen(
 
 @Composable
 private fun WfaRequestsHeader() {
-    Column {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp),
+        horizontalArrangement = Arrangement.Center
+    ) {
         Text(
             text = "WFA Requests",
-            style = MaterialTheme.typography.headlineMedium,
-            color = Purple_500,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = "Track your Work From Anywhere submissions",
-            style = MaterialTheme.typography.bodyLarge,
-            color = Blue_600,
-            modifier = Modifier.padding(top = 2.dp)
+            style = headline3
         )
     }
 }
@@ -273,47 +258,6 @@ private fun ErrorState(
     }
 }
 
-@Composable
-private fun OpenAttendanceAction(
-    onOpenAttendance: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Button(
-        onClick = onOpenAttendance,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(58.dp),
-        shape = RoundedCornerShape(18.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-        contentPadding = PaddingValues()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.horizontalGradient(
-                        listOf(Blue_500, Blue_600)
-                    ),
-                    shape = RoundedCornerShape(18.dp)
-                ),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            androidx.compose.material3.Icon(
-                imageVector = Icons.Default.ArrowForward,
-                contentDescription = null,
-                tint = Color.White
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "Open Attendance",
-                color = Color.White,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
 
 private const val PullToRefreshThresholdPx = 160f
 
