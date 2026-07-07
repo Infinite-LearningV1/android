@@ -39,6 +39,7 @@ import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinates
 import com.example.infinite_track.domain.use_case.location.SearchLocationUseCase
 import com.example.infinite_track.domain.use_case.profile.UpdateProfileUseCase
 import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
+import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.google.android.gms.location.FusedLocationProviderClient
 import dagger.Module
 import dagger.Provides
