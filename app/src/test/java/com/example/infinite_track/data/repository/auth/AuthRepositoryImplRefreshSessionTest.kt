@@ -1123,7 +1123,7 @@ private class FakeApiService(
 ) : ApiService {
     var lastRefreshRequest: RefreshSessionRequest? = null
 
-    override suspend fun login(credentials: LoginCredentials): LoginResponse {
+    override suspend fun login(loginRequest: LoginRequest): LoginResponse {
         return loginBlock(loginRequest)
     }
 

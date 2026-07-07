@@ -7,6 +7,7 @@ import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.local.room.UserEntity
 import com.example.infinite_track.domain.manager.SessionManager
+import com.example.infinite_track.domain.model.auth.ReauthReason
 import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
 import com.google.gson.Gson
 import java.io.File

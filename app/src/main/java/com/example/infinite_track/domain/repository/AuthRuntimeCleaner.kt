@@ -1,5 +1,5 @@
 package com.example.infinite_track.domain.repository
 
-interface AuthRuntimeCleaner {
+fun interface AuthRuntimeCleaner {
     suspend fun clearAuthenticatedRuntime()
 }

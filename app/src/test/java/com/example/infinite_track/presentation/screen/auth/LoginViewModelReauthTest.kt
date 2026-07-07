@@ -4,6 +4,7 @@ import android.content.ContextWrapper
 import com.example.infinite_track.data.face.FaceProcessor
 import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.domain.manager.SessionManager
+import com.example.infinite_track.domain.model.auth.ReauthReason
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository

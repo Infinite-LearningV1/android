@@ -308,7 +308,7 @@ private class FakeApiService(
 
     override suspend fun checkOut(attendanceId: Int, request: CheckOutRequestDto): AttendanceResponse = checkOutResponse
 
-    override suspend fun login(credentials: LoginCredentials): LoginResponse = unsupported()
+    override suspend fun login(loginRequest: LoginRequest): LoginResponse = unsupported()
 
     override suspend fun getUserProfile(bootstrapAuthRequest: String?): LoginResponse = unsupported()
 

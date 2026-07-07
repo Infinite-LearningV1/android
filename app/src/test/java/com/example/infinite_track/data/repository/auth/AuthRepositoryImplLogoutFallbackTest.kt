@@ -146,7 +146,7 @@ private class LogoutFallbackFakeApiService(
         return logoutBlock()
     }
 
-    override suspend fun login(credentials: LoginCredentials): LoginResponse = throw NotImplementedError()
+    override suspend fun login(loginRequest: LoginRequest): LoginResponse = throw NotImplementedError()
     override suspend fun getUserProfile(bootstrapAuthRequest: String?): LoginResponse = throw NotImplementedError()
     override suspend fun logout(): LogoutResponse = throw NotImplementedError()
     override suspend fun refresh(request: RefreshRequest): RefreshResponse = throw NotImplementedError()

@@ -8,6 +8,7 @@ import androidx.lifecycle.LifecycleRegistry
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.domain.manager.SessionManager
+import com.example.infinite_track.domain.model.auth.ReauthReason
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.repository.AuthRefreshException
 import com.example.infinite_track.domain.repository.AuthRefreshFailureKind
