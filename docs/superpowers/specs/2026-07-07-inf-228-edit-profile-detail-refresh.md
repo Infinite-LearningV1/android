@@ -108,7 +108,7 @@ User uploaded the Edit Profile detail reference image on 2026-07-07. The image s
 | --- | --- |
 | Glass top app bar with large rounded surface | Screen-local `EditProfileTopBar` with back button and centered title |
 | Back button in soft circular glass | Rounded Material surface with existing back icon behavior via `onBackClick` |
-| Profile hero card | `EditProfileHeroCard` using soft surface, avatar/photo, name, position, role pill |
+| Profile hero card | `EditProfileHeroCard` using soft surface, avatar/photo from `UserModel.photoUrl` mapped from `/api/auth/me` `photo`, name, position, role pill |
 | Camera/edit photo button on avatar | Render visual camera button as disabled/no-op; no photo upload implementation |
 | Editable form card | `EditProfileFormCard` with local `EditProfileField` wrappers |
 | Editable fields with pencil icon | Full Name, NIP/NIM, and Phone use editable field rows with `ic_pencil` |

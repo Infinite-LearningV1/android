@@ -68,9 +68,6 @@ import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
 import com.example.infinite_track.utils.UiState
 
-private const val DefaultAvatarUrl =
-    "https://w7.pngwing.com/pngs/177/551/png-transparent-user-interface-design-computer-icons-default-stephen-salazar-graphy-user-interface-design-computer-wallpaper-sphere-thumbnail.png"
-
 @Composable
 fun EditProfile(
     onBackClick: () -> Unit,
@@ -221,8 +218,11 @@ private fun EditProfileHeroCard(user: UserModel?) {
                         .padding(4.dp)
                 ) {
                     AsyncImage(
-                        model = user?.photoUrl ?: DefaultAvatarUrl,
+                        model = user?.photoUrl?.takeIf { it.isNotBlank() },
                         contentDescription = null,
+                        placeholder = painterResource(R.drawable.ic_profile),
+                        error = painterResource(R.drawable.ic_profile),
+                        fallback = painterResource(R.drawable.ic_profile),
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(CircleShape)

@@ -28,7 +28,7 @@ Completed from uploaded Edit Profile reference image on 2026-07-07.
 Reference mapping:
 
 - Glass top app bar -> local rounded glass top bar with back button and centered title.
-- Profile hero -> avatar/photo, disabled/no-op camera badge, full name, position, role pill.
+- Profile hero -> avatar/photo from `UserModel.photoUrl` mapped from `/api/auth/me` `photo`, disabled/no-op camera badge, full name, position, role pill.
 - Editable form card -> Full Name, NIP/NIM, Phone rows with pencil affordance.
 - Phone active state -> focus-aware purple accent border/shadow using tokens.
 - Read-only rows -> Division, Position, Email rows with lock/read-only badge.
