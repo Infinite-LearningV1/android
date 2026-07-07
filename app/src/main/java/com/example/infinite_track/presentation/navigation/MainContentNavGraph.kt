@@ -46,8 +46,7 @@ fun NavGraphBuilder.mainContentNavGraph(
             viewModel = homeViewModel,
             navigateAttendance = { navController.safeNavigate(Screen.Attendance.route) },
             navigateTimeOffRequest = { navController.safeNavigate(Screen.TimeOffRequest.route) },
-            navigateListMyAttendance = { navController.safeNavigate(Screen.DetailMyAttendance.route) },
-            navigateToBookingHistory = { navController.safeNavigate(Screen.DetailsMyBooking.route) }
+            navigateListMyAttendance = { navController.safeNavigate(Screen.DetailMyAttendance.route) }
         )
     }
 
@@ -93,7 +92,9 @@ fun NavGraphBuilder.mainContentNavGraph(
     }
 
     composable(Screen.Wfa.route) {
-        WfaHistoryScreen()
+        WfaHistoryScreen(
+            onOpenAttendance = { navController.safeNavigate(Screen.Attendance.route) }
+        )
     }
 
     // Profile Feature Flow

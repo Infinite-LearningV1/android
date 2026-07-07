@@ -52,11 +52,7 @@ class HomeViewModel @Inject constructor(
 	private val _annualUsed = MutableStateFlow(5)
 	val annualUsed: StateFlow<Int> = _annualUsed
 
-	// Booking history state for WFA
-	private val _bookingHistoryState =
-		MutableStateFlow<UiState<List<BookingHistoryItem>>>(UiState.Loading)
-	val bookingHistoryState: StateFlow<UiState<List<BookingHistoryItem>>> = _bookingHistoryState
-
+	// Detailed booking history state for legacy DetailsMyBooking route; WFA tab owns the primary booking history UI.
 	// Detailed booking history state for DetailsMyBooking screen
 	data class BookingHistoryDetailsState(
 		val isLoading: Boolean = true,
@@ -79,7 +75,6 @@ class HomeViewModel @Inject constructor(
 		fetchCurrentAddress()
 		loadDummyLeaveData()
 		fetchInternshipDashboardData()
-		fetchTopBookingHistory()
 	}
 
 	private fun fetchUserProfile() {
@@ -131,27 +126,6 @@ class HomeViewModel @Inject constructor(
 			}.onFailure {
 				// On failure, just leave the state as null
 				_internshipSummaryState.value = null
-			}
-		}
-	}
-
-	private fun fetchTopBookingHistory() {
-		viewModelScope.launch {
-			_bookingHistoryState.value = UiState.Loading
-			try {
-				val result = getBookingHistoryUseCase(
-					status = null, // null means all
-					page = 1,
-					limit = 3
-				)
-				result.onSuccess { bookingPage ->
-					_bookingHistoryState.value = UiState.Success(bookingPage.bookings)
-				}.onFailure { exception ->
-					_bookingHistoryState.value =
-						UiState.Error(exception.message ?: "Unknown error occurred")
-				}
-			} catch (e: Exception) {
-				_bookingHistoryState.value = UiState.Error(e.message ?: "Unknown error occurred")
 			}
 		}
 	}
