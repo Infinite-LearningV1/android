@@ -164,6 +164,25 @@
     <string name="account_hub_logout_description">Securely sign out from this account</string>
     <string name="account_hub_not_available">Not available</string>
     <string name="account_hub_identifier">NIP/NIM %1$s</string>
+    <string name="edit_profile_title">Edit Profile</string>
+    <string name="edit_profile_full_name">Full Name</string>
+    <string name="edit_profile_nip_nim">NIP / NIM</string>
+    <string name="edit_profile_phone_number">Phone Number</string>
+    <string name="edit_profile_division">Division</string>
+    <string name="edit_profile_position">Position</string>
+    <string name="edit_profile_email">Email</string>
+    <string name="edit_profile_read_only">Read only</string>
+    <string name="edit_profile_save_changes">Save Changes</string>
+    <string name="edit_profile_saving">Saving...</string>
+    <string name="edit_profile_cancel">Cancel</string>
+    <string name="edit_profile_success_title">Profile updated successfully.</string>
+    <string name="edit_profile_success_message">Your profile changes have been saved.</string>
+    <string name="edit_profile_error_title">Unable to update profile.</string>
+    <string name="edit_profile_error_message">Please try again.</string>
+    <string name="edit_profile_no_position">No Position</string>
+    <string name="edit_profile_no_division">No Division</string>
+    <string name="edit_profile_no_phone">No phone number</string>
+    <string name="edit_profile_photo_action_disabled">Profile photo editing is not available yet</string>
 
 
     <!--  TimeOff Screen  -->

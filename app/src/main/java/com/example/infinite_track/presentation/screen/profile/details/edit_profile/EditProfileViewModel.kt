@@ -113,13 +113,17 @@ class EditProfileViewModel @Inject constructor(
             val request = ProfileUpdateRequest(
                 fullName = _fullName.value.takeIf { it != currentUser.fullName },
                 nipNim = _nipNim.value.takeIf { it != currentUser.nipNim },
-                phone = _phone.value.takeIf { it != currentUser.phone }
+                phone = _phone.value.takeIf { it != currentUser.phone.orEmpty() }
             )
 
             // Only update if there are changes
             if (isFormChanged(currentUser)) {
                 updateProfileUseCase(currentUser.id, request)
                     .onSuccess { updatedUser ->
+                        _userProfileState.value = updatedUser
+                        _fullName.value = updatedUser.fullName
+                        _nipNim.value = updatedUser.nipNim
+                        _phone.value = updatedUser.phone ?: ""
                         _updateProfileState.value = UiState.Success(updatedUser)
                         _isEditing.value = false
                     }
@@ -154,7 +158,7 @@ class EditProfileViewModel @Inject constructor(
     private fun isFormChanged(currentUser: UserModel): Boolean {
         return _fullName.value != currentUser.fullName ||
                 _nipNim.value != currentUser.nipNim ||
-                _phone.value != currentUser.phone
+                _phone.value != currentUser.phone.orEmpty()
     }
 
     /**

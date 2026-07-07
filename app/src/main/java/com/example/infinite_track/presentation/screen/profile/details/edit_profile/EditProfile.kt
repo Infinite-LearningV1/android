@@ -1,207 +1,520 @@
 package com.example.infinite_track.presentation.screen.profile.details.edit_profile
 
-import android.widget.Toast
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.infinite_track.presentation.components.avatar.ProfileCard
-import com.example.infinite_track.presentation.components.button.CancelButton
-import com.example.infinite_track.presentation.components.button.InfiniteTracButtonBack
-import com.example.infinite_track.presentation.components.button.InfiniteTrackButton
-import com.example.infinite_track.presentation.components.profile_textfield.PhoneNumberTextFieldComponent
-import com.example.infinite_track.presentation.components.profile_textfield.ProfileTextFieldComponent
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import com.example.infinite_track.R
+import com.example.infinite_track.domain.model.auth.UserModel
+import com.example.infinite_track.presentation.components.status.InfiniteTrackInlineAlert
+import com.example.infinite_track.presentation.components.status.StatusStateSpec
+import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.core.headline2
+import com.example.infinite_track.presentation.core.headline3
+import com.example.infinite_track.presentation.core.headline4
+import com.example.infinite_track.presentation.design.components.button.InfiniteButtonState
+import com.example.infinite_track.presentation.design.components.button.InfiniteButtonVariant
+import com.example.infinite_track.presentation.design.components.button.InfiniteButton
+import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
+import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
+import com.example.infinite_track.presentation.design.tokens.InfiniteColors
+import com.example.infinite_track.presentation.design.tokens.InfiniteSize
 import com.example.infinite_track.utils.UiState
 
-/**
- * Edit Profile Screen component
- * Purely reactive UI that only displays state from ViewModel
- * and forwards user actions to ViewModel
- */
+private const val DefaultAvatarUrl =
+    "https://w7.pngwing.com/pngs/177/551/png-transparent-user-interface-design-computer-icons-default-stephen-salazar-graphy-user-interface-design-computer-wallpaper-sphere-thumbnail.png"
+
 @Composable
 fun EditProfile(
     onBackClick: () -> Unit,
     viewModel: EditProfileViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
+    val userProfile by viewModel.userProfileState.collectAsStateWithLifecycle()
+    val fullName by viewModel.fullName.collectAsStateWithLifecycle()
+    val phone by viewModel.phone.collectAsStateWithLifecycle()
+    val nipNim by viewModel.nipNim.collectAsStateWithLifecycle()
+    val updateProfileState by viewModel.updateProfileState.collectAsStateWithLifecycle()
 
-    // Collect states from ViewModel
-    val userProfile by viewModel.userProfileState.collectAsState()
-    val fullName by viewModel.fullName.collectAsState()
-    val phone by viewModel.phone.collectAsState()
-    val nipNim by viewModel.nipNim.collectAsState()
-    val isEditing by viewModel.isEditing.collectAsState()
-    val updateProfileState by viewModel.updateProfileState.collectAsState()
+    val isSaving = updateProfileState is UiState.Loading
+    val hasChanges = userProfile?.let { user ->
+        fullName != user.fullName ||
+            nipNim != user.nipNim ||
+            phone != user.phone.orEmpty()
+    } ?: false
+    val canSave = userProfile != null &&
+        fullName.isNotBlank() &&
+        nipNim.isNotBlank() &&
+        hasChanges &&
+        !isSaving
 
-    // Process update profile state
-    LaunchedEffect(updateProfileState) {
-        when (updateProfileState) {
-            is UiState.Success -> {
-                Toast.makeText(
-                    context,
-                    "Profile updated successfully!",
-                    Toast.LENGTH_SHORT
-                ).show()
-                onBackClick() // Navigate back on successful update
-                viewModel.resetUpdateState() // Reset state after handling
-            }
-
-            is UiState.Error -> {
-                Toast.makeText(
-                    context,
-                    (updateProfileState as UiState.Error).errorMessage,
-                    Toast.LENGTH_SHORT
-                ).show()
-                viewModel.resetUpdateState() // Reset state after handling error
-            }
-
-            else -> { /* Do nothing for other states */
-            }
-        }
-    }
-
-    // UI Layout
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = Color.Transparent,
         topBar = {
-            InfiniteTracButtonBack(
-                title = "Edit Profile",
-                navigationBack = onBackClick,
-                modifier = Modifier.padding(top = 12.dp)
+            EditProfileTopBar(onBackClick = onBackClick)
+        },
+        bottomBar = {
+            EditProfileBottomActionBar(
+                canSave = canSave,
+                isSaving = isSaving,
+                onSave = { viewModel.onSaveChangesClick() },
+                onCancel = {
+                    viewModel.onCancelClick()
+                    onBackClick()
+                }
             )
         }
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .background(InfiniteColors.AccountHubBackgroundGradient)
+                .verticalScroll(rememberScrollState())
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Loading indicator when update is in progress
-            if (updateProfileState is UiState.Loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
-                )
+            EditProfileHeroCard(user = userProfile)
+            EditProfileFormCard(
+                user = userProfile,
+                fullName = fullName,
+                nipNim = nipNim,
+                phone = phone,
+                onFullNameChange = viewModel::onFullNameChange,
+                onNipNimChange = viewModel::onNipNimChange,
+                onPhoneChange = viewModel::onPhoneChange
+            )
+            EditProfileFeedback(
+                updateProfileState = updateProfileState,
+                onDismiss = { viewModel.resetUpdateState() }
+            )
+            Spacer(modifier = Modifier.height(88.dp))
+        }
+    }
+}
+
+@Composable
+private fun EditProfileTopBar(onBackClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = InfiniteColors.AccountHubHeroSurface),
+        border = BorderStroke(1.dp, InfiniteColors.AccountHubHeroOutline),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(78.dp)
+                .background(InfiniteColors.AccountHubHeroGradient)
+                .padding(horizontal = 18.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .size(52.dp)
+                    .clickable { onBackClick() },
+                shape = CircleShape,
+                color = InfiniteColors.AccountHubFloatingSurface,
+                border = BorderStroke(1.dp, InfiniteColors.AccountHubStrongOutline),
+                shadowElevation = 4.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_backks),
+                        contentDescription = stringResource(R.string.cancel),
+                        tint = InfiniteColors.AccountHubTitle,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            Text(
+                text = stringResource(R.string.edit_profile_title),
+                style = headline2,
+                color = InfiniteColors.AccountHubTitle,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun EditProfileHeroCard(user: UserModel?) {
+    val unavailable = stringResource(R.string.account_hub_not_available)
+    val fullName = user?.fullName?.ifBlank { unavailable } ?: unavailable
+    val position = user?.positionName?.ifBlank { null } ?: stringResource(R.string.edit_profile_no_position)
+    val role = user?.roleName?.ifBlank { unavailable } ?: unavailable
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = InfiniteColors.AccountHubHeroSurface),
+        border = BorderStroke(1.dp, InfiniteColors.AccountHubHeroOutline),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(InfiniteColors.AccountHubHeroGradient)
+                .padding(22.dp),
+            horizontalArrangement = Arrangement.spacedBy(22.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(contentAlignment = Alignment.BottomEnd) {
+                Box(
+                    modifier = Modifier
+                        .size(118.dp)
+                        .clip(CircleShape)
+                        .background(InfiniteColors.AccountHubAvatarRingGradient)
+                        .padding(4.dp)
+                ) {
+                    AsyncImage(
+                        model = user?.photoUrl ?: DefaultAvatarUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .border(3.dp, InfiniteColors.AccountHubOutline, CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                Surface(
+                    modifier = Modifier.size(44.dp),
+                    shape = CircleShape,
+                    color = InfiniteColors.AccountHubFloatingSurface,
+                    border = BorderStroke(1.dp, InfiniteColors.AccountHubStrongOutline),
+                    shadowElevation = 5.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_cameras),
+                            contentDescription = stringResource(R.string.edit_profile_photo_action_disabled),
+                            tint = InfiniteColors.AccountHubPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
             }
 
             Column(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Only show profile card if user profile is available
-                userProfile?.let { user ->
-                    ProfileCard(
-                        imageResId = com.example.infinite_track.R.drawable.logo,
-                        name = user.fullName,
-                        jobTitle = user.positionName ?: "No Position"
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Editable fields
-                ProfileTextFieldComponent(
-                    label = "Full Name",
-                    value = fullName,
-                    onValueChange = { viewModel.onFullNameChange(it) },
-                    enabled = isEditing
+                Text(
+                    text = fullName,
+                    style = headline2,
+                    color = InfiniteColors.AccountHubTitle,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                ProfileTextFieldComponent(
-                    label = "NIP / NIM",
-                    value = nipNim,
-                    onValueChange = { viewModel.onNipNimChange(it) },
-                    enabled = isEditing
+                Text(
+                    text = position,
+                    style = headline3,
+                    color = InfiniteColors.AccountHubMutedText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Read-only fields
-                userProfile?.let { user ->
-                    ProfileTextFieldComponent(
-                        label = "Division",
-                        value = user.divisionName ?: "No Division",
-                        enabled = false
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    ProfileTextFieldComponent(
-                        label = "Position",
-                        value = user.positionName ?: "No Position",
-                        enabled = false
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    ProfileTextFieldComponent(
-                        label = "Email",
-                        value = user.email,
-                        enabled = false
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                PhoneNumberTextFieldComponent(
-                    label = "Phone Number",
-                    value = phone,
-                    onValueChange = { viewModel.onPhoneChange(it) },
-                    enabled = isEditing
+                InfiniteStatusPill(
+                    label = role,
+                    variant = InfiniteStatusVariant.Recommended,
+                    size = InfiniteSize.Small,
+                    leadingIcon = null
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    if (isEditing) {
-                        InfiniteTrackButton(
-                            label = "Save",
-                            onClick = { viewModel.onSaveChangesClick() },
-                            enabled = true,
-                            isOutline = false
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        CancelButton(
-                            onClick = { viewModel.onCancelClick() },
-                            label = "Cancel"
-                        )
-                    }
-
-                    if (!isEditing) {
-                        InfiniteTrackButton(
-                            label = "Edit",
-                            onClick = { viewModel.onToggleEditMode() },
-                            enabled = true,
-                            isOutline = false
-                        )
-                    }
-                }
             }
+        }
+    }
+}
+
+@Composable
+private fun EditProfileFormCard(
+    user: UserModel?,
+    fullName: String,
+    nipNim: String,
+    phone: String,
+    onFullNameChange: (String) -> Unit,
+    onNipNimChange: (String) -> Unit,
+    onPhoneChange: (String) -> Unit
+) {
+    val noDivision = stringResource(R.string.edit_profile_no_division)
+    val noPosition = stringResource(R.string.edit_profile_no_position)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = InfiniteColors.AccountHubHeroSurface),
+        border = BorderStroke(1.dp, InfiniteColors.AccountHubHeroOutline),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            EditProfileField(
+                label = stringResource(R.string.edit_profile_full_name),
+                value = fullName,
+                onValueChange = onFullNameChange,
+                editable = true,
+                icon = R.drawable.ic_pencil
+            )
+            EditProfileField(
+                label = stringResource(R.string.edit_profile_nip_nim),
+                value = nipNim,
+                onValueChange = onNipNimChange,
+                editable = true,
+                icon = R.drawable.ic_pencil
+            )
+            EditProfileField(
+                label = stringResource(R.string.edit_profile_phone_number),
+                value = phone,
+                onValueChange = onPhoneChange,
+                editable = true,
+                icon = R.drawable.ic_pencil,
+                keyboardType = KeyboardType.Phone
+            )
+            EditProfileField(
+                label = stringResource(R.string.edit_profile_division),
+                value = user?.divisionName?.ifBlank { null } ?: noDivision,
+                onValueChange = {},
+                editable = false
+            )
+            EditProfileField(
+                label = stringResource(R.string.edit_profile_position),
+                value = user?.positionName?.ifBlank { null } ?: noPosition,
+                onValueChange = {},
+                editable = false
+            )
+            EditProfileField(
+                label = stringResource(R.string.edit_profile_email),
+                value = user?.email.orEmpty(),
+                onValueChange = {},
+                editable = false
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditProfileField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    editable: Boolean,
+    @DrawableRes icon: Int? = null,
+    keyboardType: KeyboardType = KeyboardType.Text
+) {
+    var focused by remember { mutableStateOf(false) }
+    val borderColor = when {
+        focused && editable -> InfiniteColors.AccountHubPrimary
+        editable -> InfiniteColors.AccountHubOutline
+        else -> InfiniteColors.AccountHubDividerColor
+    }
+    val fieldValue = value.ifBlank {
+        if (editable) "" else stringResource(R.string.account_hub_not_available)
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = label,
+            style = headline4,
+            color = InfiniteColors.AccountHubMutedText,
+            fontWeight = FontWeight.Medium
+        )
+        OutlinedTextField(
+            value = fieldValue,
+            onValueChange = onValueChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged { focused = it.isFocused },
+            enabled = editable,
+            readOnly = !editable,
+            singleLine = true,
+            textStyle = body1.copy(color = InfiniteColors.AccountHubTitle),
+            shape = RoundedCornerShape(18.dp),
+            trailingIcon = {
+                if (editable && icon != null) {
+                    Icon(
+                        painter = painterResource(icon),
+                        contentDescription = label,
+                        tint = InfiniteColors.AccountHubPrimary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                } else if (!editable) {
+                    ReadOnlyBadge()
+                }
+            },
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                containerColor = InfiniteColors.AccountHubIconSurface,
+                focusedBorderColor = borderColor,
+                unfocusedBorderColor = borderColor,
+                disabledBorderColor = borderColor,
+                cursorColor = InfiniteColors.AccountHubPrimary,
+                focusedTextColor = InfiniteColors.AccountHubTitle,
+                unfocusedTextColor = InfiniteColors.AccountHubTitle,
+                disabledTextColor = InfiniteColors.AccountHubBodyText,
+                disabledTrailingIconColor = InfiniteColors.AccountHubMutedText
+            )
+        )
+    }
+}
+
+@Composable
+private fun ReadOnlyBadge() {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = InfiniteColors.AccountHubFloatingSurface,
+        border = BorderStroke(1.dp, InfiniteColors.AccountHubDividerColor)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Lock,
+                contentDescription = null,
+                tint = InfiniteColors.AccountHubMutedText,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = stringResource(R.string.edit_profile_read_only),
+                style = headline4,
+                color = InfiniteColors.AccountHubMutedText,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun EditProfileFeedback(
+    updateProfileState: UiState<UserModel>,
+    onDismiss: () -> Unit
+) {
+    when (updateProfileState) {
+        is UiState.Success -> {
+            InfiniteTrackInlineAlert(
+                status = StatusStateSpec("success", "Success"),
+                title = stringResource(R.string.edit_profile_success_title),
+                message = stringResource(R.string.edit_profile_success_message),
+                onDismiss = onDismiss
+            )
+        }
+
+        is UiState.Error -> {
+            InfiniteTrackInlineAlert(
+                status = StatusStateSpec("error", "Error"),
+                title = stringResource(R.string.edit_profile_error_title),
+                message = updateProfileState.errorMessage.ifBlank {
+                    stringResource(R.string.edit_profile_error_message)
+                },
+                onDismiss = onDismiss
+            )
+        }
+
+        else -> Unit
+    }
+}
+
+@Composable
+private fun EditProfileBottomActionBar(
+    canSave: Boolean,
+    isSaving: Boolean,
+    onSave: () -> Unit,
+    onCancel: () -> Unit
+) {
+    val primaryState = when {
+        isSaving -> InfiniteButtonState.Loading
+        canSave -> InfiniteButtonState.Enabled
+        else -> InfiniteButtonState.Disabled
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = InfiniteColors.AccountHubHeroSurface,
+        shadowElevation = 8.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            InfiniteButton(
+                text = if (isSaving) {
+                    stringResource(R.string.edit_profile_saving)
+                } else {
+                    stringResource(R.string.edit_profile_save_changes)
+                },
+                onClick = onSave,
+                modifier = Modifier.weight(1f),
+                variant = InfiniteButtonVariant.Primary,
+                state = primaryState,
+                fullWidth = true
+            )
+            InfiniteButton(
+                text = stringResource(R.string.edit_profile_cancel),
+                onClick = onCancel,
+                modifier = Modifier.weight(1f),
+                variant = InfiniteButtonVariant.Outlined,
+                state = if (isSaving) InfiniteButtonState.Disabled else InfiniteButtonState.Enabled,
+                fullWidth = true
+            )
         }
     }
 }
