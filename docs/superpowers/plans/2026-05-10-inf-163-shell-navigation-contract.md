@@ -223,7 +223,7 @@ Expected: the diff is limited to INF-163 shell-navigation files plus the merge c
 
 ### Fact
 - Main shell bottom bar is driven from `MainShellNavigationPolicy`.
-- All supported main-shell roles use `Home | History | Contact | Profile`.
+- Historical note: this INF-163 bottom-bar contract used `Home | History | Contact | Profile`, but it is superseded by INF-224. Current Android shell source of truth is `Home | History | WFA | Profile`.
 - `MyLeave` is no longer a primary bottom-bar tab.
 - `Internship` keeps the Attendance FAB.
 - `Employee`, `Admin`, and `Management` now have no shell FAB.
