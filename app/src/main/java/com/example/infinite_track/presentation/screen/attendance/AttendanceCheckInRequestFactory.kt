@@ -1,20 +1,16 @@
 package com.example.infinite_track.presentation.screen.attendance
 
 import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
+import com.example.infinite_track.domain.model.attendance.WorkMode
 
 object AttendanceCheckInRequestFactory {
     fun create(
-        selectedWorkMode: String,
+        workMode: WorkMode,
         bookingId: Int?
     ): AttendanceRequestModel {
-        val categoryId = when (selectedWorkMode) {
-            "Work From Office", "WFO" -> 1
-            "Work From Home", "WFH" -> 2
-            "WFA", "Work From Anywhere" -> 3
-            else -> 1
-        }
+        val categoryId = workMode.categoryId
 
-        if (categoryId == 3 && bookingId == null) {
+        if (workMode == WorkMode.WFA && bookingId == null) {
             throw IllegalArgumentException("WFA check-in requires bookingId.")
         }
 

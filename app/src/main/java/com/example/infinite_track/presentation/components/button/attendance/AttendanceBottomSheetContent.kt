@@ -10,7 +10,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.infinite_track.domain.model.attendance.TargetLocationInfo
+import com.example.infinite_track.domain.model.attendance.Location
+import com.example.infinite_track.domain.model.attendance.SelectedTargetLocation
+import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.presentation.components.button.InfiniteTrackButton
 import com.example.infinite_track.presentation.components.status.InfiniteTrackInlineAlert
 import com.example.infinite_track.presentation.components.status.StatusStates
@@ -24,9 +26,9 @@ import com.example.infinite_track.presentation.theme.Purple_500
  * Komponen utama untuk konten BottomSheet attendance yang merakit semua komponen kecil.
  *
  * @param modifier Modifier untuk styling komponen
- * @param targetLocationInfo Informasi lokasi target (description dan nama lokasi dari API)
- * @param currentLocationAddress Alamat lokasi saat ini
- * @param selectedWorkMode Mode kerja yang dipilih ("WFH", "WFA", atau "WFO")
+ * @param targetLocationInfo Informasi lokasi target yang sudah di-resolve dari mode terpilih.
+ * @param currentLocationAddress Alamat lokasi saat ini.
+ * @param selectedWorkMode Mode kerja yang dipilih.
  * @param isBookingEnabled Apakah tombol booking dapat diklik
  * @param isCheckInEnabled Apakah tombol check-in dapat diklik
  * @param checkInButtonText Teks pada tombol check-in
@@ -39,16 +41,16 @@ import com.example.infinite_track.presentation.theme.Purple_500
 @Composable
 fun AttendanceBottomSheetContent(
     modifier: Modifier = Modifier,
-    targetLocationInfo: TargetLocationInfo?,
+    targetLocationInfo: SelectedTargetLocation?,
     currentLocationAddress: String,
-    selectedWorkMode: String,
+    selectedWorkMode: WorkMode,
     isBookingEnabled: Boolean,
     isCheckInEnabled: Boolean,
     checkInButtonText: String,
     actionState: AttendanceActionState? = null,
     outOfRangeWarningText: String = "Anda berada di luar jangkauan lokasi kerja ?",
     onSearchLocationClick: () -> Unit = {}, // Untuk navigasi ke LocationSearchScreen
-    onModeSelected: (String) -> Unit,
+    onModeSelected: (WorkMode) -> Unit,
     onBookingClick: () -> Unit,
     onCheckInClick: () -> Unit
 ) {
@@ -61,7 +63,7 @@ fun AttendanceBottomSheetContent(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // Search Location Button - Only show when Work From Anywhere is selected
-        if (selectedWorkMode == "WFA" || selectedWorkMode == "Work From Anywhere") {
+        if (selectedWorkMode == WorkMode.WFA) {
             InfiniteTrackButton(
                 label = "Cari Lokasi",
                 onClick = onSearchLocationClick,
@@ -89,6 +91,14 @@ fun AttendanceBottomSheetContent(
                 selectedMode = selectedWorkMode,
                 onModeSelected = onModeSelected
             )
+
+            blockingMessage?.let { message ->
+                Text(
+                    text = message,
+                    style = headline4,
+                    color = Purple_500
+                )
+            }
         }
 
         actionState?.let { state ->
@@ -101,7 +111,8 @@ fun AttendanceBottomSheetContent(
             isCheckInEnabled = isCheckInEnabled,
             checkInButtonText = checkInButtonText,
             onBookingClick = onBookingClick,
-            onCheckInClick = onCheckInClick
+            onCheckInClick = onCheckInClick,
+            showBookingAction = selectedWorkMode == WorkMode.WFA
         )
     }
 }
@@ -169,12 +180,9 @@ private fun AttendanceBottomSheetContentPreview() {
         Column {
             // Preview when in range
             AttendanceBottomSheetContent(
-                targetLocationInfo = TargetLocationInfo(
-                    description = "Jl. Sudirman No. 123, Jakarta Pusat, DKI Jakarta",
-                    locationName = "Sudirman"
-                ),
+                targetLocationInfo = previewTargetLocation(WorkMode.WFH),
                 currentLocationAddress = "Jl. Thamrin No. 456, Jakarta Pusat, DKI Jakarta",
-                selectedWorkMode = "WFH",
+                selectedWorkMode = WorkMode.WFH,
                 isBookingEnabled = true,
                 isCheckInEnabled = true,
                 checkInButtonText = "Check In",
@@ -193,12 +201,9 @@ private fun AttendanceBottomSheetContentOutOfRangePreview() {
         Column {
             // Preview when out of range
             AttendanceBottomSheetContent(
-                targetLocationInfo = TargetLocationInfo(
-                    description = "Jl. Sudirman No. 123, Jakarta Pusat, DKI Jakarta",
-                    locationName = "Sudirman"
-                ),
+                targetLocationInfo = previewTargetLocation(WorkMode.WFA),
                 currentLocationAddress = "Jl. Kemang No. 789, Jakarta Selatan, DKI Jakarta",
-                selectedWorkMode = "WFA",
+                selectedWorkMode = WorkMode.WFA,
                 isBookingEnabled = false,
                 isCheckInEnabled = true,
                 checkInButtonText = "Check In (WFA)",

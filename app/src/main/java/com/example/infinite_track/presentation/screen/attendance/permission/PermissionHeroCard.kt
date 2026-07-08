@@ -16,26 +16,22 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.infinite_track.presentation.components.tittle.Tittle
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
-import com.example.infinite_track.presentation.design.components.surface.InfiniteCard
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
-import com.example.infinite_track.presentation.design.tokens.InfiniteDensity
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
-import com.example.infinite_track.presentation.design.tokens.InfiniteSurfaceVariant
 
 @Composable
 internal fun PermissionHeroCard(
     uiState: AttendancePermissionReadinessUiState,
     modifier: Modifier = Modifier
 ) {
-    InfiniteCard(
-        variant = InfiniteSurfaceVariant.Glass,
-        density = InfiniteDensity.Spacious,
-        modifier = modifier.fillMaxWidth()
+    PermissionGlassCard(
+        modifier = modifier.fillMaxWidth(),
+        shadowElevation = 3.dp
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -57,7 +53,13 @@ internal fun PermissionHeroCard(
                     )
                 }
             }
-            Tittle(tittle = "Siapkan akses absensi")
+            Text(
+                text = "Siapkan akses absensi",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = InfiniteColors.Text.copy(alpha = 0.88f),
+                textAlign = TextAlign.Center
+            )
             Text(
                 text = "Kami cek lokasi, kamera, dan status lokasi perangkat sebelum Anda memilih mode kerja.",
                 style = MaterialTheme.typography.bodyMedium,

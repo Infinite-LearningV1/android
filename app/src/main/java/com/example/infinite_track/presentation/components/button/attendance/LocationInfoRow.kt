@@ -21,7 +21,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.infinite_track.domain.model.attendance.TargetLocationInfo
+import com.example.infinite_track.domain.model.attendance.Location
+import com.example.infinite_track.domain.model.attendance.SelectedTargetLocation
+import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.presentation.core.body1
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
@@ -30,7 +32,7 @@ import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
  */
 @Composable
 fun LocationInfoSection(
-    targetLocationInfo: TargetLocationInfo?,
+    targetLocationInfo: SelectedTargetLocation?,
     currentLocationAddress: String,
     modifier: Modifier = Modifier
 ) {
@@ -54,8 +56,8 @@ fun LocationInfoSection(
                 // Location Info Row dengan data dari API
                 LocationInfoRow(
                     icon = Icons.Default.LocationOn,
-                    primaryText = targetInfo.description, // Description dari API
-                    secondaryText = targetInfo.locationName // Nama lokasi dari koordinat API
+                    primaryText = targetInfo.displayName,
+                    secondaryText = targetInfo.description ?: targetInfo.unavailableReason
                 )
             }
         }
@@ -147,9 +149,19 @@ private fun LocationInfoSectionPreview() {
         ) {
             // Preview dengan target location info
             LocationInfoSection(
-                targetLocationInfo = TargetLocationInfo(
-                    description = "Kantor Pusat PT. Technology Indonesia",
-                    locationName = "Gedung Cyber 2, Kuningan"
+                targetLocationInfo = SelectedTargetLocation(
+                    mode = WorkMode.WFO,
+                    location = Location(
+                        locationId = 1,
+                        description = "Kantor Pusat PT. Technology Indonesia",
+                        latitude = 0.0,
+                        longitude = 0.0,
+                        radius = 100,
+                        category = "Gedung Cyber 2, Kuningan"
+                    ),
+                    displayName = "Kantor Pusat PT. Technology Indonesia",
+                    description = "Gedung Cyber 2, Kuningan",
+                    isAvailable = true
                 ),
                 currentLocationAddress = "Jl. Kemang Raya No. 123, Jakarta Selatan, DKI Jakarta"
             )

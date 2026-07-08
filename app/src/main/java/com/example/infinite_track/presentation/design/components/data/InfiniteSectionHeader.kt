@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -33,11 +34,28 @@ fun InfiniteSectionHeader(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         leadingIcon?.let {
-            Icon(imageVector = it, contentDescription = null, tint = InfiniteColors.Primary, modifier = Modifier.size(22.dp))
+            Icon(
+                imageVector = it,
+                contentDescription = null,
+                tint = InfiniteColors.Primary,
+                modifier = Modifier.size(22.dp)
+            )
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, fontWeight = FontWeight.SemiBold, color = InfiniteColors.Text)
-            subtitle?.let { Text(text = it, color = InfiniteColors.Text.copy(alpha = 0.64f)) }
+            Text(
+                text = title,
+                fontWeight = FontWeight.Medium,
+                color = InfiniteColors.Text,
+                style = MaterialTheme.typography.titleMedium
+            )
+            subtitle?.let {
+                Text(
+                    text = it,
+                    color = InfiniteColors.AttendanceReportMutedText,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Normal
+                )
+            }
         }
         if (trailingText != null || trailingIcon != null) {
             Row(
@@ -45,8 +63,22 @@ fun InfiniteSectionHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                trailingText?.let { Text(text = it, color = InfiniteColors.Primary) }
-                trailingIcon?.let { Icon(imageVector = it, contentDescription = trailingText, tint = InfiniteColors.Primary, modifier = Modifier.size(18.dp)) }
+                trailingText?.let {
+                    Text(
+                        text = it,
+                        color = InfiniteColors.Primary,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                trailingIcon?.let {
+                    Icon(
+                        imageVector = it,
+                        contentDescription = trailingText,
+                        tint = InfiniteColors.Primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         } else {
             Spacer(modifier = Modifier.size(0.dp))
