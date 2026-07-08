@@ -7,17 +7,25 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 fun AttendanceRecord.toReportStatus(): AttendanceReportStatusInfo {
+    val badgeKey = displayBadgeKey.orEmpty().lowercase(Locale.ROOT)
+    val badgeLabel = displayBadgeLabel.orEmpty().trim()
     val statusValue = status.orEmpty().lowercase(Locale.ROOT)
     val categoryValue = category.orEmpty().lowercase(Locale.ROOT)
+
     return when {
-        categoryValue.contains("alpha") || categoryValue.contains("absent") || statusValue.contains("alpha") || statusValue.contains("absent") -> {
-            AttendanceReportStatusInfo("Alpha", AttendanceReportStatusKind.Alpha)
+        badgeKey.contains("alpha") || categoryValue.contains("alpha") || categoryValue.contains("absent") || statusValue.contains("alpha") || statusValue.contains("absent") -> {
+            AttendanceReportStatusInfo(badgeLabel.ifBlank { "Alpha" }, AttendanceReportStatusKind.Alpha)
         }
-        timeOut.isNullOrBlank() -> AttendanceReportStatusInfo("Active Session", AttendanceReportStatusKind.ActiveSession)
-        statusValue.contains("late") -> AttendanceReportStatusInfo("Late", AttendanceReportStatusKind.Late)
-        statusValue.contains("on_time") || statusValue.contains("ontime") || statusValue.contains("on time") -> {
-            AttendanceReportStatusInfo("On Time", AttendanceReportStatusKind.OnTime)
+        badgeKey.contains("active") || timeOut.isNullOrBlank() -> {
+            AttendanceReportStatusInfo(badgeLabel.ifBlank { "Active Session" }, AttendanceReportStatusKind.ActiveSession)
         }
+        badgeKey.contains("late") -> {
+            AttendanceReportStatusInfo(badgeLabel.ifBlank { "Late" }, AttendanceReportStatusKind.Late)
+        }
+        badgeKey.contains("ontime") || badgeKey.contains("on_time") || badgeKey.contains("on-time") -> {
+            AttendanceReportStatusInfo(badgeLabel.ifBlank { "On Time" }, AttendanceReportStatusKind.OnTime)
+        }
+        badgeLabel.isNotBlank() -> AttendanceReportStatusInfo(badgeLabel, AttendanceReportStatusKind.Neutral)
         statusValue.isNotBlank() -> AttendanceReportStatusInfo(statusValue.toDisplayLabel(), AttendanceReportStatusKind.Neutral)
         else -> AttendanceReportStatusInfo("Unknown", AttendanceReportStatusKind.Unknown)
     }
@@ -25,6 +33,7 @@ fun AttendanceRecord.toReportStatus(): AttendanceReportStatusInfo {
 
 fun AttendanceRecord.toReportDateLabel(): String {
     return when {
+        dateLabel?.isNotBlank() == true -> dateLabel.orEmpty()
         attendanceDate?.isNotBlank() == true -> attendanceDate.orEmpty()
         monthYear.isNotBlank() -> "$date $monthYear"
         else -> date
@@ -32,22 +41,30 @@ fun AttendanceRecord.toReportDateLabel(): String {
 }
 
 fun AttendanceRecord.toReportWorkModeLabel(): String {
+    val backendModeLabel = modeLabel.orEmpty().trim()
+    if (backendModeLabel.isNotBlank()) return backendModeLabel
+
     val raw = category.orEmpty().trim()
     return if (raw.isBlank()) "Work mode unavailable" else raw.toDisplayLabel()
 }
 
 fun AttendanceRecord.toReportTimeRangeLabel(): String {
+    val backendTimeRange = timeRange.orEmpty().trim()
+    if (backendTimeRange.isNotBlank()) return backendTimeRange
+
     if (isAlphaRecord()) return "No check-in recorded"
     val checkOut = timeOut?.takeIf { it.isNotBlank() } ?: "Active"
-    return "Check-in $timeIn · Check-out $checkOut"
+    return "$timeIn - $checkOut"
 }
 
 fun AttendanceRecord.toReportWorkHourLabel(): String? {
     if (isAlphaRecord() || timeOut.isNullOrBlank()) return null
-    return workHour?.takeIf { it.isNotBlank() }?.let { "Work hours $it" }
+    return workHour?.takeIf { it.isNotBlank() }
 }
 
-fun List<AttendanceRecord>.toReportTotalWorkHoursLabel(): String {
+fun List<AttendanceRecord>.toReportTotalWorkHoursLabel(fallbackLabel: String? = null): String {
+    if (!fallbackLabel.isNullOrBlank()) return fallbackLabel
+
     val minutes = mapNotNull { record ->
         if (record.isAlphaRecord() || record.timeOut.isNullOrBlank()) null else record.workHour?.toMinutesOrNull()
     }.sum()

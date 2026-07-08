@@ -3,6 +3,7 @@ package com.example.infinite_track.presentation.screen.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.domain.model.attendance.AttendancePeriod
+import com.example.infinite_track.domain.model.attendance.AttendancePeriodInfo
 import com.example.infinite_track.domain.model.attendance.AttendanceRecord
 import com.example.infinite_track.domain.model.attendance.AttendanceSummaryInfo
 import com.example.infinite_track.domain.use_case.history.GetAttendanceHistoryUseCase
@@ -25,6 +26,7 @@ data class HistoryScreenState(
     val canLoadMore: Boolean = true,
     val error: String? = null,
     val selectedPeriod: String = AttendancePeriod.MONTHLY,
+    val periodInfo: AttendancePeriodInfo? = null,
     val summary: AttendanceSummaryInfo? = null,
     val records: List<AttendanceRecord> = emptyList(),
     val currentPage: Int = 1,
@@ -59,6 +61,7 @@ class HistoryViewModel @Inject constructor(
             _uiState.update { it.copy(
                 selectedPeriod = newPeriod,
                 records = emptyList(),
+                periodInfo = null,
                 summary = null,
                 currentPage = 1,
                 canLoadMore = newPeriod != AttendancePeriod.CUSTOM,
@@ -100,7 +103,8 @@ class HistoryViewModel @Inject constructor(
                 _uiState.update { it.copy(
                     currentPage = 1,
                     records = emptyList(),
-                    summary = null,
+                    periodInfo = null,
+                summary = null,
                     canLoadMore = false,
                     isLoading = false,
                     isRefreshing = false,
@@ -153,6 +157,7 @@ class HistoryViewModel @Inject constructor(
                         isLoading = false,
                         isRefreshing = false,
                         isLoadingMore = false,
+                        periodInfo = historyPage.period,
                         summary = historyPage.summary,
                         records = if (isRefresh) historyPage.records else currentState.records + historyPage.records,
                         canLoadMore = historyPage.pagination.hasNextPage
@@ -185,6 +190,7 @@ class HistoryViewModel @Inject constructor(
                 pageSize = size,
                 currentPage = 1,
                 records = emptyList(),
+                periodInfo = null,
                 summary = null,
                 canLoadMore = it.selectedPeriod != AttendancePeriod.CUSTOM,
                 isLoading = false,

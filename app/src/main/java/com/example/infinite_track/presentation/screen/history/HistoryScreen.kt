@@ -105,7 +105,7 @@ fun HistoryScreen(
                     selectedPeriod = uiState.selectedPeriod,
                     onPeriodSelected = viewModel::onFilterChanged,
                     title = "My Attendance Report",
-                    subtitle = null
+                    subtitle = uiState.periodInfo?.label
                 )
             }
 
@@ -160,18 +160,21 @@ fun HistoryScreen(
                 else -> {
                     item {
                         InfiniteAttendanceReportSummarySection(
-                            attendanceRateValue = "—",
-                            workHoursValue = remember(uiState.records) { uiState.records.toReportTotalWorkHoursLabel() },
+                            attendanceRateValue = uiState.summary?.attendanceRateLabel ?: "—",
+                            workHoursValue = remember(uiState.records, uiState.summary?.totalWorkHoursLabel) {
+                                uiState.records.toReportTotalWorkHoursLabel(uiState.summary?.totalWorkHoursLabel)
+                            },
                             lateCount = uiState.summary?.totalLate ?: 0,
                             alphaCount = uiState.summary?.totalAlpha ?: 0,
-                            subtitle = null
+                            subtitle = uiState.periodInfo?.label
                         )
                     }
 
                     item {
                         InfiniteAttendanceModeDistributionCard(
-                            wfoCount = uiState.summary?.totalWfo ?: 0,
-                            wfaCount = uiState.summary?.totalWfa ?: 0,
+                            wfoCount = uiState.summary?.modeDistribution?.wfo?.count ?: (uiState.summary?.totalWfo ?: 0),
+                            wfaCount = uiState.summary?.modeDistribution?.wfa?.count ?: (uiState.summary?.totalWfa ?: 0),
+                            wfhCount = uiState.summary?.modeDistribution?.wfh?.count,
                             subtitle = null,
                             unavailableModeMessage = null
                         )
