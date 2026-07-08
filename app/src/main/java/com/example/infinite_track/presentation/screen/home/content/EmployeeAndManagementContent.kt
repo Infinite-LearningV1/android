@@ -42,6 +42,7 @@ fun EmployeeAndManagerComponent(
     navigateAttendance: () -> Unit,
     navigateTimeOffRequest: () -> Unit,
     navigateListMyAttendance: () -> Unit,
+    navigateServiceComingSoon: () -> Unit,
     refreshDashboard: () -> Unit
 ) {
     user?.let { userData ->
@@ -83,7 +84,8 @@ fun EmployeeAndManagerComponent(
                 CompanyServicesGrid(
                     onAttendanceClick = navigateAttendance,
                     onTimeOffClick = navigateTimeOffRequest,
-                    onAttendanceHistoryClick = navigateListMyAttendance
+                    onAttendanceHistoryClick = navigateListMyAttendance,
+                    onComingSoonClick = navigateServiceComingSoon
                 )
 
                 Spacer(modifier.height(14.dp))

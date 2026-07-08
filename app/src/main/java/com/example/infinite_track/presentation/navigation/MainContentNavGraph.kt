@@ -23,6 +23,7 @@ import com.example.infinite_track.presentation.screen.home.HomeScreen
 import com.example.infinite_track.presentation.screen.home.HomeViewModel
 import com.example.infinite_track.presentation.screen.home.details.DetailsMyAttendance
 import com.example.infinite_track.presentation.screen.home.details.DetailsMyBooking
+import com.example.infinite_track.presentation.screen.home.service.CompanyServiceComingSoonScreen
 import com.example.infinite_track.presentation.screen.leave_request.my_leave.MyLeave
 import com.example.infinite_track.presentation.screen.leave_request.timeOff.TimeOffScreen
 import com.example.infinite_track.presentation.screen.profile.ProfileScreen
@@ -47,7 +48,8 @@ fun NavGraphBuilder.mainContentNavGraph(
             viewModel = homeViewModel,
             navigateAttendance = { navController.safeNavigate(Screen.Attendance.route) },
             navigateTimeOffRequest = { navController.safeNavigate(Screen.TimeOffRequest.route) },
-            navigateListMyAttendance = { navController.safeNavigate(Screen.DetailMyAttendance.route) }
+            navigateListMyAttendance = { navController.safeNavigate(Screen.DetailMyAttendance.route) },
+            navigateServiceComingSoon = { navController.safeNavigate(Screen.CompanyServiceComingSoon.route) }
         )
     }
 
@@ -94,6 +96,12 @@ fun NavGraphBuilder.mainContentNavGraph(
 
     composable(Screen.Wfa.route) {
         WfaHistoryScreen()
+    }
+
+    composable(Screen.CompanyServiceComingSoon.route) {
+        CompanyServiceComingSoonScreen(
+            onBackClick = { navController.popBackStack() }
+        )
     }
 
     // Profile Feature Flow

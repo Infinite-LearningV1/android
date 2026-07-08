@@ -33,6 +33,7 @@ fun HomeScreen(
     navigateAttendance: () -> Unit = {},
     navigateTimeOffRequest: () -> Unit = {},
     navigateListMyAttendance: () -> Unit = {},
+    navigateServiceComingSoon: () -> Unit = {},
 ) {
     val userProfile by viewModel.userProfileState.collectAsState()
     val attendanceState by viewModel.topAttendanceHistoryState.collectAsState()
@@ -97,6 +98,7 @@ fun HomeScreen(
                                     navigateAttendance = navigateAttendance,
                                     navigateTimeOffRequest = navigateTimeOffRequest,
                                     navigateListMyAttendance = navigateListMyAttendance,
+                                    navigateServiceComingSoon = navigateServiceComingSoon,
                                     refreshDashboard = { viewModel.refreshDashboard(forceRefresh = true) }
                                 )
                             }

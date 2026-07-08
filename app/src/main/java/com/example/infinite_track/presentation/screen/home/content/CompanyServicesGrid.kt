@@ -23,6 +23,7 @@ fun CompanyServicesGrid(
     onAttendanceClick: () -> Unit,
     onTimeOffClick: () -> Unit,
     onAttendanceHistoryClick: () -> Unit,
+    onComingSoonClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val services = listOf(
@@ -43,6 +44,12 @@ fun CompanyServicesGrid(
             subtitle = "Lihat riwayat",
             icon = InfiniteIcons.Time,
             onClick = onAttendanceHistoryClick
+        ),
+        CompanyService(
+            title = "More Services",
+            subtitle = "Segera hadir",
+            icon = InfiniteIcons.More,
+            onClick = onComingSoonClick
         )
     )
 
