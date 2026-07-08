@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,6 +40,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -58,6 +61,8 @@ import com.example.infinite_track.presentation.components.popUp.LanguagePopUp
 import com.example.infinite_track.presentation.components.status.InfiniteTrackConfirmDialog
 import com.example.infinite_track.presentation.components.status.InfiniteTrackStatusDialog
 import com.example.infinite_track.presentation.components.status.StatusStates
+import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.core.body2
 import com.example.infinite_track.presentation.core.headline2
 import com.example.infinite_track.presentation.core.headline3
 import com.example.infinite_track.presentation.core.headline4
@@ -68,9 +73,6 @@ import com.example.infinite_track.presentation.design.tokens.InfiniteSize
 import com.example.infinite_track.utils.UiState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-private const val DefaultAvatarUrl =
-    "https://w7.pngwing.com/pngs/177/551/png-transparent-user-interface-design-computer-icons-default-stephen-salazar-graphy-user-interface-design-computer-wallpaper-sphere-thumbnail.png"
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -391,6 +393,45 @@ private fun AccountHubContent(
 }
 
 @Composable
+private fun ProfileGlassCard(
+    modifier: Modifier = Modifier,
+    shape: RoundedCornerShape,
+    borderColor: Color = InfiniteColors.AccountHubOutline,
+    shadowColor: Color = InfiniteColors.AccountHubPrimary.copy(alpha = 0.18f),
+    backgroundBrush: Brush = Brush.linearGradient(
+        colors = listOf(
+            InfiniteColors.Surface.copy(alpha = 0.22f),
+            InfiniteColors.Surface.copy(alpha = 0.10f)
+        )
+    ),
+    contentPadding: PaddingValues,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = modifier.shadow(
+            elevation = 8.dp,
+            shape = shape,
+            ambientColor = shadowColor,
+            spotColor = shadowColor,
+            clip = false
+        ),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = InfiniteColors.Transparent),
+        border = BorderStroke(1.dp, borderColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(backgroundBrush)
+                .padding(contentPadding)
+        ) {
+            Column(content = content)
+        }
+    }
+}
+
+@Composable
 private fun IdentityHeroCard(
     user: UserModel,
     role: String,
@@ -400,18 +441,15 @@ private fun IdentityHeroCard(
     val unavailable = stringResource(R.string.account_hub_not_available)
     val fullName = user.fullName.ifBlank { unavailable }
 
-    Card(
+    ProfileGlassCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = InfiniteColors.AccountHubHeroSurface),
-        border = BorderStroke(1.dp, InfiniteColors.AccountHubHeroOutline),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        borderColor = InfiniteColors.AccountHubHeroOutline,
+        backgroundBrush = InfiniteColors.AccountHubHeroGradient,
+        contentPadding = PaddingValues(20.dp)
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(InfiniteColors.AccountHubHeroGradient)
-                .padding(20.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
             Box(
                 modifier = Modifier
@@ -434,8 +472,11 @@ private fun IdentityHeroCard(
                             .padding(4.dp)
                     ) {
                         AsyncImage(
-                            model = user.photoUrl ?: DefaultAvatarUrl,
+                            model = user.photoUrl?.takeIf { it.isNotBlank() },
                             contentDescription = null,
+                            placeholder = painterResource(R.drawable.ic_profile),
+                            error = painterResource(R.drawable.ic_profile),
+                            fallback = painterResource(R.drawable.ic_profile),
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clip(CircleShape)
@@ -460,13 +501,13 @@ private fun IdentityHeroCard(
                             text = fullName,
                             style = headline2,
                             color = InfiniteColors.AccountHubTitle,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Medium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = position,
-                            style = headline4,
+                            style = body1,
                             color = InfiniteColors.AccountHubSectionAccent,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -492,17 +533,20 @@ private fun AccountSummaryCard(
     @DrawableRes icon: Int,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    ProfileGlassCard(
         modifier = modifier.height(92.dp),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = InfiniteColors.AccountHubSummarySurface),
-        border = BorderStroke(1.dp, InfiniteColors.AccountHubOutline),
-        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+        backgroundBrush = Brush.linearGradient(
+            colors = listOf(
+                InfiniteColors.Surface.copy(alpha = 0.20f),
+                InfiniteColors.Surface.copy(alpha = 0.08f)
+            )
+        ),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
     ) {
         Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp),
+                .fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -515,16 +559,16 @@ private fun AccountSummaryCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = label,
-                    style = headline4,
+                    style = body2,
                     color = InfiniteColors.AccountHubMutedText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = value,
-                    style = headline4,
+                    style = body1,
                     color = InfiniteColors.AccountHubTitle,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -538,22 +582,25 @@ private fun AccountHubSection(
     title: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Card(
+    ProfileGlassCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = InfiniteColors.AccountHubHeroSurface),
-        border = BorderStroke(1.dp, InfiniteColors.AccountHubOutline),
-        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+        backgroundBrush = Brush.linearGradient(
+            colors = listOf(
+                InfiniteColors.Surface.copy(alpha = 0.18f),
+                InfiniteColors.Surface.copy(alpha = 0.06f)
+            )
+        ),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
                 text = title,
-                style = headline4,
+                style = body1,
                 color = InfiniteColors.AccountHubSectionAccent,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Medium
             )
             content()
         }
@@ -600,15 +647,15 @@ private fun AccountHubMenuRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = headline3,
+                style = body1,
                 color = if (destructive) InfiniteColors.AccountHubDestructive else InfiniteColors.AccountHubTitle,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = description,
-                style = headline4,
+                style = body2,
                 color = InfiniteColors.AccountHubMutedText,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -654,7 +701,7 @@ private fun SoftPill(
             )
             Text(
                 text = text,
-                style = headline4,
+                style = body2,
                 color = InfiniteColors.AccountHubSectionAccent,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
@@ -681,7 +728,7 @@ private fun IdentityInfoRow(
         )
         Text(
             text = text,
-            style = headline4,
+            style = body2,
             color = InfiniteColors.AccountHubBodyText,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
