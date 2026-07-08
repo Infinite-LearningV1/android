@@ -92,7 +92,8 @@ fun InfiniteAttendanceModeDistributionRow(
             Text(
                 text = label,
                 color = InfiniteColors.Text,
-                fontWeight = FontWeight.SemiBold
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
             )
             Text(
                 text = "$count $unitLabel",
