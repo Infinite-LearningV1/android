@@ -184,7 +184,7 @@ private fun WfaRequestsHeader() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 24.dp),
+            .padding(top = 6.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.Center
     ) {
         Text(
