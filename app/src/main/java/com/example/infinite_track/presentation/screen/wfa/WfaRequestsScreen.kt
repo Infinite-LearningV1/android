@@ -92,8 +92,8 @@ fun WfaRequestsScreen(
                 .fillMaxSize()
                 .nestedScroll(pullToRefreshConnection)
                 .padding(innerPadding)
-                .padding(horizontal = 20.dp),
-            contentPadding = PaddingValues(top = 0.dp, bottom = 16.dp),
+                .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 12.dp),
+            contentPadding = PaddingValues(0.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
@@ -184,7 +184,7 @@ private fun WfaRequestsHeader() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 6.dp, bottom = 12.dp),
+            .padding(bottom = 12.dp),
         horizontalArrangement = Arrangement.Center
     ) {
         Text(
