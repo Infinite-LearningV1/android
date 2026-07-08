@@ -87,7 +87,7 @@ class HomeViewModel @Inject constructor(
 			_topAttendanceHistoryState.value = UiState.Loading
 
 			getAttendanceHistoryUseCase(
-				period = "monthly",
+				period = AttendancePeriod.MONTHLY,
 				page = 1,
 				limit = 5
 			).onSuccess { historyPage ->

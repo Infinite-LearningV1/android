@@ -2,6 +2,7 @@ package com.example.infinite_track.presentation.screen.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.infinite_track.domain.model.attendance.AttendancePeriod
 import com.example.infinite_track.domain.model.attendance.AttendanceRecord
 import com.example.infinite_track.domain.model.attendance.AttendanceSummaryInfo
 import com.example.infinite_track.domain.use_case.history.GetAttendanceHistoryUseCase
@@ -22,7 +23,7 @@ data class HistoryScreenState(
     val isLoadingMore: Boolean = false,
     val canLoadMore: Boolean = true,
     val error: String? = null,
-    val selectedPeriod: String = "all",
+    val selectedPeriod: String = AttendancePeriod.MONTHLY,
     val summary: AttendanceSummaryInfo? = null,
     val records: List<AttendanceRecord> = emptyList(),
     val currentPage: Int = 1,
@@ -52,15 +53,24 @@ class HistoryViewModel @Inject constructor(
      */
     fun onFilterChanged(newPeriod: String) {
         if (newPeriod != uiState.value.selectedPeriod) {
+            loadingJob?.cancel()
+
             _uiState.update { it.copy(
                 selectedPeriod = newPeriod,
                 records = emptyList(),
                 summary = null,
-                currentPage = 1
+                currentPage = 1,
+                canLoadMore = newPeriod != AttendancePeriod.CUSTOM,
+                isLoading = false,
+                isLoadingMore = false,
+                error = null
             )}
 
-            // Reload data with new filter
-            loadHistory(isRefresh = true)
+            // Custom range is visible for the report contract, but it needs a date range picker
+            // before it can request backend data honestly.
+            if (newPeriod != AttendancePeriod.CUSTOM) {
+                loadHistory(isRefresh = true)
+            }
         }
     }
 
@@ -82,6 +92,19 @@ class HistoryViewModel @Inject constructor(
      * Refresh the attendance history (reload from first page)
      */
     fun refreshHistory() {
+        if (uiState.value.selectedPeriod == AttendancePeriod.CUSTOM) {
+            _uiState.update { it.copy(
+                currentPage = 1,
+                records = emptyList(),
+                summary = null,
+                canLoadMore = false,
+                isLoading = false,
+                isLoadingMore = false,
+                error = null
+            )}
+            return
+        }
+
         _uiState.update { it.copy(
             currentPage = 1,
             records = emptyList()
@@ -97,6 +120,10 @@ class HistoryViewModel @Inject constructor(
         // Cancel any ongoing loading job
         loadingJob?.cancel()
 
+        val requestedPeriod = uiState.value.selectedPeriod
+        val requestedPage = uiState.value.currentPage
+        val requestedPageSize = uiState.value.pageSize
+
         // Update state to show loading
         _uiState.update { it.copy(
             isLoading = isRefresh,
@@ -107,10 +134,12 @@ class HistoryViewModel @Inject constructor(
         // Start a new loading job
         loadingJob = viewModelScope.launch {
             getAttendanceHistoryUseCase(
-                period = uiState.value.selectedPeriod,
-                page = uiState.value.currentPage,
-                limit = uiState.value.pageSize
+                period = requestedPeriod,
+                page = requestedPage,
+                limit = requestedPageSize
             ).onSuccess { historyPage ->
+                if (uiState.value.selectedPeriod != requestedPeriod) return@onSuccess
+
                 // Update state with the loaded data
                 _uiState.update { currentState ->
                     currentState.copy(
@@ -122,6 +151,8 @@ class HistoryViewModel @Inject constructor(
                     )
                 }
             }.onFailure { error ->
+                if (uiState.value.selectedPeriod != requestedPeriod) return@onFailure
+
                 // Update state to show error
                 _uiState.update { it.copy(
                     isLoading = false,
@@ -139,12 +170,22 @@ class HistoryViewModel @Inject constructor(
      */
     fun setPageSize(size: Int) {
         if (size != uiState.value.pageSize) {
+            loadingJob?.cancel()
+
             _uiState.update { it.copy(
                 pageSize = size,
                 currentPage = 1,
-                records = emptyList()
+                records = emptyList(),
+                summary = null,
+                canLoadMore = it.selectedPeriod != AttendancePeriod.CUSTOM,
+                isLoading = false,
+                isLoadingMore = false,
+                error = null
             )}
-            loadHistory(isRefresh = true)
+
+            if (uiState.value.selectedPeriod != AttendancePeriod.CUSTOM) {
+                loadHistory(isRefresh = true)
+            }
         }
     }
 }
