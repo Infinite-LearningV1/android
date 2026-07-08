@@ -42,8 +42,7 @@ fun EmployeeAndManagerComponent(
     navigateAttendance: () -> Unit,
     navigateTimeOffRequest: () -> Unit,
     navigateListMyAttendance: () -> Unit,
-    navigateServiceComingSoon: () -> Unit,
-    refreshDashboard: () -> Unit
+    navigateServiceComingSoon: () -> Unit
 ) {
     user?.let { userData ->
         val fullImageUrl = userData.photoUrl?.ifEmpty {
@@ -74,9 +73,7 @@ fun EmployeeAndManagerComponent(
 
                 HomeTodayStatusCard(
                     state = todayStatusState,
-                    currentLocation = currentLocation,
-                    onAttendanceClick = navigateAttendance,
-                    onRefreshClick = refreshDashboard
+                    currentLocation = currentLocation
                 )
 
                 Spacer(modifier.height(14.dp))
@@ -84,7 +81,6 @@ fun EmployeeAndManagerComponent(
                 CompanyServicesGrid(
                     onAttendanceClick = navigateAttendance,
                     onTimeOffClick = navigateTimeOffRequest,
-                    onAttendanceHistoryClick = navigateListMyAttendance,
                     onComingSoonClick = navigateServiceComingSoon
                 )
 

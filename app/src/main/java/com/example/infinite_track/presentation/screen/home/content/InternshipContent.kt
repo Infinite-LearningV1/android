@@ -36,9 +36,7 @@ fun InternshipContent(
     currentLocation: String,
     attendanceState: UiState<List<AttendanceRecord>>,
     todayStatusState: HomeTodayStatusUiState,
-    navigateAttendance: () -> Unit,
-    navigateToListMyAttendance: () -> Unit,
-    refreshDashboard: () -> Unit
+    navigateToListMyAttendance: () -> Unit
 ) {
     Box(
         modifier = modifier.fillMaxWidth()
@@ -70,9 +68,7 @@ fun InternshipContent(
 
             HomeTodayStatusCard(
                 state = todayStatusState,
-                currentLocation = currentLocation,
-                onAttendanceClick = navigateAttendance,
-                onRefreshClick = refreshDashboard
+                currentLocation = currentLocation
             )
 
             Spacer(modifier = Modifier.height(14.dp))

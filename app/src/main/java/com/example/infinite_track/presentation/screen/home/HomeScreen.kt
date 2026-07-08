@@ -16,10 +16,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.infinite_track.presentation.components.loading.InlineRefreshingIndicator
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
 import com.example.infinite_track.presentation.screen.home.content.EmployeeAndManagerComponent
 import com.example.infinite_track.presentation.screen.home.content.InternshipContent
@@ -42,6 +47,24 @@ fun HomeScreen(
 
     val isLoading = attendanceState is UiState.Loading
     val scrollState = rememberScrollState()
+    val refreshDragDistance = remember { mutableStateOf(0f) }
+    val pullToRefreshConnection = remember(scrollState, todayStatusState.isRefreshing, isLoading) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y > 0 && scrollState.value == 0 && !todayStatusState.isRefreshing && !isLoading) {
+                    refreshDragDistance.value += available.y
+                    if (refreshDragDistance.value >= HomePullToRefreshThresholdPx) {
+                        refreshDragDistance.value = 0f
+                        viewModel.refreshDashboard(forceRefresh = true)
+                    }
+                }
+                if (available.y < 0) {
+                    refreshDragDistance.value = 0f
+                }
+                return Offset.Zero
+            }
+        }
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     val hasHandledInitialResume = remember { mutableStateOf(false) }
 
@@ -73,8 +96,13 @@ fun HomeScreen(
                     Column(
                         modifier = modifier
                             .fillMaxSize()
+                            .nestedScroll(pullToRefreshConnection)
                             .verticalScroll(scrollState)
                     ) {
+                        if (todayStatusState.isRefreshing) {
+                            InlineRefreshingIndicator(message = "Refreshing today status...")
+                        }
+
                         when (userProfile?.roleName) {
                             "Internship" -> {
                                 InternshipContent(
@@ -82,9 +110,7 @@ fun HomeScreen(
                                     currentLocation = currentLocation,
                                     attendanceState = attendanceState,
                                     todayStatusState = todayStatusState,
-                                    navigateAttendance = navigateAttendance,
-                                    navigateToListMyAttendance = navigateListMyAttendance,
-                                    refreshDashboard = { viewModel.refreshDashboard(forceRefresh = true) }
+                                    navigateToListMyAttendance = navigateListMyAttendance
                                 )
                             }
 
@@ -98,8 +124,7 @@ fun HomeScreen(
                                     navigateAttendance = navigateAttendance,
                                     navigateTimeOffRequest = navigateTimeOffRequest,
                                     navigateListMyAttendance = navigateListMyAttendance,
-                                    navigateServiceComingSoon = navigateServiceComingSoon,
-                                    refreshDashboard = { viewModel.refreshDashboard(forceRefresh = true) }
+                                    navigateServiceComingSoon = navigateServiceComingSoon
                                 )
                             }
 
@@ -113,3 +138,5 @@ fun HomeScreen(
         }
     )
 }
+
+private const val HomePullToRefreshThresholdPx = 160f
