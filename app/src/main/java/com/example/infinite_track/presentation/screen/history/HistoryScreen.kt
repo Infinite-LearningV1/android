@@ -1,5 +1,7 @@
 package com.example.infinite_track.presentation.screen.history
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +22,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -47,13 +50,20 @@ import com.example.infinite_track.presentation.design.components.state.InfiniteL
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 
+private enum class ReportAction {
+    Preview,
+    Share
+}
+
 @Composable
 fun HistoryScreen(
     modifier: Modifier = Modifier,
     viewModel: HistoryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val lazyListState = rememberLazyListState()
+    val pendingReportAction = remember { mutableStateOf<ReportAction?>(null) }
     val refreshDragDistance = remember { mutableStateOf(0f) }
     val pullToRefreshConnection = remember(lazyListState, uiState.isLoading, uiState.isRefreshing) {
         object : NestedScrollConnection {
@@ -85,6 +95,44 @@ fun HistoryScreen(
 
     LaunchedEffect(shouldLoadMore.value) {
         if (shouldLoadMore.value) viewModel.loadNextPage()
+    }
+
+    LaunchedEffect(uiState.exportState) {
+        when (val exportState = uiState.exportState) {
+            is ReportExportUiState.Success -> {
+                try {
+                    when (pendingReportAction.value) {
+                        ReportAction.Preview -> {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(exportState.localUri, "application/pdf")
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        }
+                        ReportAction.Share -> {
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "application/pdf"
+                                putExtra(Intent.EXTRA_STREAM, exportState.localUri)
+                                putExtra(Intent.EXTRA_TITLE, exportState.fileName)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(Intent.createChooser(intent, "Share Report"))
+                        }
+                        null -> Unit
+                    }
+                } catch (_: ActivityNotFoundException) {
+                    viewModel.clearExportState()
+                    pendingReportAction.value = null
+                }
+                pendingReportAction.value = null
+                viewModel.clearExportState()
+            }
+            is ReportExportUiState.Error -> {
+                pendingReportAction.value = null
+            }
+            ReportExportUiState.Downloading,
+            ReportExportUiState.Idle -> Unit
+        }
     }
 
     Scaffold(
@@ -183,8 +231,27 @@ fun HistoryScreen(
                     item {
                         InfiniteAttendanceReportActionsCard(
                             selectedPeriod = uiState.selectedPeriod,
+                            exportEnabled = uiState.exportState !is ReportExportUiState.Downloading,
+                            shareEnabled = uiState.exportState !is ReportExportUiState.Downloading,
+                            onExportClick = {
+                                pendingReportAction.value = ReportAction.Preview
+                                viewModel.previewReportPdf()
+                            },
+                            onShareClick = {
+                                pendingReportAction.value = ReportAction.Share
+                                viewModel.exportReportPdf()
+                            },
                             subtitle = null
                         )
+                    }
+
+                    if (uiState.exportState is ReportExportUiState.Error) {
+                        item {
+                            InfiniteAttendanceReportNoticeCard(
+                                title = "PDF unavailable",
+                                message = (uiState.exportState as ReportExportUiState.Error).message
+                            )
+                        }
                     }
 
                     item {

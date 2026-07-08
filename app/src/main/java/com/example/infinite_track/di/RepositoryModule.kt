@@ -3,6 +3,7 @@ package com.example.infinite_track.di
 import android.content.Context
 import android.util.Log
 import com.example.infinite_track.data.repository.attendance.AttendanceHistoryRepositoryImpl
+import com.example.infinite_track.data.repository.attendance.AttendanceReportPdfRepositoryImpl
 import com.example.infinite_track.data.repository.attendance.AttendanceRepositoryImpl
 import com.example.infinite_track.data.repository.auth.AuthRepositoryImpl
 import com.example.infinite_track.data.repository.auth.AuthRuntimeCleanerImpl
@@ -21,6 +22,7 @@ import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
 import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
+import com.example.infinite_track.domain.repository.AttendanceReportPdfRepository
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
@@ -115,6 +117,14 @@ object RepositoryModule {
         apiService: ApiService
     ): AttendanceHistoryRepository {
         return AttendanceHistoryRepositoryImpl(apiService)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAttendanceReportPdfRepository(
+        attendanceReportPdfRepositoryImpl: AttendanceReportPdfRepositoryImpl
+    ): AttendanceReportPdfRepository {
+        return attendanceReportPdfRepositoryImpl
     }
 
     @Provides

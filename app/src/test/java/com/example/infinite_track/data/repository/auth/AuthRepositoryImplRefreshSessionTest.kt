@@ -1200,6 +1200,14 @@ private class FakeApiService(
         throw NotImplementedError()
     }
 
+    override suspend fun previewAttendanceReportPdf(period: String, startDate: String?, endDate: String?, timezone: String?): Response<ResponseBody> {
+        throw NotImplementedError()
+    }
+
+    override suspend fun exportAttendanceReportPdf(period: String, startDate: String?, endDate: String?, timezone: String?): Response<ResponseBody> {
+        throw NotImplementedError()
+    }
+
     override suspend fun updateUserProfile(userId: Int, request: ProfileUpdateRequest): ProfileUpdateResponse {
         throw NotImplementedError()
     }

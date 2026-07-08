@@ -7,8 +7,11 @@ import com.example.infinite_track.domain.model.attendance.AttendanceModeMetricIn
 import com.example.infinite_track.domain.model.attendance.AttendancePeriod
 import com.example.infinite_track.domain.model.attendance.AttendancePeriodInfo
 import com.example.infinite_track.domain.model.attendance.AttendanceRecord
+import com.example.infinite_track.domain.model.attendance.AttendanceReportPdfResult
 import com.example.infinite_track.domain.model.attendance.AttendanceSummaryInfo
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
+import com.example.infinite_track.domain.repository.AttendanceReportPdfRepository
+import com.example.infinite_track.domain.use_case.history.ExportAttendanceReportPdfUseCase
 import com.example.infinite_track.domain.use_case.history.GetAttendanceHistoryUseCase
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -84,7 +87,7 @@ class HistoryViewModelTest {
         Dispatchers.setMain(dispatcher)
         try {
             val repository = FakeAttendanceHistoryRepository()
-            val viewModel = HistoryViewModel(GetAttendanceHistoryUseCase(repository))
+            val viewModel = HistoryViewModel(GetAttendanceHistoryUseCase(repository), ExportAttendanceReportPdfUseCase(FakeAttendanceReportPdfRepository()))
             advanceUntilIdle()
 
             viewModel.onFilterChanged(AttendancePeriod.CUSTOM)
@@ -108,7 +111,7 @@ class HistoryViewModelTest {
         Dispatchers.setMain(dispatcher)
         try {
             val repository = DelayedAttendanceHistoryRepository()
-            val viewModel = HistoryViewModel(GetAttendanceHistoryUseCase(repository))
+            val viewModel = HistoryViewModel(GetAttendanceHistoryUseCase(repository), ExportAttendanceReportPdfUseCase(FakeAttendanceReportPdfRepository()))
             runCurrent()
 
             viewModel.onFilterChanged(AttendancePeriod.CUSTOM)
@@ -230,6 +233,22 @@ class HistoryViewModelTest {
                 )
             )
         }
+    }
+
+    private class FakeAttendanceReportPdfRepository : AttendanceReportPdfRepository {
+        override suspend fun previewAttendanceReportPdf(
+            period: String,
+            startDate: String?,
+            endDate: String?,
+            timezone: String?
+        ): Result<AttendanceReportPdfResult> = Result.failure(NotImplementedError())
+
+        override suspend fun exportAttendanceReportPdf(
+            period: String,
+            startDate: String?,
+            endDate: String?,
+            timezone: String?
+        ): Result<AttendanceReportPdfResult> = Result.failure(NotImplementedError())
     }
 
 }
