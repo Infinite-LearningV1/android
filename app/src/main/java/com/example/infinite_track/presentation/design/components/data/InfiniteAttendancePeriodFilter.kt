@@ -20,7 +20,7 @@ fun InfiniteAttendancePeriodFilterCard(
     onPeriodSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
     title: String = "Period Filter",
-    subtitle: String = "Choose the reporting period",
+    subtitle: String? = "Choose the reporting period",
     options: List<InfiniteFilterOption> = attendanceReportPeriodOptions
 ) {
     InfiniteGlassReportCard(modifier = modifier) {

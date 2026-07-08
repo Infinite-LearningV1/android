@@ -20,6 +20,7 @@ import javax.inject.Inject
  */
 data class HistoryScreenState(
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val isLoadingMore: Boolean = false,
     val canLoadMore: Boolean = true,
     val error: String? = null,
@@ -62,6 +63,7 @@ class HistoryViewModel @Inject constructor(
                 currentPage = 1,
                 canLoadMore = newPeriod != AttendancePeriod.CUSTOM,
                 isLoading = false,
+                isRefreshing = false,
                 isLoadingMore = false,
                 error = null
             )}
@@ -92,31 +94,35 @@ class HistoryViewModel @Inject constructor(
      * Refresh the attendance history (reload from first page)
      */
     fun refreshHistory() {
-        if (uiState.value.selectedPeriod == AttendancePeriod.CUSTOM) {
-            _uiState.update { it.copy(
-                currentPage = 1,
-                records = emptyList(),
-                summary = null,
-                canLoadMore = false,
-                isLoading = false,
-                isLoadingMore = false,
-                error = null
-            )}
+        val currentState = uiState.value
+        if (currentState.selectedPeriod == AttendancePeriod.CUSTOM || currentState.isLoading || currentState.isRefreshing) {
+            if (currentState.selectedPeriod == AttendancePeriod.CUSTOM) {
+                _uiState.update { it.copy(
+                    currentPage = 1,
+                    records = emptyList(),
+                    summary = null,
+                    canLoadMore = false,
+                    isLoading = false,
+                    isRefreshing = false,
+                    isLoadingMore = false,
+                    error = null
+                )}
+            }
             return
         }
 
-        _uiState.update { it.copy(
-            currentPage = 1,
-            records = emptyList()
-        )}
-        loadHistory(isRefresh = true)
+        _uiState.update { it.copy(currentPage = 1) }
+        loadHistory(isRefresh = true, isPullRefresh = true)
     }
 
     /**
      * Load attendance history with the current settings
      * @param isRefresh Whether to refresh the data (true) or append to existing data (false)
      */
-    private fun loadHistory(isRefresh: Boolean) {
+    private fun loadHistory(
+        isRefresh: Boolean,
+        isPullRefresh: Boolean = false
+    ) {
         // Cancel any ongoing loading job
         loadingJob?.cancel()
 
@@ -126,7 +132,8 @@ class HistoryViewModel @Inject constructor(
 
         // Update state to show loading
         _uiState.update { it.copy(
-            isLoading = isRefresh,
+            isLoading = isRefresh && !isPullRefresh,
+            isRefreshing = isPullRefresh,
             isLoadingMore = !isRefresh,
             error = null
         )}
@@ -144,6 +151,7 @@ class HistoryViewModel @Inject constructor(
                 _uiState.update { currentState ->
                     currentState.copy(
                         isLoading = false,
+                        isRefreshing = false,
                         isLoadingMore = false,
                         summary = historyPage.summary,
                         records = if (isRefresh) historyPage.records else currentState.records + historyPage.records,
@@ -156,6 +164,7 @@ class HistoryViewModel @Inject constructor(
                 // Update state to show error
                 _uiState.update { it.copy(
                     isLoading = false,
+                    isRefreshing = false,
                     isLoadingMore = false,
                     canLoadMore = false,
                     error = error.message ?: "Unknown error occurred"
@@ -179,6 +188,7 @@ class HistoryViewModel @Inject constructor(
                 summary = null,
                 canLoadMore = it.selectedPeriod != AttendancePeriod.CUSTOM,
                 isLoading = false,
+                isRefreshing = false,
                 isLoadingMore = false,
                 error = null
             )}

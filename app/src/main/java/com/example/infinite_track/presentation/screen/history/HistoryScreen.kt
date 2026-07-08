@@ -1,26 +1,24 @@
 package com.example.infinite_track.presentation.screen.history
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,7 +33,6 @@ import com.example.infinite_track.presentation.mapper.attendance.workModeLabel
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceModeDistributionCard
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendancePeriodFilterCard
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceReportActionsCard
-import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceReportHeroCard
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceReportNoticeCard
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceReportSummarySection
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceTimelineCard
@@ -54,6 +51,24 @@ fun HistoryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val lazyListState = rememberLazyListState()
+    val refreshDragDistance = remember { mutableStateOf(0f) }
+    val pullToRefreshConnection = remember(lazyListState, uiState.isLoading, uiState.isRefreshing) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y > 0 && lazyListState.isAtTop() && !uiState.isLoading && !uiState.isRefreshing) {
+                    refreshDragDistance.value += available.y
+                    if (refreshDragDistance.value >= PullToRefreshThresholdPx) {
+                        refreshDragDistance.value = 0f
+                        viewModel.refreshHistory()
+                    }
+                }
+                if (available.y < 0) {
+                    refreshDragDistance.value = 0f
+                }
+                return Offset.Zero
+            }
+        }
+    }
     val shouldLoadMore = remember {
         derivedStateOf {
             val lastVisibleItem = lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()
@@ -73,41 +88,22 @@ fun HistoryScreen(
         modifier = modifier.fillMaxSize(),
         containerColor = InfiniteColors.Transparent
     ) { innerPadding ->
-        Box(
+        LazyColumn(
+            state = lazyListState,
             modifier = Modifier
                 .fillMaxSize()
-                .background(InfiniteColors.AttendanceReportBackground)
-                .padding(innerPadding)
+                .nestedScroll(pullToRefreshConnection),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            DecorativeOrb(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 24.dp, end = 24.dp),
-                color = InfiniteColors.Accent.copy(alpha = 0.32f),
-                size = 132
-            )
-            DecorativeOrb(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(top = 128.dp, start = 18.dp),
-                color = InfiniteColors.Secondary.copy(alpha = 0.20f),
-                size = 84
-            )
-
-            LazyColumn(
-                state = lazyListState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                item { InfiniteAttendanceReportHeroCard() }
-
-                item {
-                    InfiniteAttendancePeriodFilterCard(
-                        selectedPeriod = uiState.selectedPeriod,
-                        onPeriodSelected = viewModel::onFilterChanged
-                    )
-                }
+            item {
+                InfiniteAttendancePeriodFilterCard(
+                    selectedPeriod = uiState.selectedPeriod,
+                    onPeriodSelected = viewModel::onFilterChanged,
+                    title = "My Attendance Report",
+                    subtitle = null
+                )
+            }
 
                 if (uiState.selectedPeriod == AttendancePeriod.CUSTOM) {
                     item {
@@ -115,6 +111,14 @@ fun HistoryScreen(
                             title = "Custom range needs verification",
                             message = "Date range picker is not available in this branch yet. The Custom filter is visible for the report contract, but runtime date-range behavior still needs verification."
                         )
+                    }
+                }
+
+                if (uiState.isRefreshing) {
+                    item {
+                        InfiniteGlassReportCard {
+                            InfiniteLoadingState(message = "Refreshing attendance report...")
+                        }
                     }
                 }
 
@@ -155,25 +159,31 @@ fun HistoryScreen(
                                 attendanceRateValue = "—",
                                 workHoursValue = remember(uiState.records) { uiState.records.totalWorkHoursLabel() },
                                 lateCount = uiState.summary?.totalLate ?: 0,
-                                alphaCount = uiState.summary?.totalAlpha ?: 0
+                                alphaCount = uiState.summary?.totalAlpha ?: 0,
+                                subtitle = null
                             )
                         }
 
                         item {
                             InfiniteAttendanceModeDistributionCard(
                                 wfoCount = uiState.summary?.totalWfo ?: 0,
-                                wfaCount = uiState.summary?.totalWfa ?: 0
+                                wfaCount = uiState.summary?.totalWfa ?: 0,
+                                subtitle = null,
+                                unavailableModeMessage = null
                             )
                         }
 
                         item {
-                            InfiniteAttendanceReportActionsCard(selectedPeriod = uiState.selectedPeriod)
+                            InfiniteAttendanceReportActionsCard(
+                                selectedPeriod = uiState.selectedPeriod,
+                                subtitle = null
+                            )
                         }
 
                         item {
                             InfiniteSectionHeader(
                                 title = "Attendance Timeline",
-                                subtitle = "Recent attendance records only"
+                                subtitle = null
                             )
                         }
 
@@ -218,7 +228,6 @@ fun HistoryScreen(
                         }
                     }
                 }
-            }
         }
     }
 }
@@ -241,15 +250,7 @@ private fun ReportTimelineRow(
     )
 }
 
-@Composable
-private fun DecorativeOrb(
-    modifier: Modifier,
-    color: Color,
-    size: Int
-) {
-    Box(
-        modifier = modifier
-            .size(size.dp)
-            .background(color, CircleShape)
-    )
-}
+private const val PullToRefreshThresholdPx = 160f
+
+private fun LazyListState.isAtTop(): Boolean =
+    firstVisibleItemIndex == 0 && firstVisibleItemScrollOffset == 0
