@@ -18,7 +18,11 @@ import com.example.infinite_track.data.soucre.network.response.CheckinWindow as 
  * Extension function to convert TodayStatusResponse (DTO) to TodayStatus (Domain model)
  */
 fun TodayStatusResponse.toDomain(): TodayStatus {
-    return data.toDomain(cacheTtlSeconds = AuthRuntimePolicy.SHARED_TTL_SECONDS)
+    return data.toDomain(
+        cacheTtlSeconds = meta?.cacheTtlSeconds
+            ?.takeIf { it > 0 }
+            ?: AuthRuntimePolicy.SHARED_TTL_SECONDS
+    )
 }
 
 /**
@@ -32,6 +36,9 @@ fun TodayStatusData.toDomain(
         canCheckOut = this.canCheckOut == true, // Handle null with default false
         checkedInAt = this.checkedInAt,
         checkedOutAt = this.checkedOutAt,
+        checkedInAtIso = this.checkedInAtIso,
+        checkedOutAtIso = this.checkedOutAtIso,
+        workDurationSeconds = this.workDurationSeconds,
         activeMode = this.activeMode,
         activeLocation = this.activeLocation?.toDomain(),
         todayDate = this.todayDate,

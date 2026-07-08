@@ -15,16 +15,19 @@ class TodayStatusResponseTest {
 
         assertEquals(AttendanceSessionState(2, "active", "Active Session"), domain.attendanceSessionState)
         assertEquals(123, domain.activeAttendanceId)
+        assertEquals("2026-07-05T08:00:00.000Z", domain.checkedInAtIso)
+        assertEquals("2026-07-05T17:00:00.000Z", domain.checkedOutAtIso)
+        assertEquals(32_400L, domain.workDurationSeconds)
         assertEquals(AuthRuntimePolicy.SHARED_TTL_SECONDS, domain.cacheTtlSeconds)
     }
 
     @Test
-    fun `always uses shared ttl for status today cache`() {
+    fun `uses backend ttl for status today cache when meta is available`() {
         val response = createResponse(meta = TodayStatusMeta(cacheTtlSeconds = 120))
 
         val domain = response.toDomain()
 
-        assertEquals(AuthRuntimePolicy.SHARED_TTL_SECONDS, domain.cacheTtlSeconds)
+        assertEquals(120, domain.cacheTtlSeconds)
     }
 
     @Test
@@ -53,7 +56,10 @@ class TodayStatusResponseTest {
                 checkinWindow = CheckinWindow("07:00:00", "09:00:00"),
                 checkoutAutoTime = "17:00:00",
                 attendanceSessionState = AttendanceSessionStateDto(id = 2, key = "active", label = "Active Session"),
-                activeAttendanceId = 123
+                activeAttendanceId = 123,
+                checkedInAtIso = "2026-07-05T08:00:00.000Z",
+                checkedOutAtIso = "2026-07-05T17:00:00.000Z",
+                workDurationSeconds = 32_400L
             ),
             message = null,
             meta = meta

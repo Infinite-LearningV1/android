@@ -2,14 +2,14 @@ package com.example.infinite_track.presentation.screen.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.infinite_track.domain.model.attendance.AttendancePeriod
 import com.example.infinite_track.domain.model.attendance.AttendanceRecord
+import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.model.booking.BookingHistoryItem
-import com.example.infinite_track.domain.model.dashboard.InternshipSummary
+import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.booking.GetBookingHistoryUseCase
-import com.example.infinite_track.domain.use_case.dashboard.GetInternshipDashboardDataUseCase
-import com.example.infinite_track.domain.model.attendance.AttendancePeriod
 import com.example.infinite_track.domain.use_case.history.GetAttendanceHistoryUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.utils.UiState
@@ -19,13 +19,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+data class HomeTodayStatusUiState(
+	val status: UiState<TodayStatus> = UiState.Loading,
+	val warningMessage: String? = null,
+	val isRefreshing: Boolean = false
+)
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
 	private val getLoggedInUserUseCase: GetLoggedInUserUseCase,
 	private val getAttendanceHistoryUseCase: GetAttendanceHistoryUseCase,
 	private val getCurrentAddressUseCase: GetCurrentAddressUseCase,
-	private val getInternshipDashboardDataUseCase: GetInternshipDashboardDataUseCase,
-	private val getBookingHistoryUseCase: GetBookingHistoryUseCase
+	private val getBookingHistoryUseCase: GetBookingHistoryUseCase,
+	private val getTodayStatusUseCase: GetTodayStatusUseCase
 ) : ViewModel() {
 
 	// User profile state
@@ -42,16 +48,8 @@ class HomeViewModel @Inject constructor(
 	private val _currentAddressState = MutableStateFlow("Loading...")
 	val currentAddressState: StateFlow<String> = _currentAddressState
 
-	// Internship Dashboard Summary state - simplified to just hold the data or null
-	private val _internshipSummaryState = MutableStateFlow<InternshipSummary?>(null)
-	val internshipSummaryState: StateFlow<InternshipSummary?> = _internshipSummaryState
-
-	// Dummy leave data for Employee/Manager
-	private val _annualBalance = MutableStateFlow(12)
-	val annualBalance: StateFlow<Int> = _annualBalance
-
-	private val _annualUsed = MutableStateFlow(5)
-	val annualUsed: StateFlow<Int> = _annualUsed
+	private val _todayStatusState = MutableStateFlow(HomeTodayStatusUiState())
+	val todayStatusState: StateFlow<HomeTodayStatusUiState> = _todayStatusState
 
 	// Detailed booking history state for legacy DetailsMyBooking route; WFA tab owns the primary booking history UI.
 	// Detailed booking history state for DetailsMyBooking screen
@@ -74,8 +72,7 @@ class HomeViewModel @Inject constructor(
 		fetchUserProfile()
 		fetchTopAttendanceHistory()
 		fetchCurrentAddress()
-		loadDummyLeaveData()
-		fetchInternshipDashboardData()
+		fetchTodayStatus(forceRefresh = false)
 	}
 
 	private fun fetchUserProfile() {
@@ -113,30 +110,44 @@ class HomeViewModel @Inject constructor(
 		}
 	}
 
-	private fun loadDummyLeaveData() {
-		// These values are already set in the StateFlow initialization
-		// This function is included for clarity and future expansion
-		_annualBalance.value = 12
-		_annualUsed.value = 5
-	}
-
-	private fun fetchInternshipDashboardData() {
+	fun fetchTodayStatus(forceRefresh: Boolean = false) {
 		viewModelScope.launch {
-			getInternshipDashboardDataUseCase().onSuccess { summary ->
-				_internshipSummaryState.value = summary
-			}.onFailure {
-				// On failure, just leave the state as null
-				_internshipSummaryState.value = null
+			val currentState = _todayStatusState.value
+			val hasExistingStatus = currentState.status is UiState.Success
+
+			_todayStatusState.value = when {
+				forceRefresh && hasExistingStatus -> currentState.copy(
+					warningMessage = null,
+					isRefreshing = true
+				)
+
+				else -> HomeTodayStatusUiState(status = UiState.Loading)
 			}
+
+			getTodayStatusUseCase(forceRefresh = forceRefresh)
+				.onSuccess { todayStatus ->
+					_todayStatusState.value = HomeTodayStatusUiState(
+						status = UiState.Success(todayStatus)
+					)
+				}
+				.onFailure { error ->
+					val message = error.message ?: "Unable to refresh today's attendance status"
+					_todayStatusState.value = if (hasExistingStatus) {
+						currentState.copy(
+							warningMessage = message,
+							isRefreshing = false
+						)
+					} else {
+						HomeTodayStatusUiState(status = UiState.Error(message))
+					}
+				}
 		}
 	}
 
-	/**
-	 * Function to refresh the internship dashboard data
-	 * Can be called when user performs a pull-to-refresh or after check-in/check-out
-	 */
-	fun refreshInternshipDashboard() {
-		fetchInternshipDashboardData()
+	fun refreshDashboard(forceRefresh: Boolean = true) {
+		fetchTodayStatus(forceRefresh = forceRefresh)
+		fetchTopAttendanceHistory()
+		fetchCurrentAddress()
 	}
 
 	/**

@@ -66,7 +66,16 @@ data class TodayStatusData(
     val attendanceSessionState: AttendanceSessionStateDto? = null,
 
     @field:SerializedName("active_attendance_id")
-    val activeAttendanceId: Int? = null
+    val activeAttendanceId: Int? = null,
+
+    @field:SerializedName("checked_in_at_iso")
+    val checkedInAtIso: String? = null,
+
+    @field:SerializedName("checked_out_at_iso")
+    val checkedOutAtIso: String? = null,
+
+    @field:SerializedName("work_duration_seconds")
+    val workDurationSeconds: Long? = null
 )
 
 data class AttendanceSessionStateDto(

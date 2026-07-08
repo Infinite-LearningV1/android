@@ -6,7 +6,6 @@ import com.example.infinite_track.data.soucre.network.response.TodayStatusData
 import com.example.infinite_track.data.soucre.network.response.TodayStatusMeta
 import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
 import com.example.infinite_track.domain.model.attendance.AttendanceSessionState
-import com.example.infinite_track.domain.model.auth.AuthRuntimePolicy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -42,6 +41,6 @@ class AttendanceMapperTest {
         assertEquals("2026-07-05T18:49:51.000Z", domain.currentTime)
         assertEquals(AttendanceSessionState(4, "unavailable", "Unavailable"), domain.attendanceSessionState)
         assertNull(domain.activeAttendanceId)
-        assertEquals(AuthRuntimePolicy.SHARED_TTL_SECONDS, domain.cacheTtlSeconds)
+        assertEquals(300, domain.cacheTtlSeconds)
     }
 }

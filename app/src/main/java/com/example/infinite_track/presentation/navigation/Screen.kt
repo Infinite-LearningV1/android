@@ -30,6 +30,7 @@ sealed class Screen(val route: String) {
     data object DetailListTimeOff : Screen("home/detailsTimeOff")
     data object DetailMyAttendance : Screen("home/listMyAttendance")
     data object DetailsMyBooking : Screen("home/detailsBooking")
+    data object CompanyServiceComingSoon : Screen("home/companyServiceComingSoon")
     data object PaySlip : Screen("profile/PaySlip")
     data object MyDocument : Screen("profile/MyDocument")
     data object About : Screen("profile/about")
