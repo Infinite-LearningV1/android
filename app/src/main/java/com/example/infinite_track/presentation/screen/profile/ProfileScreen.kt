@@ -197,7 +197,6 @@ fun ProfileScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(InfiniteColors.AccountHubBackgroundGradient)
                 .padding(horizontal = 16.dp, vertical = 18.dp)
         ) {
             when (profileState) {
@@ -289,13 +288,6 @@ private fun AccountHubContent(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Text(
-            text = stringResource(R.string.account_hub_title),
-            style = headline2,
-            color = InfiniteColors.AccountHubTitle,
-            fontWeight = FontWeight.Bold
-        )
-
         IdentityHeroCard(
             user = user,
             role = role,
