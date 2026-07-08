@@ -26,7 +26,7 @@ fun InfiniteAttendanceModeDistributionCard(
     modifier: Modifier = Modifier,
     wfhCount: Int? = null,
     title: String = "Attendance Mode",
-    subtitle: String = "WFO and WFA distribution from backend summary",
+    subtitle: String? = "WFO and WFA distribution from backend summary",
     unavailableModeMessage: String? = "WFH is not shown because total_wfh is not available in the current Android model."
 ) {
     val totalKnown = wfoCount + wfaCount + (wfhCount ?: 0)

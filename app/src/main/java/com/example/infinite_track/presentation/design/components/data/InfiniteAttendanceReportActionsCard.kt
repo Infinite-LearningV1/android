@@ -24,7 +24,7 @@ fun InfiniteAttendanceReportActionsCard(
     onExportClick: () -> Unit = {},
     onShareClick: () -> Unit = {},
     title: String = "Export / Share Report",
-    subtitle: String = "PDF contract is shown honestly until runtime wiring is verified",
+    subtitle: String? = "PDF contract is shown honestly until runtime wiring is verified",
     supportMessage: String = "Expected export endpoint: ${AttendanceReportExportContract.exportPdfPath(selectedPeriod)}. Preview endpoint: ${AttendanceReportExportContract.PERSONAL_PDF_PREVIEW_PATH}. Wiring and backend runtime readiness need verification before enabling these actions."
 ) {
     InfiniteGlassReportCard(modifier = modifier) {
