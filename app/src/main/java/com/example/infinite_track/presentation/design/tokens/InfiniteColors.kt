@@ -125,7 +125,33 @@ object InfiniteColors {
                 Violet_100.copy(alpha = 0.42f)
             )
         )
+
+    val AttendanceReportBackground: Brush
+        get() = Brush.verticalGradient(
+            colors = listOf(
+                Violet_100,
+                Violet_50,
+                Blue_50.copy(alpha = 0.62f)
+            )
+        )
+
+    val AttendanceReportHeroGradient: Brush
+        get() = Brush.linearGradient(
+            colors = listOf(
+                White.copy(alpha = 0.78f),
+                Blue_500.copy(alpha = 0.10f),
+                Blue_Accent_500.copy(alpha = 0.08f)
+            )
+        )
+
+    val AttendanceReportGlassSurface = White.copy(alpha = 0.68f)
+    val AttendanceReportGlassBorder = White.copy(alpha = 0.92f)
+    val AttendanceReportMutedText = Purple_500.copy(alpha = 0.62f)
+    val AttendanceReportBodyText = Purple_500.copy(alpha = 0.72f)
+    val AttendanceReportWarningSurface = Orange_500.copy(alpha = 0.18f)
+    val AttendanceReportWarningBorder = Orange_500.copy(alpha = 0.42f)
 }
+
 
 @Composable
 fun infiniteSemanticColors(semantic: InfiniteSemantic): InfiniteSemanticColors {

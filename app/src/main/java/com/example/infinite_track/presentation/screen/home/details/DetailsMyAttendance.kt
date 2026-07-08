@@ -27,17 +27,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.infinite_track.domain.model.attendance.AttendancePeriod
 import com.example.infinite_track.presentation.components.button.InfiniteTracButtonBack
 import com.example.infinite_track.presentation.components.calendar.TodayDateWithFilterHeader
 import com.example.infinite_track.presentation.components.cards.AttendanceHistoryC
 import com.example.infinite_track.presentation.components.empty.EmptyListAnimation
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
 import com.example.infinite_track.presentation.core.headline4
+import com.example.infinite_track.presentation.design.components.data.InfiniteAttendancePeriodFilter
 import com.example.infinite_track.presentation.screen.history.HistoryViewModel
-import com.example.infinite_track.presentation.screen.history.PeriodFilterChips
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -84,7 +82,7 @@ fun DetailsMyAttendance(
 				// Period filter chips
 				if (showFilters) {
 					Spacer(modifier = Modifier.height(8.dp))
-					PeriodFilterChips(
+					InfiniteAttendancePeriodFilter(
 						selectedPeriod = uiState.selectedPeriod,
 						onPeriodSelected = { period ->
 							viewModel.onFilterChanged(period)
@@ -97,6 +95,23 @@ fun DetailsMyAttendance(
 
 				// Display loading, error, or content based on UI state
 				when {
+					uiState.selectedPeriod == AttendancePeriod.CUSTOM -> {
+						Box(
+							modifier = Modifier.fillMaxSize(),
+							contentAlignment = Alignment.Center
+						) {
+							Column(
+								horizontalAlignment = Alignment.CenterHorizontally,
+							) {
+								EmptyListAnimation(modifier = Modifier.size(150.dp))
+								Text(
+									text = "Custom attendance range is not available yet.",
+									style = headline4,
+								)
+							}
+						}
+					}
+
 					uiState.isLoading && uiState.records.isEmpty() -> {
 						Box(
 							modifier = Modifier.fillMaxSize(),

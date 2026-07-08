@@ -30,7 +30,10 @@ fun AttendanceItem.toDomain(): AttendanceRecord {
 		timeIn = timeIn,
 		timeOut = timeOut,
 		workHour = workHour,
-		attendanceDate = attendanceDate
+		attendanceDate = attendanceDate,
+		category = category,
+		status = status,
+		location = location
 	)
 }
 
