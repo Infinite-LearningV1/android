@@ -28,18 +28,21 @@ fun AttendanceActionButtons(
     checkInButtonText: String,
     onBookingClick: () -> Unit,
     onCheckInClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showBookingAction: Boolean = true
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        StatefulButton(
-            text = "Booking Location",
-            style = ButtonStyle.Outlined,
-            enabled = isBookingEnabled,
-            onClick = onBookingClick
-        )
+        if (showBookingAction) {
+            StatefulButton(
+                text = "Booking Location",
+                style = ButtonStyle.Outlined,
+                enabled = isBookingEnabled,
+                onClick = onBookingClick
+            )
+        }
 
         StatefulButton(
             text = checkInButtonText,

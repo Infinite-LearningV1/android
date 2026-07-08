@@ -8,38 +8,44 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.R
+import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.presentation.components.button.RadioButtonWithText
 import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.theme.Blue_700
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
 /**
- * Komponen selector untuk memilih mode kerja (Work From Home atau Work From Anywhere)
+ * Komponen selector untuk memilih mode kerja (WFO, WFH, atau WFA).
  *
- * @param selectedMode Mode yang dipilih saat ini ("WFH" atau "WFA")
+ * @param selectedMode Mode yang dipilih saat ini.
  * @param onModeSelected Callback yang dipanggil ketika mode dipilih
  */
 @Composable
 fun WorkModeSelector(
-    selectedMode: String,
-    onModeSelected: (String) -> Unit,
+    selectedMode: WorkMode,
+    onModeSelected: (WorkMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        RadioButtonWithText(
-            text = stringResource(R.string.work_from_home),
-            selected = selectedMode == "WFH",
-            onClick = { onModeSelected("WFH") }
-        )
+        WorkMode.values().forEach { mode ->
+            RadioButtonWithText(
+                text = mode.labelText(),
+                selected = selectedMode == mode,
+                onClick = { onModeSelected(mode) }
+            )
+        }
+    }
+}
 
-        RadioButtonWithText(
-            text = stringResource(R.string.work_from_anywhere),
-            selected = selectedMode == "WFA",
-            onClick = { onModeSelected("WFA") }
-        )
+@Composable
+private fun WorkMode.labelText(): String {
+    return when (this) {
+        WorkMode.WFO -> stringResource(R.string.work_from_office)
+        WorkMode.WFH -> stringResource(R.string.work_from_home)
+        WorkMode.WFA -> stringResource(R.string.work_from_anywhere)
     }
 }
 
@@ -57,7 +63,7 @@ private fun WorkModeSelectorPreview() {
                 color = Blue_700
             )
 
-            var selectedMode by remember { mutableStateOf("WFH") }
+            var selectedMode by remember { mutableStateOf(WorkMode.WFH) }
 
             WorkModeSelector(
                 selectedMode = selectedMode,
