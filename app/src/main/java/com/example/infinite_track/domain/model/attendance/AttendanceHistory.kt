@@ -12,7 +12,10 @@ data class AttendanceRecord(
 	val timeIn: String,
 	val timeOut: String?,
 	val workHour: String?,
-	val attendanceDate: String? = null
+	val attendanceDate: String? = null,
+	val category: String? = null,
+	val status: String? = null,
+	val location: String? = null
 )
 
 /**

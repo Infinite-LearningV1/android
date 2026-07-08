@@ -9,6 +9,7 @@ import com.example.infinite_track.domain.model.dashboard.InternshipSummary
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.booking.GetBookingHistoryUseCase
 import com.example.infinite_track.domain.use_case.dashboard.GetInternshipDashboardDataUseCase
+import com.example.infinite_track.domain.model.attendance.AttendancePeriod
 import com.example.infinite_track.domain.use_case.history.GetAttendanceHistoryUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.utils.UiState
@@ -90,7 +91,7 @@ class HomeViewModel @Inject constructor(
 			_topAttendanceHistoryState.value = UiState.Loading
 
 			getAttendanceHistoryUseCase(
-				period = "monthly",
+				period = AttendancePeriod.MONTHLY,
 				page = 1,
 				limit = 5
 			).onSuccess { historyPage ->
