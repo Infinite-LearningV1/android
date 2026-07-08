@@ -41,7 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.infinite_track.R
-import com.example.infinite_track.domain.model.attendance.TargetLocationInfo
+import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.presentation.components.button.attendance.AttendanceBottomSheetContent
@@ -340,17 +340,13 @@ fun AttendanceScreen(
 
                             AttendanceBottomSheetContent(
                                 modifier = Modifier.padding(top = 0.dp),
-                                targetLocationInfo = uiState.targetLocation?.let { target ->
-                                    TargetLocationInfo(
-                                        description = target.description,
-                                        locationName = target.category
-                                    )
-                                },
+                                targetLocationInfo = uiState.selectedTargetLocation,
                                 currentLocationAddress = uiState.currentUserAddress.ifEmpty { "Mengambil lokasi saat ini..." },
                                 selectedWorkMode = uiState.selectedWorkMode,
-                                isBookingEnabled = uiState.isBookingEnabled,
-                                isCheckInEnabled = uiState.isButtonEnabled, // Use isButtonEnabled from uiState
+                                isBookingEnabled = uiState.selectedWorkMode == WorkMode.WFA && uiState.selectedTargetLocation?.location != null,
+                                isCheckInEnabled = uiState.isButtonEnabled,
                                 checkInButtonText = uiState.buttonText,
+                                blockingMessage = uiState.workModeEligibility?.blockingReason,
                                 onSearchLocationClick = {
                                     navController.navigate("location_search")
                                 },

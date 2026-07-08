@@ -1,5 +1,6 @@
 package com.example.infinite_track.presentation.screen.attendance
 
+import com.example.infinite_track.domain.model.attendance.WorkMode
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -8,7 +9,7 @@ class AttendanceCheckInRequestFactoryTest {
     @Test
     fun create_preservesBookingIdForWfaRequests() {
         val request = AttendanceCheckInRequestFactory.create(
-            selectedWorkMode = "WFA",
+            workMode = WorkMode.WFA,
             bookingId = 456
         )
 
@@ -21,7 +22,7 @@ class AttendanceCheckInRequestFactoryTest {
     @Test(expected = IllegalArgumentException::class)
     fun create_rejectsWfaRequestWithoutBookingId() {
         AttendanceCheckInRequestFactory.create(
-            selectedWorkMode = "Work From Anywhere",
+            workMode = WorkMode.WFA,
             bookingId = null
         )
     }
