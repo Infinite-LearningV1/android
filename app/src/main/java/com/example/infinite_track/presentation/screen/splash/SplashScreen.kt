@@ -42,18 +42,14 @@ fun SplashScreen(
         when (navigationState) {
             is SplashNavigationState.NavigateToHome -> {
                 navController.navigate(Screen.Home.route) {
-                    popUpTo(navController.graph.startDestinationId) {
-                        saveState = true
-                    }
+                    popUpTo(0) { inclusive = true }
                     launchSingleTop = true
                 }
             }
 
             is SplashNavigationState.NavigateToLogin -> {
                 navController.navigate(Screen.Login.route) {
-                    popUpTo(navController.graph.startDestinationId) {
-                        saveState = true
-                    }
+                    popUpTo(0) { inclusive = true }
                     launchSingleTop = true
                 }
             }
@@ -100,9 +96,7 @@ fun SplashScreen(
 
                 Button(onClick = {
                     navController.navigate(Screen.Login.route) {
-                        popUpTo(navController.graph.startDestinationId) {
-                            saveState = true
-                        }
+                        popUpTo(0) { inclusive = true }
                         launchSingleTop = true
                     }
                 }) {

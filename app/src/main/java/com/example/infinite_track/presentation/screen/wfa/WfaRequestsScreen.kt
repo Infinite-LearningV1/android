@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -82,109 +81,102 @@ fun WfaRequestsScreen(
         onLoadMore = viewModel::loadMore
     )
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = Color.Transparent
-    ) { innerPadding ->
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(pullToRefreshConnection)
-                .padding(innerPadding)
-                .padding(horizontal = 20.dp),
-            contentPadding = PaddingValues(top = 0.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+    LazyColumn(
+        state = listState,
+        modifier = modifier
+            .fillMaxSize()
+            .nestedScroll(pullToRefreshConnection)
+            .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 12.dp),
+        contentPadding = PaddingValues(0.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            WfaRequestsHeader()
+        }
+
+        if (uiState.isRefreshing) {
             item {
-                WfaRequestsHeader()
+                InlineRefreshingIndicator(message = "Refreshing WFA requests...")
+            }
+        }
+
+        item {
+            WfaRequestStatusSummary(summary = uiState.summary)
+        }
+
+        item {
+            WfaRequestFilterChips(
+                selectedFilter = uiState.selectedFilter,
+                onFilterSelected = viewModel::onFilterSelected
+            )
+        }
+
+        item {
+            Text(
+                text = "Recent WFA Requests",
+                style = MaterialTheme.typography.titleLarge,
+                color = Purple_500,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        when {
+            uiState.isLoading -> {
+                item { LoadingState() }
             }
 
-            if (uiState.isRefreshing) {
+            uiState.errorMessage != null && uiState.bookings.isEmpty() -> {
                 item {
-                    InlineRefreshingIndicator(message = "Refreshing WFA requests...")
+                    ErrorState(
+                        message = uiState.errorMessage ?: "Unable to load WFA requests.",
+                        onRetry = viewModel::retry
+                    )
                 }
             }
 
-            item {
-                WfaRequestStatusSummary(summary = uiState.summary)
+            uiState.isEmpty -> {
+                item { EmptyState() }
             }
 
-            item {
-                WfaRequestFilterChips(
-                    selectedFilter = uiState.selectedFilter,
-                    onFilterSelected = viewModel::onFilterSelected
-                )
-            }
-
-            item {
-                Text(
-                    text = "Recent WFA Requests",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Purple_500,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            when {
-                uiState.isLoading -> {
-                    item { LoadingState() }
+            else -> {
+                items(
+                    items = uiState.bookings,
+                    key = { booking -> "${booking.bookingId}-${booking.scheduleDateRaw}-${booking.statusKey}" }
+                ) { booking ->
+                    WfaRequestCard(booking = booking)
                 }
 
-                uiState.errorMessage != null && uiState.bookings.isEmpty() -> {
+                if (uiState.isLoadingMore) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Blue_500)
+                        }
+                    }
+                }
+
+                if (uiState.errorMessage != null && uiState.bookings.isNotEmpty()) {
                     item {
                         ErrorState(
-                            message = uiState.errorMessage ?: "Unable to load WFA requests.",
-                            onRetry = viewModel::retry
+                            message = uiState.errorMessage ?: "Unable to load more WFA requests.",
+                            onRetry = viewModel::loadMore
                         )
-                    }
-                }
-
-                uiState.isEmpty -> {
-                    item { EmptyState() }
-                }
-
-                else -> {
-                    items(
-                        items = uiState.bookings,
-                        key = { booking -> "${booking.bookingId}-${booking.scheduleDateRaw}-${booking.statusKey}" }
-                    ) { booking ->
-                        WfaRequestCard(booking = booking)
-                    }
-
-                    if (uiState.isLoadingMore) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(color = Blue_500)
-                            }
-                        }
-                    }
-
-                    if (uiState.errorMessage != null && uiState.bookings.isNotEmpty()) {
-                        item {
-                            ErrorState(
-                                message = uiState.errorMessage ?: "Unable to load more WFA requests.",
-                                onRetry = viewModel::loadMore
-                            )
-                        }
                     }
                 }
             }
         }
     }
 }
-
 @Composable
 private fun WfaRequestsHeader() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 6.dp, bottom = 12.dp),
+            .padding(bottom = 12.dp),
         horizontalArrangement = Arrangement.Center
     ) {
         Text(

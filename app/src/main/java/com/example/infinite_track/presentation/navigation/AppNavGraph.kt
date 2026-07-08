@@ -29,12 +29,8 @@ fun NavGraphBuilder.appNavGraph(
         composable(Screen.Login.route) {
             LoginScreen(
                 navigateToHome = {
-                    // Navigate to main_graph after successful login
                     navController.navigate(Screen.Home.route) {
-                        // Clear backstack after successful login
-                        popUpTo(navController.graph.startDestinationId) {
-                            inclusive = true
-                        }
+                        popUpTo(0) { inclusive = true }
                         launchSingleTop = true
                     }
                 }
