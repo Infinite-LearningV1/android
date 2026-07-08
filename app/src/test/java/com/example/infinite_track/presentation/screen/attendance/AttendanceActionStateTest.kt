@@ -45,6 +45,18 @@ class AttendanceActionStateTest {
     }
 
     @Test
+    fun submitting_exposesLoadingCopyAndDisablesRetrySubmit() {
+        val state = AttendanceActionState.Submitting(
+            intent = AttendanceActionIntent.CHECK_IN,
+            message = "Mengirim check-in..."
+        )
+
+        assertEquals("Mengirim check-in...", state.ctaLabel)
+        assertFalse(state.isCtaEnabled)
+        assertTrue(state.legacyIsCheckInMode)
+    }
+
+    @Test
     fun completed_exposesHonestDisabledCompletedCopy() {
         val state = AttendanceActionState.Completed
 

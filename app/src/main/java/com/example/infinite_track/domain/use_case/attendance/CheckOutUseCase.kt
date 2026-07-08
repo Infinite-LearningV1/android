@@ -23,11 +23,13 @@ class CheckOutUseCase @Inject constructor(
      * No parameters needed - gets all required data from repository and current location
      * @return Result containing ActiveAttendanceSession on success or exception on failure
      */
-    suspend operator fun invoke(): Result<ActiveAttendanceSession> {
+    suspend operator fun invoke(attendanceId: Int? = null): Result<ActiveAttendanceSession> {
         return try {
-            // 1. Get active attendance ID
-            val attendanceId = attendanceRepository.getActiveAttendanceId()
-                ?: return Result.failure(Exception("No active attendance session found"))
+            // 1. Prefer the active attendance ID from caller status, refresh status if needed, then fallback to preference
+            val resolvedAttendanceId = attendanceId
+                ?: attendanceRepository.getTodayStatus(forceRefresh = true).getOrNull()?.activeAttendanceId
+                ?: attendanceRepository.getActiveAttendanceId()
+                ?: return Result.failure(Exception("No active attendance session found. Please refresh attendance status and try again."))
 
             // 2. Get current real-time GPS coordinates (strict, no DB fallback)
             val coordinatesResult = getCurrentCoordinatesUseCase(useRealTimeGPS = true)
@@ -42,7 +44,7 @@ class CheckOutUseCase @Inject constructor(
             // 3. Call repository to perform check-out
             // Backend will handle location validation
             val checkOutResult = attendanceRepository.checkOut(
-                attendanceId = attendanceId,
+                attendanceId = resolvedAttendanceId,
                 latitude = currentCoordinates.first,
                 longitude = currentCoordinates.second
             )

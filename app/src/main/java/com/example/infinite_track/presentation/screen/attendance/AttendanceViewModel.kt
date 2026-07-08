@@ -32,6 +32,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -192,9 +193,7 @@ class AttendanceViewModel @Inject constructor(
                     isWfaModeActive = selectedMode == WorkMode.WFA,
                     uiState = UiState.Success(Unit)
                 )
-                _uiState.value = nextState.withActionState(
-                    AttendanceActionResolver.resolve(nextState)
-                )
+                _uiState.value = nextState.withResolvedActionStatePreservingInFlightSubmit()
 
                 resolveAndApplyTargetForMode(selectedMode)
 
@@ -265,10 +264,20 @@ class AttendanceViewModel @Inject constructor(
         )
     }
 
+    private fun AttendanceScreenState.withResolvedActionStatePreservingInFlightSubmit(): AttendanceScreenState {
+        val currentActionState = _uiState.value.actionState
+        val inFlightState = currentActionState as? AttendanceActionState.VerifyingFace
+            ?: currentActionState as? AttendanceActionState.Submitting
+
+        return if (inFlightState != null) {
+            withActionState(inFlightState)
+        } else {
+            withActionState(AttendanceActionResolver.resolve(this))
+        }
+    }
+
     private fun refreshResolvedActionState() {
-        _uiState.value = _uiState.value.withActionState(
-            AttendanceActionResolver.resolve(_uiState.value)
-        )
+        _uiState.value = _uiState.value.withResolvedActionStatePreservingInFlightSubmit()
     }
 
     /**
@@ -416,9 +425,7 @@ class AttendanceViewModel @Inject constructor(
                 workModeEligibility = eligibility,
                 isEvaluatingWorkMode = false
             )
-            _uiState.value = nextState.withActionState(
-                AttendanceActionResolver.resolve(nextState)
-            )
+            _uiState.value = nextState.withResolvedActionStatePreservingInFlightSubmit()
 
             target.location?.let { animateMapToTarget(it) }
         }
@@ -637,6 +644,11 @@ class AttendanceViewModel @Inject constructor(
     fun onFaceVerificationResult(result: FaceVerificationResult) {
         Log.d(TAG, "Face verification result: $result")
 
+        if (_uiState.value.actionState is AttendanceActionState.Submitting) {
+            Log.d(TAG, "Ignoring face verification result because attendance submit is already in flight")
+            return
+        }
+
         val intent = (_uiState.value.actionState as? AttendanceActionState.VerifyingFace)?.intent
             ?: _uiState.value.takeIf { it.isButtonEnabled }?.let { state ->
                 (state.actionState as? AttendanceActionState.Ready)?.intent
@@ -713,6 +725,12 @@ class AttendanceViewModel @Inject constructor(
             try {
                 Log.d(TAG, "Proceeding with check-in after face verification")
 
+                val initialSubmittingState = _uiState.value.actionState as? AttendanceActionState.Submitting
+                if (initialSubmittingState?.intent != intent) {
+                    Log.w(TAG, "Check-in submit blocked because action state is not Submitting($intent): ${_uiState.value.actionState}")
+                    return@launch
+                }
+
                 // Clear any previous error
                 _uiState.value = _uiState.value.copy(activeDialog = null)
 
@@ -753,27 +771,43 @@ class AttendanceViewModel @Inject constructor(
                     return@launch
                 }
 
-                // Get user info for the request
-                getLoggedInUserUseCase().collect { user ->
-                    if (user == null) {
-                        val message = "User information not available. Please try again."
-                        _uiState.value = _uiState.value.copy(
-                            activeDialog = DialogState.Error(message)
-                        ).withActionState(
-                            AttendanceActionState.RetryableFailure(
-                                intent = intent,
-                                title = "Check-in gagal",
-                                message = message
-                            )
+                // Get user info once for this mutation; long-running collection can replay submit.
+                val user = getLoggedInUserUseCase().firstOrNull()
+                if (user == null) {
+                    val message = "User information not available. Please try again."
+                    _uiState.value = _uiState.value.copy(
+                        activeDialog = DialogState.Error(message)
+                    ).withActionState(
+                        AttendanceActionState.RetryableFailure(
+                            intent = intent,
+                            title = "Check-in gagal",
+                            message = message
                         )
-                        return@collect
-                    }
+                    )
+                    return@launch
+                }
 
-                    val bookingId = if (selectedMode == WorkMode.WFA) {
-                        eligibility.approvedWfaBookingId ?: run {
-                            val scheduleDateIso = _uiState.value.todayStatus?.todayDate
-                            if (scheduleDateIso.isNullOrBlank()) {
-                                val message = "Tanggal attendance hari ini tidak tersedia untuk memvalidasi booking WFA."
+                val bookingId = if (selectedMode == WorkMode.WFA) {
+                    eligibility.approvedWfaBookingId ?: run {
+                        val scheduleDateIso = _uiState.value.todayStatus?.todayDate
+                        if (scheduleDateIso.isNullOrBlank()) {
+                            val message = "Tanggal attendance hari ini tidak tersedia untuk memvalidasi booking WFA."
+                            _uiState.value = _uiState.value.copy(
+                                activeDialog = DialogState.Error(message)
+                            ).withActionState(
+                                AttendanceActionState.RetryableFailure(
+                                    intent = intent,
+                                    title = "Booking WFA belum disetujui",
+                                    message = message
+                                )
+                            )
+                            return@launch
+                        }
+
+                        resolveTodayApprovedWfaBookingIdUseCase(scheduleDateIso)
+                            .getOrElse { exception ->
+                                val message = exception.message
+                                    ?: "Booking WFA yang sudah disetujui untuk hari ini tidak ditemukan."
                                 _uiState.value = _uiState.value.copy(
                                     activeDialog = DialogState.Error(message)
                                 ).withActionState(
@@ -783,81 +817,70 @@ class AttendanceViewModel @Inject constructor(
                                         message = message
                                     )
                                 )
-                                return@collect
+                                return@launch
                             }
-
-                            resolveTodayApprovedWfaBookingIdUseCase(scheduleDateIso)
-                                .getOrElse { exception ->
-                                    val message = exception.message
-                                        ?: "Booking WFA yang sudah disetujui untuk hari ini tidak ditemukan."
-                                    _uiState.value = _uiState.value.copy(
-                                        activeDialog = DialogState.Error(message)
-                                    ).withActionState(
-                                        AttendanceActionState.RetryableFailure(
-                                            intent = intent,
-                                            title = "Booking WFA belum disetujui",
-                                            message = message
-                                        )
-                                    )
-                                    return@collect
-                                }
-                        }
-                    } else {
-                        null
                     }
+                } else {
+                    null
+                }
 
-                    val attendanceRequest = try {
-                        AttendanceCheckInRequestFactory.create(
-                            workMode = selectedMode,
-                            bookingId = bookingId
+                val attendanceRequest = try {
+                    AttendanceCheckInRequestFactory.create(
+                        workMode = selectedMode,
+                        bookingId = bookingId
+                    )
+                } catch (exception: IllegalArgumentException) {
+                    val message = exception.message ?: "Payload check-in WFA tidak valid."
+                    _uiState.value = _uiState.value.copy(
+                        activeDialog = DialogState.Error(message)
+                    ).withActionState(
+                        AttendanceActionState.RetryableFailure(
+                            intent = intent,
+                            title = "Check-in gagal",
+                            message = message
                         )
-                    } catch (exception: IllegalArgumentException) {
-                        val message = exception.message ?: "Payload check-in WFA tidak valid."
-                        _uiState.value = _uiState.value.copy(
-                            activeDialog = DialogState.Error(message)
-                        ).withActionState(
-                            AttendanceActionState.RetryableFailure(
-                                intent = intent,
-                                title = "Check-in gagal",
-                                message = message
-                            )
+                    )
+                    return@launch
+                }
+
+                val submittingState = _uiState.value.actionState as? AttendanceActionState.Submitting
+                if (submittingState?.intent != intent) {
+                    Log.w(TAG, "Check-in submit blocked because action state is not Submitting($intent): ${_uiState.value.actionState}")
+                    return@launch
+                }
+
+                // Call CheckInUseCase with both request and target location
+                checkInUseCase(attendanceRequest, targetLocation).onSuccess { activeSession ->
+                    Log.d(TAG, "Check-in successful: $activeSession")
+
+                    // Refresh today's status from backend after mutation invalidates local cache.
+                    fetchTodayStatus(forceRefresh = true)
+
+                    val successMessage = "Check-in berhasil! Selamat bekerja hari ini."
+                    _uiState.value = _uiState.value.copy(
+                        activeDialog = DialogState.Success(successMessage)
+                    ).withActionState(
+                        AttendanceActionState.Success(
+                            intent = intent,
+                            message = successMessage
                         )
-                        return@collect
-                    }
+                    )
 
-                    // Call CheckInUseCase with both request and target location
-                    checkInUseCase(attendanceRequest, targetLocation).onSuccess { activeSession ->
-                        Log.d(TAG, "Check-in successful: $activeSession")
+                }.onFailure { exception ->
+                    Log.e(TAG, "Check-in failed: ${exception.message}", exception)
 
-                        // Refresh today's status from backend after mutation invalidates local cache.
-                        fetchTodayStatus(forceRefresh = true)
+                    // Extract the actual error message from the exception
+                    val errorMessage = exception.message ?: "Check-in gagal. Silakan coba lagi."
 
-                        val successMessage = "Check-in berhasil! Selamat bekerja hari ini."
-                        _uiState.value = _uiState.value.copy(
-                            activeDialog = DialogState.Success(successMessage)
-                        ).withActionState(
-                            AttendanceActionState.Success(
-                                intent = intent,
-                                message = successMessage
-                            )
+                    _uiState.value = _uiState.value.copy(
+                        activeDialog = DialogState.Error(errorMessage)
+                    ).withActionState(
+                        AttendanceActionState.RetryableFailure(
+                            intent = intent,
+                            title = "Check-in gagal",
+                            message = errorMessage
                         )
-
-                    }.onFailure { exception ->
-                        Log.e(TAG, "Check-in failed: ${exception.message}", exception)
-
-                        // Extract the actual error message from the exception
-                        val errorMessage = exception.message ?: "Check-in gagal. Silakan coba lagi."
-
-                        _uiState.value = _uiState.value.copy(
-                            activeDialog = DialogState.Error(errorMessage)
-                        ).withActionState(
-                            AttendanceActionState.RetryableFailure(
-                                intent = intent,
-                                title = "Check-in gagal",
-                                message = errorMessage
-                            )
-                        )
-                    }
+                    )
                 }
 
             } catch (e: Exception) {
@@ -885,11 +908,19 @@ class AttendanceViewModel @Inject constructor(
             try {
                 Log.d(TAG, "Proceeding with check-out after face verification")
 
+                val submittingState = _uiState.value.actionState as? AttendanceActionState.Submitting
+                if (submittingState?.intent != intent) {
+                    Log.w(TAG, "Check-out submit blocked because action state is not Submitting($intent): ${_uiState.value.actionState}")
+                    return@launch
+                }
+
                 // Clear any previous error
                 _uiState.value = _uiState.value.copy(activeDialog = null)
 
-                // Call CheckOutUseCase - it will handle everything internally
-                checkOutUseCase().onSuccess { activeSession ->
+                val attendanceId = _uiState.value.todayStatus?.activeAttendanceId
+
+                // Call CheckOutUseCase - it will refresh status if needed, get real-time GPS, and fallback to preference
+                checkOutUseCase(attendanceId).onSuccess { activeSession ->
                     Log.d(TAG, "Check-out successful: $activeSession")
 
                     // Refresh today's status from backend after mutation invalidates local cache.

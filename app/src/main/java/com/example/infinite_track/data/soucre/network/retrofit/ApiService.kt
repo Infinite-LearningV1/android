@@ -54,9 +54,9 @@ interface ApiService {
         @Body request: AttendanceRequest
     ): AttendanceResponse
 
-    @POST("api/attendance/checkout/{id_attendance}")
+    @POST("api/attendance/checkout/{id}")
     suspend fun checkOut(
-        @Path("id_attendance") attendanceId: Int,
+        @Path("id") attendanceId: Int,
         @Body request: CheckOutRequestDto
     ): AttendanceResponse
 
