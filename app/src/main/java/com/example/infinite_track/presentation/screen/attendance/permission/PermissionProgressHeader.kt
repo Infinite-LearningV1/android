@@ -12,22 +12,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.infinite_track.presentation.design.components.surface.InfiniteCard
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
-import com.example.infinite_track.presentation.design.tokens.InfiniteDensity
-import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
-import com.example.infinite_track.presentation.design.tokens.InfiniteSurfaceVariant
 
 @Composable
 internal fun PermissionProgressHeader(
     uiState: AttendancePermissionReadinessUiState,
     modifier: Modifier = Modifier
 ) {
-    InfiniteCard(
-        variant = InfiniteSurfaceVariant.StatusTint,
-        semantic = if (uiState.canContinueToWorkMode) InfiniteSemantic.Success else InfiniteSemantic.Warning,
-        density = InfiniteDensity.Comfortable,
-        modifier = modifier.fillMaxWidth()
+    PermissionGlassCard(
+        modifier = modifier.fillMaxWidth(),
+        shadowElevation = if (uiState.canContinueToWorkMode) 3.dp else 0.dp
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
@@ -37,9 +31,9 @@ internal fun PermissionProgressHeader(
             ) {
                 Text(
                     text = uiState.progressCopy,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = InfiniteColors.Text
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = InfiniteColors.Text.copy(alpha = 0.86f)
                 )
                 Text(
                     text = if (uiState.canContinueToWorkMode) "Siap" else "Perlu setup",

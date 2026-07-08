@@ -56,10 +56,7 @@ import com.example.infinite_track.presentation.design.components.button.Infinite
 import com.example.infinite_track.presentation.design.components.button.InfiniteButtonVariant
 import com.example.infinite_track.presentation.design.components.data.InfiniteSectionHeader
 import com.example.infinite_track.presentation.design.components.navigation.InfiniteTopBar
-import com.example.infinite_track.presentation.design.components.surface.InfiniteCard
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
-import com.example.infinite_track.presentation.design.tokens.InfiniteDensity
-import com.example.infinite_track.presentation.design.tokens.InfiniteSurfaceVariant
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
 @Composable
@@ -236,15 +233,13 @@ private fun AttendancePermissionReadinessContent(
             PermissionHeroCard(uiState = uiState)
             PermissionProgressHeader(uiState = uiState)
 
-            InfiniteCard(
-                variant = InfiniteSurfaceVariant.Glass,
-                density = InfiniteDensity.Comfortable,
+            PermissionGlassCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     InfiniteSectionHeader(
                         title = "Akses wajib",
-                        subtitle = "Harus siap sebelum memilih mode kerja",
+                        subtitle = "Lengkapi 3 akses utama sebelum lanjut",
                         leadingIcon = Icons.Default.Shield
                     )
                     PermissionMissionRow(
@@ -277,17 +272,15 @@ private fun AttendancePermissionReadinessContent(
                 }
             }
 
-            InfiniteCard(
-                variant = InfiniteSurfaceVariant.Glass,
-                density = InfiniteDensity.Comfortable,
+            PermissionGlassCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     InfiniteSectionHeader(
-                        title = "Opsional untuk pengingat",
-                        subtitle = "Tidak memblokir absensi manual",
+                        title = "Pengingat opsional",
+                        subtitle = "Boleh dilewati, absensi manual tetap bisa lanjut",
                         leadingIcon = Icons.Default.Notifications,
-                        trailingText = "Degraded OK"
+                        trailingText = "Opsional"
                     )
                     PermissionMissionRow(
                         title = "Notifikasi pengingat",

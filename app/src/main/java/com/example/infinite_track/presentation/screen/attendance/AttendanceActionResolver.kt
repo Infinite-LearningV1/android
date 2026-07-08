@@ -1,5 +1,8 @@
 package com.example.infinite_track.presentation.screen.attendance
 
+import com.example.infinite_track.domain.model.attendance.WorkMode
+import com.example.infinite_track.domain.model.attendance.WorkModeRecoveryAction
+
 object AttendanceActionResolver {
     fun resolve(state: AttendanceScreenState): AttendanceActionState {
         val todayStatus = state.todayStatus ?: return AttendanceActionState.Loading
@@ -23,9 +26,20 @@ object AttendanceActionResolver {
     private fun resolveLayerTwoBlocker(
         state: AttendanceScreenState
     ): AttendanceActionState.Blocked? {
+        state.workModeEligibility?.let { eligibility ->
+            if (!eligibility.canContinueToFaceVerification) {
+                return AttendanceActionState.Blocked(
+                    reason = eligibility.recoveryAction.toBlockReason(state.selectedWorkMode),
+                    title = eligibility.recoveryAction.toBlockTitle(state.selectedWorkMode),
+                    message = eligibility.blockingReason
+                        ?: "Mode kerja belum memenuhi syarat untuk melanjutkan verifikasi wajah."
+                )
+            }
+        }
+
         val selectedMode = state.selectedWorkMode
         return when (selectedMode) {
-            "Work From Home", "WFH" -> {
+            WorkMode.WFH -> {
                 if (state.wfhLocation == null) {
                     AttendanceActionState.Blocked(
                         reason = AttendanceBlockReason.WFH_LOCATION_MISSING,
@@ -37,9 +51,9 @@ object AttendanceActionResolver {
                 }
             }
 
-            "WFA", "Work From Anywhere" -> {
+            WorkMode.WFA -> {
                 when {
-                    state.selectedWfaLocation == null && state.targetLocation == null -> AttendanceActionState.Blocked(
+                    state.selectedTargetLocation?.location == null && state.selectedWfaLocation == null -> AttendanceActionState.Blocked(
                         reason = AttendanceBlockReason.TARGET_LOCATION_UNAVAILABLE,
                         title = "Target location tidak tersedia",
                         message = "Pilih lokasi WFA sebelum melanjutkan verifikasi wajah."
@@ -53,8 +67,8 @@ object AttendanceActionResolver {
                 }
             }
 
-            else -> {
-                if (state.targetLocation == null && state.wfoLocation == null) {
+            WorkMode.WFO -> {
+                if (state.selectedTargetLocation?.location == null && state.wfoLocation == null) {
                     AttendanceActionState.Blocked(
                         reason = AttendanceBlockReason.TARGET_LOCATION_UNAVAILABLE,
                         title = "Target location tidak tersedia",
@@ -63,6 +77,36 @@ object AttendanceActionResolver {
                 } else {
                     null
                 }
+            }
+        }
+    }
+
+    private fun WorkModeRecoveryAction?.toBlockReason(mode: WorkMode): AttendanceBlockReason {
+        return when (this) {
+            WorkModeRecoveryAction.UPDATE_WFH_LOCATION -> AttendanceBlockReason.WFH_LOCATION_MISSING
+            WorkModeRecoveryAction.SELECT_WFA_LOCATION -> AttendanceBlockReason.TARGET_LOCATION_UNAVAILABLE
+            WorkModeRecoveryAction.REQUEST_WFA_BOOKING,
+            WorkModeRecoveryAction.VIEW_WFA_REQUESTS -> AttendanceBlockReason.WFA_BOOKING_REQUIRED
+            WorkModeRecoveryAction.CHOOSE_WFO -> AttendanceBlockReason.SERVER_RESTRICTION
+            null -> when (mode) {
+                WorkMode.WFH -> AttendanceBlockReason.WFH_LOCATION_MISSING
+                WorkMode.WFA -> AttendanceBlockReason.WFA_BOOKING_REQUIRED
+                WorkMode.WFO -> AttendanceBlockReason.TARGET_LOCATION_UNAVAILABLE
+            }
+        }
+    }
+
+    private fun WorkModeRecoveryAction?.toBlockTitle(mode: WorkMode): String {
+        return when (this) {
+            WorkModeRecoveryAction.UPDATE_WFH_LOCATION -> "Lokasi WFH belum tersedia"
+            WorkModeRecoveryAction.SELECT_WFA_LOCATION -> "Target location tidak tersedia"
+            WorkModeRecoveryAction.REQUEST_WFA_BOOKING,
+            WorkModeRecoveryAction.VIEW_WFA_REQUESTS -> "Booking WFA belum disetujui"
+            WorkModeRecoveryAction.CHOOSE_WFO -> "Mode kerja belum tersedia"
+            null -> when (mode) {
+                WorkMode.WFH -> "Lokasi WFH belum tersedia"
+                WorkMode.WFA -> "Booking WFA belum disetujui"
+                WorkMode.WFO -> "Target location tidak tersedia"
             }
         }
     }

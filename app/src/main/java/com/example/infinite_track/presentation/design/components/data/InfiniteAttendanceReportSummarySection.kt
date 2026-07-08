@@ -4,6 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material.icons.outlined.QueryStats
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -16,8 +21,8 @@ fun InfiniteAttendanceReportSummarySection(
     lateCount: Int,
     alphaCount: Int,
     modifier: Modifier = Modifier,
-    attendanceRateSubtitle: String = "Backend denominator unavailable",
-    workHoursSubtitle: String = "From returned work_hour",
+    attendanceRateSubtitle: String? = null,
+    workHoursSubtitle: String? = null,
     title: String = "Report Summary",
     subtitle: String? = null
 ) {
@@ -36,6 +41,7 @@ fun InfiniteAttendanceReportSummarySection(
                     title = "Attendance Rate",
                     value = attendanceRateValue,
                     subtitle = attendanceRateSubtitle,
+                    icon = Icons.Outlined.QueryStats,
                     semantic = InfiniteSemantic.Primary,
                     modifier = Modifier.weight(1f)
                 )
@@ -43,6 +49,7 @@ fun InfiniteAttendanceReportSummarySection(
                     title = "Work Hours",
                     value = workHoursValue,
                     subtitle = workHoursSubtitle,
+                    icon = Icons.Outlined.AccessTime,
                     semantic = InfiniteSemantic.Info,
                     modifier = Modifier.weight(1f)
                 )
@@ -55,14 +62,16 @@ fun InfiniteAttendanceReportSummarySection(
                 InfiniteMetricCard(
                     title = "Late",
                     value = lateCount.toString(),
-                    subtitle = "Backend summary",
+                    subtitle = null,
+                    icon = Icons.Outlined.Schedule,
                     semantic = InfiniteSemantic.Warning,
                     modifier = Modifier.weight(1f)
                 )
                 InfiniteMetricCard(
                     title = "Alpha",
                     value = alphaCount.toString(),
-                    subtitle = "Backend summary",
+                    subtitle = null,
+                    icon = Icons.Outlined.PersonOutline,
                     semantic = InfiniteSemantic.Error,
                     modifier = Modifier.weight(1f)
                 )

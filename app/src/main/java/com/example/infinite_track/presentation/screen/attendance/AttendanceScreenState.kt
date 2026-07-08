@@ -1,7 +1,10 @@
 package com.example.infinite_track.presentation.screen.attendance
 
 import com.example.infinite_track.domain.model.attendance.Location
+import com.example.infinite_track.domain.model.attendance.SelectedTargetLocation
 import com.example.infinite_track.domain.model.attendance.TodayStatus
+import com.example.infinite_track.domain.model.attendance.WorkMode
+import com.example.infinite_track.domain.model.attendance.WorkModeEligibility
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.utils.LocationPermissionHelper
@@ -26,8 +29,10 @@ data class AttendanceScreenState(
     val currentUserAddress: String = "",
     val currentUserLatitude: Double? = null,
     val currentUserLongitude: Double? = null,
-    val isBookingEnabled: Boolean = false,
-    val selectedWorkMode: String = "Work From Office",
+    val selectedWorkMode: WorkMode = WorkMode.WFO,
+    val selectedTargetLocation: SelectedTargetLocation? = null,
+    val workModeEligibility: WorkModeEligibility? = null,
+    val isEvaluatingWorkMode: Boolean = false,
     val targetLocationMarker: Location? = null,
     val selectedMarkerInfo: Location? = null,
     val pickedLocation: LocationResult? = null,

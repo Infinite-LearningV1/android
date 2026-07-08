@@ -7,11 +7,14 @@ import com.example.infinite_track.data.soucre.local.preferences.AttendancePrefer
 import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
 import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.TodayStatus
+import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
 import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
+import com.example.infinite_track.domain.use_case.attendance.EvaluateWorkModeEligibilityUseCase
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
+import com.example.infinite_track.domain.use_case.attendance.ResolveSelectedTargetLocationUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingIdUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
@@ -76,6 +79,8 @@ class AttendanceViewModel @Inject constructor(
     private val geofenceManager: GeofenceManager,
     private val getLoggedInUserUseCase: GetLoggedInUserUseCase,
     private val resolveTodayApprovedWfaBookingIdUseCase: ResolveTodayApprovedWfaBookingIdUseCase,
+    private val resolveSelectedTargetLocationUseCase: ResolveSelectedTargetLocationUseCase,
+    private val evaluateWorkModeEligibilityUseCase: EvaluateWorkModeEligibilityUseCase,
     // Add UseCase dependencies for attendance operations
     private val checkInUseCase: CheckInUseCase,
     private val checkOutUseCase: CheckOutUseCase
@@ -176,41 +181,22 @@ class AttendanceViewModel @Inject constructor(
                     "Today status fetched successfully: mode=${todayStatus.activeMode}, canCheckIn=${todayStatus.canCheckIn}, canCheckOut=${todayStatus.canCheckOut}, state=${todayStatus.attendanceSessionState?.key}"
                 )
 
-                val isBookingEnabled = todayStatus.activeMode.isNotEmpty()
-                val selectedMode = todayStatus.activeMode.ifEmpty { "Work From Office" }
+                val selectedMode = WorkMode.fromRaw(todayStatus.activeMode) ?: WorkMode.WFO
 
                 val nextState = _uiState.value.copy(
                     todayStatus = todayStatus,
                     targetLocation = todayStatus.activeLocation,
                     wfoLocation = todayStatus.activeLocation, // WFO location from today status
                     targetLocationMarker = todayStatus.activeLocation,
-                    isBookingEnabled = isBookingEnabled,
                     selectedWorkMode = selectedMode,
-                    isWfaModeActive = selectedMode == "WFA" || selectedMode == "Work From Anywhere",
+                    isWfaModeActive = selectedMode == WorkMode.WFA,
                     uiState = UiState.Success(Unit)
                 )
                 _uiState.value = nextState.withActionState(
                     AttendanceActionResolver.resolve(nextState)
                 )
 
-                // Setup geofence for active location (validation purposes)
-                todayStatus.activeLocation?.let { location ->
-                    setupGeofence(location)
-                }
-
-                // Send initial camera focus event to WFO location
-                todayStatus.activeLocation?.let { location ->
-                    val wfoPoint = Point.fromLngLat(location.longitude, location.latitude)
-                    viewModelScope.launch {
-                        _uiState.value = _uiState.value.copy(
-                            mapAnimationTarget = MapAnimationTarget.AnimateToLocation(
-                                wfoPoint,
-                                15.0
-                            )
-                        )
-                    }
-                    Log.d(TAG, "Initial camera focus event sent to WFO location")
-                }
+                resolveAndApplyTargetForMode(selectedMode)
 
                 Log.d(TAG, "WFO location updated: ${todayStatus.activeLocation}")
                 Log.d(
@@ -312,64 +298,15 @@ class AttendanceViewModel @Inject constructor(
                 )
                 refreshResolvedActionState()
 
+                if (_uiState.value.selectedWorkMode == WorkMode.WFH) {
+                    resolveAndApplyTargetForMode(WorkMode.WFH)
+                }
+
                 Log.d(TAG, "WFH location updated: $wfhLocation")
             }
         } catch (e: Exception) {
             Log.w(TAG, "Unexpected error in fetchUserHomeLocation", e)
             // Continue without WFH location
-        }
-    }
-
-    /**
-     * Setup geofence for validation (background monitoring)
-     * UPDATED: Enhanced with permission checking and user feedback
-     */
-    private fun setupGeofence(location: Location) {
-        try {
-            Log.d(TAG, "Setting up geofence for location: ${location.description}")
-            Log.d(
-                TAG,
-                "Location details - ID: ${location.locationId}, Lat: ${location.latitude}, Lng: ${location.longitude}, Radius: ${location.radius}m"
-            )
-
-            // Check if all required permissions are granted
-            if (!geofenceManager.hasAllRequiredPermissions()) {
-                Log.w(TAG, "Missing location permissions for geofencing")
-                
-                // Determine which permission is missing
-                val permissionResult = when {
-                    !geofenceManager.hasForegroundLocationPermission() -> 
-                        LocationPermissionHelper.PermissionResult.ForegroundPermissionDenied
-                    !geofenceManager.hasBackgroundLocationPermission() -> 
-                        LocationPermissionHelper.PermissionResult.BackgroundPermissionDenied
-                    else -> LocationPermissionHelper.PermissionResult.PermanentlyDenied
-                }
-                
-                _uiState.value = _uiState.value.copy(
-                    showPermissionDialog = true,
-                    permissionResult = permissionResult,
-                    permissionMessage = geofenceManager.getPermissionStatusMessage()
-                )
-                return
-            }
-
-            geofenceManager.addGeofence(
-                id = location.locationId.toString(),
-                latitude = location.latitude,
-                longitude = location.longitude,
-                radius = location.radius.toFloat(),
-                onPermissionError = { errorMessage ->
-                    Log.e(TAG, "Permission error during geofence setup: $errorMessage")
-                    _uiState.value = _uiState.value.copy(
-                        showPermissionDialog = true,
-                        permissionMessage = errorMessage
-                    )
-                }
-            )
-
-            Log.d(TAG, "Geofence setup request sent for location: ${location.description}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to setup geofence for location: ${location.description}", e)
         }
     }
 
@@ -426,70 +363,75 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Handle work mode selection with Pick on Map integration
-     * UPDATED: Added geofence cleanup when switching modes
+     * Handle work mode selection without mutating active monitoring geofences.
      */
-    fun onWorkModeSelected(mode: String) {
-        Log.d(TAG, "Work mode selected: $mode")
-
-        // Clean up any existing geofence before switching modes
-        Log.d(TAG, "Cleaning up geofences before mode switch...")
-        geofenceManager.removeAllGeofences()
+    fun onWorkModeSelected(mode: WorkMode) {
+        Log.d(TAG, "Work mode selected: ${mode.shortLabel}")
 
         _uiState.value = _uiState.value.copy(
             selectedWorkMode = mode,
-            isWfaModeActive = mode == "WFA" || mode == "Work From Anywhere"
+            isWfaModeActive = mode == WorkMode.WFA
         )
         refreshResolvedActionState()
 
-        viewModelScope.launch {
-            when (mode) {
-                "WFA", "Work From Anywhere" -> {
-                    // Reset previous WFA selection and enter Pick on Map mode
-                    _uiState.value = _uiState.value.copy(
-                        selectedWfaLocation = null,
-                        pickedLocation = null
-                    )
-                    refreshResolvedActionState()
-                    onEnterPickOnMapMode()
-                    fetchWfaRecommendations()
-                }
-
-                "Work From Home", "WFH" -> {
-                    onExitPickOnMapMode()
-                    _uiState.value.wfhLocation?.let { wfhLocation ->
-                        // Setup geofence for WFH location
-                        setupGeofence(wfhLocation)
-
-                        val wfhPoint = Point.fromLngLat(wfhLocation.longitude, wfhLocation.latitude)
-                        _uiState.value = _uiState.value.copy(
-                            mapAnimationTarget = MapAnimationTarget.AnimateToLocation(
-                                point = wfhPoint,
-                                zoomLevel = 15.0
-                            )
-                        )
-                        Log.d(TAG, "Auto-focusing camera to WFH location and setting up geofence")
-                    }
-                }
-
-                "Work From Office", "WFO" -> {
-                    onExitPickOnMapMode()
-                    _uiState.value.wfoLocation?.let { wfoLocation ->
-                        // Setup geofence for WFO location
-                        setupGeofence(wfoLocation)
-
-                        val wfoPoint = Point.fromLngLat(wfoLocation.longitude, wfoLocation.latitude)
-                        _uiState.value = _uiState.value.copy(
-                            mapAnimationTarget = MapAnimationTarget.AnimateToLocation(
-                                point = wfoPoint,
-                                zoomLevel = 15.0
-                            )
-                        )
-                        Log.d(TAG, "Auto-focusing camera to WFO location and setting up geofence")
-                    }
-                }
-            }
+        if (mode == WorkMode.WFA) {
+            _uiState.value = _uiState.value.copy(
+                selectedWfaLocation = null,
+                pickedLocation = null
+            )
+            onEnterPickOnMapMode()
+            fetchWfaRecommendations()
+        } else {
+            onExitPickOnMapMode()
         }
+
+        resolveAndApplyTargetForMode(mode)
+    }
+
+    private fun resolveAndApplyTargetForMode(mode: WorkMode = _uiState.value.selectedWorkMode) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isEvaluatingWorkMode = true,
+                isButtonEnabled = false
+            )
+
+            val state = _uiState.value
+            val target = resolveSelectedTargetLocationUseCase(
+                mode = mode,
+                wfoLocation = state.wfoLocation,
+                wfhLocation = state.wfhLocation,
+                selectedWfaLocation = state.selectedWfaLocation
+            )
+
+            val eligibility = evaluateWorkModeEligibilityUseCase(
+                mode = mode,
+                selectedTargetLocation = target,
+                todayDate = state.todayStatus?.todayDate
+            )
+
+            val nextState = _uiState.value.copy(
+                selectedTargetLocation = target,
+                targetLocation = target.location,
+                targetLocationMarker = target.location,
+                workModeEligibility = eligibility,
+                isEvaluatingWorkMode = false
+            )
+            _uiState.value = nextState.withActionState(
+                AttendanceActionResolver.resolve(nextState)
+            )
+
+            target.location?.let { animateMapToTarget(it) }
+        }
+    }
+
+    private fun animateMapToTarget(location: Location, zoomLevel: Double = 15.0) {
+        val point = Point.fromLngLat(location.longitude, location.latitude)
+        _uiState.value = _uiState.value.copy(
+            mapAnimationTarget = MapAnimationTarget.AnimateToLocation(
+                point = point,
+                zoomLevel = zoomLevel
+            )
+        )
     }
 
     /**
@@ -587,16 +529,7 @@ class AttendanceViewModel @Inject constructor(
         )
         refreshResolvedActionState()
 
-        // Focus camera on selected WFA location
-        viewModelScope.launch {
-            val point = Point.fromLngLat(recommendation.longitude, recommendation.latitude)
-            _uiState.value = _uiState.value.copy(
-                mapAnimationTarget = MapAnimationTarget.AnimateToLocation(
-                    point,
-                    16.0
-                )
-            ) // Zoom closer for selected marker
-        }
+        resolveAndApplyTargetForMode(WorkMode.WFA)
     }
 
     /**
@@ -640,8 +573,7 @@ class AttendanceViewModel @Inject constructor(
                 Log.w(TAG, "Booking clicked in WFA mode but no location selected.")
             }
         } else {
-            Log.d(TAG, "Booking clicked for mode: ${_uiState.value.selectedWorkMode}")
-            // TODO: Implement booking logic for WFO/WFH
+            Log.d(TAG, "Booking clicked for mode: ${_uiState.value.selectedWorkMode.shortLabel}")
         }
     }
 
@@ -784,36 +716,38 @@ class AttendanceViewModel @Inject constructor(
                 // Clear any previous error
                 _uiState.value = _uiState.value.copy(activeDialog = null)
 
-                // Determine target location based on selected work mode
-                val targetLocation = when (_uiState.value.selectedWorkMode) {
-                    "Work From Home", "WFH" -> _uiState.value.wfhLocation
-                    "Work From Office", "WFO" -> _uiState.value.wfoLocation
-                    "WFA", "Work From Anywhere" -> {
-                        // For WFA, convert selectedWfaLocation to Location object
-                        _uiState.value.selectedWfaLocation?.let { wfaLocation ->
-                            Location(
-                                locationId = 0, // WFA locations don't have fixed IDs
-                                latitude = wfaLocation.latitude,
-                                longitude = wfaLocation.longitude,
-                                radius = 100, // Default radius for WFA
-                                description = wfaLocation.name,
-                                category = wfaLocation.category
-                            )
-                        }
-                    }
-
-                    else -> _uiState.value.wfoLocation // Default to WFO
-                }
+                val selectedMode = _uiState.value.selectedWorkMode
+                val target = _uiState.value.selectedTargetLocation ?: resolveSelectedTargetLocationUseCase(
+                    mode = selectedMode,
+                    wfoLocation = _uiState.value.wfoLocation,
+                    wfhLocation = _uiState.value.wfhLocation,
+                    selectedWfaLocation = _uiState.value.selectedWfaLocation
+                )
+                val targetLocation = target.location
 
                 if (targetLocation == null) {
-                    val message = "Target location not available for ${_uiState.value.selectedWorkMode}. Please try again."
-                    _uiState.value = _uiState.value.copy(
-                        activeDialog = DialogState.Error(message)
-                    ).withActionState(
-                        AttendanceActionState.RetryableFailure(
-                            intent = intent,
+                    val message = target.unavailableReason
+                        ?: "Target location not available for ${selectedMode.shortLabel}. Please try again."
+                    _uiState.value = _uiState.value.withActionState(
+                        AttendanceActionState.Blocked(
+                            reason = AttendanceBlockReason.TARGET_LOCATION_UNAVAILABLE,
                             title = "Target location tidak tersedia",
                             message = message
+                        )
+                    )
+                    return@launch
+                }
+
+                val eligibility = _uiState.value.workModeEligibility ?: evaluateWorkModeEligibilityUseCase(
+                    mode = selectedMode,
+                    selectedTargetLocation = target,
+                    todayDate = _uiState.value.todayStatus?.todayDate
+                )
+
+                if (!eligibility.canContinueToFaceVerification) {
+                    _uiState.value = _uiState.value.withActionState(
+                        AttendanceActionResolver.resolve(
+                            _uiState.value.copy(workModeEligibility = eligibility)
                         )
                     )
                     return@launch
@@ -835,34 +769,11 @@ class AttendanceViewModel @Inject constructor(
                         return@collect
                     }
 
-                    // Map work mode to correct category_id
-                    val categoryId = when (_uiState.value.selectedWorkMode) {
-                        "Work From Office", "WFO" -> 1  // Work From Office
-                        "Work From Home", "WFH" -> 2    // Work From Home
-                        "WFA", "Work From Anywhere" -> 3 // Work From Anywhere
-                        else -> 1 // Default to WFO
-                    }
-
-                    val bookingId = if (categoryId == 3) {
-                        val scheduleDateIso = _uiState.value.todayStatus?.todayDate
-                        if (scheduleDateIso.isNullOrBlank()) {
-                            val message = "Tanggal attendance hari ini tidak tersedia untuk memvalidasi booking WFA."
-                            _uiState.value = _uiState.value.copy(
-                                activeDialog = DialogState.Error(message)
-                            ).withActionState(
-                                AttendanceActionState.RetryableFailure(
-                                    intent = intent,
-                                    title = "Booking WFA belum disetujui",
-                                    message = message
-                                )
-                            )
-                            return@collect
-                        }
-
-                        resolveTodayApprovedWfaBookingIdUseCase(scheduleDateIso)
-                            .getOrElse { exception ->
-                                val message = exception.message
-                                    ?: "Booking WFA yang sudah disetujui untuk hari ini tidak ditemukan."
+                    val bookingId = if (selectedMode == WorkMode.WFA) {
+                        eligibility.approvedWfaBookingId ?: run {
+                            val scheduleDateIso = _uiState.value.todayStatus?.todayDate
+                            if (scheduleDateIso.isNullOrBlank()) {
+                                val message = "Tanggal attendance hari ini tidak tersedia untuk memvalidasi booking WFA."
                                 _uiState.value = _uiState.value.copy(
                                     activeDialog = DialogState.Error(message)
                                 ).withActionState(
@@ -874,13 +785,30 @@ class AttendanceViewModel @Inject constructor(
                                 )
                                 return@collect
                             }
+
+                            resolveTodayApprovedWfaBookingIdUseCase(scheduleDateIso)
+                                .getOrElse { exception ->
+                                    val message = exception.message
+                                        ?: "Booking WFA yang sudah disetujui untuk hari ini tidak ditemukan."
+                                    _uiState.value = _uiState.value.copy(
+                                        activeDialog = DialogState.Error(message)
+                                    ).withActionState(
+                                        AttendanceActionState.RetryableFailure(
+                                            intent = intent,
+                                            title = "Booking WFA belum disetujui",
+                                            message = message
+                                        )
+                                    )
+                                    return@collect
+                                }
+                        }
                     } else {
                         null
                     }
 
                     val attendanceRequest = try {
                         AttendanceCheckInRequestFactory.create(
-                            selectedWorkMode = _uiState.value.selectedWorkMode,
+                            workMode = selectedMode,
                             bookingId = bookingId
                         )
                     } catch (exception: IllegalArgumentException) {
@@ -1092,23 +1020,17 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Called when the map is ready to receive commands
-     * This will trigger initial camera focus to WFO location
+     * Called when the map is ready to receive commands.
      */
     fun onMapReady() {
-        Log.d(TAG, "Map is ready, focusing to WFO location")
+        Log.d(TAG, "Map is ready, focusing to selected target location")
         viewModelScope.launch {
-            _uiState.value.wfoLocation?.let { wfoLocation ->
-                val wfoPoint = Point.fromLngLat(wfoLocation.longitude, wfoLocation.latitude)
-                _uiState.value = _uiState.value.copy(
-                    mapAnimationTarget = MapAnimationTarget.AnimateToLocation(
-                        point = wfoPoint,
-                        zoomLevel = 15.0
-                    )
-                )
-                Log.d(TAG, "Initial camera focus sent to WFO location")
+            val location = _uiState.value.selectedTargetLocation?.location ?: _uiState.value.wfoLocation
+            location?.let { target ->
+                animateMapToTarget(target)
+                Log.d(TAG, "Initial camera focus sent to selected target location")
             } ?: run {
-                Log.w(TAG, "WFO location not available for initial focus")
+                Log.w(TAG, "Target location not available for initial focus")
             }
         }
     }
@@ -1138,17 +1060,12 @@ class AttendanceViewModel @Inject constructor(
                     category = "Custom", // Default category for manually selected location
                     distance = 0.0 // Distance will be calculated based on current location
                 ),
+                selectedWorkMode = WorkMode.WFA,
                 isWfaModeActive = true
             )
             refreshResolvedActionState()
 
-            // Animate map to the selected location
-            _uiState.value = _uiState.value.copy(
-                mapAnimationTarget = MapAnimationTarget.AnimateToLocation(
-                    Point.fromLngLat(location.longitude, location.latitude),
-                    15.0
-                )
-            )
+            resolveAndApplyTargetForMode(WorkMode.WFA)
         }
     }
 
@@ -1209,7 +1126,7 @@ class AttendanceViewModel @Inject constructor(
                             distance = 0.0
                         )
                     )
-                    refreshResolvedActionState()
+                    resolveAndApplyTargetForMode(WorkMode.WFA)
                 }.onFailure { exception ->
                     Log.e(TAG, "Reverse geocoding failed", exception)
 
@@ -1218,6 +1135,7 @@ class AttendanceViewModel @Inject constructor(
                         selectedWfaLocation = null,
                         error = "Gagal mendapatkan detail lokasi. Periksa koneksi Anda."
                     )
+                    resolveAndApplyTargetForMode(WorkMode.WFA)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Unexpected error in onMapIdle", e)
@@ -1238,24 +1156,8 @@ class AttendanceViewModel @Inject constructor(
             permissionResult = result
         )
 
-        // If permissions are granted, retry geofence setup
         if (result == LocationPermissionHelper.PermissionResult.AllPermissionsGranted) {
-            // Retry setting up geofence for current selected location
-            when (_uiState.value.selectedWorkMode) {
-                "Work From Home", "WFH" -> _uiState.value.wfhLocation?.let { setupGeofence(it) }
-                "Work From Office", "WFO" -> _uiState.value.wfoLocation?.let { setupGeofence(it) }
-                else -> _uiState.value.selectedWfaLocation?.let { wfaLocation ->
-                    val location = Location(
-                        locationId = 0, // WFA doesn't have fixed ID
-                        latitude = wfaLocation.latitude,
-                        longitude = wfaLocation.longitude,
-                        radius = 100, // Default radius for WFA
-                        description = wfaLocation.name,
-                        category = wfaLocation.category
-                    )
-                    setupGeofence(location)
-                }
-            }
+            resolveAndApplyTargetForMode()
         }
     }
 

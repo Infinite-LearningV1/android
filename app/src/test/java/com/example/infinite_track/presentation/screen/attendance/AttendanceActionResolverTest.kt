@@ -3,6 +3,7 @@ package com.example.infinite_track.presentation.screen.attendance
 import com.example.infinite_track.domain.model.attendance.CheckinWindow
 import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.TodayStatus
+import com.example.infinite_track.domain.model.attendance.WorkMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -13,7 +14,7 @@ class AttendanceActionResolverTest {
     fun resolve_returnsReadyCheckInWhenBackendAllowsCheckInAndTargetExists() {
         val state = AttendanceScreenState(
             todayStatus = todayStatus(checkedInAt = null, canCheckIn = true, canCheckOut = false),
-            selectedWorkMode = "Work From Office",
+            selectedWorkMode = WorkMode.WFO,
             targetLocation = location(),
             wfoLocation = location()
         )
@@ -33,7 +34,7 @@ class AttendanceActionResolverTest {
     fun resolve_returnsReadyCheckOutWhenBackendAllowsCheckOutAndTargetExists() {
         val state = AttendanceScreenState(
             todayStatus = todayStatus(checkedInAt = "08:00", canCheckIn = false, canCheckOut = true),
-            selectedWorkMode = "Work From Office",
+            selectedWorkMode = WorkMode.WFO,
             targetLocation = location(),
             wfoLocation = location()
         )
@@ -53,7 +54,7 @@ class AttendanceActionResolverTest {
     fun resolve_returnsReadyCheckOutWhenTargetLocationMissing() {
         val state = AttendanceScreenState(
             todayStatus = todayStatus(checkedInAt = "08:00", canCheckIn = false, canCheckOut = true),
-            selectedWorkMode = "Work From Anywhere",
+            selectedWorkMode = WorkMode.WFA,
             targetLocation = null,
             wfoLocation = null,
             selectedWfaLocation = null
@@ -74,7 +75,7 @@ class AttendanceActionResolverTest {
     fun resolve_returnsCompletedWhenBackendAllowsNoAction() {
         val state = AttendanceScreenState(
             todayStatus = todayStatus(checkedInAt = "08:00", canCheckIn = false, canCheckOut = false),
-            selectedWorkMode = "Work From Office",
+            selectedWorkMode = WorkMode.WFO,
             targetLocation = location(),
             wfoLocation = location()
         )
@@ -86,7 +87,7 @@ class AttendanceActionResolverTest {
     fun resolve_blocksWfhWhenHomeLocationMissing() {
         val state = AttendanceScreenState(
             todayStatus = todayStatus(checkedInAt = null, canCheckIn = true, canCheckOut = false),
-            selectedWorkMode = "Work From Home",
+            selectedWorkMode = WorkMode.WFH,
             wfhLocation = null
         )
 
@@ -103,7 +104,7 @@ class AttendanceActionResolverTest {
     fun resolve_blocksWfoWhenTargetLocationMissing() {
         val state = AttendanceScreenState(
             todayStatus = todayStatus(checkedInAt = null, canCheckIn = true, canCheckOut = false),
-            selectedWorkMode = "Work From Office",
+            selectedWorkMode = WorkMode.WFO,
             targetLocation = null,
             wfoLocation = null
         )

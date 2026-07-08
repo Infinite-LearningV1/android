@@ -41,7 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.infinite_track.R
-import com.example.infinite_track.domain.model.attendance.TargetLocationInfo
+import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.presentation.components.button.attendance.AttendanceBottomSheetContent
@@ -51,6 +51,7 @@ import com.example.infinite_track.presentation.components.maps.AttendanceMap
 import com.example.infinite_track.presentation.components.maps.MarkerView
 import com.example.infinite_track.presentation.components.dialog.LocationPermissionDialog
 import com.example.infinite_track.utils.LocalLocationPermissionHelper
+import com.example.infinite_track.utils.LocationPermissionHelper
 import com.example.infinite_track.presentation.components.maps.MarkerViewWfa
 import com.example.infinite_track.presentation.components.status.InfiniteTrackStatusDialog
 import com.example.infinite_track.presentation.components.status.StatusStates
@@ -343,15 +344,10 @@ fun AttendanceScreen(
 
                             AttendanceBottomSheetContent(
                                 modifier = Modifier.padding(top = 0.dp),
-                                targetLocationInfo = uiState.targetLocation?.let { target ->
-                                    TargetLocationInfo(
-                                        description = target.description,
-                                        locationName = target.category
-                                    )
-                                },
+                                targetLocationInfo = uiState.selectedTargetLocation,
                                 currentLocationAddress = uiState.currentUserAddress.ifEmpty { "Mengambil lokasi saat ini..." },
                                 selectedWorkMode = uiState.selectedWorkMode,
-                                isBookingEnabled = uiState.isBookingEnabled,
+                                isBookingEnabled = uiState.selectedWorkMode == WorkMode.WFA && uiState.selectedTargetLocation?.location != null,
                                 isCheckInEnabled = uiState.isButtonEnabled,
                                 checkInButtonText = uiState.buttonText,
                                 actionState = uiState.actionState,
@@ -537,10 +533,16 @@ fun AttendanceScreen(
         }
     }
 
-    // Permission Dialog for Geofencing
-    if (uiState.showPermissionDialog && uiState.permissionResult != null) {
+    val defensivePermissionResult = uiState.permissionResult
+    val shouldShowDefensivePermissionDialog = uiState.showPermissionDialog &&
+        defensivePermissionResult != null &&
+        defensivePermissionResult != LocationPermissionHelper.PermissionResult.BackgroundPermissionDenied
+
+    // Permission Dialog for defensive foreground/settings recovery only.
+    // Background location is optional/degraded and stays owned by the readiness screen.
+    if (shouldShowDefensivePermissionDialog) {
         LocationPermissionDialog(
-            permissionResult = uiState.permissionResult!!,
+            permissionResult = defensivePermissionResult!!,
             onRequestPermission = {
                 locationPermissionHelper?.checkAndRequestPermissions()
             },

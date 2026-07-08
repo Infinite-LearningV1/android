@@ -41,14 +41,14 @@ internal fun PermissionMissionRow(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.64f),
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0x33FFFFFF),
         border = BorderStroke(
             width = 1.dp,
             color = if (isGranted) {
-                InfiniteColors.Success.copy(alpha = 0.42f)
+                InfiniteColors.Success.copy(alpha = 0.38f)
             } else {
-                InfiniteColors.Primary.copy(alpha = 0.12f)
+                Color.White.copy(alpha = 0.72f)
             }
         )
     ) {
