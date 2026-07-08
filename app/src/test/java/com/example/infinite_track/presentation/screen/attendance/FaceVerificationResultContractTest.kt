@@ -52,6 +52,10 @@ class FaceVerificationResultContractTest {
             FaceVerificationResult.CANCELLED,
             FaceVerificationResult.fromScannerExitState(LivenessState.VERIFYING_FACE)
         )
+        assertEquals(
+            FaceVerificationResult.CANCELLED,
+            FaceVerificationResult.fromScannerExitState(LivenessState.LOW_LIGHT)
+        )
     }
 
     @Test

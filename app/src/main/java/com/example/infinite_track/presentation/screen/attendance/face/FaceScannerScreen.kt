@@ -102,6 +102,18 @@ fun FaceScannerScreen(
     // Camera executor
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
+    var hasPublishedResult by remember { mutableStateOf(false) }
+
+    fun publishResultOnce(result: FaceVerificationResult) {
+        if (hasPublishedResult) return
+        hasPublishedResult = true
+        navController.finishFaceScanner(result)
+    }
+
+    fun publishExitStateOnce(state: LivenessState) {
+        publishResultOnce(FaceVerificationResult.fromScannerExitState(state))
+    }
+
     // KUNCI PERBAIKAN: Reset scanner setiap kali screen muncul
     // Ini akan memastikan ViewModel selalu dalam state fresh
     LaunchedEffect(Unit) {
@@ -111,14 +123,14 @@ fun FaceScannerScreen(
     }
 
     BackHandler {
-        navController.finishFaceScanner(uiState.livenessState)
+        publishExitStateOnce(uiState.livenessState)
     }
 
     // Handle navigation based on verification result
     LaunchedEffect(uiState.livenessState) {
         when (uiState.livenessState) {
             LivenessState.SUCCESS -> {
-                navController.finishFaceScanner(FaceVerificationResult.SUCCESS)
+                publishResultOnce(FaceVerificationResult.SUCCESS)
             }
 
             // FAILURE and TIMEOUT stay on screen to allow explicit retry or close
@@ -154,7 +166,7 @@ fun FaceScannerScreen(
                         viewModel.resetScanner()
                     },
                     onCloseClick = {
-                        navController.finishFaceScanner(uiState.livenessState)
+                        publishExitStateOnce(uiState.livenessState)
                     }
                 )
             }
@@ -166,7 +178,7 @@ fun FaceScannerScreen(
                         cameraPermissionState.launchPermissionRequest()
                     },
                     onCloseClick = {
-                        navController.finishFaceScanner(uiState.livenessState)
+                        publishExitStateOnce(uiState.livenessState)
                     }
                 )
             }
@@ -178,7 +190,7 @@ fun FaceScannerScreen(
                         cameraPermissionState.launchPermissionRequest()
                     },
                     onCloseClick = {
-                        navController.finishFaceScanner(uiState.livenessState)
+                        publishExitStateOnce(uiState.livenessState)
                     }
                 )
             }
@@ -417,13 +429,15 @@ private fun InstructionSection(
                 }
 
                 LivenessState.SUCCESS -> Icons.Default.SentimentSatisfied
+                LivenessState.LOW_LIGHT -> Icons.Default.Visibility
                 else -> Icons.Default.Visibility
             }
 
             val iconColor = when (uiState.livenessState) {
                 LivenessState.SUCCESS -> Color(0xFF00FFC2)
                 LivenessState.FAILURE, LivenessState.TIMEOUT -> Color(0xFFFF3B30)
-                LivenessState.WAITING_FOR_LIVENESS -> Color(0xFFFFD60A)
+                LivenessState.WAITING_FOR_LIVENESS,
+                LivenessState.LOW_LIGHT -> Color(0xFFFFD60A)
                 else -> Color(0xFF00A3FF)
             }
 
@@ -469,7 +483,11 @@ private fun InstructionSection(
                 Text(
                     text = errorMessage,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFFFF3B30),
+                    color = if (uiState.livenessState == LivenessState.LOW_LIGHT) {
+                        Color(0xFFFFD60A)
+                    } else {
+                        Color(0xFFFF3B30)
+                    },
                     textAlign = TextAlign.Center
                 )
             }
@@ -731,6 +749,25 @@ fun PreviewFaceScannerCheckOutWaiting() {
                 showCountdown = true,
                 progress = 0.6f,
                 timeRemaining = 4
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Low Light State")
+@Composable
+fun PreviewFaceScannerLowLight() {
+    MaterialTheme {
+        FaceScannerScreenPreview(
+            action = "checkin",
+            state = FaceScannerState(
+                livenessState = LivenessState.LOW_LIGHT,
+                instructionText = "Pencahayaan kurang. Pindah ke area lebih terang sebelum verifikasi dilanjutkan.",
+                errorMessage = "Wajah sudah terdeteksi, tetapi pencahayaan belum cukup untuk verifikasi.",
+                isProcessing = false,
+                showCountdown = true,
+                progress = 0.35f,
+                timeRemaining = 13
             )
         )
     }
