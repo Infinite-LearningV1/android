@@ -97,8 +97,8 @@ fun HistoryScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .nestedScroll(pullToRefreshConnection),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(start = 20.dp, top = 4.dp, end = 20.dp, bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item {
                 InfiniteAttendancePeriodFilterCard(

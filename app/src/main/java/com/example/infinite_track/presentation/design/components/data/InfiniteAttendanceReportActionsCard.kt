@@ -1,9 +1,8 @@
 package com.example.infinite_track.presentation.design.components.data
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,32 +27,32 @@ fun InfiniteAttendanceReportActionsCard(
     supportMessage: String = "Expected export endpoint: ${AttendanceReportExportContract.exportPdfPath(selectedPeriod)}. Preview endpoint: ${AttendanceReportExportContract.PERSONAL_PDF_PREVIEW_PATH}. Wiring and backend runtime readiness need verification before enabling these actions."
 ) {
     InfiniteGlassReportCard(modifier = modifier) {
-        InfiniteSectionHeader(
-            title = title,
-            subtitle = subtitle
-        )
-        Spacer(modifier = Modifier.height(14.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            InfiniteButton(
-                text = "Export PDF",
-                onClick = onExportClick,
-                variant = InfiniteButtonVariant.Primary,
-                state = if (exportEnabled) InfiniteButtonState.Enabled else InfiniteButtonState.Disabled,
-                modifier = Modifier.weight(1f)
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            InfiniteSectionHeader(
+                title = title,
+                subtitle = subtitle
             )
-            InfiniteButton(
-                text = "Share Report",
-                onClick = onShareClick,
-                variant = InfiniteButtonVariant.Glass,
-                state = if (shareEnabled) InfiniteButtonState.Enabled else InfiniteButtonState.Disabled,
-                modifier = Modifier.weight(1f)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                InfiniteButton(
+                    text = "Export PDF",
+                    onClick = onExportClick,
+                    variant = InfiniteButtonVariant.Primary,
+                    state = if (exportEnabled) InfiniteButtonState.Enabled else InfiniteButtonState.Disabled,
+                    modifier = Modifier.weight(1f)
+                )
+                InfiniteButton(
+                    text = "Share Report",
+                    onClick = onShareClick,
+                    variant = InfiniteButtonVariant.Glass,
+                    state = if (shareEnabled) InfiniteButtonState.Enabled else InfiniteButtonState.Disabled,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Text(
+                text = supportMessage,
+                color = InfiniteColors.AttendanceReportMutedText,
+                style = MaterialTheme.typography.bodySmall
             )
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = supportMessage,
-            color = InfiniteColors.AttendanceReportMutedText,
-            style = MaterialTheme.typography.bodySmall
-        )
     }
 }
