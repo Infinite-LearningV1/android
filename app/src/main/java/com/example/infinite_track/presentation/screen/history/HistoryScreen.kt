@@ -89,25 +89,24 @@ fun HistoryScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = InfiniteColors.Transparent
-    ) { innerPadding ->
-        LazyColumn(
-            state = lazyListState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .nestedScroll(pullToRefreshConnection),
-            contentPadding = PaddingValues(start = 20.dp, top = 4.dp, end = 20.dp, bottom = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            item {
-                InfiniteAttendancePeriodFilterCard(
-                    selectedPeriod = uiState.selectedPeriod,
-                    onPeriodSelected = viewModel::onFilterChanged,
-                    title = "My Attendance Report",
-                    subtitle = null
-                )
-            }
+        containerColor = InfiniteColors.Transparent,
+        content = {
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(pullToRefreshConnection),
+                contentPadding = PaddingValues(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    InfiniteAttendancePeriodFilterCard(
+                        selectedPeriod = uiState.selectedPeriod,
+                        onPeriodSelected = viewModel::onFilterChanged,
+                        title = "My Attendance Report",
+                        subtitle = null
+                    )
+                }
 
                 if (uiState.selectedPeriod == AttendancePeriod.CUSTOM) {
                     item {
@@ -232,8 +231,9 @@ fun HistoryScreen(
                         }
                     }
                 }
+            }
         }
-    }
+    )
 }
 
 @Composable
