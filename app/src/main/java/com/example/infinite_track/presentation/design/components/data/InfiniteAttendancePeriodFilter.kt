@@ -1,5 +1,7 @@
 package com.example.infinite_track.presentation.design.components.data
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
@@ -24,16 +26,17 @@ fun InfiniteAttendancePeriodFilterCard(
     options: List<InfiniteFilterOption> = attendanceReportPeriodOptions
 ) {
     InfiniteGlassReportCard(modifier = modifier) {
-        InfiniteSectionHeader(
-            title = title,
-            subtitle = subtitle
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        InfiniteAttendancePeriodFilter(
-            selectedPeriod = selectedPeriod,
-            onPeriodSelected = onPeriodSelected,
-            options = options
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            InfiniteSectionHeader(
+                title = title,
+                subtitle = subtitle
+            )
+            InfiniteAttendancePeriodFilter(
+                selectedPeriod = selectedPeriod,
+                onPeriodSelected = onPeriodSelected,
+                options = options
+            )
+        }
     }
 }
 

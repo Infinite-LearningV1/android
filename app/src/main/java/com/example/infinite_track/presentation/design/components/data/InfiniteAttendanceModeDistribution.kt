@@ -32,39 +32,40 @@ fun InfiniteAttendanceModeDistributionCard(
     val totalKnown = wfoCount + wfaCount + (wfhCount ?: 0)
 
     InfiniteGlassReportCard(modifier = modifier) {
-        InfiniteSectionHeader(
-            title = title,
-            subtitle = subtitle
-        )
-        Spacer(modifier = Modifier.height(14.dp))
-        InfiniteAttendanceModeDistributionRow(
-            label = "WFO",
-            count = wfoCount,
-            total = totalKnown,
-            color = InfiniteColors.Primary
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        InfiniteAttendanceModeDistributionRow(
-            label = "WFA",
-            count = wfaCount,
-            total = totalKnown,
-            color = InfiniteColors.Accent
-        )
-        wfhCount?.let { count ->
-            Spacer(modifier = Modifier.height(12.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            InfiniteSectionHeader(
+                title = title,
+                subtitle = subtitle
+            )
             InfiniteAttendanceModeDistributionRow(
-                label = "WFH",
-                count = count,
+                label = "WFO",
+                count = wfoCount,
                 total = totalKnown,
-                color = InfiniteColors.Secondary
+                color = InfiniteColors.Primary,
+                unitLabel = "days"
             )
-        } ?: unavailableModeMessage?.let { message ->
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = message,
-                color = InfiniteColors.AttendanceReportMutedText,
-                style = MaterialTheme.typography.bodySmall
+            InfiniteAttendanceModeDistributionRow(
+                label = "WFA",
+                count = wfaCount,
+                total = totalKnown,
+                color = InfiniteColors.Accent,
+                unitLabel = "days"
             )
+            wfhCount?.let { count ->
+                InfiniteAttendanceModeDistributionRow(
+                    label = "WFH",
+                    count = count,
+                    total = totalKnown,
+                    color = InfiniteColors.Secondary,
+                    unitLabel = "days"
+                )
+            } ?: unavailableModeMessage?.let { message ->
+                Text(
+                    text = message,
+                    color = InfiniteColors.AttendanceReportMutedText,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
     }
 }
