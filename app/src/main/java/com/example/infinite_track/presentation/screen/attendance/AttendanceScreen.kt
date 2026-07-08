@@ -51,6 +51,7 @@ import com.example.infinite_track.presentation.components.maps.AttendanceMap
 import com.example.infinite_track.presentation.components.maps.MarkerView
 import com.example.infinite_track.presentation.components.dialog.LocationPermissionDialog
 import com.example.infinite_track.utils.LocalLocationPermissionHelper
+import com.example.infinite_track.utils.LocationPermissionHelper
 import com.example.infinite_track.presentation.components.maps.MarkerViewWfa
 import com.example.infinite_track.presentation.components.status.InfiniteTrackStatusDialog
 import com.example.infinite_track.presentation.components.status.StatusStates
@@ -533,10 +534,16 @@ fun AttendanceScreen(
         }
     }
 
-    // Permission Dialog for Geofencing
-    if (uiState.showPermissionDialog && uiState.permissionResult != null) {
+    val defensivePermissionResult = uiState.permissionResult
+    val shouldShowDefensivePermissionDialog = uiState.showPermissionDialog &&
+        defensivePermissionResult != null &&
+        defensivePermissionResult != LocationPermissionHelper.PermissionResult.BackgroundPermissionDenied
+
+    // Permission Dialog for defensive foreground/settings recovery only.
+    // Background location is optional/degraded and stays owned by the readiness screen.
+    if (shouldShowDefensivePermissionDialog) {
         LocationPermissionDialog(
-            permissionResult = uiState.permissionResult!!,
+            permissionResult = defensivePermissionResult!!,
             onRequestPermission = {
                 locationPermissionHelper?.checkAndRequestPermissions()
             },
