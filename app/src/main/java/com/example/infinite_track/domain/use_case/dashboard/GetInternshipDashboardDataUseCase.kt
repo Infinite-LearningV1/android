@@ -1,5 +1,6 @@
 package com.example.infinite_track.domain.use_case.dashboard
 
+import com.example.infinite_track.domain.model.attendance.AttendancePeriod
 import com.example.infinite_track.domain.model.dashboard.InternshipSummary
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
 import com.example.infinite_track.domain.repository.AttendanceRepository
@@ -26,7 +27,7 @@ class GetInternshipDashboardDataUseCase @Inject constructor(
 
             // Get monthly attendance history
             val historyResult = attendanceHistoryRepository.getAttendanceHistory(
-                period = "monthly",
+                period = AttendancePeriod.MONTHLY,
                 page = 1,
                 limit = 30 // Assuming we need about a month of data
             )

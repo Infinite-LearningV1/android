@@ -2,6 +2,7 @@ package com.example.infinite_track.presentation.screen.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.infinite_track.domain.model.attendance.AttendancePeriod
 import com.example.infinite_track.domain.model.attendance.AttendanceRecord
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.model.auth.UserModel
@@ -87,7 +88,7 @@ class HomeViewModel @Inject constructor(
 			_topAttendanceHistoryState.value = UiState.Loading
 
 			getAttendanceHistoryUseCase(
-				period = "monthly",
+				period = AttendancePeriod.MONTHLY,
 				page = 1,
 				limit = 5
 			).onSuccess { historyPage ->

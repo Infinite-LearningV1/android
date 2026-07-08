@@ -1,336 +1,255 @@
 package com.example.infinite_track.presentation.screen.history
 
-import android.annotation.SuppressLint
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material3.BottomSheetDefaults
-import androidx.compose.material3.BottomSheetScaffold
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.infinite_track.presentation.components.cards.AttendanceHistoryC
-import com.example.infinite_track.presentation.components.cards.OverviewCardAttendance
-import com.example.infinite_track.presentation.components.empty.EmptyListAnimation
-import com.example.infinite_track.presentation.components.loading.LoadingAnimation
-import com.example.infinite_track.presentation.components.tittle.Tittle
-import com.example.infinite_track.presentation.core.headline3
-import com.example.infinite_track.presentation.core.headline4
-import com.example.infinite_track.presentation.theme.Blue_500
-import com.example.infinite_track.presentation.theme.Purple_500
+import com.example.infinite_track.domain.model.attendance.AttendancePeriod
+import com.example.infinite_track.domain.model.attendance.AttendanceRecord
+import com.example.infinite_track.presentation.mapper.attendance.fullDateLabel
+import com.example.infinite_track.presentation.mapper.attendance.reportStatus
+import com.example.infinite_track.presentation.mapper.attendance.timeRangeLabel
+import com.example.infinite_track.presentation.mapper.attendance.totalWorkHoursLabel
+import com.example.infinite_track.presentation.mapper.attendance.workHourLabel
+import com.example.infinite_track.presentation.mapper.attendance.workModeLabel
+import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceModeDistributionCard
+import com.example.infinite_track.presentation.design.components.data.InfiniteAttendancePeriodFilterCard
+import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceReportActionsCard
+import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceReportHeroCard
+import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceReportNoticeCard
+import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceReportSummarySection
+import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceTimelineCard
+import com.example.infinite_track.presentation.design.components.data.InfiniteGlassReportCard
+import com.example.infinite_track.presentation.design.components.data.InfiniteSectionHeader
+import com.example.infinite_track.presentation.design.components.data.TimelineConnectorPosition
+import com.example.infinite_track.presentation.design.components.state.InfiniteEmptyState
+import com.example.infinite_track.presentation.design.components.state.InfiniteErrorState
+import com.example.infinite_track.presentation.design.components.state.InfiniteLoadingState
+import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 
-@OptIn(ExperimentalMaterial3Api::class)
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun HistoryScreen(
     modifier: Modifier = Modifier,
     viewModel: HistoryViewModel = hiltViewModel()
 ) {
-    // Collect the single UI state from the ViewModel
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-
-    // State to control filter visibility
-    var showFilters by remember { mutableStateOf(false) }
-
-    // Create a LazyListState to track scrolling
     val lazyListState = rememberLazyListState()
-    val scaffoldState = rememberBottomSheetScaffoldState()
-
-    // Check if we should load more data (near end of the list)
     val shouldLoadMore = remember {
         derivedStateOf {
             val lastVisibleItem = lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()
             lastVisibleItem != null &&
-                    lastVisibleItem.index >= uiState.records.size - 5 &&
-                    uiState.canLoadMore &&
-                    !uiState.isLoadingMore
+                lastVisibleItem.index >= uiState.records.size - 3 &&
+                uiState.canLoadMore &&
+                !uiState.isLoadingMore &&
+                !uiState.isLoading
         }
     }
 
-    // Trigger loadNextPage when we're near the end of the list
     LaunchedEffect(shouldLoadMore.value) {
-        if (shouldLoadMore.value) {
-            viewModel.loadNextPage()
-        }
+        if (shouldLoadMore.value) viewModel.loadNextPage()
     }
 
-    BottomSheetScaffold(
-        scaffoldState = scaffoldState,
-        sheetPeekHeight = 200.dp,
-        sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        sheetContainerColor = Color.White.copy(alpha = 0.5f),
-        containerColor = Color.Transparent,
-        sheetDragHandle = { BottomSheetDefaults.DragHandle() },
-        topBar = {
-            Row(
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = InfiniteColors.Transparent
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(InfiniteColors.AttendanceReportBackground)
+                .padding(innerPadding)
+        ) {
+            DecorativeOrb(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 24.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "Attendance History",
-                    style = headline3,
-                )
-            }
-        },
-        content = { innerPadding ->
-            Column(
+                    .align(Alignment.TopEnd)
+                    .padding(top = 24.dp, end = 24.dp),
+                color = InfiniteColors.Accent.copy(alpha = 0.32f),
+                size = 132
+            )
+            DecorativeOrb(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 16.dp)
+                    .align(Alignment.TopStart)
+                    .padding(top = 128.dp, start = 18.dp),
+                color = InfiniteColors.Secondary.copy(alpha = 0.20f),
+                size = 84
+            )
+
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Title row with filter icon
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Attendance Overview title
-                    Tittle(tittle = "Attendance Overview")
+                item { InfiniteAttendanceReportHeroCard() }
 
-                    // Filter icon
-                    IconButton(
-                        onClick = { showFilters = !showFilters },
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = "Filter",
-                            tint = Purple_500
-                        )
-                    }
-                }
-
-                // Show filter chips only when showFilters is true
-                if (showFilters) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    // Period filter chips
-                    PeriodFilterChips(
+                item {
+                    InfiniteAttendancePeriodFilterCard(
                         selectedPeriod = uiState.selectedPeriod,
-                        onPeriodSelected = { period ->
-                            viewModel.onFilterChanged(period)
-                            // Optionally hide filters after selection
-                            // showFilters = false
-                        }
+                        onPeriodSelected = viewModel::onFilterChanged
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Summary card displayed as a LazyRow of overview cards
-                uiState.summary?.let { summary ->
-                    LazyRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        item {
-                            OverviewCardAttendance(
-                                title = "On Time",
-                                count = summary.totalOntime,
-                                unit = "times",
-                                onClick = {}
-                            )
-                        }
-                        item {
-                            OverviewCardAttendance(
-                                title = "Late",
-                                count = summary.totalLate,
-                                unit = "times",
-                                onClick = {}
-                            )
-                        }
-                        item {
-                            OverviewCardAttendance(
-                                title = "Absent",
-                                count = summary.totalAlpha,
-                                unit = "times",
-                                onClick = {}
-                            )
-                        }
-                        item {
-                            OverviewCardAttendance(
-                                title = "WFO",
-                                count = summary.totalWfo,
-                                unit = "times",
-                                onClick = {}
-                            )
-                        }
-                        item {
-                            OverviewCardAttendance(
-                                title = "WFA",
-                                count = summary.totalWfa,
-                                unit = "times",
-                                onClick = {}
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        // KONTEN DI DALAM BOTTOM SHEET
-        sheetContent = {
-            // Konten LazyColumn untuk riwayat absensi
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.6f)
-                    .defaultMinSize(minHeight = 200.dp)
-            ) {
-                // Initial loading state
-                if (uiState.isLoading && uiState.records.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(250.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        LoadingAnimation()
-                    }
-                }
-                // Error state
-                else if (uiState.error != null) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        EmptyListAnimation(modifier = Modifier.size(150.dp))
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = uiState.error ?: "Unknown error",
-                            style = headline4,
-                            textAlign = TextAlign.Center
+                if (uiState.selectedPeriod == AttendancePeriod.CUSTOM) {
+                    item {
+                        InfiniteAttendanceReportNoticeCard(
+                            title = "Custom range needs verification",
+                            message = "Date range picker is not available in this branch yet. The Custom filter is visible for the report contract, but runtime date-range behavior still needs verification."
                         )
                     }
                 }
-                // Content state
-                else {
-                    if (uiState.records.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(250.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                EmptyListAnimation(modifier = Modifier.size(150.dp))
-                                Text(
-                                    text = "No attendance records found",
-                                    style = headline4
+
+                when {
+                    uiState.selectedPeriod == AttendancePeriod.CUSTOM -> {
+                        item {
+                            InfiniteGlassReportCard {
+                                InfiniteEmptyState(
+                                    title = "Custom report not available yet",
+                                    message = "Choose Daily, Weekly, or Monthly to load backend report data while Custom range support is awaiting verification."
                                 )
                             }
                         }
-                    } else {
-                        LazyColumn(
-                            state = lazyListState,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp),
-                            contentPadding = PaddingValues(top = 8.dp, bottom = 32.dp)
-                        ) {
+                    }
+
+                    uiState.isLoading && uiState.records.isEmpty() -> {
+                        item {
+                            InfiniteGlassReportCard {
+                                InfiniteLoadingState(message = "Loading personal attendance report...")
+                            }
+                        }
+                    }
+
+                    uiState.error != null && uiState.records.isEmpty() -> {
+                        item {
+                            InfiniteGlassReportCard {
+                                InfiniteErrorState(
+                                    title = "Report unavailable",
+                                    message = uiState.error ?: "Unable to load attendance report."
+                                )
+                            }
+                        }
+                    }
+
+                    else -> {
+                        item {
+                            InfiniteAttendanceReportSummarySection(
+                                attendanceRateValue = "—",
+                                workHoursValue = remember(uiState.records) { uiState.records.totalWorkHoursLabel() },
+                                lateCount = uiState.summary?.totalLate ?: 0,
+                                alphaCount = uiState.summary?.totalAlpha ?: 0
+                            )
+                        }
+
+                        item {
+                            InfiniteAttendanceModeDistributionCard(
+                                wfoCount = uiState.summary?.totalWfo ?: 0,
+                                wfaCount = uiState.summary?.totalWfa ?: 0
+                            )
+                        }
+
+                        item {
+                            InfiniteAttendanceReportActionsCard(selectedPeriod = uiState.selectedPeriod)
+                        }
+
+                        item {
+                            InfiniteSectionHeader(
+                                title = "Attendance Timeline",
+                                subtitle = "Recent attendance records only"
+                            )
+                        }
+
+                        if (uiState.records.isEmpty()) {
                             item {
-                                Tittle(tittle = "Attendance Summary")
-                                Spacer(modifier = Modifier.height(16.dp))
-                            }
-
-                            items(uiState.records) { record ->
-                                AttendanceHistoryC(record = record)
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-
-                            if (uiState.isLoadingMore) {
-                                item {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        LoadingAnimation(
-                                        )
-                                    }
+                                InfiniteGlassReportCard {
+                                    InfiniteEmptyState(
+                                        title = "No attendance records found",
+                                        message = "Backend did not return attendance records for this period."
+                                    )
                                 }
+                            }
+                        } else {
+                            itemsIndexed(uiState.records) { index, record ->
+                                ReportTimelineRow(
+                                    record = record,
+                                    connectorPosition = when {
+                                        uiState.records.size == 1 -> TimelineConnectorPosition.None
+                                        index == 0 -> TimelineConnectorPosition.First
+                                        index == uiState.records.lastIndex -> TimelineConnectorPosition.Last
+                                        else -> TimelineConnectorPosition.Middle
+                                    }
+                                )
+                            }
+                        }
+
+                        if (uiState.isLoadingMore) {
+                            item {
+                                InfiniteGlassReportCard {
+                                    InfiniteLoadingState(message = "Loading more attendance records...")
+                                }
+                            }
+                        }
+
+                        if (uiState.error != null && uiState.records.isNotEmpty()) {
+                            item {
+                                InfiniteAttendanceReportNoticeCard(
+                                    title = "Some records may be missing",
+                                    message = uiState.error ?: "Unable to load more attendance records."
+                                )
                             }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ReportTimelineRow(
+    record: AttendanceRecord,
+    connectorPosition: TimelineConnectorPosition
+) {
+    val status = record.reportStatus()
+    InfiniteAttendanceTimelineCard(
+        dateLabel = record.fullDateLabel(),
+        modeLabel = record.workModeLabel(),
+        timeRange = record.timeRangeLabel(),
+        statusLabel = status.label,
+        statusVariant = status.variant,
+        connectorPosition = connectorPosition,
+        workHourLabel = record.workHourLabel(),
+        locationLabel = record.location
     )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun PeriodFilterChips(
-    selectedPeriod: String,
-    onPeriodSelected: (String) -> Unit
+private fun DecorativeOrb(
+    modifier: Modifier,
+    color: Color,
+    size: Int
 ) {
-    val periods = listOf(
-        "daily" to "Daily",
-        "weekly" to "Weekly",
-        "monthly" to "Monthly",
-        "all" to "All"
+    Box(
+        modifier = modifier
+            .size(size.dp)
+            .background(color, CircleShape)
     )
-
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        periods.forEach { (periodValue, periodLabel) ->
-            FilterChip(
-                selected = selectedPeriod == periodValue,
-                onClick = { onPeriodSelected(periodValue) },
-                label = { Text(periodLabel) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Blue_500,
-                    selectedLabelColor = Color.White
-                )
-            )
-        }
-    }
 }
