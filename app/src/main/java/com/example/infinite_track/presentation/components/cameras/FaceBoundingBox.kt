@@ -124,6 +124,7 @@ fun FaceBoundingBox(
         LivenessState.IDLE -> vibrantBlue
         LivenessState.DETECTING_FACE -> vibrantBlue
         LivenessState.WAITING_FOR_LIVENESS -> vibrantYellow
+        LivenessState.LOW_LIGHT -> vibrantYellow
         LivenessState.LIVENESS_DETECTED -> vibrantGreen // Langsung hijau saat liveness terdeteksi
         LivenessState.VERIFYING_FACE -> vibrantOrange
         LivenessState.SUCCESS -> vibrantGreen
@@ -144,7 +145,8 @@ fun FaceBoundingBox(
                 vibrantRed.copy(alpha = 0.7f)
             }
 
-            LivenessState.WAITING_FOR_LIVENESS -> {
+            LivenessState.WAITING_FOR_LIVENESS,
+            LivenessState.LOW_LIGHT -> {
                 vibrantYellow.copy(alpha = 0.8f)
             }
 
@@ -155,7 +157,8 @@ fun FaceBoundingBox(
         animationSpec = infiniteRepeatable(
             animation = tween(
                 durationMillis = when (livenessState) {
-                    LivenessState.WAITING_FOR_LIVENESS -> 800 // Faster pulse for waiting
+                    LivenessState.WAITING_FOR_LIVENESS,
+                    LivenessState.LOW_LIGHT -> 800 // Faster pulse for waiting/guidance
                     LivenessState.LIVENESS_DETECTED -> 400 // Very fast for success feedback
                     else -> 1500
                 },

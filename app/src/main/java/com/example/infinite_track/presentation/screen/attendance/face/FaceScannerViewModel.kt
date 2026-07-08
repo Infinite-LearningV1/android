@@ -33,6 +33,7 @@ enum class LivenessState {
     IDLE,
     DETECTING_FACE,
     WAITING_FOR_LIVENESS,
+    LOW_LIGHT,
     LIVENESS_DETECTED,
     VERIFYING_FACE,
     SUCCESS,
@@ -139,8 +140,13 @@ class FaceScannerViewModel @Inject constructor(
         val currentState = _uiState.value.livenessState
         val isProcessing = _uiState.value.isProcessing
 
-        // Hanya blokir jika benar-benar sedang processing atau sudah final success
-        if (isProcessing || currentState == LivenessState.SUCCESS) {
+        // Hanya blokir jika sedang processing atau scanner sudah berada di state final
+        if (
+            isProcessing ||
+            currentState == LivenessState.SUCCESS ||
+            currentState == LivenessState.FAILURE ||
+            currentState == LivenessState.TIMEOUT
+        ) {
             imageProxy.close()
             return
         }
@@ -150,7 +156,7 @@ class FaceScannerViewModel @Inject constructor(
         // Panggil FaceDetectorHelper untuk mendeteksi wajah
         faceDetectorHelper.detect(imageProxy) { result ->
             result.onSuccess { face ->
-                handleFaceDetected(face, imageBitmap.width, imageBitmap.height)
+                handleFaceDetected(face, imageBitmap)
             }.onFailure { exception ->
                 handleFaceDetectionError(exception.message ?: "Error mendeteksi wajah")
             }
@@ -160,8 +166,10 @@ class FaceScannerViewModel @Inject constructor(
     /**
      * Handle ketika wajah berhasil terdeteksi
      */
-    private fun handleFaceDetected(face: Face, imageWidth: Int, imageHeight: Int) {
+    private fun handleFaceDetected(face: Face, imageBitmap: Bitmap) {
         currentDetectedFace = face
+        val imageWidth = imageBitmap.width
+        val imageHeight = imageBitmap.height
 
         // Convert android.graphics.Rect to androidx.compose.ui.geometry.Rect
         val androidRect = face.boundingBox
@@ -185,9 +193,32 @@ class FaceScannerViewModel @Inject constructor(
         if (!faceDetectorHelper.isFaceWellPositioned(face, imageWidth, imageHeight)) {
             _uiState.value = _uiState.value.copy(
                 livenessState = LivenessState.DETECTING_FACE,
-                instructionText = "Posisikan wajah Anda lebih dekat dan di tengah frame"
+                instructionText = "Posisikan wajah Anda lebih dekat dan di tengah frame",
+                errorMessage = null
             )
             return
+        }
+
+        if (isLowLight(imageBitmap = imageBitmap, face = face)) {
+            livenessJob?.cancel()
+            _uiState.value = _uiState.value.copy(
+                livenessState = LivenessState.LOW_LIGHT,
+                instructionText = "Pencahayaan kurang. Pindah ke area lebih terang sebelum verifikasi dilanjutkan.",
+                errorMessage = "Wajah sudah terdeteksi, tetapi pencahayaan belum cukup untuk verifikasi.",
+                isProcessing = false
+            )
+            return
+        }
+
+        if (_uiState.value.livenessState == LivenessState.LOW_LIGHT) {
+            _uiState.value = _uiState.value.copy(
+                livenessState = LivenessState.WAITING_FOR_LIVENESS,
+                errorMessage = null,
+                instructionText = when (_uiState.value.currentChallenge) {
+                    LivenessChallenge.BLINK -> "Pencahayaan membaik. Sekarang kedipkan mata Anda"
+                    LivenessChallenge.SMILE -> "Pencahayaan membaik. Sekarang tersenyum"
+                }
+            )
         }
 
         // Wajah sudah di posisi yang baik, lanjut ke pengecekan liveness
@@ -211,6 +242,26 @@ class FaceScannerViewModel @Inject constructor(
             else -> {
                 // State lain tidak perlu di-handle di sini
             }
+        }
+    }
+
+    private fun isLowLight(imageBitmap: Bitmap, face: Face): Boolean {
+        if (imageBitmap.width <= 1 || imageBitmap.height <= 1) return false
+
+        val boundingBox = face.boundingBox
+        val left = boundingBox.left.coerceIn(0, imageBitmap.width - 1)
+        val top = boundingBox.top.coerceIn(0, imageBitmap.height - 1)
+        val right = boundingBox.right.coerceIn(left + 1, imageBitmap.width)
+        val bottom = boundingBox.bottom.coerceIn(top + 1, imageBitmap.height)
+        val width = right - left
+        val height = bottom - top
+        val pixels = IntArray(width * height)
+
+        return try {
+            imageBitmap.getPixels(pixels, 0, width, left, top, width, height)
+            FaceLightingQuality.evaluate(pixels) == LightingQuality.LOW_LIGHT
+        } catch (exception: IllegalArgumentException) {
+            false
         }
     }
 
