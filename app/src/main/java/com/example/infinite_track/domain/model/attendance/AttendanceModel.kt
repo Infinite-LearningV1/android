@@ -21,6 +21,9 @@ data class TodayStatus(
     val checkoutAutoTime: String,
     val attendanceSessionState: AttendanceSessionState? = null,
     val activeAttendanceId: Int? = null,
+    val checkedInAtIso: String? = null,
+    val checkedOutAtIso: String? = null,
+    val workDurationSeconds: Long? = null,
     val cacheTtlSeconds: Int = AuthRuntimePolicy.SHARED_TTL_SECONDS
 )
 

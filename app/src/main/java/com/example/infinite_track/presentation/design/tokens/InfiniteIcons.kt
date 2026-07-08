@@ -11,6 +11,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Warning
@@ -25,6 +26,7 @@ object InfiniteIcons {
     val Error = Icons.Rounded.Error
     val Location = Icons.Rounded.LocationOn
     val Search = Icons.Rounded.Search
+    val Refresh = Icons.Rounded.Refresh
     val Filter = Icons.Rounded.FilterList
     val Download = Icons.Rounded.FileDownload
     val Share = Icons.Rounded.Share

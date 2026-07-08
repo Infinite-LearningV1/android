@@ -9,11 +9,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
 import com.example.infinite_track.presentation.screen.home.content.EmployeeAndManagerComponent
 import com.example.infinite_track.presentation.screen.home.content.InternshipContent
@@ -30,13 +36,27 @@ fun HomeScreen(
 ) {
     val userProfile by viewModel.userProfileState.collectAsState()
     val attendanceState by viewModel.topAttendanceHistoryState.collectAsState()
-    val annualBalance by viewModel.annualBalance.collectAsState()
-    val annualUsed by viewModel.annualUsed.collectAsState()
     val currentLocation by viewModel.currentAddressState.collectAsState()
-    val internshipSummary by viewModel.internshipSummaryState.collectAsState()
+    val todayStatusState by viewModel.todayStatusState.collectAsState()
 
     val isLoading = attendanceState is UiState.Loading
     val scrollState = rememberScrollState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val hasHandledInitialResume = remember { mutableStateOf(false) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (hasHandledInitialResume.value) {
+                    viewModel.refreshDashboard(forceRefresh = true)
+                } else {
+                    hasHandledInitialResume.value = true
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -58,10 +78,12 @@ fun HomeScreen(
                             "Internship" -> {
                                 InternshipContent(
                                     user = userProfile,
-                                    summaryData = internshipSummary,
                                     currentLocation = currentLocation,
                                     attendanceState = attendanceState,
-                                    navigateToListMyAttendance = navigateListMyAttendance
+                                    todayStatusState = todayStatusState,
+                                    navigateAttendance = navigateAttendance,
+                                    navigateToListMyAttendance = navigateListMyAttendance,
+                                    refreshDashboard = { viewModel.refreshDashboard(forceRefresh = true) }
                                 )
                             }
 
@@ -69,13 +91,13 @@ fun HomeScreen(
                                 EmployeeAndManagerComponent(
                                     user = userProfile,
                                     attendanceState = attendanceState,
-                                    annualBalance = annualBalance,
-                                    annualUsed = annualUsed,
+                                    todayStatusState = todayStatusState,
                                     currentLocation = currentLocation,
                                     isLoading = isLoading,
                                     navigateAttendance = navigateAttendance,
                                     navigateTimeOffRequest = navigateTimeOffRequest,
-                                    navigateListMyAttendance = navigateListMyAttendance
+                                    navigateListMyAttendance = navigateListMyAttendance,
+                                    refreshDashboard = { viewModel.refreshDashboard(forceRefresh = true) }
                                 )
                             }
 

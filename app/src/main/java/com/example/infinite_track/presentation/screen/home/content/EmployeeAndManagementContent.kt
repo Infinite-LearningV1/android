@@ -21,11 +21,12 @@ import com.example.infinite_track.domain.model.attendance.AttendanceRecord
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.presentation.components.button.SeeAllButton
 import com.example.infinite_track.presentation.components.cards.AttendanceHistoryC
-import com.example.infinite_track.presentation.components.cards.MenuCard
 import com.example.infinite_track.presentation.components.empty.EmptyListAnimation
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
 import com.example.infinite_track.presentation.components.tittle.Location
+import com.example.infinite_track.presentation.components.tittle.nameCards
 import com.example.infinite_track.presentation.core.headline4
+import com.example.infinite_track.presentation.screen.home.HomeTodayStatusUiState
 import com.example.infinite_track.utils.UiState
 import com.example.infinite_track.utils.getCurrentDate
 
@@ -35,16 +36,14 @@ fun EmployeeAndManagerComponent(
     modifier: Modifier = Modifier,
     user: UserModel?,
     attendanceState: UiState<List<AttendanceRecord>>,
-    annualBalance: Int,
-    annualUsed: Int,
+    todayStatusState: HomeTodayStatusUiState,
     currentLocation: String,
     isLoading: Boolean = false,
     navigateAttendance: () -> Unit,
     navigateTimeOffRequest: () -> Unit,
     navigateListMyAttendance: () -> Unit,
+    refreshDashboard: () -> Unit
 ) {
-    val annualLeft = annualBalance - annualUsed
-
     user?.let { userData ->
         val fullImageUrl = userData.photoUrl?.ifEmpty {
             "https://w7.pngwing.com/pngs/177/551/png-transparent-user-interface-design-computer-icons-default-stephen-salazar-graphy-user-interface-design-computer-wallpaper-sphere-thumbnail.png"
@@ -63,19 +62,31 @@ fun EmployeeAndManagerComponent(
 
                 Spacer(modifier.height(12.dp))
 
-                MenuCard(
-                    annualBalance = annualBalance,
-                    annualUsed = annualUsed,
-                    annualLeft = annualLeft,
-                    userName = userData.fullName,
-                    position = userData.positionName ?: "No Position",
+                nameCards(
                     greeting = "Hello",
-                    onClickLiveAttendance = navigateAttendance,
-                    onClickTimeOff = navigateTimeOffRequest,
+                    userName = userData.fullName,
+                    division = userData.positionName ?: "No Position",
                     profileImage = fullImageUrl
                 )
 
-                Spacer(modifier.height(12.dp))
+                Spacer(modifier.height(14.dp))
+
+                HomeTodayStatusCard(
+                    state = todayStatusState,
+                    currentLocation = currentLocation,
+                    onAttendanceClick = navigateAttendance,
+                    onRefreshClick = refreshDashboard
+                )
+
+                Spacer(modifier.height(14.dp))
+
+                CompanyServicesGrid(
+                    onAttendanceClick = navigateAttendance,
+                    onTimeOffClick = navigateTimeOffRequest,
+                    onAttendanceHistoryClick = navigateListMyAttendance
+                )
+
+                Spacer(modifier.height(14.dp))
 
                 if (isLoading) {
                     Box(
@@ -87,8 +98,6 @@ fun EmployeeAndManagerComponent(
                         LoadingAnimation()
                     }
                 } else {
-                    Spacer(modifier.height(12.dp))
-
                     SeeAllButton(
                         label = stringResource(R.string.attendance_history),
                         onClickButton = navigateListMyAttendance
