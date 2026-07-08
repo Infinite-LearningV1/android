@@ -19,17 +19,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.domain.model.booking.BookingHistorySummary
+import com.example.infinite_track.presentation.theme.Blue_100
+import com.example.infinite_track.presentation.theme.Blue_500
 import com.example.infinite_track.presentation.theme.Purple_300
 import com.example.infinite_track.presentation.theme.Purple_500
 import com.example.infinite_track.presentation.theme.Status_Approved
 import com.example.infinite_track.presentation.theme.Status_Pending
 import com.example.infinite_track.presentation.theme.Status_Rejected
+import com.example.infinite_track.presentation.theme.White
 
 @Composable
 fun WfaRequestStatusSummary(
@@ -78,8 +82,14 @@ private fun SummaryCard(
 ) {
     Column(
         modifier = modifier
-            .background(Color.White.copy(alpha = 0.82f), RoundedCornerShape(18.dp))
-            .border(BorderStroke(1.dp, color.copy(alpha = 0.35f)), RoundedCornerShape(18.dp))
+            .shadow(
+                elevation = 6.dp,
+                shape = RoundedCornerShape(18.dp),
+                ambientColor = Blue_500.copy(alpha = 0.18f),
+                spotColor = Blue_500.copy(alpha = 0.12f)
+            )
+            .background(White.copy(alpha = 0.34f), RoundedCornerShape(18.dp))
+            .border(BorderStroke(1.dp, Blue_100.copy(alpha = 0.9f)), RoundedCornerShape(18.dp))
             .padding(horizontal = 8.dp, vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

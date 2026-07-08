@@ -1,6 +1,8 @@
 package com.example.infinite_track.presentation.screen.wfa
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +31,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -44,9 +47,11 @@ import com.example.infinite_track.presentation.core.headline3
 import com.example.infinite_track.presentation.screen.wfa.components.WfaRequestCard
 import com.example.infinite_track.presentation.screen.wfa.components.WfaRequestFilterChips
 import com.example.infinite_track.presentation.screen.wfa.components.WfaRequestStatusSummary
+import com.example.infinite_track.presentation.theme.Blue_100
 import com.example.infinite_track.presentation.theme.Blue_500
 import com.example.infinite_track.presentation.theme.Purple_300
 import com.example.infinite_track.presentation.theme.Purple_500
+import com.example.infinite_track.presentation.theme.White
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
@@ -204,7 +209,14 @@ private fun EmptyState() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White.copy(alpha = 0.86f), RoundedCornerShape(18.dp))
+            .shadow(
+                elevation = 6.dp,
+                shape = RoundedCornerShape(18.dp),
+                ambientColor = Blue_500.copy(alpha = 0.18f),
+                spotColor = Blue_500.copy(alpha = 0.12f)
+            )
+            .background(White.copy(alpha = 0.34f), RoundedCornerShape(18.dp))
+            .border(BorderStroke(1.dp, Blue_100.copy(alpha = 0.9f)), RoundedCornerShape(18.dp))
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -233,7 +245,14 @@ private fun ErrorState(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White.copy(alpha = 0.86f), RoundedCornerShape(18.dp))
+            .shadow(
+                elevation = 6.dp,
+                shape = RoundedCornerShape(18.dp),
+                ambientColor = Blue_500.copy(alpha = 0.18f),
+                spotColor = Blue_500.copy(alpha = 0.12f)
+            )
+            .background(White.copy(alpha = 0.34f), RoundedCornerShape(18.dp))
+            .border(BorderStroke(1.dp, Blue_100.copy(alpha = 0.9f)), RoundedCornerShape(18.dp))
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
