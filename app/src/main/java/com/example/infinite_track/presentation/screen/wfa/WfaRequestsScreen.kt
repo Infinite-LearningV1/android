@@ -93,7 +93,7 @@ fun WfaRequestsScreen(
                 .nestedScroll(pullToRefreshConnection)
                 .padding(innerPadding)
                 .padding(horizontal = 20.dp),
-            contentPadding = PaddingValues(top = 24.dp, bottom = 16.dp),
+            contentPadding = PaddingValues(top = 0.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
