@@ -1,6 +1,5 @@
 package com.example.infinite_track.presentation.main
 
-import android.os.Build
 import android.os.Bundle
 import com.example.infinite_track.presentation.screen.splash.SplashNavigationState
 
@@ -33,7 +32,4 @@ fun shouldRequestPostNotifications(
     alreadyRequestedThisLaunch: Boolean,
     isGranted: Boolean,
     navigationState: SplashNavigationState
-): Boolean = sdkInt >= Build.VERSION_CODES.TIRAMISU &&
-    !alreadyRequestedThisLaunch &&
-    !isGranted &&
-    navigationState is SplashNavigationState.NavigateToHome
+): Boolean = false

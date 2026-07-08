@@ -12,6 +12,7 @@ import com.example.infinite_track.R
 object WfaShellNavigationContract {
     private val hiddenRoutes = setOf(
         Screen.Attendance.route,
+        Screen.AttendancePermissionReadiness.route,
         Screen.EditProfile.route,
         Screen.ContactUs.route,
         Screen.PaySlip.route,

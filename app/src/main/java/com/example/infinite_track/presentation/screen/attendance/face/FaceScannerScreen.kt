@@ -108,10 +108,6 @@ fun FaceScannerScreen(
         // Reset scanner terlebih dahulu untuk memastikan state bersih
         viewModel.initializeScanner()
 
-        // Then request camera permission if not granted
-        if (!cameraPermissionState.status.isGranted) {
-            cameraPermissionState.launchPermissionRequest()
-        }
     }
 
     BackHandler {

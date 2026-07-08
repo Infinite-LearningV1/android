@@ -12,6 +12,7 @@ import androidx.navigation.navArgument
 import com.example.infinite_track.data.soucre.dummy.dummyTimeOff
 import com.example.infinite_track.presentation.screen.attendance.AttendanceScreen
 import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingScreen
+import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessScreen
 import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingViewModel
 import com.example.infinite_track.presentation.screen.attendance.face.FaceScannerScreen
 import com.example.infinite_track.presentation.screen.attendance.search.LocationSearchScreen
@@ -46,7 +47,7 @@ fun NavGraphBuilder.mainContentNavGraph(
 
         HomeScreen(
             viewModel = homeViewModel,
-            navigateAttendance = { navController.safeNavigate(Screen.Attendance.route) },
+            navigateAttendance = { navController.safeNavigate(Screen.AttendancePermissionReadiness.route) },
             navigateTimeOffRequest = { navController.safeNavigate(Screen.TimeOffRequest.route) },
             navigateListMyAttendance = { navController.safeNavigate(Screen.DetailMyAttendance.route) },
             navigateServiceComingSoon = { navController.safeNavigate(Screen.CompanyServiceComingSoon.route) }
@@ -151,6 +152,14 @@ fun NavGraphBuilder.mainContentNavGraph(
                 onBackClick = { navController.navigateBackToProfile() }
             )
         }
+    }
+
+    // Attendance permission readiness gate
+    composable(Screen.AttendancePermissionReadiness.route) {
+        AttendancePermissionReadinessScreen(
+            onBackClick = { navController.popBackStack() },
+            onContinueToWorkMode = { navController.safeNavigate(Screen.Attendance.route) }
+        )
     }
 
     // Attendance Screen

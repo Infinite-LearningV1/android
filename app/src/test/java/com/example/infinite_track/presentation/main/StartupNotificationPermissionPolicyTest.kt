@@ -9,7 +9,7 @@ import org.junit.Test
 class StartupNotificationPermissionPolicyTest {
 
     @Test
-    fun `requests post notifications only after authenticated startup on Android 13 plus`() {
+    fun `does not request post notifications after authenticated startup`() {
         val shouldRequest = shouldRequestPostNotifications(
             sdkInt = Build.VERSION_CODES.TIRAMISU,
             alreadyRequestedThisLaunch = false,
@@ -17,7 +17,7 @@ class StartupNotificationPermissionPolicyTest {
             navigationState = SplashNavigationState.NavigateToHome
         )
 
-        assertTrue(shouldRequest)
+        assertFalse(shouldRequest)
     }
 
     @Test
