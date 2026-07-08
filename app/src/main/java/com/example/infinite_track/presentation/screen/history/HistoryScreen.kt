@@ -89,151 +89,151 @@ fun HistoryScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = InfiniteColors.Transparent,
-        content = {
-            LazyColumn(
-                state = lazyListState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(pullToRefreshConnection),
-                contentPadding = PaddingValues(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+        containerColor = InfiniteColors.Transparent
+    ) { innerPadding ->
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .nestedScroll(pullToRefreshConnection),
+            contentPadding = PaddingValues(start = 20.dp, top = 0.dp, end = 20.dp, bottom = 0.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                InfiniteAttendancePeriodFilterCard(
+                    selectedPeriod = uiState.selectedPeriod,
+                    onPeriodSelected = viewModel::onFilterChanged,
+                    title = "My Attendance Report",
+                    subtitle = null
+                )
+            }
+
+            if (uiState.selectedPeriod == AttendancePeriod.CUSTOM) {
                 item {
-                    InfiniteAttendancePeriodFilterCard(
-                        selectedPeriod = uiState.selectedPeriod,
-                        onPeriodSelected = viewModel::onFilterChanged,
-                        title = "My Attendance Report",
-                        subtitle = null
+                    InfiniteAttendanceReportNoticeCard(
+                        title = "Custom range needs verification",
+                        message = "Date range picker is not available in this branch yet. The Custom filter is visible for the report contract, but runtime date-range behavior still needs verification."
                     )
                 }
+            }
 
-                if (uiState.selectedPeriod == AttendancePeriod.CUSTOM) {
-                    item {
-                        InfiniteAttendanceReportNoticeCard(
-                            title = "Custom range needs verification",
-                            message = "Date range picker is not available in this branch yet. The Custom filter is visible for the report contract, but runtime date-range behavior still needs verification."
-                        )
+            if (uiState.isRefreshing) {
+                item {
+                    InfiniteGlassReportCard {
+                        InfiniteLoadingState(message = "Refreshing attendance report...")
                     }
                 }
+            }
 
-                if (uiState.isRefreshing) {
+            when {
+                uiState.selectedPeriod == AttendancePeriod.CUSTOM -> {
                     item {
                         InfiniteGlassReportCard {
-                            InfiniteLoadingState(message = "Refreshing attendance report...")
+                            InfiniteEmptyState(
+                                title = "Custom report not available yet",
+                                message = "Choose Daily, Weekly, or Monthly to load backend report data while Custom range support is awaiting verification."
+                            )
                         }
                     }
                 }
 
-                when {
-                    uiState.selectedPeriod == AttendancePeriod.CUSTOM -> {
+                uiState.isLoading && uiState.records.isEmpty() -> {
+                    item {
+                        InfiniteGlassReportCard {
+                            InfiniteLoadingState(message = "Loading personal attendance report...")
+                        }
+                    }
+                }
+
+                uiState.error != null && uiState.records.isEmpty() -> {
+                    item {
+                        InfiniteGlassReportCard {
+                            InfiniteErrorState(
+                                title = "Report unavailable",
+                                message = uiState.error ?: "Unable to load attendance report."
+                            )
+                        }
+                    }
+                }
+
+                else -> {
+                    item {
+                        InfiniteAttendanceReportSummarySection(
+                            attendanceRateValue = "—",
+                            workHoursValue = remember(uiState.records) { uiState.records.toReportTotalWorkHoursLabel() },
+                            lateCount = uiState.summary?.totalLate ?: 0,
+                            alphaCount = uiState.summary?.totalAlpha ?: 0,
+                            subtitle = null
+                        )
+                    }
+
+                    item {
+                        InfiniteAttendanceModeDistributionCard(
+                            wfoCount = uiState.summary?.totalWfo ?: 0,
+                            wfaCount = uiState.summary?.totalWfa ?: 0,
+                            subtitle = null,
+                            unavailableModeMessage = null
+                        )
+                    }
+
+                    item {
+                        InfiniteAttendanceReportActionsCard(
+                            selectedPeriod = uiState.selectedPeriod,
+                            subtitle = null
+                        )
+                    }
+
+                    item {
+                        InfiniteSectionHeader(
+                            title = "Attendance Timeline",
+                            subtitle = null
+                        )
+                    }
+
+                    if (uiState.records.isEmpty()) {
                         item {
                             InfiniteGlassReportCard {
                                 InfiniteEmptyState(
-                                    title = "Custom report not available yet",
-                                    message = "Choose Daily, Weekly, or Monthly to load backend report data while Custom range support is awaiting verification."
+                                    title = "No attendance records found",
+                                    message = "Backend did not return attendance records for this period."
                                 )
                             }
                         }
+                    } else {
+                        itemsIndexed(uiState.records) { index, record ->
+                            ReportTimelineRow(
+                                record = record,
+                                connectorPosition = when {
+                                    uiState.records.size == 1 -> TimelineConnectorPosition.None
+                                    index == 0 -> TimelineConnectorPosition.First
+                                    index == uiState.records.lastIndex -> TimelineConnectorPosition.Last
+                                    else -> TimelineConnectorPosition.Middle
+                                }
+                            )
+                        }
                     }
 
-                    uiState.isLoading && uiState.records.isEmpty() -> {
+                    if (uiState.isLoadingMore) {
                         item {
                             InfiniteGlassReportCard {
-                                InfiniteLoadingState(message = "Loading personal attendance report...")
+                                InfiniteLoadingState(message = "Loading more attendance records...")
                             }
                         }
                     }
 
-                    uiState.error != null && uiState.records.isEmpty() -> {
+                    if (uiState.error != null && uiState.records.isNotEmpty()) {
                         item {
-                            InfiniteGlassReportCard {
-                                InfiniteErrorState(
-                                    title = "Report unavailable",
-                                    message = uiState.error ?: "Unable to load attendance report."
-                                )
-                            }
-                        }
-                    }
-
-                    else -> {
-                        item {
-                            InfiniteAttendanceReportSummarySection(
-                                attendanceRateValue = "—",
-                                workHoursValue = remember(uiState.records) { uiState.records.toReportTotalWorkHoursLabel() },
-                                lateCount = uiState.summary?.totalLate ?: 0,
-                                alphaCount = uiState.summary?.totalAlpha ?: 0,
-                                subtitle = null
+                            InfiniteAttendanceReportNoticeCard(
+                                title = "Some records may be missing",
+                                message = uiState.error ?: "Unable to load more attendance records."
                             )
-                        }
-
-                        item {
-                            InfiniteAttendanceModeDistributionCard(
-                                wfoCount = uiState.summary?.totalWfo ?: 0,
-                                wfaCount = uiState.summary?.totalWfa ?: 0,
-                                subtitle = null,
-                                unavailableModeMessage = null
-                            )
-                        }
-
-                        item {
-                            InfiniteAttendanceReportActionsCard(
-                                selectedPeriod = uiState.selectedPeriod,
-                                subtitle = null
-                            )
-                        }
-
-                        item {
-                            InfiniteSectionHeader(
-                                title = "Attendance Timeline",
-                                subtitle = null
-                            )
-                        }
-
-                        if (uiState.records.isEmpty()) {
-                            item {
-                                InfiniteGlassReportCard {
-                                    InfiniteEmptyState(
-                                        title = "No attendance records found",
-                                        message = "Backend did not return attendance records for this period."
-                                    )
-                                }
-                            }
-                        } else {
-                            itemsIndexed(uiState.records) { index, record ->
-                                ReportTimelineRow(
-                                    record = record,
-                                    connectorPosition = when {
-                                        uiState.records.size == 1 -> TimelineConnectorPosition.None
-                                        index == 0 -> TimelineConnectorPosition.First
-                                        index == uiState.records.lastIndex -> TimelineConnectorPosition.Last
-                                        else -> TimelineConnectorPosition.Middle
-                                    }
-                                )
-                            }
-                        }
-
-                        if (uiState.isLoadingMore) {
-                            item {
-                                InfiniteGlassReportCard {
-                                    InfiniteLoadingState(message = "Loading more attendance records...")
-                                }
-                            }
-                        }
-
-                        if (uiState.error != null && uiState.records.isNotEmpty()) {
-                            item {
-                                InfiniteAttendanceReportNoticeCard(
-                                    title = "Some records may be missing",
-                                    message = uiState.error ?: "Unable to load more attendance records."
-                                )
-                            }
                         }
                     }
                 }
             }
         }
-    )
+    }
 }
 
 @Composable
