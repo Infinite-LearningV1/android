@@ -1,24 +1,23 @@
 package com.example.infinite_track.presentation.screen.profile.details.about
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import com.example.infinite_track.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.infinite_track.presentation.design.components.navigation.InfiniteTopBar
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.screen.profile.details.about.components.AboutAchievementCard
 import com.example.infinite_track.presentation.screen.profile.details.about.components.AboutCreatorCard
@@ -27,7 +26,6 @@ import com.example.infinite_track.presentation.screen.profile.details.about.comp
 import com.example.infinite_track.presentation.screen.profile.details.about.components.AboutImpactSection
 import com.example.infinite_track.presentation.screen.profile.details.about.components.AboutOverviewCard
 import com.example.infinite_track.presentation.screen.profile.details.about.components.AboutTimelineSection
-import com.example.infinite_track.presentation.screen.profile.details.about.components.AboutTopBar
 
 @Composable
 fun AboutScreen(
@@ -40,13 +38,18 @@ fun AboutScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(InfiniteColors.AccountHubBackgroundGradient)
     ) {
-        LiquidBackgroundDecor()
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = InfiniteColors.Transparent,
-            topBar = { AboutTopBar(onBackClick = onBackClick) }
+            topBar = {
+                InfiniteTopBar(
+                    title = stringResource(R.string.account_hub_about_title),
+                    navigationIcon = Icons.Default.KeyboardArrowLeft,
+                    navigationContentDescription = stringResource(R.string.cancel),
+                    onNavigationClick = onBackClick
+                )
+            }
         ) { paddingValues ->
             Box(
                 modifier = Modifier
@@ -71,38 +74,4 @@ fun AboutScreen(
             }
         }
     }
-}
-
-@Composable
-private fun LiquidBackgroundDecor() {
-    Box(
-        modifier = Modifier
-            .offset(x = 280.dp, y = (-22).dp)
-            .size(150.dp)
-            .clip(CircleShape)
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(
-                        InfiniteColors.Surface.copy(alpha = 0.82f),
-                        InfiniteColors.AboutLavender.copy(alpha = 0.28f),
-                        InfiniteColors.Transparent
-                    )
-                )
-            )
-    )
-    Box(
-        modifier = Modifier
-            .offset(x = (-42).dp, y = 640.dp)
-            .size(150.dp)
-            .clip(CircleShape)
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(
-                        InfiniteColors.Surface.copy(alpha = 0.72f),
-                        InfiniteColors.AboutPurpleSoft.copy(alpha = 0.22f),
-                        InfiniteColors.Transparent
-                    )
-                )
-            )
-    )
 }

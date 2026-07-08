@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -62,6 +63,7 @@ import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.design.components.button.InfiniteButtonState
 import com.example.infinite_track.presentation.design.components.button.InfiniteButtonVariant
 import com.example.infinite_track.presentation.design.components.button.InfiniteButton
+import com.example.infinite_track.presentation.design.components.navigation.InfiniteTopBar
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
@@ -86,7 +88,12 @@ fun EditProfile(
         modifier = Modifier.fillMaxSize(),
         containerColor = Color.Transparent,
         topBar = {
-            EditProfileTopBar(onBackClick = onBackClick)
+            InfiniteTopBar(
+                title = stringResource(R.string.edit_profile_title),
+                navigationIcon = Icons.Default.KeyboardArrowLeft,
+                navigationContentDescription = stringResource(R.string.cancel),
+                onNavigationClick = onBackClick
+            )
         },
         bottomBar = {
             EditProfileBottomActionBar(
@@ -103,7 +110,6 @@ fun EditProfile(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(InfiniteColors.AccountHubBackgroundGradient)
                 .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -124,56 +130,6 @@ fun EditProfile(
                 onDismiss = { viewModel.resetUpdateState() }
             )
             Spacer(modifier = Modifier.height(88.dp))
-        }
-    }
-}
-
-@Composable
-private fun EditProfileTopBar(onBackClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = InfiniteColors.AccountHubHeroSurface),
-        border = BorderStroke(1.dp, InfiniteColors.AccountHubHeroOutline),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(78.dp)
-                .background(InfiniteColors.AccountHubHeroGradient)
-                .padding(horizontal = 18.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .size(52.dp)
-                    .clickable { onBackClick() },
-                shape = CircleShape,
-                color = InfiniteColors.AccountHubFloatingSurface,
-                border = BorderStroke(1.dp, InfiniteColors.AccountHubStrongOutline),
-                shadowElevation = 4.dp
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_backks),
-                        contentDescription = stringResource(R.string.cancel),
-                        tint = InfiniteColors.AccountHubTitle,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-            Text(
-                text = stringResource(R.string.edit_profile_title),
-                style = headline2,
-                color = InfiniteColors.AccountHubTitle,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
         }
     }
 }
