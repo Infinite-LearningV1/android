@@ -1,33 +1,29 @@
-package com.example.infinite_track.presentation.mapper.attendance
+package com.example.infinite_track.data.mapper.attendance
 
 import com.example.infinite_track.domain.model.attendance.AttendanceRecord
-import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
+import com.example.infinite_track.domain.model.attendance.AttendanceReportStatusInfo
+import com.example.infinite_track.domain.model.attendance.AttendanceReportStatusKind
 import java.util.Locale
 import kotlin.math.roundToInt
 
-data class AttendanceReportStatus(
-    val label: String,
-    val variant: InfiniteStatusVariant
-)
-
-fun AttendanceRecord.reportStatus(): AttendanceReportStatus {
+fun AttendanceRecord.toReportStatus(): AttendanceReportStatusInfo {
     val statusValue = status.orEmpty().lowercase(Locale.ROOT)
     val categoryValue = category.orEmpty().lowercase(Locale.ROOT)
     return when {
         categoryValue.contains("alpha") || categoryValue.contains("absent") || statusValue.contains("alpha") || statusValue.contains("absent") -> {
-            AttendanceReportStatus("Alpha", InfiniteStatusVariant.Alpha)
+            AttendanceReportStatusInfo("Alpha", AttendanceReportStatusKind.Alpha)
         }
-        timeOut.isNullOrBlank() -> AttendanceReportStatus("Active Session", InfiniteStatusVariant.Active)
-        statusValue.contains("late") -> AttendanceReportStatus("Late", InfiniteStatusVariant.Late)
+        timeOut.isNullOrBlank() -> AttendanceReportStatusInfo("Active Session", AttendanceReportStatusKind.ActiveSession)
+        statusValue.contains("late") -> AttendanceReportStatusInfo("Late", AttendanceReportStatusKind.Late)
         statusValue.contains("on_time") || statusValue.contains("ontime") || statusValue.contains("on time") -> {
-            AttendanceReportStatus("On Time", InfiniteStatusVariant.OnTime)
+            AttendanceReportStatusInfo("On Time", AttendanceReportStatusKind.OnTime)
         }
-        statusValue.isNotBlank() -> AttendanceReportStatus(statusValue.toDisplayLabel(), InfiniteStatusVariant.Neutral)
-        else -> AttendanceReportStatus("Unknown", InfiniteStatusVariant.Unknown)
+        statusValue.isNotBlank() -> AttendanceReportStatusInfo(statusValue.toDisplayLabel(), AttendanceReportStatusKind.Neutral)
+        else -> AttendanceReportStatusInfo("Unknown", AttendanceReportStatusKind.Unknown)
     }
 }
 
-fun AttendanceRecord.fullDateLabel(): String {
+fun AttendanceRecord.toReportDateLabel(): String {
     return when {
         attendanceDate?.isNotBlank() == true -> attendanceDate.orEmpty()
         monthYear.isNotBlank() -> "$date $monthYear"
@@ -35,23 +31,23 @@ fun AttendanceRecord.fullDateLabel(): String {
     }
 }
 
-fun AttendanceRecord.workModeLabel(): String {
+fun AttendanceRecord.toReportWorkModeLabel(): String {
     val raw = category.orEmpty().trim()
     return if (raw.isBlank()) "Work mode unavailable" else raw.toDisplayLabel()
 }
 
-fun AttendanceRecord.timeRangeLabel(): String {
+fun AttendanceRecord.toReportTimeRangeLabel(): String {
     if (isAlphaRecord()) return "No check-in recorded"
     val checkOut = timeOut?.takeIf { it.isNotBlank() } ?: "Active"
     return "Check-in $timeIn · Check-out $checkOut"
 }
 
-fun AttendanceRecord.workHourLabel(): String? {
+fun AttendanceRecord.toReportWorkHourLabel(): String? {
     if (isAlphaRecord() || timeOut.isNullOrBlank()) return null
     return workHour?.takeIf { it.isNotBlank() }?.let { "Work hours $it" }
 }
 
-fun List<AttendanceRecord>.totalWorkHoursLabel(): String {
+fun List<AttendanceRecord>.toReportTotalWorkHoursLabel(): String {
     val minutes = mapNotNull { record ->
         if (record.isAlphaRecord() || record.timeOut.isNullOrBlank()) null else record.workHour?.toMinutesOrNull()
     }.sum()

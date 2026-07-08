@@ -23,14 +23,15 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.infinite_track.data.mapper.attendance.toReportDateLabel
+import com.example.infinite_track.data.mapper.attendance.toReportStatus
+import com.example.infinite_track.data.mapper.attendance.toReportTimeRangeLabel
+import com.example.infinite_track.data.mapper.attendance.toReportTotalWorkHoursLabel
+import com.example.infinite_track.data.mapper.attendance.toReportWorkHourLabel
+import com.example.infinite_track.data.mapper.attendance.toReportWorkModeLabel
 import com.example.infinite_track.domain.model.attendance.AttendancePeriod
 import com.example.infinite_track.domain.model.attendance.AttendanceRecord
-import com.example.infinite_track.presentation.mapper.attendance.fullDateLabel
-import com.example.infinite_track.presentation.mapper.attendance.reportStatus
-import com.example.infinite_track.presentation.mapper.attendance.timeRangeLabel
-import com.example.infinite_track.presentation.mapper.attendance.totalWorkHoursLabel
-import com.example.infinite_track.presentation.mapper.attendance.workHourLabel
-import com.example.infinite_track.presentation.mapper.attendance.workModeLabel
+import com.example.infinite_track.domain.model.attendance.AttendanceReportStatusKind
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceModeDistributionCard
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendancePeriodFilterCard
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceReportActionsCard
@@ -43,6 +44,7 @@ import com.example.infinite_track.presentation.design.components.data.TimelineCo
 import com.example.infinite_track.presentation.design.components.state.InfiniteEmptyState
 import com.example.infinite_track.presentation.design.components.state.InfiniteErrorState
 import com.example.infinite_track.presentation.design.components.state.InfiniteLoadingState
+import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 
 @Composable
@@ -159,7 +161,7 @@ fun HistoryScreen(
                         item {
                             InfiniteAttendanceReportSummarySection(
                                 attendanceRateValue = "—",
-                                workHoursValue = remember(uiState.records) { uiState.records.totalWorkHoursLabel() },
+                                workHoursValue = remember(uiState.records) { uiState.records.toReportTotalWorkHoursLabel() },
                                 lateCount = uiState.summary?.totalLate ?: 0,
                                 alphaCount = uiState.summary?.totalAlpha ?: 0,
                                 subtitle = null
@@ -239,17 +241,26 @@ private fun ReportTimelineRow(
     record: AttendanceRecord,
     connectorPosition: TimelineConnectorPosition
 ) {
-    val status = record.reportStatus()
+    val status = record.toReportStatus()
     InfiniteAttendanceTimelineCard(
-        dateLabel = record.fullDateLabel(),
-        modeLabel = record.workModeLabel(),
-        timeRange = record.timeRangeLabel(),
+        dateLabel = record.toReportDateLabel(),
+        modeLabel = record.toReportWorkModeLabel(),
+        timeRange = record.toReportTimeRangeLabel(),
         statusLabel = status.label,
-        statusVariant = status.variant,
+        statusVariant = status.kind.toInfiniteStatusVariant(),
         connectorPosition = connectorPosition,
-        workHourLabel = record.workHourLabel(),
+        workHourLabel = record.toReportWorkHourLabel(),
         locationLabel = record.location
     )
+}
+
+private fun AttendanceReportStatusKind.toInfiniteStatusVariant(): InfiniteStatusVariant = when (this) {
+    AttendanceReportStatusKind.ActiveSession -> InfiniteStatusVariant.Active
+    AttendanceReportStatusKind.OnTime -> InfiniteStatusVariant.OnTime
+    AttendanceReportStatusKind.Late -> InfiniteStatusVariant.Late
+    AttendanceReportStatusKind.Alpha -> InfiniteStatusVariant.Alpha
+    AttendanceReportStatusKind.Unknown -> InfiniteStatusVariant.Unknown
+    AttendanceReportStatusKind.Neutral -> InfiniteStatusVariant.Neutral
 }
 
 private const val PullToRefreshThresholdPx = 160f
