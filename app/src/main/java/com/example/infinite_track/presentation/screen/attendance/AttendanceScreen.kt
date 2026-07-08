@@ -110,7 +110,10 @@ fun AttendanceScreen(
         uiState.navigationTarget?.let { target ->
             when (target) {
                 is NavigationTarget.FaceScanner -> {
-                    val action = if (target.isCheckIn) "checkin" else "checkout"
+                    val action = when (target.intent) {
+                        AttendanceActionIntent.CHECK_IN -> "checkin"
+                        AttendanceActionIntent.CHECK_OUT -> "checkout"
+                    }
                     val route = Screen.FaceScanner.createRoute(action)
                     navController.navigate(route)
                     android.util.Log.d(
@@ -347,7 +350,7 @@ fun AttendanceScreen(
                                 isBookingEnabled = uiState.selectedWorkMode == WorkMode.WFA && uiState.selectedTargetLocation?.location != null,
                                 isCheckInEnabled = uiState.isButtonEnabled,
                                 checkInButtonText = uiState.buttonText,
-                                blockingMessage = uiState.workModeEligibility?.blockingReason,
+                                actionState = uiState.actionState,
                                 onSearchLocationClick = {
                                     navController.navigate("location_search")
                                 },
