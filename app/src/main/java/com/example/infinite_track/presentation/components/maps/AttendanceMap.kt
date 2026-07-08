@@ -2,13 +2,7 @@ package com.example.infinite_track.presentation.components.maps
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
-import android.os.Build
-import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,16 +19,11 @@ import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.utils.MapUtils
 import com.example.infinite_track.utils.PermissionUtils
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.mapbox.geojson.Point
 import com.mapbox.maps.MapView
 import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.maps.plugin.locationcomponent.location
-import com.mapbox.maps.plugin.gestures.OnMapClickListener
-import com.mapbox.maps.CameraChangedCallback
 
-@OptIn(ExperimentalPermissionsApi::class)
 @SuppressLint("MissingPermission")
 @Composable
 fun AttendanceMap(
@@ -53,27 +42,15 @@ fun AttendanceMap(
     val context = LocalContext.current
     var mapView: MapView? by remember { mutableStateOf(null) }
 
-    val locationPermissionsState = rememberMultiplePermissionsState(
-        listOf(
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.ACCESS_FINE_LOCATION,
-        )
-    )
-
-    // Background location permission state
-    val isBackgroundGranted: Boolean = remember(locationPermissionsState.allPermissionsGranted) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) true
-        else ContextCompat.checkSelfPermission(
+    val hasForegroundLocationPermission = remember {
+        ContextCompat.checkSelfPermission(
             context,
-            Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
     }
-
-    val requestBackgroundPermissionLauncher =
-        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
-            // On Android 10 (Q), we can request ACCESS_BACKGROUND_LOCATION directly
-            rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op, recomposition checks permission */ }
-        } else null
 
     // Effect untuk update annotations saja - camera control diserahkan ke ViewModel
     LaunchedEffect(
@@ -108,40 +85,13 @@ fun AttendanceMap(
     }
 
     when {
-        // 1) Foreground location not granted yet
-        !locationPermissionsState.allPermissionsGranted -> {
+        !hasForegroundLocationPermission -> {
             PermissionUtils.PermissionRationale(
-                text = "Aplikasi ini membutuhkan izin lokasi untuk menampilkan peta dan memvalidasi absensi Anda.",
-                onRequestPermission = { locationPermissionsState.launchMultiplePermissionRequest() })
-        }
-
-        // 2) Background location required for geofencing on Android 10+
-        !isBackgroundGranted -> {
-            val rationaleText = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                "Untuk pemantauan geofence di latar belakang, izinkan akses lokasi 'Sepanjang waktu' di Pengaturan aplikasi."
-            } else {
-                "Untuk pemantauan geofence di latar belakang, aplikasi membutuhkan izin ACCESS_BACKGROUND_LOCATION."
-            }
-
-            PermissionUtils.PermissionRationale(
-                text = rationaleText,
-                onRequestPermission = {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        // Open App Settings so user can switch to "Allow all the time"
-                        val intent = Intent(
-                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.fromParts("package", context.packageName, null)
-                        )
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        context.startActivity(intent)
-                    } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
-                        requestBackgroundPermissionLauncher?.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                    }
-                }
+                text = "Akses lokasi belum siap. Kembali ke layar kesiapan Attendance untuk menyiapkan izin lokasi sebelum membuka peta.",
+                onRequestPermission = { }
             )
         }
 
-        // 3) All permissions granted → show MapView
         else -> {
             AndroidView(
                 factory = {

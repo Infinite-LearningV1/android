@@ -59,14 +59,11 @@ class LocationPermissionHelper(
      */
     fun checkAndRequestPermissions() {
         when {
-            hasAllRequiredPermissions() -> {
+            hasRequiredForegroundLocationPermission() -> {
                 onPermissionResult(PermissionResult.AllPermissionsGranted)
             }
             !hasForegroundLocationPermission() -> {
                 requestForegroundLocationPermissions()
-            }
-            !hasBackgroundLocationPermission() -> {
-                requestBackgroundLocationPermission()
             }
         }
     }
@@ -74,6 +71,10 @@ class LocationPermissionHelper(
     /**
      * Check apakah semua permission yang diperlukan sudah diberikan
      */
+    private fun hasRequiredForegroundLocationPermission(): Boolean {
+        return hasForegroundLocationPermission()
+    }
+
     private fun hasAllRequiredPermissions(): Boolean {
         return hasForegroundLocationPermission() && hasBackgroundLocationPermission()
     }
@@ -146,12 +147,7 @@ class LocationPermissionHelper(
 
         when {
             fineLocationGranted || coarseLocationGranted -> {
-                // Foreground permission berhasil, lanjut ke background permission
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    requestBackgroundLocationPermission()
-                } else {
-                    onPermissionResult(PermissionResult.AllPermissionsGranted)
-                }
+                onPermissionResult(PermissionResult.AllPermissionsGranted)
             }
             shouldShowRationale() -> {
                 onPermissionResult(PermissionResult.ForegroundPermissionDenied)
@@ -212,9 +208,9 @@ class LocationPermissionHelper(
      */
     fun getPermissionStatusMessage(): String {
         return when {
-            hasAllRequiredPermissions() -> "Semua izin lokasi telah diberikan"
+            hasAllRequiredPermissions() -> "Izin lokasi dan pemantauan latar belakang telah diberikan"
+            hasRequiredForegroundLocationPermission() -> "Izin lokasi utama siap. Lokasi latar belakang hanya untuk pengingat geofence."
             !hasForegroundLocationPermission() -> "Izin lokasi diperlukan untuk fitur absensi"
-            !hasBackgroundLocationPermission() -> "Izin lokasi latar belakang diperlukan untuk pemantauan area kerja"
             else -> "Status izin tidak diketahui"
         }
     }

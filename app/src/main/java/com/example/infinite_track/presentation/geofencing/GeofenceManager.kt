@@ -74,20 +74,21 @@ class GeofenceManager @Inject constructor(
     }
 
     /**
-     * Check if all required permissions are granted
+     * Check if permissions for geofence registration are granted.
+     * Basic/manual attendance readiness is owned by AttendancePermissionReadinessScreen.
      */
     fun hasAllRequiredPermissions(): Boolean {
         return hasForegroundLocationPermission() && hasBackgroundLocationPermission()
     }
 
     /**
-     * Get detailed permission status for UI feedback
+     * Get detailed geofence monitoring permission status for UI feedback.
      */
     fun getPermissionStatusMessage(): String {
         return when {
-            hasAllRequiredPermissions() -> "Semua izin lokasi telah diberikan"
-            !hasForegroundLocationPermission() -> "Izin lokasi diperlukan untuk fitur geofencing"
-            !hasBackgroundLocationPermission() -> "Izin lokasi latar belakang diperlukan untuk pemantauan area kerja secara otomatis"
+            hasAllRequiredPermissions() -> "Izin pemantauan geofence telah diberikan"
+            !hasForegroundLocationPermission() -> "Izin lokasi diperlukan untuk fitur absensi"
+            !hasBackgroundLocationPermission() -> "Lokasi latar belakang belum aktif. Pengingat geofence berjalan terbatas, tetapi absensi manual tetap bisa digunakan."
             else -> "Status izin tidak diketahui"
         }
     }

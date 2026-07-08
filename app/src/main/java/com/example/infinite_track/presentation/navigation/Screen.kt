@@ -7,6 +7,7 @@ sealed class Screen(val route: String) {
     data object Contact : Screen("contact")
     data object Wfa : Screen("wfa")
     data object Profile : Screen("profile")
+    data object AttendancePermissionReadiness : Screen("attendance_permission_readiness")
     data object Attendance : Screen("attendance")
     data object LocationSearch : Screen("location_search") // Tambahan untuk pencarian lokasi
 
