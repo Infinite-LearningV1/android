@@ -12,25 +12,33 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.domain.model.attendance.TodayStatus
+import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.core.body2
+import com.example.infinite_track.presentation.core.bodyThin
+import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.design.components.status.InfiniteInlineAlert
-import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteIcons
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.screen.home.HomeTodayStatusUiState
+import com.example.infinite_track.presentation.theme.Blue_500
+import com.example.infinite_track.presentation.theme.Purple_300
+import com.example.infinite_track.presentation.theme.Purple_500
+import com.example.infinite_track.presentation.theme.White
 import com.example.infinite_track.utils.UiState
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -87,12 +95,13 @@ private fun TodayStatusErrorCard(message: String) {
             TodayStatusHeader()
             Text(
                 text = "Status hari ini belum bisa dimuat",
-                color = InfiniteColors.Text,
-                fontWeight = FontWeight.SemiBold
+                color = Purple_500,
+                style = body1
             )
             Text(
                 text = "$message. Tarik ke bawah untuk memuat ulang.",
-                color = InfiniteColors.Text.copy(alpha = 0.68f)
+                color = Purple_300,
+                style = body2
             )
         }
     }
@@ -182,13 +191,13 @@ private fun TodayStatusHeader() {
         Icon(
             imageVector = InfiniteIcons.Calendar,
             contentDescription = null,
-            tint = InfiniteColors.Primary,
-            modifier = Modifier.size(22.dp)
+            tint = Blue_500,
+            modifier = Modifier.size(18.dp)
         )
         Text(
             text = "Today Status",
-            color = InfiniteColors.Text,
-            fontWeight = FontWeight.Bold
+            color = Purple_500,
+            style = body1
         )
     }
 }
@@ -200,24 +209,25 @@ private fun TodayStatusMetricItem(
 ) {
     Row(
         modifier = modifier
-            .background(InfiniteColors.Surface.copy(alpha = 0.36f), RoundedCornerShape(14.dp))
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .background(White.copy(alpha = 0.30f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 10.dp, vertical = 9.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = metric.icon,
             contentDescription = null,
-            tint = InfiniteColors.Text.copy(alpha = 0.86f),
-            modifier = Modifier.size(22.dp)
+            tint = Purple_500.copy(alpha = 0.88f),
+            modifier = Modifier.size(20.dp)
         )
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(1.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text(
                 text = metric.label,
-                color = InfiniteColors.Text.copy(alpha = 0.52f),
+                color = Purple_300,
+                style = bodyThin,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -227,7 +237,7 @@ private fun TodayStatusMetricItem(
                 Text(
                     text = metric.value,
                     color = metric.valueColor,
-                    fontWeight = FontWeight.SemiBold,
+                    style = headline4,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -240,14 +250,14 @@ private fun TodayStatusMetricItem(
 private fun GeofenceBadge(text: String) {
     Box(
         modifier = Modifier
-            .background(InfiniteColors.Accent.copy(alpha = 0.62f), RoundedCornerShape(999.dp))
-            .padding(horizontal = 12.dp, vertical = 5.dp),
+            .background(InfiniteColors.Accent.copy(alpha = 0.58f), RoundedCornerShape(999.dp))
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
-            color = InfiniteColors.Text,
-            fontWeight = FontWeight.SemiBold,
+            color = Purple_500,
+            style = body2,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -256,17 +266,23 @@ private fun GeofenceBadge(text: String) {
 
 @Composable
 private fun TodayStatusSurface(content: @Composable () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        color = InfiniteColors.Surface.copy(alpha = 0.72f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.84f)),
-        shadowElevation = 8.dp
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0x33FFFFFF)),
+        border = BorderStroke(1.dp, White.copy(alpha = 0.92f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(18.dp),
+                ambientColor = Blue_500.copy(alpha = 0.24f),
+                spotColor = Blue_500.copy(alpha = 0.20f)
+            )
     ) {
         Box(
             modifier = Modifier
-                .background(Color.White.copy(alpha = 0.16f))
-                .padding(14.dp)
+                .background(White.copy(alpha = 0.08f))
+                .padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
             content()
         }
