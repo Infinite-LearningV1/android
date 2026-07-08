@@ -12,7 +12,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.domain.model.attendance.TargetLocationInfo
 import com.example.infinite_track.presentation.components.button.InfiniteTrackButton
+import com.example.infinite_track.presentation.components.status.InfiniteTrackInlineAlert
+import com.example.infinite_track.presentation.components.status.StatusStates
 import com.example.infinite_track.presentation.core.headline4
+import com.example.infinite_track.presentation.screen.attendance.AttendanceActionState
+import com.example.infinite_track.presentation.screen.attendance.AttendanceBlockReason
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import com.example.infinite_track.presentation.theme.Purple_500
 
@@ -41,6 +45,7 @@ fun AttendanceBottomSheetContent(
     isBookingEnabled: Boolean,
     isCheckInEnabled: Boolean,
     checkInButtonText: String,
+    actionState: AttendanceActionState? = null,
     outOfRangeWarningText: String = "Anda berada di luar jangkauan lokasi kerja ?",
     onSearchLocationClick: () -> Unit = {}, // Untuk navigasi ke LocationSearchScreen
     onModeSelected: (String) -> Unit,
@@ -86,6 +91,10 @@ fun AttendanceBottomSheetContent(
             )
         }
 
+        actionState?.let { state ->
+            AttendanceActionInlineAlert(actionState = state)
+        }
+
         // Action Buttons
         AttendanceActionButtons(
             isBookingEnabled = isBookingEnabled,
@@ -94,6 +103,62 @@ fun AttendanceBottomSheetContent(
             onBookingClick = onBookingClick,
             onCheckInClick = onCheckInClick
         )
+    }
+}
+
+@Composable
+private fun AttendanceActionInlineAlert(
+    actionState: AttendanceActionState
+) {
+    when (actionState) {
+        is AttendanceActionState.Blocked -> {
+            val status = when (actionState.reason) {
+                AttendanceBlockReason.SERVER_RESTRICTION,
+                AttendanceBlockReason.UNKNOWN -> StatusStates.Error
+                else -> StatusStates.Warning
+            }
+            InfiniteTrackInlineAlert(
+                status = status,
+                title = actionState.title,
+                message = actionState.message
+            )
+        }
+
+        is AttendanceActionState.VerifyingFace -> {
+            InfiniteTrackInlineAlert(
+                status = StatusStates.Info,
+                title = "Verifikasi wajah",
+                message = "Membuka scanner wajah untuk melanjutkan absensi."
+            )
+        }
+
+        is AttendanceActionState.Submitting -> {
+            InfiniteTrackInlineAlert(
+                status = StatusStates.Info,
+                title = "Mengirim absensi",
+                message = actionState.message
+            )
+        }
+
+        is AttendanceActionState.RetryableFailure -> {
+            InfiniteTrackInlineAlert(
+                status = StatusStates.Error,
+                title = actionState.title,
+                message = actionState.message
+            )
+        }
+
+        AttendanceActionState.Completed -> {
+            InfiniteTrackInlineAlert(
+                status = StatusStates.Info,
+                title = "Absensi selesai",
+                message = "Anda sudah absen hari ini."
+            )
+        }
+
+        AttendanceActionState.Loading,
+        is AttendanceActionState.Ready,
+        is AttendanceActionState.Success -> Unit
     }
 }
 

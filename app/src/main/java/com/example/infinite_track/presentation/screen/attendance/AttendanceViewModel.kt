@@ -36,7 +36,7 @@ import javax.inject.Inject
  * Sealed class untuk merepresentasikan target navigasi
  */
 sealed class NavigationTarget {
-    data class FaceScanner(val isCheckIn: Boolean) : NavigationTarget()
+    data class FaceScanner(val intent: AttendanceActionIntent) : NavigationTarget()
     data class WfaBooking(val route: String) : NavigationTarget()
     data class LocationSearch(val params: String) : NavigationTarget()
 }
@@ -166,8 +166,7 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Fetch today status to get WFO location
-     * FIXED: Now uses isButtonEnabled from calculateDynamicButtonState directly
+     * Fetch today status to get WFO location and resolve explicit attendance action state.
      */
     private suspend fun fetchTodayStatus(forceRefresh: Boolean = false) {
         try {
@@ -180,23 +179,18 @@ class AttendanceViewModel @Inject constructor(
                 val isBookingEnabled = todayStatus.activeMode.isNotEmpty()
                 val selectedMode = todayStatus.activeMode.ifEmpty { "Work From Office" }
 
-                // Calculate button state based on today's status
-                val (buttonText, isButtonEnabled, isCheckInMode) = calculateDynamicButtonState(
-                    todayStatus
-                )
-
-                _uiState.value = _uiState.value.copy(
+                val nextState = _uiState.value.copy(
                     todayStatus = todayStatus,
                     targetLocation = todayStatus.activeLocation,
                     wfoLocation = todayStatus.activeLocation, // WFO location from today status
                     targetLocationMarker = todayStatus.activeLocation,
                     isBookingEnabled = isBookingEnabled,
                     selectedWorkMode = selectedMode,
-                    // FIXED: Now uses isButtonEnabled from calculateDynamicButtonState
-                    buttonText = buttonText,
-                    isButtonEnabled = isButtonEnabled,
-                    isCheckInMode = isCheckInMode,
+                    isWfaModeActive = selectedMode == "WFA" || selectedMode == "Work From Anywhere",
                     uiState = UiState.Success(Unit)
+                )
+                _uiState.value = nextState.withActionState(
+                    AttendanceActionResolver.resolve(nextState)
                 )
 
                 // Setup geofence for active location (validation purposes)
@@ -221,7 +215,7 @@ class AttendanceViewModel @Inject constructor(
                 Log.d(TAG, "WFO location updated: ${todayStatus.activeLocation}")
                 Log.d(
                     TAG,
-                    "Button state updated: $buttonText, enabled: $isButtonEnabled, mode: $isCheckInMode"
+                    "Attendance action state updated: ${_uiState.value.actionState}"
                 )
 
                 // Register/refresh reminder geofences (WFO/WFH) after fetching status
@@ -248,47 +242,47 @@ class AttendanceViewModel @Inject constructor(
 
             }.onFailure { exception ->
                 Log.e(TAG, "Failed to fetch today status", exception)
+                val message = exception.message ?: "Status absensi gagal dimuat."
                 _uiState.value = _uiState.value.copy(
-                    uiState = UiState.Error("Failed to load attendance status: ${exception.message}"),
-                    buttonText = "Error",
-                    isButtonEnabled = false
+                    uiState = UiState.Error("Failed to load attendance status: $message")
+                ).withActionState(
+                    AttendanceActionState.RetryableFailure(
+                        intent = null,
+                        title = "Status absensi gagal dimuat",
+                        message = message
+                    )
                 )
             }
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error in fetchTodayStatus", e)
+            val message = e.message ?: "Terjadi kesalahan tidak terduga."
             _uiState.value = _uiState.value.copy(
-                uiState = UiState.Error("Unexpected error: ${e.message}"),
-                buttonText = "Error",
-                isButtonEnabled = false
+                uiState = UiState.Error("Unexpected error: $message")
+            ).withActionState(
+                AttendanceActionState.RetryableFailure(
+                    intent = null,
+                    title = "Status absensi gagal dimuat",
+                    message = message
+                )
             )
         }
     }
 
-    /**
-     * Calculate dynamic button state based on today's status
-     * Returns Triple(buttonText, isEnabled, isCheckInMode)
-     * FIXED: Tombol selalu aktif kecuali sudah selesai absensi - validasi lokasi diserahkan ke backend
-     */
-    private fun calculateDynamicButtonState(todayStatus: TodayStatus): Triple<String, Boolean, Boolean> {
-        return when {
-            // PRIORITAS 1: Belum check-in sama sekali (checked_in_at == null)
-            // Selalu aktif - biarkan backend yang validasi lokasi
-            todayStatus.checkedInAt == null -> {
-                Triple("Check-in di sini", true, true)
-            }
+    private fun AttendanceScreenState.withActionState(
+        actionState: AttendanceActionState
+    ): AttendanceScreenState {
+        return copy(
+            actionState = actionState,
+            buttonText = actionState.ctaLabel,
+            isButtonEnabled = actionState.isCtaEnabled,
+            isCheckInMode = actionState.legacyIsCheckInMode
+        )
+    }
 
-            // PRIORITAS 2: Sudah check-in, bisa check-out (checked_in_at != null && can_check_out == true)
-            // Selalu aktif - biarkan backend yang validasi lokasi
-            todayStatus.checkedInAt != null && todayStatus.canCheckOut -> {
-                Triple("Check-out di sini", true, false)
-            }
-
-            // PRIORITAS 3: Sudah selesai absensi hari ini
-            // Hanya kondisi ini yang tombolnya nonaktif
-            else -> {
-                Triple("Anda sudah absen hari ini", false, false)
-            }
-        }
+    private fun refreshResolvedActionState() {
+        _uiState.value = _uiState.value.withActionState(
+            AttendanceActionResolver.resolve(_uiState.value)
+        )
     }
 
     /**
@@ -316,6 +310,7 @@ class AttendanceViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     wfhLocation = wfhLocation
                 )
+                refreshResolvedActionState()
 
                 Log.d(TAG, "WFH location updated: $wfhLocation")
             }
@@ -445,6 +440,7 @@ class AttendanceViewModel @Inject constructor(
             selectedWorkMode = mode,
             isWfaModeActive = mode == "WFA" || mode == "Work From Anywhere"
         )
+        refreshResolvedActionState()
 
         viewModelScope.launch {
             when (mode) {
@@ -454,6 +450,7 @@ class AttendanceViewModel @Inject constructor(
                         selectedWfaLocation = null,
                         pickedLocation = null
                     )
+                    refreshResolvedActionState()
                     onEnterPickOnMapMode()
                     fetchWfaRecommendations()
                 }
@@ -588,6 +585,7 @@ class AttendanceViewModel @Inject constructor(
             selectedWfaLocation = recommendation,
             selectedWfaMarkerInfo = recommendation // Show marker details
         )
+        refreshResolvedActionState()
 
         // Focus camera on selected WFA location
         viewModelScope.launch {
@@ -648,65 +646,129 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Handle attendance button click - navigates to face scanner
-     * FIXED: Uses new Screen.FaceScanner.createRoute with action parameter
+     * Handle attendance button click using explicit action state.
      */
     fun onAttendanceButtonClicked() {
-        // Use the reactive StateFlow value instead of recalculating
-        val isEnabled = _uiState.value.isButtonEnabled
-        val buttonText = _uiState.value.buttonText
+        val currentActionState = _uiState.value.actionState
+        val intent = when (currentActionState) {
+            is AttendanceActionState.Ready -> currentActionState.intent
+            is AttendanceActionState.RetryableFailure -> currentActionState.intent
+            else -> null
+        }
 
-        if (!isEnabled) {
-            Log.d(TAG, "Attendance button clicked but not enabled (geofence or server restriction)")
+        if (intent == null || !_uiState.value.isButtonEnabled) {
+            Log.d(TAG, "Attendance button clicked but action is not ready: $currentActionState")
             return
         }
 
-        val isCheckIn = buttonText.contains("Check-in", ignoreCase = true)
-        val action = if (isCheckIn) "checkin" else "checkout"
-
-        Log.d(TAG, "Attendance button clicked - $action")
-
-        // Update isCheckInMode state before navigation
-        _uiState.value = _uiState.value.copy(isCheckInMode = isCheckIn)
+        Log.d(TAG, "Attendance button clicked - $intent")
 
         viewModelScope.launch {
+            if (intent == AttendanceActionIntent.CHECK_IN && _uiState.value.isWfaModeActive) {
+                val scheduleDateIso = _uiState.value.todayStatus?.todayDate
+                if (scheduleDateIso.isNullOrBlank()) {
+                    _uiState.value = _uiState.value.withActionState(
+                        AttendanceActionState.Blocked(
+                            reason = AttendanceBlockReason.WFA_BOOKING_REQUIRED,
+                            title = "Booking WFA belum disetujui",
+                            message = "Tanggal attendance hari ini tidak tersedia untuk memvalidasi booking WFA."
+                        )
+                    )
+                    return@launch
+                }
+
+                resolveTodayApprovedWfaBookingIdUseCase(scheduleDateIso)
+                    .onFailure { exception ->
+                        _uiState.value = _uiState.value.withActionState(
+                            AttendanceActionState.Blocked(
+                                reason = AttendanceBlockReason.WFA_BOOKING_REQUIRED,
+                                title = "Booking WFA belum disetujui",
+                                message = exception.message
+                                    ?: "Booking WFA yang disetujui diperlukan sebelum absen dari lokasi WFA."
+                            )
+                        )
+                    }
+                    .getOrNull() ?: return@launch
+            }
+
+            val verifyingState = AttendanceActionState.VerifyingFace(intent)
             _uiState.value = _uiState.value.copy(
-                navigationTarget = NavigationTarget.FaceScanner(isCheckIn)
-            )
+                navigationTarget = NavigationTarget.FaceScanner(intent)
+            ).withActionState(verifyingState)
         }
     }
 
     /**
-     * Handle face verification result - GATEWAY after face verification
-     * Called from FaceScannerScreen when verification is complete
+     * Handle face verification result - GATEWAY after face verification.
+     * Face success only moves to backend submission; backend result remains authoritative.
      */
     fun onFaceVerificationResult(result: FaceVerificationResult) {
         Log.d(TAG, "Face verification result: $result")
 
+        val intent = (_uiState.value.actionState as? AttendanceActionState.VerifyingFace)?.intent
+            ?: _uiState.value.takeIf { it.isButtonEnabled }?.let { state ->
+                (state.actionState as? AttendanceActionState.Ready)?.intent
+                    ?: (state.actionState as? AttendanceActionState.RetryableFailure)?.intent
+            }
+
+        if (intent == null) {
+            Log.w(TAG, "Face verification result received without active attendance intent: $result")
+            _uiState.value = _uiState.value.withActionState(
+                AttendanceActionState.RetryableFailure(
+                    intent = null,
+                    title = "Verifikasi wajah tidak dapat diproses",
+                    message = "Status aksi absensi tidak tersedia. Silakan muat ulang halaman absensi."
+                )
+            )
+            return
+        }
+
         if (result.submitsAttendance) {
-            if (_uiState.value.isCheckInMode) {
-                proceedWithCheckIn()
-            } else {
-                proceedWithCheckOut()
+            val submittingState = AttendanceActionState.Submitting(
+                intent = intent,
+                message = intent.submittingMessage()
+            )
+            _uiState.value = _uiState.value.withActionState(submittingState)
+            when (intent) {
+                AttendanceActionIntent.CHECK_IN -> proceedWithCheckIn(intent)
+                AttendanceActionIntent.CHECK_OUT -> proceedWithCheckOut(intent)
             }
             return
         }
 
         result.attendanceErrorMessage?.let { errorMessage ->
             Log.d(TAG, "Face verification did not submit attendance: $result")
-            _uiState.value = _uiState.value.copy(
-                activeDialog = DialogState.Error(errorMessage)
+            _uiState.value = _uiState.value.withActionState(
+                AttendanceActionState.RetryableFailure(
+                    intent = intent,
+                    title = "Verifikasi wajah gagal",
+                    message = errorMessage
+                )
             )
             return
         }
 
-        Log.d(TAG, "Face verification cancelled - attendance process remains idle")
+        Log.d(TAG, "Face verification cancelled - attendance action returns to ready")
+        _uiState.value = _uiState.value.withActionState(
+            AttendanceActionState.Ready(
+                intent = intent,
+                label = intent.readyLabel()
+            )
+        )
     }
 
     fun onUnexpectedFaceVerificationResult() {
         Log.e(TAG, "Unexpected face verification result payload received")
+        val intent = (_uiState.value.actionState as? AttendanceActionState.VerifyingFace)?.intent
+        val message = "Hasil verifikasi wajah tidak dikenali. Silakan coba lagi."
         _uiState.value = _uiState.value.copy(
-            activeDialog = DialogState.Error("Hasil verifikasi wajah tidak dikenali. Silakan coba lagi.")
+            activeDialog = DialogState.Error(message)
+        ).withActionState(
+            AttendanceActionState.RetryableFailure(
+                intent = intent,
+                title = "Verifikasi wajah gagal",
+                message = message
+            )
         )
     }
 
@@ -714,7 +776,7 @@ class AttendanceViewModel @Inject constructor(
      * Proceed with check-in after successful face verification
      * FIXED: Added proper error message extraction from server response
      */
-    private fun proceedWithCheckIn() {
+    private fun proceedWithCheckIn(intent: AttendanceActionIntent) {
         viewModelScope.launch {
             try {
                 Log.d(TAG, "Proceeding with check-in after face verification")
@@ -744,8 +806,15 @@ class AttendanceViewModel @Inject constructor(
                 }
 
                 if (targetLocation == null) {
+                    val message = "Target location not available for ${_uiState.value.selectedWorkMode}. Please try again."
                     _uiState.value = _uiState.value.copy(
-                        activeDialog = DialogState.Error("Target location not available for ${_uiState.value.selectedWorkMode}. Please try again.")
+                        activeDialog = DialogState.Error(message)
+                    ).withActionState(
+                        AttendanceActionState.RetryableFailure(
+                            intent = intent,
+                            title = "Target location tidak tersedia",
+                            message = message
+                        )
                     )
                     return@launch
                 }
@@ -753,8 +822,15 @@ class AttendanceViewModel @Inject constructor(
                 // Get user info for the request
                 getLoggedInUserUseCase().collect { user ->
                     if (user == null) {
+                        val message = "User information not available. Please try again."
                         _uiState.value = _uiState.value.copy(
-                            activeDialog = DialogState.Error("User information not available. Please try again.")
+                            activeDialog = DialogState.Error(message)
+                        ).withActionState(
+                            AttendanceActionState.RetryableFailure(
+                                intent = intent,
+                                title = "Check-in gagal",
+                                message = message
+                            )
                         )
                         return@collect
                     }
@@ -770,9 +846,14 @@ class AttendanceViewModel @Inject constructor(
                     val bookingId = if (categoryId == 3) {
                         val scheduleDateIso = _uiState.value.todayStatus?.todayDate
                         if (scheduleDateIso.isNullOrBlank()) {
+                            val message = "Tanggal attendance hari ini tidak tersedia untuk memvalidasi booking WFA."
                             _uiState.value = _uiState.value.copy(
-                                activeDialog = DialogState.Error(
-                                    "Tanggal attendance hari ini tidak tersedia untuk memvalidasi booking WFA."
+                                activeDialog = DialogState.Error(message)
+                            ).withActionState(
+                                AttendanceActionState.RetryableFailure(
+                                    intent = intent,
+                                    title = "Booking WFA belum disetujui",
+                                    message = message
                                 )
                             )
                             return@collect
@@ -780,10 +861,15 @@ class AttendanceViewModel @Inject constructor(
 
                         resolveTodayApprovedWfaBookingIdUseCase(scheduleDateIso)
                             .getOrElse { exception ->
+                                val message = exception.message
+                                    ?: "Booking WFA yang sudah disetujui untuk hari ini tidak ditemukan."
                                 _uiState.value = _uiState.value.copy(
-                                    activeDialog = DialogState.Error(
-                                        exception.message
-                                            ?: "Booking WFA yang sudah disetujui untuk hari ini tidak ditemukan."
+                                    activeDialog = DialogState.Error(message)
+                                ).withActionState(
+                                    AttendanceActionState.RetryableFailure(
+                                        intent = intent,
+                                        title = "Booking WFA belum disetujui",
+                                        message = message
                                     )
                                 )
                                 return@collect
@@ -798,9 +884,14 @@ class AttendanceViewModel @Inject constructor(
                             bookingId = bookingId
                         )
                     } catch (exception: IllegalArgumentException) {
+                        val message = exception.message ?: "Payload check-in WFA tidak valid."
                         _uiState.value = _uiState.value.copy(
-                            activeDialog = DialogState.Error(
-                                exception.message ?: "Payload check-in WFA tidak valid."
+                            activeDialog = DialogState.Error(message)
+                        ).withActionState(
+                            AttendanceActionState.RetryableFailure(
+                                intent = intent,
+                                title = "Check-in gagal",
+                                message = message
                             )
                         )
                         return@collect
@@ -813,9 +904,14 @@ class AttendanceViewModel @Inject constructor(
                         // Refresh today's status from backend after mutation invalidates local cache.
                         fetchTodayStatus(forceRefresh = true)
 
-                        // Send success event to UI with appropriate message
+                        val successMessage = "Check-in berhasil! Selamat bekerja hari ini."
                         _uiState.value = _uiState.value.copy(
-                            activeDialog = DialogState.Success("Check-in berhasil! Selamat bekerja hari ini.")
+                            activeDialog = DialogState.Success(successMessage)
+                        ).withActionState(
+                            AttendanceActionState.Success(
+                                intent = intent,
+                                message = successMessage
+                            )
                         )
 
                     }.onFailure { exception ->
@@ -824,17 +920,29 @@ class AttendanceViewModel @Inject constructor(
                         // Extract the actual error message from the exception
                         val errorMessage = exception.message ?: "Check-in gagal. Silakan coba lagi."
 
-                        // Send error event to UI with the actual server message
                         _uiState.value = _uiState.value.copy(
                             activeDialog = DialogState.Error(errorMessage)
+                        ).withActionState(
+                            AttendanceActionState.RetryableFailure(
+                                intent = intent,
+                                title = "Check-in gagal",
+                                message = errorMessage
+                            )
                         )
                     }
                 }
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error in proceedWithCheckIn", e)
+                val message = "Unexpected error during check-in: ${e.message}"
                 _uiState.value = _uiState.value.copy(
-                    activeDialog = DialogState.Error("Unexpected error during check-in: ${e.message}")
+                    activeDialog = DialogState.Error(message)
+                ).withActionState(
+                    AttendanceActionState.RetryableFailure(
+                        intent = intent,
+                        title = "Check-in gagal",
+                        message = message
+                    )
                 )
             }
         }
@@ -844,7 +952,7 @@ class AttendanceViewModel @Inject constructor(
      * Proceed with check-out after successful face verification
      * FIXED: Added proper error message extraction from server response
      */
-    private fun proceedWithCheckOut() {
+    private fun proceedWithCheckOut(intent: AttendanceActionIntent) {
         viewModelScope.launch {
             try {
                 Log.d(TAG, "Proceeding with check-out after face verification")
@@ -859,9 +967,14 @@ class AttendanceViewModel @Inject constructor(
                     // Refresh today's status from backend after mutation invalidates local cache.
                     fetchTodayStatus(forceRefresh = true)
 
-                    // Send success event to UI with appropriate message
+                    val successMessage = "Check-out berhasil! Terima kasih atas kerja keras Anda hari ini."
                     _uiState.value = _uiState.value.copy(
-                        activeDialog = DialogState.Success("Check-out berhasil! Terima kasih atas kerja keras Anda hari ini.")
+                        activeDialog = DialogState.Success(successMessage)
+                    ).withActionState(
+                        AttendanceActionState.Success(
+                            intent = intent,
+                            message = successMessage
+                        )
                     )
 
                 }.onFailure { exception ->
@@ -870,16 +983,28 @@ class AttendanceViewModel @Inject constructor(
                     // Extract the actual error message from the exception
                     val errorMessage = exception.message ?: "Check-out gagal. Silakan coba lagi."
 
-                    // Send error event to UI with the actual server message
                     _uiState.value = _uiState.value.copy(
                         activeDialog = DialogState.Error(errorMessage)
+                    ).withActionState(
+                        AttendanceActionState.RetryableFailure(
+                            intent = intent,
+                            title = "Check-out gagal",
+                            message = errorMessage
+                        )
                     )
                 }
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error in proceedWithCheckOut", e)
+                val message = "Unexpected error during check-out: ${e.message}"
                 _uiState.value = _uiState.value.copy(
-                    activeDialog = DialogState.Error("Unexpected error during check-out: ${e.message}")
+                    activeDialog = DialogState.Error(message)
+                ).withActionState(
+                    AttendanceActionState.RetryableFailure(
+                        intent = intent,
+                        title = "Check-out gagal",
+                        message = message
+                    )
                 )
             }
         }
@@ -1015,6 +1140,7 @@ class AttendanceViewModel @Inject constructor(
                 ),
                 isWfaModeActive = true
             )
+            refreshResolvedActionState()
 
             // Animate map to the selected location
             _uiState.value = _uiState.value.copy(
@@ -1083,6 +1209,7 @@ class AttendanceViewModel @Inject constructor(
                             distance = 0.0
                         )
                     )
+                    refreshResolvedActionState()
                 }.onFailure { exception ->
                     Log.e(TAG, "Reverse geocoding failed", exception)
 

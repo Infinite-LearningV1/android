@@ -33,6 +33,7 @@ data class AttendanceScreenState(
     val pickedLocation: LocationResult? = null,
     val isPickOnMapModeActive: Boolean = false,
     val error: String? = null,
+    val actionState: AttendanceActionState = AttendanceActionState.Loading,
     val buttonText: String = "Loading...",
     val isButtonEnabled: Boolean = false,
     val isCheckInMode: Boolean = true,
