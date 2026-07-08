@@ -1,8 +1,12 @@
 package com.example.infinite_track.presentation.design.components.data
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +21,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -40,39 +46,58 @@ fun InfiniteServiceItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     accentColor: Color = InfiniteColors.Primary,
-    containerColor: Color = Color(0x33FFFFFF)
+    containerColor: Color = Color(0x4DFFFFFF)
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val borderColor by animateColorAsState(
+        targetValue = if (pressed) accentColor.copy(alpha = 0.28f) else White.copy(alpha = 0.88f),
+        label = "serviceBorderColor"
+    )
+    val backgroundColor by animateColorAsState(
+        targetValue = if (pressed) White.copy(alpha = 0.72f) else containerColor,
+        label = "serviceBackgroundColor"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (pressed) 7.dp else 0.dp,
+        label = "serviceElevation"
+    )
+
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        border = BorderStroke(1.dp, White.copy(alpha = 0.92f)),
+        shape = RoundedCornerShape(15.dp),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        border = BorderStroke(1.dp, borderColor),
         modifier = modifier
             .shadow(
-                elevation = 6.dp,
-                shape = RoundedCornerShape(16.dp),
+                elevation = elevation,
+                shape = RoundedCornerShape(15.dp),
                 ambientColor = accentColor.copy(alpha = 0.18f),
                 spotColor = accentColor.copy(alpha = 0.14f)
             )
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 11.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .background(accentColor.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
+                    .size(34.dp)
+                    .background(accentColor.copy(alpha = 0.14f), RoundedCornerShape(11.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     tint = accentColor,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
             Column(
@@ -82,7 +107,7 @@ fun InfiniteServiceItem(
                 Text(
                     text = title,
                     color = Purple_500,
-                    style = body1,
+                    style = body2,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -96,12 +121,12 @@ fun InfiniteServiceItem(
                     )
                 }
             }
-            Spacer(modifier = Modifier.size(2.dp))
+            Spacer(modifier = Modifier.size(1.dp))
             Icon(
                 imageVector = InfiniteIcons.ChevronRight,
                 contentDescription = null,
-                tint = Purple_300.copy(alpha = 0.74f),
-                modifier = Modifier.size(18.dp)
+                tint = Purple_300.copy(alpha = 0.68f),
+                modifier = Modifier.size(16.dp)
             )
         }
     }
