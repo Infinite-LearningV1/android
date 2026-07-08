@@ -48,6 +48,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import okhttp3.ResponseBody
 import retrofit2.Response
 import java.io.File
 import java.time.LocalDate
@@ -319,6 +320,20 @@ private class FakeApiService(
     override suspend fun refresh(request: RefreshRequest): RefreshResponse = unsupported()
 
     override suspend fun getAttendanceHistory(period: String, page: Int, limit: Int): AttendanceHistoryResponse = unsupported()
+
+    override suspend fun previewAttendanceReportPdf(
+        period: String,
+        startDate: String?,
+        endDate: String?,
+        timezone: String?
+    ): Response<ResponseBody> = unsupported()
+
+    override suspend fun exportAttendanceReportPdf(
+        period: String,
+        startDate: String?,
+        endDate: String?,
+        timezone: String?
+    ): Response<ResponseBody> = unsupported()
 
     override suspend fun updateUserProfile(userId: Int, request: ProfileUpdateRequest): ProfileUpdateResponse = unsupported()
 

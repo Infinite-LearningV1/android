@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import okhttp3.ResponseBody
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -154,6 +155,8 @@ private class LogoutFallbackFakeApiService(
     override suspend fun checkOut(attendanceId: Int, request: CheckOutRequestDto): AttendanceResponse = throw NotImplementedError()
     override suspend fun getTodayStatus(): TodayStatusResponse = throw NotImplementedError()
     override suspend fun getAttendanceHistory(period: String, page: Int, limit: Int): AttendanceHistoryResponse = throw NotImplementedError()
+    override suspend fun previewAttendanceReportPdf(period: String, startDate: String?, endDate: String?, timezone: String?): Response<ResponseBody> = throw NotImplementedError()
+    override suspend fun exportAttendanceReportPdf(period: String, startDate: String?, endDate: String?, timezone: String?): Response<ResponseBody> = throw NotImplementedError()
     override suspend fun updateUserProfile(userId: Int, request: ProfileUpdateRequest): ProfileUpdateResponse = throw NotImplementedError()
     override suspend fun sendLocationEvent(request: LocationEventRequest): Response<Unit> = throw NotImplementedError()
     override suspend fun getWfaRecommendations(latitude: Double, longitude: Double): WfaRecommendationResponse = throw NotImplementedError()

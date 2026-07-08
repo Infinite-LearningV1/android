@@ -7,6 +7,7 @@ import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
+import com.example.infinite_track.domain.repository.AttendanceReportPdfRepository
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
@@ -31,6 +32,7 @@ import com.example.infinite_track.domain.use_case.booking.GetBookingHistoryUseCa
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingIdUseCase
 import com.example.infinite_track.domain.use_case.booking.SubmitWfaBookingUseCase
 import com.example.infinite_track.domain.use_case.contact.GetContactsUseCase
+import com.example.infinite_track.domain.use_case.history.ExportAttendanceReportPdfUseCase
 import com.example.infinite_track.domain.use_case.history.GetAttendanceHistoryUseCase
 import com.example.infinite_track.domain.use_case.language.GetSelectedLanguageUseCase
 import com.example.infinite_track.domain.use_case.language.SetSelectedLanguageUseCase
@@ -153,6 +155,13 @@ object UseCaseModule {
         attendanceHistoryRepository: AttendanceHistoryRepository
     ): GetAttendanceHistoryUseCase {
         return GetAttendanceHistoryUseCase(attendanceHistoryRepository)
+    }
+
+    @Provides
+    fun provideExportAttendanceReportPdfUseCase(
+        attendanceReportPdfRepository: AttendanceReportPdfRepository
+    ): ExportAttendanceReportPdfUseCase {
+        return ExportAttendanceReportPdfUseCase(attendanceReportPdfRepository)
     }
 
     // Provide the Get Current Address Use Case

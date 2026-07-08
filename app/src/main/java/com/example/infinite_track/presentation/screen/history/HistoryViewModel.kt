@@ -6,6 +6,8 @@ import com.example.infinite_track.domain.model.attendance.AttendancePeriod
 import com.example.infinite_track.domain.model.attendance.AttendancePeriodInfo
 import com.example.infinite_track.domain.model.attendance.AttendanceRecord
 import com.example.infinite_track.domain.model.attendance.AttendanceSummaryInfo
+import com.example.infinite_track.domain.use_case.history.AttendanceReportPdfMode
+import com.example.infinite_track.domain.use_case.history.ExportAttendanceReportPdfUseCase
 import com.example.infinite_track.domain.use_case.history.GetAttendanceHistoryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -27,6 +29,7 @@ data class HistoryScreenState(
     val error: String? = null,
     val selectedPeriod: String = AttendancePeriod.MONTHLY,
     val periodInfo: AttendancePeriodInfo? = null,
+    val exportState: ReportExportUiState = ReportExportUiState.Idle,
     val summary: AttendanceSummaryInfo? = null,
     val records: List<AttendanceRecord> = emptyList(),
     val currentPage: Int = 1,
@@ -35,7 +38,8 @@ data class HistoryScreenState(
 
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
-    private val getAttendanceHistoryUseCase: GetAttendanceHistoryUseCase
+    private val getAttendanceHistoryUseCase: GetAttendanceHistoryUseCase,
+    private val exportAttendanceReportPdfUseCase: ExportAttendanceReportPdfUseCase
 ) : ViewModel() {
 
     // Single state flow for the entire UI state
@@ -104,7 +108,7 @@ class HistoryViewModel @Inject constructor(
                     currentPage = 1,
                     records = emptyList(),
                     periodInfo = null,
-                summary = null,
+                    summary = null,
                     canLoadMore = false,
                     isLoading = false,
                     isRefreshing = false,
@@ -117,6 +121,47 @@ class HistoryViewModel @Inject constructor(
 
         _uiState.update { it.copy(currentPage = 1) }
         loadHistory(isRefresh = true, isPullRefresh = true)
+    }
+
+    fun previewReportPdf() {
+        fetchReportPdf(AttendanceReportPdfMode.Preview)
+    }
+
+    fun exportReportPdf() {
+        fetchReportPdf(AttendanceReportPdfMode.Export)
+    }
+
+    fun clearExportState() {
+        _uiState.update { it.copy(exportState = ReportExportUiState.Idle) }
+    }
+
+    private fun fetchReportPdf(mode: AttendanceReportPdfMode) {
+        val currentState = uiState.value
+        if (currentState.selectedPeriod == AttendancePeriod.CUSTOM || currentState.exportState is ReportExportUiState.Downloading) {
+            if (currentState.selectedPeriod == AttendancePeriod.CUSTOM) {
+                _uiState.update {
+                    it.copy(exportState = ReportExportUiState.Error("Custom PDF export is not available until date range support is implemented."))
+                }
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(exportState = ReportExportUiState.Downloading) }
+            exportAttendanceReportPdfUseCase(
+                mode = mode,
+                period = currentState.selectedPeriod,
+                timezone = "Asia/Makassar"
+            ).onSuccess { result ->
+                _uiState.update {
+                    it.copy(exportState = ReportExportUiState.Success(result.localUri, result.fileName))
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(exportState = ReportExportUiState.Error(error.message ?: "Unable to prepare attendance report PDF."))
+                }
+            }
+        }
     }
 
     /**

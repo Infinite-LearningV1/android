@@ -18,6 +18,8 @@ import com.example.infinite_track.data.soucre.network.response.TodayStatusRespon
 import com.example.infinite_track.data.soucre.network.response.WfaRecommendationResponse
 import com.example.infinite_track.data.soucre.network.response.booking.BookingHistoryResponse
 import com.example.infinite_track.data.soucre.network.response.booking.BookingResponse
+import okhttp3.ResponseBody
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
@@ -25,6 +27,7 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
 import javax.inject.Singleton
 
 @Singleton
@@ -66,6 +69,24 @@ interface ApiService {
         @Query("page") page: Int = 1,
         @Query("limit") limit: Int = 5
     ): AttendanceHistoryResponse
+
+    @Streaming
+    @GET("api/attendance/history/personal/pdf")
+    suspend fun previewAttendanceReportPdf(
+        @Query("period") period: String,
+        @Query("start_date") startDate: String? = null,
+        @Query("end_date") endDate: String? = null,
+        @Query("timezone") timezone: String? = null
+    ): Response<ResponseBody>
+
+    @Streaming
+    @GET("api/attendance/history/export.pdf")
+    suspend fun exportAttendanceReportPdf(
+        @Query("period") period: String,
+        @Query("start_date") startDate: String? = null,
+        @Query("end_date") endDate: String? = null,
+        @Query("timezone") timezone: String? = null
+    ): Response<ResponseBody>
 
     @PATCH("api/users/{id}")
     suspend fun updateUserProfile(
