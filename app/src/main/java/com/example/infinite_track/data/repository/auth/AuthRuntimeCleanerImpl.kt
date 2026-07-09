@@ -33,8 +33,8 @@ class AuthRuntimeCleanerImpl @Inject constructor(
         runBestEffort("attendancePreference.clearAttendanceRuntimeState", failures) {
             attendancePreference.clearAttendanceRuntimeState()
         }
-        runBestEffort("geofenceManager.removeAllGeofencesAwait", failures) {
-            geofenceManager.removeAllGeofencesAwait()
+        runBestEffort("geofenceManager.removeAllGeofencesForLogoutOnlyAwait", failures) {
+            geofenceManager.removeAllGeofencesForLogoutOnlyAwait()
         }
 
         if (failures.isNotEmpty()) {

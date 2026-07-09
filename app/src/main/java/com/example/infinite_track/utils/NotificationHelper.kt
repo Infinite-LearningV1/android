@@ -1,31 +1,55 @@
 package com.example.infinite_track.utils
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.example.infinite_track.R
 import com.example.infinite_track.presentation.main.MainActivity
 
 object NotificationHelper {
 
-    private const val CHANNEL_ID = "geofence_channel_01"
-    private const val CHANNEL_NAME = "Geofence Notifications"
+    private const val TAG = "NotificationHelper"
+    private const val REMINDER_CHANNEL_ID = "attendance_reminder_channel"
+    private const val SESSION_ALERT_CHANNEL_ID = "attendance_session_alert_channel"
+    private const val EVIDENCE_SYNC_CHANNEL_ID = "attendance_evidence_sync_channel"
 
     fun createNotificationChannel(context: Context) {
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            CHANNEL_NAME,
-            NotificationManager.IMPORTANCE_HIGH
-        )
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.createNotificationChannel(channel)
+        notificationManager.createNotificationChannels(
+            listOf(
+                NotificationChannel(
+                    REMINDER_CHANNEL_ID,
+                    "Attendance Reminder",
+                    NotificationManager.IMPORTANCE_HIGH
+                ),
+                NotificationChannel(
+                    SESSION_ALERT_CHANNEL_ID,
+                    "Attendance Session Alert",
+                    NotificationManager.IMPORTANCE_HIGH
+                ),
+                NotificationChannel(
+                    EVIDENCE_SYNC_CHANNEL_ID,
+                    "Attendance Evidence Sync",
+                    NotificationManager.IMPORTANCE_LOW
+                )
+            )
+        )
     }
 
     fun showGeofenceNotification(context: Context, eventType: String, locationName: String) {
+        if (!canPostNotifications(context)) {
+            Log.w(TAG, "Session alert notification skipped because POST_NOTIFICATIONS is not granted")
+            return
+        }
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -46,7 +70,7 @@ object NotificationHelper {
             context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(context, SESSION_ALERT_CHANNEL_ID)
             .setSmallIcon(R.drawable.notifications_24px)
             .setContentTitle("Pemberitahuan Area Presensi")
             .setContentText(message)
@@ -59,6 +83,10 @@ object NotificationHelper {
     }
 
     fun showCheckInReminderNotification(context: Context, locationName: String) {
+        if (!canPostNotifications(context)) {
+            Log.w(TAG, "Reminder notification skipped because POST_NOTIFICATIONS is not granted")
+            return
+        }
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -70,7 +98,7 @@ object NotificationHelper {
             context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(context, REMINDER_CHANNEL_ID)
             .setSmallIcon(R.drawable.notifications_24px)
             .setContentTitle("Pengingat Check-in")
             .setContentText("Anda berada di area: $locationName. Jangan lupa check-in.")
@@ -80,5 +108,13 @@ object NotificationHelper {
             .build()
 
         notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+    }
+
+    private fun canPostNotifications(context: Context): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
     }
 }

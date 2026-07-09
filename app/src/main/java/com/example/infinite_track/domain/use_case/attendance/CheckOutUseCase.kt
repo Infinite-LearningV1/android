@@ -5,7 +5,6 @@ import com.example.infinite_track.domain.model.attendance.ActiveAttendanceSessio
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinatesUseCase
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
-import kotlinx.coroutines.flow.firstOrNull
 import javax.inject.Inject
 
 /**
@@ -52,22 +51,15 @@ class CheckOutUseCase @Inject constructor(
             // 4. If check-out successful, remove geofence using stored request ID
             if (checkOutResult.isSuccess) {
                 try {
-                    val lastRequestId = attendancePreference.getLastGeofenceRequestId().firstOrNull()
-                    if (lastRequestId != null) {
-                        geofenceManager.removeGeofence(lastRequestId)
-                    } else {
-                        geofenceManager.removeAllGeofences()
-                    }
+                    geofenceManager.removeActiveMonitoringGeofence()
+                    attendancePreference.saveAttendanceSessionStateKey("completed")
                     android.util.Log.d(
                         "CheckOutUseCase",
-                        "Geofence removed using stored request ID: ${lastRequestId ?: "ALL"}"
+                        "Active monitoring geofence removed after checkout"
                     )
 
-                    // Re-register reminder geofences (WFO/WFH) so reminders work after checkout
-                    val reminders = attendancePreference.getReminderGeofences().firstOrNull().orEmpty()
-                    reminders.forEach { r ->
-                        geofenceManager.addReminderGeofence(r.id, r.latitude, r.longitude, r.radiusMeters)
-                    }
+                    // Re-register only the persisted reminder geofences. Receiver still gates notification by can-check-in/session truth.
+                    geofenceManager.restoreReminderGeofences()
                 } catch (e: Exception) {
                     android.util.Log.e("CheckOutUseCase", "Failed to remove geofence", e)
                     // Don't fail the entire check-out process if geofence removal fails

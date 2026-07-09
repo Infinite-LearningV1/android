@@ -55,27 +55,15 @@ class CheckInUseCase @Inject constructor(
             // Step 4: If check-in successful, setup geofence monitoring using provided target location
             if (checkInResult.isSuccess) {
                 try {
-                    // Clean up reminder geofences to avoid double notifications during active session
-                    geofenceManager.removeAllGeofences()
-
-                    val requestId = if (targetLocation.locationId != 0) {
-                        targetLocation.locationId.toString()
-                    } else {
-                        // WFA: build a stable id from coordinates
-                        val lat = String.format("%.6f", targetLocation.latitude)
-                        val lng = String.format("%.6f", targetLocation.longitude)
-                        "wfa:$lat,$lng"
-                    }
-
-                    geofenceManager.addGeofence(
-                        id = requestId,
-                        latitude = targetLocation.latitude,
-                        longitude = targetLocation.longitude,
-                        radius = targetLocation.radius.toFloat()
+                    val activeAttendanceId = checkInResult.getOrThrow().idAttendance
+                    attendancePreference.saveAttendanceSessionStateKey("active")
+                    geofenceManager.registerActiveMonitoringGeofence(
+                        location = targetLocation,
+                        activeAttendanceId = activeAttendanceId
                     )
                     android.util.Log.d(
                         "CheckInUseCase",
-                        "Geofence monitoring started for requestId $requestId"
+                        "Active monitoring geofence requested for attendance $activeAttendanceId"
                     )
                 } catch (e: Exception) {
                     android.util.Log.e("CheckInUseCase", "Failed to setup geofence monitoring", e)

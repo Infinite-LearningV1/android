@@ -218,9 +218,14 @@ class AttendanceRepositoryImpl @Inject constructor(
         when {
             activeAttendanceId != null && activeAttendanceId > 0 -> {
                 attendancePreference.saveActiveAttendanceId(activeAttendanceId)
+                attendancePreference.saveAttendanceSessionStateKey(status.attendanceSessionState?.key)
             }
             activeAttendanceId == null && status.attendanceSessionState?.key in CLEAR_EMPTY_ATTENDANCE_STATES -> {
                 attendancePreference.clearActiveAttendanceId()
+                attendancePreference.saveAttendanceSessionStateKey(status.attendanceSessionState?.key)
+            }
+            else -> {
+                attendancePreference.saveAttendanceSessionStateKey(status.attendanceSessionState?.key)
             }
         }
     }
