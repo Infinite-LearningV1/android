@@ -56,7 +56,11 @@ fun BookingItem.toDomain(): BookingHistoryItem {
         createdAtRaw = rawCreatedAt,
         createdAt = formatDateTimeId(rawCreatedAt),
         processedAtRaw = processedAt,
-        processedAt = displayProcessedAt
+        processedAt = displayProcessedAt,
+        locationId = location?.locationId,
+        latitude = location?.latitude,
+        longitude = location?.longitude,
+        radiusMeters = location?.radius
     )
 }
 

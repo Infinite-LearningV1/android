@@ -30,11 +30,13 @@ class AttendancePreference internal constructor(
 	companion object {
 		private val ACTIVE_ATTENDANCE_ID_KEY = intPreferencesKey("active_attendance_id")
 		private val IS_INSIDE_GEOFENCE_KEY = booleanPreferencesKey("is_inside_geofence")
+		private val ATTENDANCE_SESSION_STATE_KEY = stringPreferencesKey("attendance_session_state_key")
 		private val LAST_GEOFENCE_REQUEST_ID_KEY = stringPreferencesKey("last_geofence_request_id")
 		private val LAST_GEOFENCE_LAT_KEY = floatPreferencesKey("last_geofence_lat")
 		private val LAST_GEOFENCE_LNG_KEY = floatPreferencesKey("last_geofence_lng")
 		private val LAST_GEOFENCE_RADIUS_KEY = floatPreferencesKey("last_geofence_radius")
 		private val REMINDER_GEOFENCES_KEY = stringSetPreferencesKey("reminder_geofences")
+		private val NOTIFICATION_COOLDOWNS_KEY = stringSetPreferencesKey("notification_cooldowns")
 	}
 
 	/**
@@ -52,6 +54,22 @@ class AttendancePreference internal constructor(
 	fun getActiveAttendanceId(): Flow<Int?> {
 		return dataStore.data.map { preferences ->
 			preferences[ACTIVE_ATTENDANCE_ID_KEY]
+		}
+	}
+
+	suspend fun saveAttendanceSessionStateKey(key: String?) {
+		dataStore.edit { preferences ->
+			if (key.isNullOrBlank()) {
+				preferences.remove(ATTENDANCE_SESSION_STATE_KEY)
+			} else {
+				preferences[ATTENDANCE_SESSION_STATE_KEY] = key
+			}
+		}
+	}
+
+	fun getAttendanceSessionStateKey(): Flow<String?> {
+		return dataStore.data.map { preferences ->
+			preferences[ATTENDANCE_SESSION_STATE_KEY]
 		}
 	}
 
@@ -185,15 +203,40 @@ class AttendancePreference internal constructor(
 		}
 	}
 
+	suspend fun canNotifyWithCooldown(key: String, nowMillis: Long, cooldownMillis: Long): Boolean {
+		var allowed = false
+		dataStore.edit { preferences ->
+			val current = preferences[NOTIFICATION_COOLDOWNS_KEY].orEmpty()
+			val existing = current.firstOrNull { it.startsWith("$key|") }
+			val lastShownAt = existing?.substringAfter("|")?.toLongOrNull()
+			allowed = lastShownAt == null || nowMillis - lastShownAt >= cooldownMillis
+			if (allowed) {
+				preferences[NOTIFICATION_COOLDOWNS_KEY] = current
+					.filterNot { it.startsWith("$key|") }
+					.plus("$key|$nowMillis")
+					.toSet()
+			}
+		}
+		return allowed
+	}
+
+	suspend fun clearNotificationCooldowns() {
+		dataStore.edit { preferences ->
+			preferences.remove(NOTIFICATION_COOLDOWNS_KEY)
+		}
+	}
+
 	suspend fun clearAttendanceRuntimeState() {
 		dataStore.edit { preferences ->
 			preferences.remove(ACTIVE_ATTENDANCE_ID_KEY)
 			preferences.remove(IS_INSIDE_GEOFENCE_KEY)
+			preferences.remove(ATTENDANCE_SESSION_STATE_KEY)
 			preferences.remove(LAST_GEOFENCE_REQUEST_ID_KEY)
 			preferences.remove(LAST_GEOFENCE_LAT_KEY)
 			preferences.remove(LAST_GEOFENCE_LNG_KEY)
 			preferences.remove(LAST_GEOFENCE_RADIUS_KEY)
 			preferences.remove(REMINDER_GEOFENCES_KEY)
+			preferences.remove(NOTIFICATION_COOLDOWNS_KEY)
 		}
 	}
 }

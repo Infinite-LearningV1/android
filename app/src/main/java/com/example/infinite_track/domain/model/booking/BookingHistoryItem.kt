@@ -16,5 +16,9 @@ data class BookingHistoryItem(
     val createdAtRaw: String = "",
     val createdAt: String = "-",
     val processedAtRaw: String? = null,
-    val processedAt: String = "Not processed yet"
+    val processedAt: String = "Not processed yet",
+    val locationId: Int? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val radiusMeters: Float? = null
 )

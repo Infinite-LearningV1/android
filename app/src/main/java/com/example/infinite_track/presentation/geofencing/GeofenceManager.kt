@@ -94,13 +94,12 @@ class GeofenceManager @Inject constructor(
     }
 
     /**
-     * Remove all geofences registered by this application.
-     * Existing fire-and-forget callers keep their non-blocking behavior.
+     * Full geofence teardown. Keep this for logout/auth runtime cleanup only.
      */
-    fun removeAllGeofences() {
+    fun removeAllGeofencesForLogoutOnly() {
         ioScope.launch {
             try {
-                removeAllGeofencesAwait()
+                removeAllGeofencesForLogoutOnlyAwait()
             } catch (e: CancellationException) {
                 throw e
             } catch (exception: Exception) {
@@ -110,15 +109,21 @@ class GeofenceManager @Inject constructor(
     }
 
     /**
+     * Backward-compatible alias. New normal mode switches must use typed lifecycle APIs.
+     */
+    fun removeAllGeofences() = removeAllGeofencesForLogoutOnly()
+
+    /**
      * Awaitable geofence cleanup for auth/runtime teardown semantics.
      */
-    suspend fun removeAllGeofencesAwait() {
+    suspend fun removeAllGeofencesForLogoutOnlyAwait() {
         try {
             geofencingClient.removeGeofences(geofencePendingIntent).awaitTask()
-            Log.d(TAG, "Semua geofence berhasil dihapus")
+            Log.d(TAG, "Semua geofence berhasil dihapus untuk logout/full teardown")
             attendancePreference.clearLastGeofenceRequestId()
             attendancePreference.clearLastGeofenceParams()
             attendancePreference.clearReminderGeofences()
+            attendancePreference.clearNotificationCooldowns()
         } catch (e: CancellationException) {
             throw e
         } catch (exception: Exception) {
@@ -126,6 +131,8 @@ class GeofenceManager @Inject constructor(
             throw exception
         }
     }
+
+    suspend fun removeAllGeofencesAwait() = removeAllGeofencesForLogoutOnlyAwait()
 
     @SuppressLint("MissingPermission")
     fun addGeofence(
@@ -166,51 +173,34 @@ class GeofenceManager @Inject constructor(
 
         settingsClient.checkLocationSettings(settingsRequest)
             .addOnSuccessListener {
-                // STEP 1: Always remove all existing geofences first (clean slate approach)
-                Log.d(TAG, "Membersihkan semua geofence sebelum menambah yang baru...")
+                val requestId = id
+                val geofence = Geofence.Builder()
+                    .setRequestId(requestId)
+                    .setCircularRegion(latitude, longitude, safeRadius)
+                    .setExpirationDuration(Geofence.NEVER_EXPIRE)
+                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
+                    .build()
 
-                geofencingClient.removeGeofences(geofencePendingIntent).run {
+                val geofencingRequest = GeofencingRequest.Builder()
+                    .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+                    .addGeofence(geofence)
+                    .build()
+
+                geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent).run {
                     addOnSuccessListener {
-                        Log.d(TAG, "Semua geofence berhasil dihapus, sekarang menambah geofence baru...")
-
-                        // STEP 2: Create and add the new geofence ONLY after removal is successful
-                        val requestId = id
-                        val geofence = Geofence.Builder()
-                            .setRequestId(requestId)
-                            .setCircularRegion(latitude, longitude, safeRadius)
-                            .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                            .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
-                            .build()
-
-                        val geofencingRequest = GeofencingRequest.Builder()
-                            .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
-                            .addGeofence(geofence)
-                            .build()
-
-                        geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent).run {
-                            addOnSuccessListener {
-                                Log.d(
-                                    TAG,
-                                    "Geofence berhasil ditambahkan: $requestId (lat: $latitude, lng: $longitude, radius: ${safeRadius}m)"
-                                )
-                                ioScope.launch {
-                                    attendancePreference.saveLastGeofenceRequestId(requestId)
-                                    attendancePreference.saveLastGeofenceParams(requestId, latitude, longitude, safeRadius)
-                                }
-                            }
-                            addOnFailureListener { exception ->
-                                val status = (exception as? ApiException)?.statusCode
-                                val statusText = status?.let { GeofenceStatusCodes.getStatusCodeString(it) }
-                                Log.e(TAG, "Gagal menambahkan geofence: $requestId (${status ?: "?"}: ${statusText ?: exception.message})", exception)
-                            }
+                        Log.d(
+                            TAG,
+                            "Active geofence berhasil ditambahkan: $requestId (lat: $latitude, lng: $longitude, radius: ${safeRadius}m)"
+                        )
+                        ioScope.launch {
+                            attendancePreference.saveLastGeofenceRequestId(requestId)
+                            attendancePreference.saveLastGeofenceParams(requestId, latitude, longitude, safeRadius)
                         }
                     }
                     addOnFailureListener { exception ->
-                        Log.e(
-                            TAG,
-                            "Gagal menghapus semua geofence, geofence baru tidak akan ditambahkan",
-                            exception
-                        )
+                        val status = (exception as? ApiException)?.statusCode
+                        val statusText = status?.let { GeofenceStatusCodes.getStatusCodeString(it) }
+                        Log.e(TAG, "Gagal menambahkan active geofence: $requestId (${status ?: "?"}: ${statusText ?: exception.message})", exception)
                     }
                 }
             }
@@ -289,6 +279,87 @@ class GeofenceManager @Inject constructor(
         }
     }
 
+    fun registerReminderGeofences(candidates: List<ReminderGeofenceCandidate>) {
+        if (candidates.isEmpty()) {
+            Log.d(TAG, "Tidak ada reminder geofence candidate untuk diregister")
+            return
+        }
+        Log.d(
+            TAG,
+            "Registering reminder candidates: " + candidates.joinToString { "${it.id}:${it.source}" }
+        )
+        candidates.forEach { candidate ->
+            addReminderGeofence(
+                id = candidate.id,
+                latitude = candidate.latitude,
+                longitude = candidate.longitude,
+                radius = candidate.radiusMeters
+            )
+        }
+    }
+
+    fun removeReminderGeofences() {
+        ioScope.launch {
+            val reminders = attendancePreference.getReminderGeofences().first()
+            if (reminders.isEmpty()) {
+                Log.d(TAG, "Tidak ada reminder geofence untuk dihapus")
+                return@launch
+            }
+            geofencingClient.removeGeofences(reminders.map { it.id }).run {
+                addOnSuccessListener {
+                    Log.d(TAG, "Reminder geofences dilepas dari Play Services: ${reminders.map { it.id }}")
+                }
+                addOnFailureListener { Log.e(TAG, "Gagal menghapus reminder geofences", it) }
+            }
+        }
+    }
+
+    fun restoreReminderGeofences() {
+        ioScope.launch {
+            val reminders = attendancePreference.getReminderGeofences().first()
+            reminders.forEach { reminder ->
+                addReminderGeofence(reminder.id, reminder.latitude, reminder.longitude, reminder.radiusMeters)
+            }
+            Log.d(TAG, "Reminder geofences restored: ${reminders.map { it.id }}")
+        }
+    }
+
+    fun registerActiveMonitoringGeofence(
+        location: com.example.infinite_track.domain.model.attendance.Location,
+        activeAttendanceId: Int
+    ) {
+        removeReminderGeofences()
+        val requestId = buildActiveMonitoringRequestId(location, activeAttendanceId)
+        addGeofence(
+            id = requestId,
+            latitude = location.latitude,
+            longitude = location.longitude,
+            radius = location.radius.toFloat()
+        )
+        Log.d(TAG, "Active monitoring geofence requested: $requestId for attendance=$activeAttendanceId")
+    }
+
+    fun removeActiveMonitoringGeofence() {
+        ioScope.launch {
+            val lastRequestId = attendancePreference.getLastGeofenceRequestId().first()
+            if (lastRequestId == null) {
+                Log.d(TAG, "Tidak ada active monitoring geofence untuk dihapus")
+                return@launch
+            }
+            geofencingClient.removeGeofences(listOf(lastRequestId)).run {
+                addOnSuccessListener {
+                    Log.d(TAG, "Active monitoring geofence dihapus: $lastRequestId")
+                    ioScope.launch {
+                        attendancePreference.clearLastGeofenceRequestId()
+                        attendancePreference.clearLastGeofenceParams()
+                        attendancePreference.setUserInsideGeofence(false)
+                    }
+                }
+                addOnFailureListener { Log.e(TAG, "Gagal menghapus active monitoring geofence: $lastRequestId", it) }
+            }
+        }
+    }
+
     fun removeReminderGeofence(id: String) {
         geofencingClient.removeGeofences(listOf(id)).run {
             addOnSuccessListener {
@@ -296,6 +367,19 @@ class GeofenceManager @Inject constructor(
                 ioScope.launch { attendancePreference.removeReminderGeofence(id) }
             }
             addOnFailureListener { Log.e(TAG, "Gagal menghapus reminder geofence: $id", it) }
+        }
+    }
+
+    private fun buildActiveMonitoringRequestId(
+        location: com.example.infinite_track.domain.model.attendance.Location,
+        activeAttendanceId: Int
+    ): String {
+        return if (location.locationId != 0) {
+            "active:$activeAttendanceId:${location.locationId}"
+        } else {
+            val lat = String.format("%.6f", location.latitude)
+            val lng = String.format("%.6f", location.longitude)
+            "active:$activeAttendanceId:wfa:$lat,$lng"
         }
     }
 }

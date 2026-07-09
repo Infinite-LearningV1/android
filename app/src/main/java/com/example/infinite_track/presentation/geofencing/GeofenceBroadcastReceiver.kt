@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.work.Constraints
 import androidx.work.Data
 import androidx.work.NetworkType
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
@@ -35,6 +36,9 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "GeofenceReceiver"
+        private const val ACTIVE_SESSION_STATE = "active"
+        private const val REMINDER_COOLDOWN_MILLIS = 45 * 60 * 1000L
+        private const val ACTIVE_ALERT_COOLDOWN_MILLIS = 7 * 60 * 1000L
     }
 
     @EntryPoint
@@ -75,18 +79,31 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val activeAttendanceId = attendancePreference.getActiveAttendanceId().first()
+                val sessionStateKey = attendancePreference.getAttendanceSessionStateKey().first()
+                val hasActiveSessionTruth = activeAttendanceId != null && sessionStateKey == ACTIVE_SESSION_STATE
 
-                if (activeAttendanceId == null) {
-                    Log.d(TAG, "No active session. Handling as reminder mode for event: $eventType")
+                if (!hasActiveSessionTruth) {
+                    Log.d(
+                        TAG,
+                        "No active session truth. Handling as reminder mode for event=$eventType, attendanceId=$activeAttendanceId, state=$sessionStateKey"
+                    )
 
-                    if (eventType == "ENTER") {
+                    if (eventType == "ENTER" && sessionStateKey != "completed") {
                         triggeringGeofences.forEach { geofence ->
                             val locationId = geofence.requestId
-                            val friendlyLabel = when {
-                                locationId.startsWith("wfa:") -> "Lokasi WFA"
-                                else -> locationId
+                            if (!locationId.startsWith("reminder:")) return@forEach
+                            val friendlyLabel = reminderLabel(locationId)
+                            val cooldownKey = "reminder:$locationId"
+                            val canNotify = attendancePreference.canNotifyWithCooldown(
+                                key = cooldownKey,
+                                nowMillis = System.currentTimeMillis(),
+                                cooldownMillis = REMINDER_COOLDOWN_MILLIS
+                            )
+                            if (canNotify) {
+                                NotificationHelper.showCheckInReminderNotification(context, friendlyLabel)
+                            } else {
+                                Log.d(TAG, "Reminder notification skipped by cooldown: $locationId")
                             }
-                            NotificationHelper.showCheckInReminderNotification(context, friendlyLabel)
                         }
                     }
                     return@launch
@@ -94,7 +111,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
                 Log.d(
                     TAG,
-                    "Active session found (ID: $activeAttendanceId). Processing geofence event: $eventType"
+                    "Active session truth found (ID: $activeAttendanceId, state=$sessionStateKey). Processing geofence event: $eventType"
                 )
 
                 when (eventType) {
@@ -108,7 +125,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                         Log.d(TAG, "Ignoring reminder geofence during active session: $requestId")
                         return@forEach
                     }
-                    processGeofenceEvent(context, geofence, eventType)
+                    processGeofenceEvent(context, geofence, eventType, activeAttendanceId!!)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing geofence event", e)
@@ -118,7 +135,12 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun processGeofenceEvent(context: Context, geofence: Geofence, eventType: String) {
+    private suspend fun processGeofenceEvent(
+        context: Context,
+        geofence: Geofence,
+        eventType: String,
+        activeAttendanceId: Int
+    ) {
         try {
             val locationId = geofence.requestId // String: supports numeric and WFA ids
 
@@ -132,12 +154,26 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                 locationId.startsWith("wfa:") -> "Lokasi WFA"
                 else -> locationId
             }
-            NotificationHelper.showGeofenceNotification(context, eventType, friendlyLabel)
+            val cooldownKey = "active:$activeAttendanceId:$eventType:$locationId"
+            val canNotify = EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                GeofenceReceiverEntryPoint::class.java
+            ).attendancePreference().canNotifyWithCooldown(
+                key = cooldownKey,
+                nowMillis = System.currentTimeMillis(),
+                cooldownMillis = ACTIVE_ALERT_COOLDOWN_MILLIS
+            )
+            if (canNotify) {
+                NotificationHelper.showGeofenceNotification(context, eventType, friendlyLabel)
+            } else {
+                Log.d(TAG, "Active monitoring notification skipped by cooldown: $cooldownKey")
+            }
 
             val workData = Data.Builder()
                 .putString(LocationEventWorker.KEY_EVENT_TYPE, eventType)
                 .putString(LocationEventWorker.KEY_LOCATION_ID, locationId)
                 .putString(LocationEventWorker.KEY_EVENT_TIMESTAMP, timestamp)
+                .putInt(LocationEventWorker.KEY_ACTIVE_ATTENDANCE_ID, activeAttendanceId)
                 .build()
 
             val constraints = androidx.work.Constraints.Builder()
@@ -150,11 +186,25 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                 .addTag("location_event_$locationId")
                 .build()
 
-            WorkManager.getInstance(context).enqueue(workRequest)
+            val uniqueWorkName = "location_event_${activeAttendanceId}_${locationId}_${eventType}"
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                uniqueWorkName,
+                ExistingWorkPolicy.REPLACE,
+                workRequest
+            )
 
-            Log.d(TAG, "Location event enqueued: $eventType for $locationId at $timestamp")
+            Log.d(TAG, "Location event enqueued uniquely: $uniqueWorkName at $timestamp")
         } catch (e: Exception) {
             Log.e(TAG, "Error processing geofence event for ${geofence.requestId}", e)
+        }
+    }
+
+    private fun reminderLabel(requestId: String): String {
+        return when {
+            requestId.startsWith("reminder:wfh:") -> "Lokasi WFH"
+            requestId.startsWith("reminder:wfa:") -> "Lokasi WFA"
+            requestId.startsWith("reminder:primary:") -> "Lokasi utama attendance"
+            else -> requestId.removePrefix("reminder:")
         }
     }
 }
