@@ -79,6 +79,9 @@ fun InternshipContent(
                 attendanceState = attendanceState,
                 maxItems = 3,
                 showModeLabel = false,
+                title = "Recent Attendance",
+                showExternalHeader = false,
+                showSeeAllAction = true,
                 onSeeAllClick = navigateToListMyAttendance
             )
         }

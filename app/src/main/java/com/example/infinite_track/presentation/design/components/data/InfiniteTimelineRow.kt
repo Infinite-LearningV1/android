@@ -70,8 +70,8 @@ fun InfiniteTimelineRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(64.dp)
-            .padding(horizontal = 12.dp),
+            .height(56.dp)
+            .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         TimelineRail(
@@ -80,11 +80,11 @@ fun InfiniteTimelineRow(
             leadingIcon = leadingIcon
         )
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(10.dp))
 
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(1.dp)
         ) {
             Text(
                 text = primaryLine,
@@ -123,7 +123,7 @@ private fun TimelineRail(
 ) {
     Box(
         modifier = Modifier
-            .width(28.dp)
+            .width(26.dp)
             .fillMaxHeight(),
         contentAlignment = Alignment.Center
     ) {
@@ -153,7 +153,7 @@ private fun TimelineRail(
 
         Box(
             modifier = Modifier
-                .size(28.dp)
+                .size(26.dp)
                 .background(accentColor.copy(alpha = 0.12f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
@@ -161,7 +161,7 @@ private fun TimelineRail(
                 imageVector = leadingIcon ?: Icons.Rounded.CalendarMonth,
                 contentDescription = null,
                 tint = accentColor,
-                modifier = Modifier.size(15.dp)
+                modifier = Modifier.size(14.dp)
             )
         }
     }

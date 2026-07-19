@@ -2,22 +2,30 @@ package com.example.infinite_track.presentation.design.components.data
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.WorkOutline
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.core.body2
+import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
+import com.example.infinite_track.presentation.theme.Purple_300
+import com.example.infinite_track.presentation.theme.Purple_500
 import com.example.infinite_track.presentation.theme.attendanceModeColor
 
 @Composable
@@ -27,17 +35,39 @@ fun InfiniteAttendanceModeDistributionCard(
     modifier: Modifier = Modifier,
     wfhCount: Int? = null,
     title: String = "Attendance Mode",
-    subtitle: String? = "WFO and WFA distribution from backend summary",
-    unavailableModeMessage: String? = "WFH is not shown because total_wfh is not available in the current Android model."
+    subtitle: String? = null,
+    unavailableModeMessage: String? = null
 ) {
     val totalKnown = wfoCount + wfaCount + (wfhCount ?: 0)
 
     InfiniteGlassReportCard(modifier = modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            InfiniteSectionHeader(
-                title = title,
-                subtitle = subtitle
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = title,
+                    style = headline4,
+                    color = Purple_500
+                )
+                Icon(
+                    imageVector = Icons.Outlined.WorkOutline,
+                    contentDescription = null,
+                    tint = Purple_500,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            subtitle?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    text = it,
+                    style = body2,
+                    color = Purple_300
+                )
+            }
+
             InfiniteAttendanceModeDistributionRow(
                 label = "WFO",
                 count = wfoCount,
@@ -63,8 +93,8 @@ fun InfiniteAttendanceModeDistributionCard(
             } ?: unavailableModeMessage?.let { message ->
                 Text(
                     text = message,
-                    color = InfiniteColors.AttendanceReportMutedText,
-                    style = MaterialTheme.typography.bodySmall
+                    color = Purple_300,
+                    style = body2
                 )
             }
         }
@@ -83,7 +113,7 @@ fun InfiniteAttendanceModeDistributionRow(
     val progress = if (total > 0) count.toFloat() / total.toFloat() else 0f
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -92,24 +122,30 @@ fun InfiniteAttendanceModeDistributionRow(
         ) {
             Text(
                 text = label,
-                color = InfiniteColors.Text,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
+                color = Purple_500,
+                style = body1
             )
             Text(
                 text = "$count $unitLabel",
-                color = InfiniteColors.AttendanceReportMutedText,
-                style = MaterialTheme.typography.bodySmall
+                color = Purple_300,
+                style = body2
             )
         }
-        LinearProgressIndicator(
-            progress = { progress },
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(10.dp)
-                .background(InfiniteColors.Surface.copy(alpha = 0.62f), RoundedCornerShape(999.dp)),
-            color = color,
-            trackColor = color.copy(alpha = 0.12f)
-        )
+                .clip(RoundedCornerShape(999.dp))
+                .background(InfiniteColors.Surface.copy(alpha = 0.72f))
+        ) {
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(10.dp),
+                color = color,
+                trackColor = Color.Transparent
+            )
+        }
     }
 }

@@ -16,6 +16,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.core.body2
+import com.example.infinite_track.presentation.core.body3
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
 import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
@@ -83,14 +86,19 @@ fun InfiniteStatusPill(
         semanticColors.accent
     }
     val horizontal = when (size) {
-        InfiniteSize.Small -> 8.dp
+        InfiniteSize.Small -> 6.dp
         InfiniteSize.Medium -> 10.dp
         InfiniteSize.Large -> 12.dp
     }
     val vertical = when (size) {
-        InfiniteSize.Small -> 4.dp
+        InfiniteSize.Small -> 2.dp
         InfiniteSize.Medium -> 6.dp
         InfiniteSize.Large -> 8.dp
+    }
+    val textStyle = when (size) {
+        InfiniteSize.Small -> body3
+        InfiniteSize.Medium -> body2
+        InfiniteSize.Large -> body1
     }
     Surface(
         modifier = modifier,
@@ -101,15 +109,21 @@ fun InfiniteStatusPill(
     ) {
         Row(
             modifier = Modifier.padding(horizontal = horizontal, vertical = vertical),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             leadingIcon?.let {
-                Icon(imageVector = it, contentDescription = null, tint = iconTint, modifier = Modifier.size(14.dp))
+                Icon(
+                    imageVector = it,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(if (size == InfiniteSize.Small) 11.dp else 14.dp)
+                )
             }
             Text(
                 text = label,
-                fontWeight = if (useSharedRequestPalette || colorOverride != null) FontWeight.Bold else FontWeight.Normal
+                style = textStyle,
+                fontWeight = if (useSharedRequestPalette || colorOverride != null) FontWeight.SemiBold else FontWeight.Medium
             )
         }
     }

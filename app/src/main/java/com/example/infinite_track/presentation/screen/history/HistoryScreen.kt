@@ -3,14 +3,12 @@ package com.example.infinite_track.presentation.screen.history
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,29 +25,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.infinite_track.data.mapper.attendance.toReportDateLabel
-import com.example.infinite_track.data.mapper.attendance.toReportStatus
-import com.example.infinite_track.data.mapper.attendance.toReportTimeRangeLabel
-import com.example.infinite_track.data.mapper.attendance.toReportTotalWorkHoursLabel
-import com.example.infinite_track.data.mapper.attendance.toReportWorkHourLabel
-import com.example.infinite_track.data.mapper.attendance.toReportWorkModeLabel
-import com.example.infinite_track.domain.model.attendance.AttendancePeriod
-import com.example.infinite_track.domain.model.attendance.AttendanceRecord
-import com.example.infinite_track.domain.model.attendance.AttendanceReportStatusKind
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceModeDistributionCard
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendancePeriodFilterCard
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceReportActionsCard
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceReportNoticeCard
-import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceReportSummarySection
-import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceTimelineCard
+import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceReportSummaryCard
+import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceTimelineSection
 import com.example.infinite_track.presentation.design.components.data.InfiniteGlassReportCard
-import com.example.infinite_track.presentation.design.components.data.InfiniteSectionHeader
-import com.example.infinite_track.presentation.design.components.data.TimelineConnectorPosition
 import com.example.infinite_track.presentation.design.components.state.InfiniteEmptyState
 import com.example.infinite_track.presentation.design.components.state.InfiniteErrorState
 import com.example.infinite_track.presentation.design.components.state.InfiniteLoadingState
-import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
+import com.example.infinite_track.utils.UiState
 
 private enum class ReportAction {
     Preview,
@@ -188,14 +175,10 @@ fun HistoryScreen(
 
                 else -> {
                     item {
-                        InfiniteAttendanceReportSummarySection(
-                            attendanceRateValue = uiState.summary?.attendanceRateLabel ?: "—",
-                            workHoursValue = remember(uiState.records, uiState.summary?.totalWorkHoursLabel) {
-                                uiState.records.toReportTotalWorkHoursLabel(uiState.summary?.totalWorkHoursLabel)
-                            },
-                            lateCount = uiState.summary?.totalLate ?: 0,
-                            alphaCount = uiState.summary?.totalAlpha ?: 0,
-                            subtitle = uiState.periodInfo?.label
+                        InfiniteAttendanceReportSummaryCard(
+                            summaryState = uiState.summary?.let { UiState.Success(it) } ?: UiState.Loading,
+                            periodInfo = uiState.periodInfo,
+                            showViewReportAction = false
                         )
                     }
 
@@ -236,42 +219,15 @@ fun HistoryScreen(
                     }
 
                     item {
-                        InfiniteSectionHeader(
+                        InfiniteAttendanceTimelineSection(
+                            attendanceState = UiState.Success(uiState.records),
+                            onSeeAllClick = {},
                             title = "Attendance Timeline",
-                            subtitle = null
+                            maxItems = 3,
+                            showModeLabel = false,
+                            showExternalHeader = false,
+                            showSeeAllAction = false
                         )
-                    }
-
-                    item {
-                        if (uiState.records.isEmpty()) {
-                            InfiniteGlassReportCard {
-                                InfiniteEmptyState(
-                                    title = "No attendance records found",
-                                    message = "Backend did not return attendance records for this period."
-                                )
-                            }
-                        } else {
-                            InfiniteGlassReportCard {
-                                Column {
-                                    uiState.records.forEachIndexed { index, record ->
-                                        ReportTimelineRow(
-                                            record = record,
-                                            connectorPosition = when {
-                                                uiState.records.size == 1 -> TimelineConnectorPosition.None
-                                                index == 0 -> TimelineConnectorPosition.First
-                                                index == uiState.records.lastIndex -> TimelineConnectorPosition.Last
-                                                else -> TimelineConnectorPosition.Middle
-                                            }
-                                        )
-                                        if (index != uiState.records.lastIndex) {
-                                            HorizontalDivider(
-                                                color = InfiniteColors.AttendanceReportGlassBorder
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
                     }
 
                     if (uiState.error != null && uiState.records.isNotEmpty()) {
@@ -286,35 +242,6 @@ fun HistoryScreen(
             }
         }
     }
-}
-
-@Composable
-private fun ReportTimelineRow(
-    record: AttendanceRecord,
-    connectorPosition: TimelineConnectorPosition
-) {
-    val status = record.toReportStatus()
-    InfiniteAttendanceTimelineCard(
-        dateLabel = record.toReportDateLabel(),
-        modeLabel = record.toReportWorkModeLabel(),
-        timeRange = record.toReportTimeRangeLabel(),
-        statusLabel = status.label,
-        statusVariant = status.kind.toInfiniteStatusVariant(),
-        connectorPosition = connectorPosition,
-        workHourLabel = record.toReportWorkHourLabel(),
-        locationLabel = record.location,
-        showModeLabel = false,
-        modeKey = record.modeKey ?: record.modeLabel
-    )
-}
-
-private fun AttendanceReportStatusKind.toInfiniteStatusVariant(): InfiniteStatusVariant = when (this) {
-    AttendanceReportStatusKind.ActiveSession -> InfiniteStatusVariant.Active
-    AttendanceReportStatusKind.OnTime -> InfiniteStatusVariant.OnTime
-    AttendanceReportStatusKind.Late -> InfiniteStatusVariant.Late
-    AttendanceReportStatusKind.Alpha -> InfiniteStatusVariant.Alpha
-    AttendanceReportStatusKind.Unknown -> InfiniteStatusVariant.Unknown
-    AttendanceReportStatusKind.Neutral -> InfiniteStatusVariant.Neutral
 }
 
 private const val PullToRefreshThresholdPx = 160f
