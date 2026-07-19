@@ -70,6 +70,9 @@ import com.example.infinite_track.presentation.design.components.status.Infinite
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
+import com.example.infinite_track.presentation.theme.Blue_500
+import com.example.infinite_track.presentation.theme.Purple_300
+import com.example.infinite_track.presentation.theme.Purple_500
 import com.example.infinite_track.utils.UiState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -193,7 +196,7 @@ fun ProfileScreen(
     }
 
     // MainScreen already applies scaffold/bottom-bar padding.
-    // Keep page insets aligned with Home/History.
+    // Keep page insets aligned with Home/History and avoid top clipping.
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = Color.Transparent
@@ -201,7 +204,7 @@ fun ProfileScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 16.dp)
         ) {
             when (profileState) {
                 is UiState.Loading -> {
@@ -290,7 +293,7 @@ private fun AccountHubContent(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         IdentityHeroCard(
             user = user,
@@ -397,13 +400,13 @@ private fun AccountHubContent(
 @Composable
 private fun ProfileGlassCard(
     modifier: Modifier = Modifier,
-    shape: RoundedCornerShape,
-    borderColor: Color = InfiniteColors.AccountHubOutline,
-    shadowColor: Color = InfiniteColors.AccountHubPrimary.copy(alpha = 0.18f),
+    shape: RoundedCornerShape = RoundedCornerShape(24.dp),
+    borderColor: Color = InfiniteColors.AttendanceReportGlassBorder,
+    shadowColor: Color = InfiniteColors.Primary.copy(alpha = 0.10f),
     backgroundBrush: Brush = Brush.linearGradient(
         colors = listOf(
-            InfiniteColors.Surface.copy(alpha = 0.22f),
-            InfiniteColors.Surface.copy(alpha = 0.10f)
+            InfiniteColors.AttendanceReportGlassSurface,
+            InfiniteColors.AttendanceReportGlassSurface
         )
     ),
     contentPadding: PaddingValues,
@@ -414,7 +417,7 @@ private fun ProfileGlassCard(
             elevation = 8.dp,
             shape = shape,
             ambientColor = shadowColor,
-            spotColor = shadowColor,
+            spotColor = InfiniteColors.Accent.copy(alpha = 0.08f),
             clip = false
         ),
         shape = shape,
@@ -445,84 +448,66 @@ private fun IdentityHeroCard(
 
     ProfileGlassCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        borderColor = InfiniteColors.AccountHubHeroOutline,
-        backgroundBrush = InfiniteColors.AccountHubHeroGradient,
-        contentPadding = PaddingValues(20.dp)
+        shape = RoundedCornerShape(24.dp),
+        contentPadding = PaddingValues(16.dp)
     ) {
-        Box(
-            modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
+            AsyncImage(
+                model = user.photoUrl?.takeIf { it.isNotBlank() },
+                contentDescription = null,
+                placeholder = painterResource(R.drawable.ic_profile),
+                error = painterResource(R.drawable.ic_profile),
+                fallback = painterResource(R.drawable.ic_profile),
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(124.dp)
+                    .size(84.dp)
                     .clip(CircleShape)
-                    .background(InfiniteColors.AccountHubDecorativeTint)
+                    .border(1.dp, InfiniteColors.AttendanceReportGlassBorder, CircleShape),
+                contentScale = ContentScale.Crop
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-                verticalAlignment = Alignment.CenterVertically
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
-                        modifier = Modifier
-                            .size(118.dp)
-                            .clip(CircleShape)
-                            .background(InfiniteColors.AccountHubAvatarRingGradient)
-                            .padding(4.dp)
-                    ) {
-                        AsyncImage(
-                            model = user.photoUrl?.takeIf { it.isNotBlank() },
-                            contentDescription = null,
-                            placeholder = painterResource(R.drawable.ic_profile),
-                            error = painterResource(R.drawable.ic_profile),
-                            fallback = painterResource(R.drawable.ic_profile),
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape)
-                                .border(3.dp, InfiniteColors.AccountHubOutline, CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(14.dp))
-                    InfiniteStatusPill(
-                        label = stringResource(R.string.account_hub_active_status, role),
-                        variant = InfiniteStatusVariant.Active,
-                        size = InfiniteSize.Small
-                    )
-                }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(9.dp)
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = fullName,
-                            style = headline2,
-                            color = InfiniteColors.AccountHubTitle,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = position,
-                            style = body1,
-                            color = InfiniteColors.AccountHubSectionAccent,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    SoftPill(text = role, icon = R.drawable.ic_profile)
-                    IdentityInfoRow(icon = R.drawable.ic_division, text = division)
-                    IdentityInfoRow(
-                        icon = R.drawable.ic_description,
-                        text = stringResource(R.string.account_hub_identifier, user.nipNim)
-                    )
-                }
+                Text(
+                    text = fullName,
+                    style = headline4,
+                    color = Purple_500,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = position,
+                    style = body1,
+                    color = Purple_300,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = role,
+                    style = body2,
+                    color = Blue_500,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = division,
+                    style = body2,
+                    color = Purple_300,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = stringResource(R.string.account_hub_identifier, user.nipNim),
+                    style = body2,
+                    color = Purple_300,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
@@ -536,41 +521,33 @@ private fun AccountSummaryCard(
     modifier: Modifier = Modifier
 ) {
     ProfileGlassCard(
-        modifier = modifier.height(92.dp),
+        modifier = modifier.height(78.dp),
         shape = RoundedCornerShape(20.dp),
-        backgroundBrush = Brush.linearGradient(
-            colors = listOf(
-                InfiniteColors.Surface.copy(alpha = 0.20f),
-                InfiniteColors.Surface.copy(alpha = 0.08f)
-            )
-        ),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
                 painter = painterResource(icon),
                 contentDescription = null,
-                tint = InfiniteColors.AccountHubPrimary,
-                modifier = Modifier.size(26.dp)
+                tint = Blue_500,
+                modifier = Modifier.size(20.dp)
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = label,
                     style = body2,
-                    color = InfiniteColors.AccountHubMutedText,
+                    color = Purple_300,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = value,
                     style = body1,
-                    color = InfiniteColors.AccountHubTitle,
-                    fontWeight = FontWeight.Medium,
+                    color = Purple_500,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -587,22 +564,15 @@ private fun AccountHubSection(
     ProfileGlassCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        backgroundBrush = Brush.linearGradient(
-            colors = listOf(
-                InfiniteColors.Surface.copy(alpha = 0.18f),
-                InfiniteColors.Surface.copy(alpha = 0.06f)
-            )
-        ),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text(
                 text = title,
                 style = body1,
-                color = InfiniteColors.AccountHubSectionAccent,
-                fontWeight = FontWeight.Medium
+                color = Purple_500
             )
             content()
         }
@@ -618,32 +588,32 @@ private fun AccountHubMenuRow(
     modifier: Modifier = Modifier,
     destructive: Boolean = false
 ) {
-    val accent = if (destructive) InfiniteColors.AccountHubDestructive else InfiniteColors.AccountHubPrimary
+    val accent = if (destructive) InfiniteColors.AccountHubDestructive else Blue_500
     val rowBackground = if (destructive) InfiniteColors.AccountHubDestructiveContainer else Color.Transparent
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(rowBackground)
             .clickable { onClick() }
-            .padding(horizontal = 10.dp, vertical = 12.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = InfiniteColors.AccountHubIconSurface,
-            border = BorderStroke(1.dp, InfiniteColors.AccountHubIconBorder),
-            shadowElevation = 3.dp
+            shape = RoundedCornerShape(12.dp),
+            color = InfiniteColors.AttendanceReportGlassSurface,
+            border = BorderStroke(1.dp, InfiniteColors.AttendanceReportGlassBorder),
+            shadowElevation = 0.dp
         ) {
             Icon(
                 painter = painterResource(icon),
                 contentDescription = null,
                 tint = accent,
                 modifier = Modifier
-                    .padding(12.dp)
-                    .size(24.dp)
+                    .padding(8.dp)
+                    .size(18.dp)
             )
         }
         Column(modifier = Modifier.weight(1f)) {
@@ -675,8 +645,8 @@ private fun AccountHubMenuRow(
 @Composable
 private fun AccountHubDivider() {
     HorizontalDivider(
-        modifier = Modifier.padding(start = 72.dp),
-        color = InfiniteColors.AccountHubDividerColor
+        modifier = Modifier.padding(start = 52.dp),
+        color = InfiniteColors.AttendanceReportGlassBorder
     )
 }
 
