@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,8 +22,10 @@ import com.example.infinite_track.domain.model.attendance.AttendanceReportStatus
 import com.example.infinite_track.presentation.components.button.SeeAllButton
 import com.example.infinite_track.presentation.components.empty.EmptyListAnimation
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
-import com.example.infinite_track.presentation.core.headline4
+import com.example.infinite_track.presentation.core.body2
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
+import com.example.infinite_track.presentation.design.tokens.InfiniteColors
+import com.example.infinite_track.presentation.theme.Purple_300
 import com.example.infinite_track.utils.UiState
 
 @Composable
@@ -57,57 +60,59 @@ fun InfiniteAttendanceTimelineSection(
 
             is UiState.Success -> {
                 if (attendanceState.data.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            EmptyListAnimation(modifier = Modifier.size(150.dp))
+                    InfiniteGlassReportCard {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            EmptyListAnimation(modifier = Modifier.size(120.dp))
                             Text(
                                 text = "No attendance records found",
-                                style = headline4,
+                                style = body2,
+                                color = Purple_300
                             )
                         }
                     }
                 } else {
                     val timelineItems = attendanceState.data.take(maxItems)
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        timelineItems.forEachIndexed { index, attendance ->
-                            val status = attendance.toReportStatus()
-                            InfiniteAttendanceTimelineCard(
-                                dateLabel = attendance.toReportDateLabel(),
-                                modeLabel = attendance.toReportWorkModeLabel(),
-                                timeRange = attendance.toReportTimeRangeLabel(),
-                                statusLabel = status.label,
-                                statusVariant = status.kind.toTimelineVariant(),
-                                connectorPosition = connectorPositionFor(index, timelineItems.size),
-                                workHourLabel = attendance.toReportWorkHourLabel(),
-                                locationLabel = attendance.location,
-                                showModeLabel = showModeLabel,
-                                modeKey = attendance.modeKey ?: attendance.modeLabel
-                            )
+                    InfiniteGlassReportCard {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            timelineItems.forEachIndexed { index, attendance ->
+                                val status = attendance.toReportStatus()
+                                InfiniteAttendanceTimelineCard(
+                                    dateLabel = attendance.toReportDateLabel(),
+                                    modeLabel = attendance.toReportWorkModeLabel(),
+                                    timeRange = attendance.toReportTimeRangeLabel(),
+                                    statusLabel = status.label,
+                                    statusVariant = status.kind.toTimelineVariant(),
+                                    connectorPosition = connectorPositionFor(index, timelineItems.size),
+                                    workHourLabel = attendance.toReportWorkHourLabel(),
+                                    locationLabel = attendance.location,
+                                    showModeLabel = showModeLabel,
+                                    modeKey = attendance.modeKey ?: attendance.modeLabel
+                                )
+                                if (index != timelineItems.lastIndex) {
+                                    HorizontalDivider(
+                                        color = InfiniteColors.AttendanceReportGlassBorder
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
 
             is UiState.Error -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        EmptyListAnimation(modifier = Modifier.size(150.dp))
+                InfiniteGlassReportCard {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        EmptyListAnimation(modifier = Modifier.size(120.dp))
                         Text(
                             text = attendanceState.errorMessage,
-                            style = headline4,
+                            style = body2,
+                            color = Purple_300
                         )
                     }
                 }
