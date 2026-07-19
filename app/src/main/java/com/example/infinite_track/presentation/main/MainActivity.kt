@@ -53,11 +53,17 @@ class MainActivity : ComponentActivity() {
 	@ExperimentalGetImage
 	override fun onCreate(savedInstanceState: Bundle?) {
 		// Install splash screen BEFORE super.onCreate()
+		// MainActivity theme must be Theme.App.Starting (see AndroidManifest).
 		val splashScreen = installSplashScreen()
 
 		// Release native splash once Compose content is ready.
 		// Do NOT hold through full session bootstrap Loading.
 		splashScreen.setKeepOnScreenCondition { !isComposeReady }
+
+		// Remove the default fade-out so users don't perceive a second splash transition.
+		splashScreen.setOnExitAnimationListener { splashScreenViewProvider ->
+			splashScreenViewProvider.remove()
+		}
 
 		super.onCreate(savedInstanceState)
 		enableEdgeToEdge()
