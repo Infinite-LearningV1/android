@@ -8,11 +8,11 @@ import androidx.camera.core.ExperimentalGetImage
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.runtime.SideEffect
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.repository.LocalizationRepository
 import com.example.infinite_track.presentation.navigation.AppNavigator
-import com.example.infinite_track.presentation.screen.splash.SplashNavigationState
 import com.example.infinite_track.presentation.screen.splash.SplashViewModel
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import com.example.infinite_track.utils.LocationPermissionHelper
@@ -43,15 +43,21 @@ class MainActivity : ComponentActivity() {
 	// Location permission helper untuk geofencing
 	private lateinit var locationPermissionHelper: LocationPermissionHelper
 
+	/**
+	 * Native splash protects process startup / first Compose frame only.
+	 * Branded animation duration is owned by Compose SplashScreen.
+	 */
+	@Volatile
+	private var isComposeReady = false
+
 	@ExperimentalGetImage
 	override fun onCreate(savedInstanceState: Bundle?) {
 		// Install splash screen BEFORE super.onCreate()
 		val splashScreen = installSplashScreen()
 
-		// Set keep on screen condition - keep splash screen visible while in Loading state
-		splashScreen.setKeepOnScreenCondition {
-			viewModel.navigationState.value is SplashNavigationState.Loading
-		}
+		// Release native splash once Compose content is ready.
+		// Do NOT hold through full session bootstrap Loading.
+		splashScreen.setKeepOnScreenCondition { !isComposeReady }
 
 		super.onCreate(savedInstanceState)
 		enableEdgeToEdge()
@@ -72,6 +78,10 @@ class MainActivity : ComponentActivity() {
 		NotificationHelper.createNotificationChannel(this)
 
 		setContent {
+			// First successful composition marks readiness for native splash exit.
+			SideEffect {
+				isComposeReady = true
+			}
 			Infinite_TrackTheme {
 				InfiniteTrackApp(
 					appNavigator = appNavigator,
@@ -101,4 +111,3 @@ class MainActivity : ComponentActivity() {
 		}
 	}
 }
-
