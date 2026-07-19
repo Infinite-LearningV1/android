@@ -3,13 +3,14 @@ package com.example.infinite_track.presentation.screen.history
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -241,26 +242,35 @@ fun HistoryScreen(
                         )
                     }
 
-                    if (uiState.records.isEmpty()) {
-                        item {
+                    item {
+                        if (uiState.records.isEmpty()) {
                             InfiniteGlassReportCard {
                                 InfiniteEmptyState(
                                     title = "No attendance records found",
                                     message = "Backend did not return attendance records for this period."
                                 )
                             }
-                        }
-                    } else {
-                        itemsIndexed(uiState.records) { index, record ->
-                            ReportTimelineRow(
-                                record = record,
-                                connectorPosition = when {
-                                    uiState.records.size == 1 -> TimelineConnectorPosition.None
-                                    index == 0 -> TimelineConnectorPosition.First
-                                    index == uiState.records.lastIndex -> TimelineConnectorPosition.Last
-                                    else -> TimelineConnectorPosition.Middle
+                        } else {
+                            InfiniteGlassReportCard {
+                                Column {
+                                    uiState.records.forEachIndexed { index, record ->
+                                        ReportTimelineRow(
+                                            record = record,
+                                            connectorPosition = when {
+                                                uiState.records.size == 1 -> TimelineConnectorPosition.None
+                                                index == 0 -> TimelineConnectorPosition.First
+                                                index == uiState.records.lastIndex -> TimelineConnectorPosition.Last
+                                                else -> TimelineConnectorPosition.Middle
+                                            }
+                                        )
+                                        if (index != uiState.records.lastIndex) {
+                                            HorizontalDivider(
+                                                color = InfiniteColors.AttendanceReportGlassBorder
+                                            )
+                                        }
+                                    }
                                 }
-                            )
+                            }
                         }
                     }
 

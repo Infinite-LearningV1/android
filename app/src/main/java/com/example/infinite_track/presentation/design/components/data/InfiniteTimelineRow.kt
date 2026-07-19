@@ -1,26 +1,22 @@
 package com.example.infinite_track.presentation.design.components.data
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,12 +24,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.core.body2
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
+import com.example.infinite_track.presentation.design.tokens.InfiniteSize
+import com.example.infinite_track.presentation.theme.Purple_300
+import com.example.infinite_track.presentation.theme.Purple_500
 
 enum class TimelineConnectorPosition {
     None,
@@ -54,13 +54,13 @@ fun InfiniteTimelineRow(
     connectorPosition: TimelineConnectorPosition = TimelineConnectorPosition.None,
     onClick: (() -> Unit)? = null,
     supportingText: String? = null,
-    supportingColor: Color = InfiniteColors.AttendanceReportMutedText,
+    supportingColor: Color = Purple_300,
     supportingMaxLines: Int = 1,
     supportingOverflow: TextOverflow = TextOverflow.Ellipsis,
     showModeLabel: Boolean = false,
     modeAccentColor: Color? = null
 ) {
-    val accentColor = modeAccentColor ?: timelineAccentColor(statusVariant)
+    val accentColor = modeAccentColor ?: InfiniteColors.Primary
     val primaryLine = if (showModeLabel && modeLabel.isNotBlank()) {
         "$dateLabel · $modeLabel · $timeRange"
     } else {
@@ -70,123 +70,99 @@ fun InfiniteTimelineRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .height(64.dp)
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        TimelineMarker(
+        TimelineRail(
             connectorPosition = connectorPosition,
-            leadingIcon = leadingIcon,
-            accentColor = accentColor
+            accentColor = accentColor,
+            leadingIcon = leadingIcon
         )
+
         Spacer(modifier = Modifier.width(12.dp))
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(22.dp),
-            color = InfiniteColors.Surface.copy(alpha = 0.58f),
-            border = BorderStroke(1.dp, InfiniteColors.AttendanceReportGlassBorder.copy(alpha = 0.92f))
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                leadingIcon?.let {
-                    Surface(
-                        modifier = Modifier.size(38.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        color = accentColor.copy(alpha = 0.12f),
-                        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.18f))
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = it,
-                                contentDescription = null,
-                                tint = accentColor,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    Text(
-                        text = primaryLine,
-                        color = InfiniteColors.Text,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    supportingText?.let {
-                        Text(
-                            text = it,
-                            color = supportingColor,
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = supportingMaxLines,
-                            overflow = supportingOverflow
-                        )
-                    }
-                }
-
-                InfiniteStatusPill(
-                    label = statusLabel,
-                    variant = statusVariant,
-                    useSharedRequestPalette = true
+            Text(
+                text = primaryLine,
+                style = body1,
+                color = Purple_500,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            supportingText?.let {
+                Text(
+                    text = it,
+                    style = body2,
+                    color = supportingColor,
+                    maxLines = supportingMaxLines,
+                    overflow = supportingOverflow
                 )
             }
         }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        InfiniteStatusPill(
+            label = statusLabel,
+            variant = statusVariant,
+            size = InfiniteSize.Small,
+            useSharedRequestPalette = true
+        )
     }
 }
 
 @Composable
-private fun TimelineMarker(
+private fun TimelineRail(
     connectorPosition: TimelineConnectorPosition,
-    leadingIcon: ImageVector?,
-    accentColor: Color
+    accentColor: Color,
+    leadingIcon: ImageVector?
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Canvas(modifier = Modifier.size(2.dp, 16.dp)) {
-            if (connectorPosition == TimelineConnectorPosition.Middle || connectorPosition == TimelineConnectorPosition.Last) {
+    Box(
+        modifier = Modifier
+            .width(28.dp)
+            .fillMaxHeight(),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxHeight().width(2.dp)) {
+            val x = size.width / 2f
+            val showTop = connectorPosition == TimelineConnectorPosition.Middle ||
+                connectorPosition == TimelineConnectorPosition.Last
+            val showBottom = connectorPosition == TimelineConnectorPosition.Middle ||
+                connectorPosition == TimelineConnectorPosition.First
+            if (showTop) {
                 drawLine(
-                    accentColor.copy(alpha = 0.55f),
-                    Offset(size.width / 2, 0f),
-                    Offset(size.width / 2, size.height),
+                    color = accentColor.copy(alpha = 0.45f),
+                    start = Offset(x, 0f),
+                    end = Offset(x, size.height / 2f),
+                    strokeWidth = size.width
+                )
+            }
+            if (showBottom) {
+                drawLine(
+                    color = accentColor.copy(alpha = 0.45f),
+                    start = Offset(x, size.height / 2f),
+                    end = Offset(x, size.height),
                     strokeWidth = size.width
                 )
             }
         }
+
         Box(
             modifier = Modifier
-                .size(12.dp)
-                .background(InfiniteColors.Surface, CircleShape)
-                .padding(1.dp)
+                .size(28.dp)
+                .background(accentColor.copy(alpha = 0.12f), CircleShape),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(accentColor, CircleShape)
+            Icon(
+                imageVector = leadingIcon ?: Icons.Rounded.CalendarMonth,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(15.dp)
             )
         }
-        Canvas(modifier = Modifier.size(2.dp, 16.dp)) {
-            if (connectorPosition == TimelineConnectorPosition.Middle || connectorPosition == TimelineConnectorPosition.First) {
-                drawLine(
-                    accentColor.copy(alpha = 0.55f),
-                    Offset(size.width / 2, 0f),
-                    Offset(size.width / 2, size.height),
-                    strokeWidth = size.width
-                )
-            }
-        }
     }
-}
-
-private fun timelineAccentColor(variant: InfiniteStatusVariant): Color = when (variant) {
-    InfiniteStatusVariant.Active -> InfiniteColors.Primary
-    InfiniteStatusVariant.OnTime -> InfiniteColors.Accent
-    InfiniteStatusVariant.Late -> InfiniteColors.Secondary
-    InfiniteStatusVariant.Alpha -> InfiniteColors.Error
-    else -> InfiniteColors.Primary
 }
