@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
+import com.example.infinite_track.presentation.theme.attendanceModeColor
 
 @Composable
 fun InfiniteAttendanceModeDistributionCard(
@@ -41,14 +42,14 @@ fun InfiniteAttendanceModeDistributionCard(
                 label = "WFO",
                 count = wfoCount,
                 total = totalKnown,
-                color = InfiniteColors.Primary,
+                color = attendanceModeColor("wfo"),
                 unitLabel = "days"
             )
             InfiniteAttendanceModeDistributionRow(
                 label = "WFA",
                 count = wfaCount,
                 total = totalKnown,
-                color = InfiniteColors.Accent,
+                color = attendanceModeColor("wfa"),
                 unitLabel = "days"
             )
             wfhCount?.let { count ->
@@ -56,7 +57,7 @@ fun InfiniteAttendanceModeDistributionCard(
                     label = "WFH",
                     count = count,
                     total = totalKnown,
-                    color = InfiniteColors.Secondary,
+                    color = attendanceModeColor("wfh"),
                     unitLabel = "days"
                 )
             } ?: unavailableModeMessage?.let { message ->

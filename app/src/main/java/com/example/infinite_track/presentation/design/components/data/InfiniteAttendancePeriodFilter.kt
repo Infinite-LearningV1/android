@@ -10,8 +10,7 @@ import com.example.infinite_track.domain.model.attendance.AttendancePeriod
 val attendanceReportPeriodOptions = listOf(
     InfiniteFilterOption(AttendancePeriod.DAILY, "Daily"),
     InfiniteFilterOption(AttendancePeriod.WEEKLY, "Weekly"),
-    InfiniteFilterOption(AttendancePeriod.MONTHLY, "Monthly"),
-    InfiniteFilterOption(AttendancePeriod.CUSTOM, "Custom")
+    InfiniteFilterOption(AttendancePeriod.MONTHLY, "Monthly")
 )
 
 @Composable

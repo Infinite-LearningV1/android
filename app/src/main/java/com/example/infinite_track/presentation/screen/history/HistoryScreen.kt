@@ -157,15 +157,6 @@ fun HistoryScreen(
                 )
             }
 
-            if (uiState.selectedPeriod == AttendancePeriod.CUSTOM) {
-                item {
-                    InfiniteAttendanceReportNoticeCard(
-                        title = "Custom range needs verification",
-                        message = "Date range picker is not available in this branch yet. The Custom filter is visible for the report contract, but runtime date-range behavior still needs verification."
-                    )
-                }
-            }
-
             if (uiState.isRefreshing) {
                 item {
                     InfiniteGlassReportCard {
@@ -175,17 +166,6 @@ fun HistoryScreen(
             }
 
             when {
-                uiState.selectedPeriod == AttendancePeriod.CUSTOM -> {
-                    item {
-                        InfiniteGlassReportCard {
-                            InfiniteEmptyState(
-                                title = "Custom report not available yet",
-                                message = "Choose Daily, Weekly, or Monthly to load backend report data while Custom range support is awaiting verification."
-                            )
-                        }
-                    }
-                }
-
                 uiState.isLoading && uiState.records.isEmpty() -> {
                     item {
                         InfiniteGlassReportCard {
@@ -284,14 +264,6 @@ fun HistoryScreen(
                         }
                     }
 
-                    if (uiState.isLoadingMore) {
-                        item {
-                            InfiniteGlassReportCard {
-                                InfiniteLoadingState(message = "Loading more attendance records...")
-                            }
-                        }
-                    }
-
                     if (uiState.error != null && uiState.records.isNotEmpty()) {
                         item {
                             InfiniteAttendanceReportNoticeCard(
@@ -320,7 +292,9 @@ private fun ReportTimelineRow(
         statusVariant = status.kind.toInfiniteStatusVariant(),
         connectorPosition = connectorPosition,
         workHourLabel = record.toReportWorkHourLabel(),
-        locationLabel = record.location
+        locationLabel = record.location,
+        showModeLabel = false,
+        modeKey = record.modeKey ?: record.modeLabel
     )
 }
 

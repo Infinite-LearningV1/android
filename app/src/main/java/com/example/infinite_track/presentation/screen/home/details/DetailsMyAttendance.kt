@@ -95,23 +95,6 @@ fun DetailsMyAttendance(
 
 				// Display loading, error, or content based on UI state
 				when {
-					uiState.selectedPeriod == AttendancePeriod.CUSTOM -> {
-						Box(
-							modifier = Modifier.fillMaxSize(),
-							contentAlignment = Alignment.Center
-						) {
-							Column(
-								horizontalAlignment = Alignment.CenterHorizontally,
-							) {
-								EmptyListAnimation(modifier = Modifier.size(150.dp))
-								Text(
-									text = "Custom attendance range is not available yet.",
-									style = headline4,
-								)
-							}
-						}
-					}
-
 					uiState.isLoading && uiState.records.isEmpty() -> {
 						Box(
 							modifier = Modifier.fillMaxSize(),

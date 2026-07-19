@@ -177,6 +177,7 @@ fun WfaRequestCard(
 
 @Composable
 private fun StatusPill(label: String, color: Color) {
+    // Keep the same visual contract as InfiniteStatusPill shared request palette.
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50.dp))
