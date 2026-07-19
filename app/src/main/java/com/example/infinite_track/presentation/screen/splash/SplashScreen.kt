@@ -1,5 +1,8 @@
 package com.example.infinite_track.presentation.screen.splash
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,6 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
@@ -21,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -32,8 +37,10 @@ import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.infinite_track.R
 import com.example.infinite_track.presentation.core.headline1
+import com.example.infinite_track.presentation.core.headline2
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.theme.Blue_500
+import kotlinx.coroutines.delay
 
 /**
  * Transparent branded splash presentation gate.
@@ -53,18 +60,38 @@ fun SplashScreen(
         spec = LottieCompositionSpec.RawRes(R.raw.infinite_track_splash)
     )
     val composition by compositionResult
-    // Play once; hold final frame after completion (progress stays at 1f).
+    // Play once, sped up so branded splash stays short (~1.9s for the 3.77s asset).
+    // Hold final frame after completion (progress stays at 1f).
     val progress by animateLottieCompositionAsState(
         composition = composition,
         iterations = 1,
         isPlaying = true,
-        restartOnPlay = false
+        restartOnPlay = false,
+        speed = 2f
     )
     // Failure must not trap the user; treat load failure as finished so destination can navigate.
     val isAnimationFinished = compositionResult.isFailure || (composition != null && progress >= 1f)
 
     val navigationState by splashViewModel.navigationState.collectAsState()
     var hasNavigated by remember { mutableStateOf(false) }
+
+    // Brand title fade/slide-in using existing theme typography + color tokens.
+    var brandVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        // Small delay so Lottie paints first, then text enters.
+        delay(120)
+        brandVisible = true
+    }
+    val brandAlpha by animateFloatAsState(
+        targetValue = if (brandVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
+        label = "splash_brand_alpha"
+    )
+    val brandOffsetY by animateFloatAsState(
+        targetValue = if (brandVisible) 0f else 12f,
+        animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
+        label = "splash_brand_offset"
+    )
 
     // One-shot navigation: only after animation completion AND destination resolved.
     // Fast session resolution waits for animation; slow resolution waits on final frame.
@@ -115,6 +142,21 @@ fun SplashScreen(
                     .aspectRatio(184f / 93f)
                     .semantics {
                         contentDescription = "Infinite Track splash animation"
+                    }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Infinite Track",
+                style = headline2,
+                color = Blue_500,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .alpha(brandAlpha)
+                    .offset(y = brandOffsetY.dp)
+                    .semantics {
+                        contentDescription = "Infinite Track"
                     }
             )
 
