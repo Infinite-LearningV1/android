@@ -33,7 +33,7 @@ data class HistoryScreenState(
     val summary: AttendanceSummaryInfo? = null,
     val records: List<AttendanceRecord> = emptyList(),
     val currentPage: Int = 1,
-    val pageSize: Int = 3
+    val pageSize: Int = 10
 )
 
 @HiltViewModel
@@ -69,7 +69,7 @@ class HistoryViewModel @Inject constructor(
                 periodInfo = null,
                 summary = null,
                 currentPage = 1,
-                canLoadMore = false,
+                canLoadMore = true,
                 isLoading = false,
                 isRefreshing = false,
                 isLoadingMore = false,
@@ -80,12 +80,16 @@ class HistoryViewModel @Inject constructor(
         }
     }
 
-    /**
-     * History interface intentionally shows only the latest 3 records.
-     * Pagination is disabled for this screen.
-     */
     fun loadNextPage() {
-        // no-op: max 3 items on history interface
+        val currentState = uiState.value
+        if (!currentState.isLoadingMore &&
+            !currentState.isLoading &&
+            !currentState.isRefreshing &&
+            currentState.canLoadMore
+        ) {
+            _uiState.update { it.copy(currentPage = it.currentPage + 1) }
+            loadHistory(isRefresh = false)
+        }
     }
 
     /**
@@ -200,9 +204,8 @@ class HistoryViewModel @Inject constructor(
                         isLoadingMore = false,
                         periodInfo = historyPage.period,
                         summary = historyPage.summary,
-                        // History interface intentionally keeps only the latest 3 records.
-                        records = mergedRecords.take(3),
-                        canLoadMore = false
+                        records = mergedRecords,
+                        canLoadMore = historyPage.pagination.hasNextPage
                     )
                 }
             }.onFailure { error ->
@@ -234,7 +237,7 @@ class HistoryViewModel @Inject constructor(
                 records = emptyList(),
                 periodInfo = null,
                 summary = null,
-                canLoadMore = it.selectedPeriod != AttendancePeriod.CUSTOM,
+                canLoadMore = true,
                 isLoading = false,
                 isRefreshing = false,
                 isLoadingMore = false,

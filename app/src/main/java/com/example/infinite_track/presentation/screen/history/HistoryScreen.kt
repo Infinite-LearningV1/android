@@ -123,17 +123,18 @@ fun HistoryScreen(
         }
     }
 
+    // MainScreen already applies scaffold/bottom-bar padding.
+    // Match Home content insets so History does not double-pad and clip while scrolling.
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = InfiniteColors.Transparent
-    ) { innerPadding ->
+    ) { _ ->
         LazyColumn(
             state = lazyListState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 .nestedScroll(pullToRefreshConnection),
-            contentPadding = PaddingValues(start = 20.dp, top = 0.dp, end = 20.dp, bottom = 0.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
@@ -223,7 +224,7 @@ fun HistoryScreen(
                             attendanceState = UiState.Success(uiState.records),
                             onSeeAllClick = {},
                             title = "Attendance Timeline",
-                            maxItems = 3,
+                            maxItems = uiState.records.size.coerceAtLeast(1),
                             showModeLabel = false,
                             showExternalHeader = false,
                             showSeeAllAction = false
