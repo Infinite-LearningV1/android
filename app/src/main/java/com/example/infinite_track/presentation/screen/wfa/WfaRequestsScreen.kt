@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,7 +18,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,17 +30,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.infinite_track.presentation.components.loading.InlineRefreshingIndicator
-import com.example.infinite_track.presentation.core.headline3
+import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.core.body2
+import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.screen.wfa.components.WfaRequestCard
 import com.example.infinite_track.presentation.screen.wfa.components.WfaRequestFilterChips
 import com.example.infinite_track.presentation.screen.wfa.components.WfaRequestStatusSummary
@@ -86,14 +82,15 @@ fun WfaRequestsScreen(
         onLoadMore = viewModel::loadMore
     )
 
+    // MainScreen already applies scaffold/bottom-bar padding.
+    // Keep page insets aligned with Home/History.
     LazyColumn(
         state = listState,
         modifier = modifier
             .fillMaxSize()
-            .nestedScroll(pullToRefreshConnection)
-            .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 12.dp),
-        contentPadding = PaddingValues(0.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .nestedScroll(pullToRefreshConnection),
+        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
             WfaRequestsHeader()
@@ -119,9 +116,8 @@ fun WfaRequestsScreen(
         item {
             Text(
                 text = "Recent WFA Requests",
-                style = MaterialTheme.typography.titleLarge,
-                color = Purple_500,
-                fontWeight = FontWeight.Bold
+                style = headline4,
+                color = Purple_500
             )
         }
 
@@ -176,21 +172,15 @@ fun WfaRequestsScreen(
         }
     }
 }
+
 @Composable
 private fun WfaRequestsHeader() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 12.dp),
-        horizontalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "WFA Requests",
-            style = headline3
-        )
-    }
+    Text(
+        text = "WFA Requests",
+        style = headline4,
+        color = Purple_500
+    )
 }
-
 
 @Composable
 private fun LoadingState() {
@@ -218,21 +208,18 @@ private fun EmptyState() {
             .background(White.copy(alpha = 0.34f), RoundedCornerShape(18.dp))
             .border(BorderStroke(1.dp, Blue_100.copy(alpha = 0.9f)), RoundedCornerShape(18.dp))
             .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
             text = "No WFA requests yet",
-            style = MaterialTheme.typography.titleMedium,
-            color = Purple_500,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
+            style = headline4,
+            color = Purple_500
         )
-        Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Create a WFA request from Attendance when you need to work from another location.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Purple_300,
-            textAlign = TextAlign.Center
+            text = "Your recent WFA submissions will appear here.",
+            style = body2,
+            color = Purple_300
         )
     }
 }
@@ -254,26 +241,24 @@ private fun ErrorState(
             .background(White.copy(alpha = 0.34f), RoundedCornerShape(18.dp))
             .border(BorderStroke(1.dp, Blue_100.copy(alpha = 0.9f)), RoundedCornerShape(18.dp))
             .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.error,
-            textAlign = TextAlign.Center
+            text = "Unable to load requests",
+            style = headline4,
+            color = Purple_500
         )
-        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = message,
+            style = body2,
+            color = Purple_300
+        )
         Button(onClick = onRetry) {
-            Text(text = "Retry")
+            Text(text = "Retry", style = body1)
         }
     }
 }
-
-
-private const val PullToRefreshThresholdPx = 160f
-
-private fun LazyListState.isAtTop(): Boolean =
-    firstVisibleItemIndex == 0 && firstVisibleItemScrollOffset == 0
 
 @Composable
 private fun WfaRequestsPaginationEffect(
@@ -281,24 +266,32 @@ private fun WfaRequestsPaginationEffect(
     listState: LazyListState,
     onLoadMore: () -> Unit
 ) {
-    val latestUiState by rememberUpdatedState(uiState)
+    val currentState = rememberUpdatedState(uiState)
+    val loadMore = rememberUpdatedState(onLoadMore)
 
     LaunchedEffect(listState) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+        snapshotFlow {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val total = listState.layoutInfo.totalItemsCount
+            lastVisible >= (total - 2).coerceAtLeast(0)
+        }
             .distinctUntilChanged()
-            .collect { lastVisibleItemIndex ->
-                val currentState = latestUiState
-                val shouldLoadMore =
-                    lastVisibleItemIndex != null &&
-                        currentState.errorMessage == null &&
-                        currentState.bookings.isNotEmpty() &&
-                        lastVisibleItemIndex >= currentState.bookings.size + 2 &&
-                        currentState.pagination.hasNextPage &&
-                        !currentState.isLoading &&
-                        !currentState.isRefreshing &&
-                        !currentState.isLoadingMore
-
-                if (shouldLoadMore) onLoadMore()
+            .collect { shouldLoadMore ->
+                val state = currentState.value
+                if (
+                    shouldLoadMore &&
+                    !state.isLoading &&
+                    !state.isRefreshing &&
+                    !state.isLoadingMore &&
+                    state.pagination.hasNextPage
+                ) {
+                    loadMore.value()
+                }
             }
     }
 }
+
+private fun LazyListState.isAtTop(): Boolean =
+    firstVisibleItemIndex == 0 && firstVisibleItemScrollOffset == 0
+
+private const val PullToRefreshThresholdPx = 120f
