@@ -4,29 +4,32 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.outlined.Cancel
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.domain.model.booking.BookingHistorySummary
-import com.example.infinite_track.presentation.theme.Blue_100
+import com.example.infinite_track.presentation.core.body2
+import com.example.infinite_track.presentation.core.body3
+import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.theme.Blue_500
 import com.example.infinite_track.presentation.theme.Purple_300
 import com.example.infinite_track.presentation.theme.Purple_500
@@ -48,15 +51,15 @@ fun WfaRequestStatusSummary(
             label = "Pending",
             value = summary.pending,
             caption = "Waiting review",
-            icon = Icons.Default.Schedule,
+            icon = Icons.Outlined.Schedule,
             color = Status_Pending,
             modifier = Modifier.weight(1f)
         )
         SummaryCard(
             label = "Approved",
             value = summary.approved,
-            caption = "Ready schedule",
-            icon = Icons.Default.CheckCircle,
+            caption = "Ready for schedule",
+            icon = Icons.Outlined.CheckCircle,
             color = Status_Approved,
             modifier = Modifier.weight(1f)
         )
@@ -64,7 +67,7 @@ fun WfaRequestStatusSummary(
             label = "Rejected",
             value = summary.rejected,
             caption = "Needs follow-up",
-            icon = Icons.Default.Cancel,
+            icon = Icons.Outlined.Cancel,
             color = Status_Rejected,
             modifier = Modifier.weight(1f)
         )
@@ -89,33 +92,45 @@ private fun SummaryCard(
                 spotColor = Blue_500.copy(alpha = 0.12f)
             )
             .background(White.copy(alpha = 0.34f), RoundedCornerShape(18.dp))
-            .border(BorderStroke(1.dp, Blue_100.copy(alpha = 0.9f)), RoundedCornerShape(18.dp))
-            .padding(horizontal = 8.dp, vertical = 14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .border(BorderStroke(1.dp, color.copy(alpha = 0.28f)), RoundedCornerShape(18.dp))
+            .padding(horizontal = 10.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = color
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = Purple_500,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 8.dp)
-        )
-        Text(
-            text = value.toString(),
-            style = MaterialTheme.typography.headlineSmall,
-            color = Purple_500,
-            fontWeight = FontWeight.Bold
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Column {
+                Text(
+                    text = label,
+                    style = body2,
+                    color = Purple_500
+                )
+                Text(
+                    text = value.toString(),
+                    style = headline4,
+                    color = Purple_500
+                )
+            }
+        }
         Text(
             text = caption,
-            style = MaterialTheme.typography.labelSmall,
-            color = Purple_300,
-            textAlign = TextAlign.Center
+            style = body3,
+            color = Purple_300
         )
     }
 }

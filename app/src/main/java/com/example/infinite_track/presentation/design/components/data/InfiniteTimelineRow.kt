@@ -84,6 +84,7 @@ fun InfiniteTimelineRow(
 
         Column(
             modifier = Modifier.weight(1f),
+            horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.spacedBy(1.dp)
         ) {
             Text(

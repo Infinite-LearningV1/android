@@ -192,14 +192,16 @@ fun ProfileScreen(
         )
     }
 
+    // MainScreen already applies scaffold/bottom-bar padding.
+    // Keep page insets aligned with Home/History.
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = Color.Transparent
-    ) {
+    ) { _ ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 18.dp)
+                .padding(16.dp)
         ) {
             when (profileState) {
                 is UiState.Loading -> {
