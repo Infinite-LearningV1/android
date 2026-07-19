@@ -48,8 +48,8 @@ object WfaShellNavigationContract {
         ),
         NavigationItem(
             tittle = R.string.bottom_menu_wfa,
-            selectedIcon = R.drawable.ic_contact_selected,
-            unselectedIcon = R.drawable.ic_contact,
+            selectedIcon = R.drawable.ic_location_outline_selected,
+            unselectedIcon = R.drawable.ic_location_outline,
             screen = Screen.Wfa
         ),
         NavigationItem(

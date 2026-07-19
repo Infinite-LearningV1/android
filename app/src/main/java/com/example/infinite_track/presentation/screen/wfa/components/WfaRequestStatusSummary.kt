@@ -30,13 +30,12 @@ import com.example.infinite_track.domain.model.booking.BookingHistorySummary
 import com.example.infinite_track.presentation.core.body2
 import com.example.infinite_track.presentation.core.body3
 import com.example.infinite_track.presentation.core.headline4
-import com.example.infinite_track.presentation.theme.Blue_500
+import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.theme.Purple_300
 import com.example.infinite_track.presentation.theme.Purple_500
 import com.example.infinite_track.presentation.theme.Status_Approved
 import com.example.infinite_track.presentation.theme.Status_Pending
 import com.example.infinite_track.presentation.theme.Status_Rejected
-import com.example.infinite_track.presentation.theme.White
 
 @Composable
 fun WfaRequestStatusSummary(
@@ -86,13 +85,13 @@ private fun SummaryCard(
     Column(
         modifier = modifier
             .shadow(
-                elevation = 6.dp,
-                shape = RoundedCornerShape(18.dp),
-                ambientColor = Blue_500.copy(alpha = 0.18f),
-                spotColor = Blue_500.copy(alpha = 0.12f)
+                elevation = 8.dp,
+                shape = RoundedCornerShape(24.dp),
+                ambientColor = InfiniteColors.Primary.copy(alpha = 0.10f),
+                spotColor = InfiniteColors.Accent.copy(alpha = 0.08f)
             )
-            .background(White.copy(alpha = 0.34f), RoundedCornerShape(18.dp))
-            .border(BorderStroke(1.dp, color.copy(alpha = 0.28f)), RoundedCornerShape(18.dp))
+            .background(InfiniteColors.AttendanceReportGlassSurface, RoundedCornerShape(24.dp))
+            .border(BorderStroke(1.dp, InfiniteColors.AttendanceReportGlassBorder), RoundedCornerShape(24.dp))
             .padding(horizontal = 10.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
