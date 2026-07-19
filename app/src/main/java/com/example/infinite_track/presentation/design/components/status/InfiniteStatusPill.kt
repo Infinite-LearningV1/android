@@ -12,12 +12,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
 import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
+import com.example.infinite_track.presentation.theme.toAttendanceBadgeColor
 
 enum class InfiniteStatusVariant {
     Active,
@@ -49,10 +51,37 @@ fun InfiniteStatusPill(
     modifier: Modifier = Modifier,
     size: InfiniteSize = InfiniteSize.Medium,
     leadingIcon: ImageVector? = null,
-    selected: Boolean = false
+    selected: Boolean = false,
+    /**
+     * When true, reuse the same badge palette as WFA request status pills
+     * (Status_Approved / Status_Pending / Status_Rejected / Status_Default).
+     */
+    useSharedRequestPalette: Boolean = false,
+    colorOverride: Color? = null
 ) {
+    val sharedColor = colorOverride ?: variant.toAttendanceBadgeColor()
     val semantic = variant.toSemantic()
-    val colors = infiniteSemanticColors(semantic)
+    val semanticColors = infiniteSemanticColors(semantic)
+    val containerColor = if (useSharedRequestPalette || colorOverride != null) {
+        sharedColor.copy(alpha = 0.13f)
+    } else {
+        semanticColors.container
+    }
+    val contentColor = if (useSharedRequestPalette || colorOverride != null) {
+        sharedColor
+    } else {
+        semanticColors.content
+    }
+    val borderColor = if (useSharedRequestPalette || colorOverride != null) {
+        sharedColor.copy(alpha = 0.35f)
+    } else {
+        semanticColors.border
+    }
+    val iconTint = if (useSharedRequestPalette || colorOverride != null) {
+        sharedColor
+    } else {
+        semanticColors.accent
+    }
     val horizontal = when (size) {
         InfiniteSize.Small -> 8.dp
         InfiniteSize.Medium -> 10.dp
@@ -66,9 +95,9 @@ fun InfiniteStatusPill(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(999.dp),
-        color = colors.container,
-        contentColor = colors.content,
-        border = BorderStroke(if (selected) 1.5.dp else 1.dp, colors.border)
+        color = containerColor,
+        contentColor = contentColor,
+        border = BorderStroke(if (selected) 1.5.dp else 1.dp, borderColor)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = horizontal, vertical = vertical),
@@ -76,9 +105,12 @@ fun InfiniteStatusPill(
             verticalAlignment = Alignment.CenterVertically
         ) {
             leadingIcon?.let {
-                Icon(imageVector = it, contentDescription = null, tint = colors.accent, modifier = Modifier.size(14.dp))
+                Icon(imageVector = it, contentDescription = null, tint = iconTint, modifier = Modifier.size(14.dp))
             }
-            Text(text = label)
+            Text(
+                text = label,
+                fontWeight = if (useSharedRequestPalette || colorOverride != null) FontWeight.Bold else FontWeight.Normal
+            )
         }
     }
 }

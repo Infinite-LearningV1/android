@@ -3,7 +3,9 @@ package com.example.infinite_track.presentation.screen.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.domain.model.attendance.AttendancePeriod
+import com.example.infinite_track.domain.model.attendance.AttendancePeriodInfo
 import com.example.infinite_track.domain.model.attendance.AttendanceRecord
+import com.example.infinite_track.domain.model.attendance.AttendanceSummaryInfo
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.model.booking.BookingHistoryItem
@@ -43,6 +45,14 @@ class HomeViewModel @Inject constructor(
 		MutableStateFlow<UiState<List<AttendanceRecord>>>(UiState.Loading)
 	val topAttendanceHistoryState: StateFlow<UiState<List<AttendanceRecord>>> =
 		_topAttendanceHistoryState
+
+	private val _topAttendanceSummaryState =
+		MutableStateFlow<UiState<AttendanceSummaryInfo>>(UiState.Loading)
+	val topAttendanceSummaryState: StateFlow<UiState<AttendanceSummaryInfo>> =
+		_topAttendanceSummaryState
+
+	private val _topAttendancePeriodInfo = MutableStateFlow<AttendancePeriodInfo?>(null)
+	val topAttendancePeriodInfo: StateFlow<AttendancePeriodInfo?> = _topAttendancePeriodInfo
 
 	// Location state
 	private val _currentAddressState = MutableStateFlow("Loading...")
@@ -86,16 +96,20 @@ class HomeViewModel @Inject constructor(
 	private fun fetchTopAttendanceHistory() {
 		viewModelScope.launch {
 			_topAttendanceHistoryState.value = UiState.Loading
+			_topAttendanceSummaryState.value = UiState.Loading
 
 			getAttendanceHistoryUseCase(
 				period = AttendancePeriod.MONTHLY,
 				page = 1,
-				limit = 5
+				limit = 3
 			).onSuccess { historyPage ->
-				_topAttendanceHistoryState.value = UiState.Success(historyPage.records)
+				_topAttendanceHistoryState.value = UiState.Success(historyPage.records.take(3))
+				_topAttendanceSummaryState.value = UiState.Success(historyPage.summary)
+				_topAttendancePeriodInfo.value = historyPage.period
 			}.onFailure { error ->
-				_topAttendanceHistoryState.value =
-					UiState.Error(error.message ?: "Unknown error occurred")
+				val message = error.message ?: "Unknown error occurred"
+				_topAttendanceHistoryState.value = UiState.Error(message)
+				_topAttendanceSummaryState.value = UiState.Error(message)
 			}
 		}
 	}

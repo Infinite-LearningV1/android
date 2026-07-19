@@ -56,9 +56,16 @@ fun InfiniteTimelineRow(
     supportingText: String? = null,
     supportingColor: Color = InfiniteColors.AttendanceReportMutedText,
     supportingMaxLines: Int = 1,
-    supportingOverflow: TextOverflow = TextOverflow.Ellipsis
+    supportingOverflow: TextOverflow = TextOverflow.Ellipsis,
+    showModeLabel: Boolean = false,
+    modeAccentColor: Color? = null
 ) {
-    val accentColor = timelineAccentColor(statusVariant)
+    val accentColor = modeAccentColor ?: timelineAccentColor(statusVariant)
+    val primaryLine = if (showModeLabel && modeLabel.isNotBlank()) {
+        "$dateLabel · $modeLabel · $timeRange"
+    } else {
+        "$dateLabel · $timeRange"
+    }
 
     Row(
         modifier = modifier
@@ -74,9 +81,9 @@ fun InfiniteTimelineRow(
         Spacer(modifier = Modifier.width(12.dp))
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            color = InfiniteColors.Surface.copy(alpha = 0.64f),
-            border = BorderStroke(1.dp, InfiniteColors.AttendanceReportGlassBorder)
+            shape = RoundedCornerShape(22.dp),
+            color = InfiniteColors.Surface.copy(alpha = 0.58f),
+            border = BorderStroke(1.dp, InfiniteColors.AttendanceReportGlassBorder.copy(alpha = 0.92f))
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -85,9 +92,9 @@ fun InfiniteTimelineRow(
             ) {
                 leadingIcon?.let {
                     Surface(
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(38.dp),
                         shape = RoundedCornerShape(14.dp),
-                        color = InfiniteColors.Surface.copy(alpha = 0.85f),
+                        color = accentColor.copy(alpha = 0.12f),
                         border = BorderStroke(1.dp, accentColor.copy(alpha = 0.18f))
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -95,7 +102,7 @@ fun InfiniteTimelineRow(
                                 imageVector = it,
                                 contentDescription = null,
                                 tint = accentColor,
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -103,13 +110,13 @@ fun InfiniteTimelineRow(
 
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     Text(
-                        text = "$dateLabel · $modeLabel · $timeRange",
+                        text = primaryLine,
                         color = InfiniteColors.Text,
                         style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -126,7 +133,8 @@ fun InfiniteTimelineRow(
 
                 InfiniteStatusPill(
                     label = statusLabel,
-                    variant = statusVariant
+                    variant = statusVariant,
+                    useSharedRequestPalette = true
                 )
             }
         }

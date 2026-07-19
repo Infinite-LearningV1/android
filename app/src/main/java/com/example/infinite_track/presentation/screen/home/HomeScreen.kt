@@ -42,6 +42,8 @@ fun HomeScreen(
 ) {
     val userProfile by viewModel.userProfileState.collectAsState()
     val attendanceState by viewModel.topAttendanceHistoryState.collectAsState()
+    val attendanceSummaryState by viewModel.topAttendanceSummaryState.collectAsState()
+    val attendancePeriodInfo by viewModel.topAttendancePeriodInfo.collectAsState()
     val currentLocation by viewModel.currentAddressState.collectAsState()
     val todayStatusState by viewModel.todayStatusState.collectAsState()
 
@@ -109,6 +111,8 @@ fun HomeScreen(
                                     user = userProfile,
                                     currentLocation = currentLocation,
                                     attendanceState = attendanceState,
+                                    attendanceSummaryState = attendanceSummaryState,
+                                    attendancePeriodInfo = attendancePeriodInfo,
                                     todayStatusState = todayStatusState,
                                     navigateToListMyAttendance = navigateListMyAttendance
                                 )
@@ -118,6 +122,8 @@ fun HomeScreen(
                                 EmployeeAndManagerComponent(
                                     user = userProfile,
                                     attendanceState = attendanceState,
+                                    attendanceSummaryState = attendanceSummaryState,
+                                    attendancePeriodInfo = attendancePeriodInfo,
                                     todayStatusState = todayStatusState,
                                     currentLocation = currentLocation,
                                     isLoading = isLoading,

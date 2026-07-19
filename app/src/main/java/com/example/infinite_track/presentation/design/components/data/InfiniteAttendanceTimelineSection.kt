@@ -30,8 +30,9 @@ fun InfiniteAttendanceTimelineSection(
     attendanceState: UiState<List<AttendanceRecord>>,
     onSeeAllClick: () -> Unit,
     modifier: Modifier = Modifier,
-    title: String = "Attendance TimeLine",
-    maxItems: Int = 3
+    title: String = "Attendance Timeline",
+    maxItems: Int = 3,
+    showModeLabel: Boolean = false
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -86,7 +87,9 @@ fun InfiniteAttendanceTimelineSection(
                                 statusVariant = status.kind.toTimelineVariant(),
                                 connectorPosition = connectorPositionFor(index, timelineItems.size),
                                 workHourLabel = attendance.toReportWorkHourLabel(),
-                                locationLabel = attendance.location
+                                locationLabel = attendance.location,
+                                showModeLabel = showModeLabel,
+                                modeKey = attendance.modeKey ?: attendance.modeLabel
                             )
                         }
                     }

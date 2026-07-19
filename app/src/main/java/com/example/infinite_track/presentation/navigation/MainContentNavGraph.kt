@@ -49,7 +49,7 @@ fun NavGraphBuilder.mainContentNavGraph(
             viewModel = homeViewModel,
             navigateAttendance = { navController.safeNavigate(Screen.AttendancePermissionReadiness.route) },
             navigateTimeOffRequest = { navController.safeNavigate(Screen.TimeOffRequest.route) },
-            navigateListMyAttendance = { navController.safeNavigate(Screen.DetailMyAttendance.route) },
+            navigateListMyAttendance = { navController.safeNavigate(Screen.History.route) },
             navigateServiceComingSoon = { navController.safeNavigate(Screen.CompanyServiceComingSoon.route) }
         )
     }

@@ -33,7 +33,7 @@ data class HistoryScreenState(
     val summary: AttendanceSummaryInfo? = null,
     val records: List<AttendanceRecord> = emptyList(),
     val currentPage: Int = 1,
-    val pageSize: Int = 10
+    val pageSize: Int = 3
 )
 
 @HiltViewModel
@@ -59,6 +59,7 @@ class HistoryViewModel @Inject constructor(
      * @param newPeriod The new period to filter by (e.g., "daily", "weekly", "monthly")
      */
     fun onFilterChanged(newPeriod: String) {
+        if (newPeriod == AttendancePeriod.CUSTOM) return
         if (newPeriod != uiState.value.selectedPeriod) {
             loadingJob?.cancel()
 
@@ -68,33 +69,23 @@ class HistoryViewModel @Inject constructor(
                 periodInfo = null,
                 summary = null,
                 currentPage = 1,
-                canLoadMore = newPeriod != AttendancePeriod.CUSTOM,
+                canLoadMore = false,
                 isLoading = false,
                 isRefreshing = false,
                 isLoadingMore = false,
                 error = null
             )}
 
-            // Custom range is visible for the report contract, but it needs a date range picker
-            // before it can request backend data honestly.
-            if (newPeriod != AttendancePeriod.CUSTOM) {
-                loadHistory(isRefresh = true)
-            }
+            loadHistory(isRefresh = true)
         }
     }
 
     /**
-     * Load the next page of attendance history
+     * History interface intentionally shows only the latest 3 records.
+     * Pagination is disabled for this screen.
      */
     fun loadNextPage() {
-        val currentState = uiState.value
-
-        if (!currentState.isLoadingMore && currentState.canLoadMore) {
-            _uiState.update { it.copy(
-                currentPage = it.currentPage + 1
-            )}
-            loadHistory(isRefresh = false)
-        }
+        // no-op: max 3 items on history interface
     }
 
     /**
@@ -198,14 +189,20 @@ class HistoryViewModel @Inject constructor(
 
                 // Update state with the loaded data
                 _uiState.update { currentState ->
+                    val mergedRecords = if (isRefresh) {
+                        historyPage.records
+                    } else {
+                        currentState.records + historyPage.records
+                    }
                     currentState.copy(
                         isLoading = false,
                         isRefreshing = false,
                         isLoadingMore = false,
                         periodInfo = historyPage.period,
                         summary = historyPage.summary,
-                        records = if (isRefresh) historyPage.records else currentState.records + historyPage.records,
-                        canLoadMore = historyPage.pagination.hasNextPage
+                        // History interface intentionally keeps only the latest 3 records.
+                        records = mergedRecords.take(3),
+                        canLoadMore = false
                     )
                 }
             }.onFailure { error ->

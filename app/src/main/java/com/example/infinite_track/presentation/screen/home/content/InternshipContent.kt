@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.domain.model.attendance.AttendancePeriodInfo
 import com.example.infinite_track.domain.model.attendance.AttendanceRecord
+import com.example.infinite_track.domain.model.attendance.AttendanceSummaryInfo
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.presentation.components.tittle.Location
 import com.example.infinite_track.presentation.components.tittle.nameCards
@@ -25,6 +27,8 @@ fun InternshipContent(
     user: UserModel?,
     currentLocation: String,
     attendanceState: UiState<List<AttendanceRecord>>,
+    attendanceSummaryState: UiState<AttendanceSummaryInfo>,
+    attendancePeriodInfo: AttendancePeriodInfo?,
     todayStatusState: HomeTodayStatusUiState,
     navigateToListMyAttendance: () -> Unit
 ) {
@@ -63,9 +67,18 @@ fun InternshipContent(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            HomeAttendanceReportSummaryCard(
+                summaryState = attendanceSummaryState,
+                periodInfo = attendancePeriodInfo,
+                onViewReportClick = navigateToListMyAttendance
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
             InfiniteAttendanceTimelineSection(
                 attendanceState = attendanceState,
                 maxItems = 3,
+                showModeLabel = false,
                 onSeeAllClick = navigateToListMyAttendance
             )
         }

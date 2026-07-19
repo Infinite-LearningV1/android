@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
+import com.example.infinite_track.presentation.theme.attendanceModeColor
 
 @Composable
 fun InfiniteAttendanceTimelineCard(
@@ -16,7 +17,9 @@ fun InfiniteAttendanceTimelineCard(
     modifier: Modifier = Modifier,
     connectorPosition: TimelineConnectorPosition = TimelineConnectorPosition.None,
     workHourLabel: String? = null,
-    locationLabel: String? = null
+    locationLabel: String? = null,
+    showModeLabel: Boolean = false,
+    modeKey: String? = null
 ) {
     InfiniteTimelineRow(
         dateLabel = dateLabel,
@@ -29,6 +32,8 @@ fun InfiniteAttendanceTimelineCard(
         supportingText = locationLabel?.takeIf { it.isNotBlank() } ?: workHourLabel,
         supportingMaxLines = 1,
         supportingOverflow = TextOverflow.Ellipsis,
-        supportingColor = InfiniteColors.AttendanceReportMutedText
+        supportingColor = InfiniteColors.AttendanceReportMutedText,
+        showModeLabel = showModeLabel,
+        modeAccentColor = attendanceModeColor(modeKey ?: modeLabel)
     )
 }
