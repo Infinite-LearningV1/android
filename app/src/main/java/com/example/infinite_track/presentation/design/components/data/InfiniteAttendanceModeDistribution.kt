@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.WorkOutline
@@ -111,29 +112,20 @@ fun InfiniteAttendanceModeDistributionRow(
     unitLabel: String = "records"
 ) {
     val progress = if (total > 0) count.toFloat() / total.toFloat() else 0f
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = label,
-                color = Purple_500,
-                style = body1
-            )
-            Text(
-                text = "$count $unitLabel",
-                color = Purple_300,
-                style = body2
-            )
-        }
+        Text(
+            text = label,
+            color = Purple_500,
+            style = body1,
+            modifier = Modifier.width(36.dp)
+        )
         Box(
             modifier = Modifier
-                .fillMaxWidth()
+                .weight(1f)
                 .height(10.dp)
                 .clip(RoundedCornerShape(999.dp))
                 .background(InfiniteColors.Surface.copy(alpha = 0.72f))
@@ -147,5 +139,11 @@ fun InfiniteAttendanceModeDistributionRow(
                 trackColor = Color.Transparent
             )
         }
+        Text(
+            text = "$count $unitLabel",
+            color = Purple_300,
+            style = body2,
+            modifier = Modifier.width(58.dp)
+        )
     }
 }

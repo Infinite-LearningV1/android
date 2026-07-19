@@ -106,7 +106,7 @@ fun EmployeeAndManagerComponent(
                         showModeLabel = false,
                         title = "Recent Attendance",
                         showExternalHeader = false,
-                        showSeeAllAction = true,
+                        showSeeAllAction = false,
                         onSeeAllClick = navigateListMyAttendance
                     )
                 }
