@@ -1,7 +1,6 @@
 package com.example.infinite_track.presentation.design.components.data
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,35 +34,37 @@ fun InfiniteServiceItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     accentColor: Color = InfiniteColors.Primary,
-    containerColor: Color = InfiniteColors.Surface.copy(alpha = 0.78f)
+    containerColor: Color = InfiniteColors.Surface.copy(alpha = 0.64f)
 ) {
     Surface(
         modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(20.dp),
         color = containerColor,
-        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.18f)),
-        shadowElevation = 4.dp
+        border = BorderStroke(1.dp, InfiniteColors.AttendanceReportGlassBorder)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .background(accentColor.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.Center
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = RoundedCornerShape(14.dp),
+                color = InfiniteColors.Surface.copy(alpha = 0.85f),
+                border = BorderStroke(1.dp, accentColor.copy(alpha = 0.18f))
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(24.dp)
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
+
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -70,25 +72,28 @@ fun InfiniteServiceItem(
                 Text(
                     text = title,
                     color = InfiniteColors.Text,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 if (subtitle.isNotBlank()) {
                     Text(
                         text = subtitle,
-                        color = InfiniteColors.Text.copy(alpha = 0.56f),
+                        color = InfiniteColors.AttendanceReportMutedText,
+                        style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
             }
-            Spacer(modifier = Modifier.size(2.dp))
+
+            Spacer(modifier = Modifier.size(1.dp))
             Icon(
                 imageVector = InfiniteIcons.ChevronRight,
                 contentDescription = null,
-                tint = InfiniteColors.Text.copy(alpha = 0.46f),
-                modifier = Modifier.size(20.dp)
+                tint = InfiniteColors.AttendanceReportMutedText,
+                modifier = Modifier.size(18.dp)
             )
         }
     }
