@@ -54,16 +54,9 @@ fun InfiniteAttendanceReportSummaryCard(
     showViewReportAction: Boolean = true,
     onViewReportClick: (() -> Unit)? = null
 ) {
-    val clickableModifier = if (showViewReportAction && onViewReportClick != null) {
-        Modifier.clickable(onClick = onViewReportClick)
-    } else {
-        Modifier
-    }
-
+    // Only the trailing navigate control should trigger navigation.
     InfiniteGlassReportCard(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(clickableModifier)
+        modifier = modifier.fillMaxWidth()
     ) {
         Column {
             Row(
@@ -180,7 +173,15 @@ fun InfiniteAttendanceReportSummaryCard(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (onViewReportClick != null) {
+                                Modifier.clickable(onClick = onViewReportClick)
+                            } else {
+                                Modifier
+                            }
+                        ),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -191,7 +192,7 @@ fun InfiniteAttendanceReportSummaryCard(
                     )
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                        contentDescription = null,
+                        contentDescription = "Navigate to report",
                         tint = Blue_500,
                         modifier = Modifier.size(18.dp)
                     )

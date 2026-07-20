@@ -63,6 +63,7 @@ import com.example.infinite_track.presentation.components.status.InfiniteTrackSt
 import com.example.infinite_track.presentation.components.status.StatusStates
 import com.example.infinite_track.presentation.core.body1
 import com.example.infinite_track.presentation.core.body2
+import com.example.infinite_track.presentation.core.body3
 import com.example.infinite_track.presentation.core.headline2
 import com.example.infinite_track.presentation.core.headline3
 import com.example.infinite_track.presentation.core.headline4
@@ -196,7 +197,7 @@ fun ProfileScreen(
     }
 
     // MainScreen already applies scaffold/bottom-bar padding.
-    // Keep page insets aligned with Home/History and avoid top clipping.
+    // Match Home/History content insets exactly.
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = Color.Transparent
@@ -204,7 +205,7 @@ fun ProfileScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 16.dp)
+                .padding(16.dp)
         ) {
             when (profileState) {
                 is UiState.Loading -> {
@@ -521,32 +522,35 @@ private fun AccountSummaryCard(
     modifier: Modifier = Modifier
 ) {
     ProfileGlassCard(
-        modifier = modifier.height(78.dp),
-        shape = RoundedCornerShape(20.dp),
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+        modifier = modifier.height(64.dp),
+        shape = RoundedCornerShape(18.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(
                 painter = painterResource(icon),
                 contentDescription = null,
                 tint = Blue_500,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(16.dp)
             )
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
                 Text(
                     text = label,
-                    style = body2,
+                    style = body3,
                     color = Purple_300,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = value,
-                    style = body1,
+                    style = body2,
                     color = Purple_500,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
