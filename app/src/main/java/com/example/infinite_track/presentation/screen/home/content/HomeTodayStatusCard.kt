@@ -1,26 +1,26 @@
 package com.example.infinite_track.presentation.screen.home.content
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
@@ -28,17 +28,15 @@ import androidx.compose.ui.unit.dp
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.presentation.core.body1
 import com.example.infinite_track.presentation.core.body2
-import com.example.infinite_track.presentation.core.bodyThin
 import com.example.infinite_track.presentation.core.headline4
+import com.example.infinite_track.presentation.design.components.data.InfiniteGlassReportCard
 import com.example.infinite_track.presentation.design.components.status.InfiniteInlineAlert
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteIcons
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.screen.home.HomeTodayStatusUiState
-import com.example.infinite_track.presentation.theme.Blue_500
 import com.example.infinite_track.presentation.theme.Purple_300
 import com.example.infinite_track.presentation.theme.Purple_500
-import com.example.infinite_track.presentation.theme.White
 import com.example.infinite_track.utils.UiState
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -76,7 +74,7 @@ fun HomeTodayStatusCard(
 
 @Composable
 private fun TodayStatusLoadingCard() {
-    TodayStatusSurface {
+    InfiniteGlassReportCard {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -90,7 +88,7 @@ private fun TodayStatusLoadingCard() {
 
 @Composable
 private fun TodayStatusErrorCard(message: String) {
-    TodayStatusSurface {
+    InfiniteGlassReportCard {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             TodayStatusHeader()
             Text(
@@ -118,62 +116,77 @@ private fun TodayStatusSuccessCard(
             label = "Status",
             value = todayStatus.displayStatus(statusKey),
             icon = InfiniteIcons.Person,
-            valueColor = InfiniteColors.Primary
+            accent = InfiniteColors.Primary
         ),
         TodayStatusMetric(
             label = "Mode",
             value = displayMode(todayStatus.activeMode),
-            icon = InfiniteIcons.Work
+            icon = InfiniteIcons.Work,
+            accent = InfiniteColors.Primary
         ),
         TodayStatusMetric(
             label = "Location",
             value = todayStatus.activeLocation?.description ?: "--",
-            icon = InfiniteIcons.Location
+            icon = InfiniteIcons.Location,
+            accent = InfiniteColors.Primary
         ),
         TodayStatusMetric(
             label = "Check-out",
             value = formatTime(todayStatus.checkedOutAt, todayStatus.checkedOutAtIso),
-            icon = InfiniteIcons.Time
+            icon = InfiniteIcons.Time,
+            accent = InfiniteColors.Primary
         ),
         TodayStatusMetric(
             label = "Check-in",
             value = formatTime(todayStatus.checkedInAt, todayStatus.checkedInAtIso),
-            icon = InfiniteIcons.Time
+            icon = InfiniteIcons.Time,
+            accent = InfiniteColors.Primary
         ),
         TodayStatusMetric(
             label = "Geofence",
             value = geofenceSummary(todayStatus, currentLocation),
             icon = InfiniteIcons.Shield,
+            accent = InfiniteColors.Primary,
             badge = true
         ),
         TodayStatusMetric(
             label = "Work Duration",
             value = formatDuration(todayStatus.workDurationSeconds),
-            icon = InfiniteIcons.Time
+            icon = InfiniteIcons.Time,
+            accent = InfiniteColors.Primary
         )
     )
 
-    TodayStatusSurface {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    InfiniteGlassReportCard {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             TodayStatusHeader()
-            Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 metrics.chunked(2).forEachIndexed { rowIndex, rowItems ->
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(70.dp)
                     ) {
-                        rowItems.forEach { metric ->
-                            TodayStatusMetricItem(
+                        rowItems.forEachIndexed { itemIndex, metric ->
+                            TodayStatusMetricCell(
                                 metric = metric,
                                 modifier = Modifier.weight(1f)
                             )
+                            if (itemIndex == 0 && rowItems.size > 1) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(1.dp)
+                                        .fillMaxHeight()
+                                        .background(InfiniteColors.AttendanceReportGlassBorder)
+                                )
+                            }
                         }
                         if (rowItems.size == 1) {
                             Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                     if (rowIndex < metrics.chunked(2).lastIndex) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                        HorizontalDivider(color = InfiniteColors.AttendanceReportGlassBorder)
                     }
                 }
             }
@@ -185,63 +198,79 @@ private fun TodayStatusSuccessCard(
 private fun TodayStatusHeader() {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = InfiniteIcons.Calendar,
-            contentDescription = null,
-            tint = Blue_500,
-            modifier = Modifier.size(18.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(InfiniteColors.Primary.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = InfiniteIcons.Calendar,
+                contentDescription = null,
+                tint = InfiniteColors.Primary,
+                modifier = Modifier.size(14.dp)
+            )
+        }
         Text(
             text = "Today Status",
             color = Purple_500,
-            style = body1
+            style = headline4
         )
     }
 }
 
 @Composable
-private fun TodayStatusMetricItem(
+private fun TodayStatusMetricCell(
     metric: TodayStatusMetric,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    Column(
         modifier = modifier
-            .background(White.copy(alpha = 0.30f), RoundedCornerShape(14.dp))
-            .padding(horizontal = 10.dp, vertical = 9.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .fillMaxHeight()
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Icon(
-            imageVector = metric.icon,
-            contentDescription = null,
-            tint = Purple_500.copy(alpha = 0.88f),
-            modifier = Modifier.size(20.dp)
-        )
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            Box(
+                modifier = Modifier
+                    .size(26.dp)
+                    .clip(CircleShape)
+                    .background(metric.accent.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = metric.icon,
+                    contentDescription = null,
+                    tint = metric.accent,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
             Text(
                 text = metric.label,
+                style = body2,
                 color = Purple_300,
-                style = bodyThin,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (metric.badge) {
-                GeofenceBadge(text = metric.value)
-            } else {
-                Text(
-                    text = metric.value,
-                    color = metric.valueColor,
-                    style = headline4,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+        }
+
+        if (metric.badge) {
+            GeofenceBadge(text = metric.value)
+        } else {
+            Text(
+                text = metric.value,
+                style = headline4,
+                color = metric.accent,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -250,13 +279,13 @@ private fun TodayStatusMetricItem(
 private fun GeofenceBadge(text: String) {
     Box(
         modifier = Modifier
-            .background(InfiniteColors.Accent.copy(alpha = 0.58f), RoundedCornerShape(999.dp))
-            .padding(horizontal = 12.dp, vertical = 4.dp),
+            .background(InfiniteColors.Primary.copy(alpha = 0.12f), CircleShape)
+            .padding(horizontal = 10.dp, vertical = 3.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
-            color = Purple_500,
+            color = InfiniteColors.Primary,
             style = body2,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -264,36 +293,11 @@ private fun GeofenceBadge(text: String) {
     }
 }
 
-@Composable
-private fun TodayStatusSurface(content: @Composable () -> Unit) {
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0x33FFFFFF)),
-        border = BorderStroke(1.dp, White.copy(alpha = 0.92f)),
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(18.dp),
-                ambientColor = Blue_500.copy(alpha = 0.24f),
-                spotColor = Blue_500.copy(alpha = 0.20f)
-            )
-    ) {
-        Box(
-            modifier = Modifier
-                .background(White.copy(alpha = 0.08f))
-                .padding(horizontal = 14.dp, vertical = 12.dp)
-        ) {
-            content()
-        }
-    }
-}
-
 private data class TodayStatusMetric(
     val label: String,
     val value: String,
     val icon: ImageVector,
-    val valueColor: Color = InfiniteColors.Text,
+    val accent: Color = InfiniteColors.Primary,
     val badge: Boolean = false
 )
 

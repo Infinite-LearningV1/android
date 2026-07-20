@@ -1,30 +1,34 @@
 package com.example.infinite_track.presentation.design.components.data
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.core.body2
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteIcons
+import com.example.infinite_track.presentation.theme.Purple_300
+import com.example.infinite_track.presentation.theme.Purple_500
 
 @Composable
 fun InfiniteServiceItem(
@@ -34,7 +38,7 @@ fun InfiniteServiceItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     accentColor: Color = InfiniteColors.Primary,
-    containerColor: Color = InfiniteColors.Surface.copy(alpha = 0.64f)
+    containerColor: Color = InfiniteColors.AttendanceReportGlassSurface
 ) {
     Surface(
         modifier = modifier.clickable(onClick = onClick),
@@ -49,20 +53,19 @@ fun InfiniteServiceItem(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(
-                modifier = Modifier.size(40.dp),
-                shape = RoundedCornerShape(14.dp),
-                color = InfiniteColors.Surface.copy(alpha = 0.85f),
-                border = BorderStroke(1.dp, accentColor.copy(alpha = 0.18f))
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(accentColor.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = accentColor,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(18.dp)
+                )
             }
 
             Column(
@@ -71,29 +74,27 @@ fun InfiniteServiceItem(
             ) {
                 Text(
                     text = title,
-                    color = InfiniteColors.Text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
+                    color = Purple_500,
+                    style = body1,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 if (subtitle.isNotBlank()) {
                     Text(
                         text = subtitle,
-                        color = InfiniteColors.AttendanceReportMutedText,
-                        style = MaterialTheme.typography.bodySmall,
+                        color = Purple_300,
+                        style = body2,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.size(1.dp))
             Icon(
                 imageVector = InfiniteIcons.ChevronRight,
                 contentDescription = null,
-                tint = InfiniteColors.AttendanceReportMutedText,
-                modifier = Modifier.size(18.dp)
+                tint = Purple_300,
+                modifier = Modifier.size(16.dp)
             )
         }
     }
