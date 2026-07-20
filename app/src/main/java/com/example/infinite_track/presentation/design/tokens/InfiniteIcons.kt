@@ -1,47 +1,51 @@
 package com.example.infinite_track.presentation.design.tokens
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AccessTime
-import androidx.compose.material.icons.rounded.AccountBalanceWallet
-import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.Description
-import androidx.compose.material.icons.rounded.Error
-import androidx.compose.material.icons.rounded.FileDownload
-import androidx.compose.material.icons.rounded.FilterList
-import androidx.compose.material.icons.rounded.Folder
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.LocationOn
-import androidx.compose.material.icons.rounded.MoreHoriz
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.VerifiedUser
-import androidx.compose.material.icons.rounded.Warning
-import androidx.compose.material.icons.rounded.Work
+import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.VerifiedUser
+import androidx.compose.material.icons.outlined.WarningAmber
+import androidx.compose.material.icons.outlined.WorkOutline
 import androidx.compose.ui.graphics.vector.ImageVector
 
+/**
+ * Shared icon set for the app.
+ * Prefer outlined/regular icons so Home/Attendance/Company Services stay visually consistent.
+ */
 object InfiniteIcons {
-    val Calendar = Icons.Rounded.CalendarMonth
-    val Time = Icons.Rounded.AccessTime
-    val Success = Icons.Rounded.CheckCircle
-    val Info = Icons.Rounded.Info
-    val Warning = Icons.Rounded.Warning
-    val Error = Icons.Rounded.Error
-    val Location = Icons.Rounded.LocationOn
-    val Search = Icons.Rounded.Search
-    val Refresh = Icons.Rounded.Refresh
-    val Filter = Icons.Rounded.FilterList
-    val Download = Icons.Rounded.FileDownload
-    val Share = Icons.Rounded.Share
-    val Person = Icons.Rounded.Person
-    val Work = Icons.Rounded.Work
-    val Shield = Icons.Rounded.VerifiedUser
-    val Wallet = Icons.Rounded.AccountBalanceWallet
-    val Folder = Icons.Rounded.Folder
-    val Document = Icons.Rounded.Description
-    val ChevronRight = Icons.Rounded.ChevronRight
-    val More: ImageVector = Icons.Rounded.MoreHoriz
+    val Calendar = Icons.Outlined.CalendarMonth
+    val Time = Icons.Outlined.AccessTime
+    val Success = Icons.Outlined.CheckCircle
+    val Info = Icons.Outlined.Info
+    val Warning = Icons.Outlined.WarningAmber
+    val Error = Icons.Outlined.ErrorOutline
+    val Location = Icons.Outlined.LocationOn
+    val Search = Icons.Outlined.Search
+    val Refresh = Icons.Outlined.Refresh
+    val Filter = Icons.Outlined.FilterList
+    val Download = Icons.Outlined.FileDownload
+    val Share = Icons.Outlined.Share
+    val Person = Icons.Outlined.Person
+    val Work = Icons.Outlined.WorkOutline
+    val Shield = Icons.Outlined.VerifiedUser
+    val Wallet = Icons.Outlined.AccountBalanceWallet
+    val Folder = Icons.Outlined.Folder
+    val Document = Icons.Outlined.Description
+    val ChevronRight = Icons.Outlined.ChevronRight
+    val More: ImageVector = Icons.Outlined.MoreHoriz
 }
