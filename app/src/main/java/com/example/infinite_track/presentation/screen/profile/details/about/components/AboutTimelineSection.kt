@@ -14,15 +14,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.domain.model.about.AboutTimelineItem
-import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.design.components.data.InfiniteSectionHeader
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 
@@ -46,7 +45,7 @@ fun AboutTimelineSection(
                 )
                 if (index != timeline.lastIndex) {
                     HorizontalDivider(
-                        modifier = Modifier.padding(start = 66.dp),
+                        modifier = Modifier.padding(start = 50.dp),
                         color = InfiniteColors.AccountHubDividerColor
                     )
                 }
@@ -65,7 +64,7 @@ private fun TimelineEntry(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(18.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.Top
     ) {
         TimelineMarker(isFirst = isFirst, isLast = isLast)
@@ -74,14 +73,18 @@ private fun TimelineEntry(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
-                text = "${item.period} — ${item.title}",
-                style = headline4,
-                color = InfiniteColors.AccountHubTitle,
-                fontWeight = FontWeight.Bold
+                text = item.period,
+                style = MaterialTheme.typography.labelLarge,
+                color = InfiniteColors.Primary
+            )
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.titleSmall,
+                color = InfiniteColors.AccountHubTitle
             )
             Text(
                 text = item.description,
-                style = headline4,
+                style = MaterialTheme.typography.bodySmall,
                 color = InfiniteColors.AccountHubBodyText
             )
         }
@@ -93,10 +96,8 @@ private fun TimelineMarker(
     isFirst: Boolean,
     isLast: Boolean
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Canvas(modifier = Modifier.size(width = 4.dp, height = 12.dp)) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Canvas(modifier = Modifier.size(width = 4.dp, height = 10.dp)) {
             if (!isFirst) {
                 drawLine(
                     color = InfiniteColors.AboutPurpleSoft.copy(alpha = 0.28f),
@@ -108,17 +109,17 @@ private fun TimelineMarker(
         }
         Box(
             modifier = Modifier
-                .size(28.dp)
-                .background(InfiniteColors.AboutPurpleSoft.copy(alpha = 0.15f), CircleShape),
+                .size(20.dp)
+                .background(InfiniteColors.AboutPurpleSoft.copy(alpha = 0.16f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Box(
                 modifier = Modifier
-                    .size(14.dp)
-                    .background(InfiniteColors.AboutPurpleSoft, CircleShape)
+                    .size(10.dp)
+                    .background(InfiniteColors.Primary, CircleShape)
             )
         }
-        Canvas(modifier = Modifier.size(width = 4.dp, height = if (isLast) 6.dp else 28.dp)) {
+        Canvas(modifier = Modifier.size(width = 4.dp, height = if (isLast) 4.dp else 24.dp)) {
             if (!isLast) {
                 drawLine(
                     color = InfiniteColors.AboutPurpleSoft.copy(alpha = 0.28f),

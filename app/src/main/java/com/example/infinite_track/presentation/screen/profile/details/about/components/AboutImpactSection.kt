@@ -14,6 +14,7 @@ import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.PhoneIphone
 import androidx.compose.material.icons.rounded.TrackChanges
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,11 +22,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.domain.model.about.AboutImpactItem
 import com.example.infinite_track.domain.model.about.AboutImpactSemantic
-import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.design.components.data.InfiniteSectionHeader
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 
@@ -40,7 +39,7 @@ fun AboutImpactSection(
             subtitle = "Expected product value",
             leadingIcon = Icons.Rounded.Analytics
         )
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             impacts.forEach { impact ->
                 ImpactCard(impact = impact)
             }
@@ -54,21 +53,20 @@ private fun ImpactCard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(18.dp),
         color = InfiniteColors.Surface.copy(alpha = 0.58f),
-        border = BorderStroke(1.dp, InfiniteColors.Surface.copy(alpha = 0.84f)),
-        shadowElevation = 5.dp
+        border = BorderStroke(1.dp, InfiniteColors.Surface.copy(alpha = 0.84f))
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top
         ) {
             Icon(
                 imageVector = impact.semantic.icon,
                 contentDescription = null,
                 tint = impact.semantic.tint,
-                modifier = Modifier.size(42.dp)
+                modifier = Modifier.size(20.dp)
             )
             Column(
                 modifier = Modifier.weight(1f),
@@ -76,13 +74,12 @@ private fun ImpactCard(
             ) {
                 Text(
                     text = impact.title,
-                    style = headline4,
-                    color = impact.semantic.tint,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleSmall,
+                    color = InfiniteColors.AccountHubTitle
                 )
                 Text(
                     text = impact.description,
-                    style = headline4,
+                    style = MaterialTheme.typography.bodySmall,
                     color = InfiniteColors.AccountHubBodyText
                 )
             }
