@@ -82,7 +82,7 @@ class HistoryViewModelTest {
     }
 
     @Test
-    fun onFilterChanged_customDoesNotRequestBackendAndClearsReportState() = runTest {
+    fun onFilterChanged_customIsIgnoredAndKeepsCurrentPeriod() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
         try {
@@ -93,11 +93,9 @@ class HistoryViewModelTest {
             viewModel.onFilterChanged(AttendancePeriod.CUSTOM)
             advanceUntilIdle()
 
+            // Custom filter is removed from History UI, so selecting it is a no-op.
             assertEquals(listOf(AttendancePeriod.MONTHLY), repository.requestedPeriods)
-            assertEquals(AttendancePeriod.CUSTOM, viewModel.uiState.value.selectedPeriod)
-            assertEquals(emptyList<AttendanceRecord>(), viewModel.uiState.value.records)
-            assertNull(viewModel.uiState.value.summary)
-            assertFalse(viewModel.uiState.value.canLoadMore)
+            assertEquals(AttendancePeriod.MONTHLY, viewModel.uiState.value.selectedPeriod)
             assertFalse(viewModel.uiState.value.isLoading)
             assertFalse(viewModel.uiState.value.isLoadingMore)
         } finally {
@@ -106,7 +104,7 @@ class HistoryViewModelTest {
     }
 
     @Test
-    fun onFilterChanged_customIgnoresStaleMonthlyResponse() = runTest {
+    fun onFilterChanged_customDoesNotCancelInFlightMonthlyLoad() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(dispatcher)
         try {
@@ -118,11 +116,12 @@ class HistoryViewModelTest {
             repository.response.complete(Result.success(repository.pageWithRecord()))
             advanceUntilIdle()
 
+            // Custom remains ignored; monthly init load still completes normally.
             assertEquals(listOf(AttendancePeriod.MONTHLY), repository.requestedPeriods)
-            assertEquals(AttendancePeriod.CUSTOM, viewModel.uiState.value.selectedPeriod)
-            assertEquals(emptyList<AttendanceRecord>(), viewModel.uiState.value.records)
-            assertNull(viewModel.uiState.value.summary)
-            assertFalse(viewModel.uiState.value.canLoadMore)
+            assertEquals(AttendancePeriod.MONTHLY, viewModel.uiState.value.selectedPeriod)
+            assertEquals(1, viewModel.uiState.value.records.size)
+            assertEquals("This Month", viewModel.uiState.value.periodInfo?.label)
+            assertEquals("100%", viewModel.uiState.value.summary?.attendanceRateLabel)
         } finally {
             Dispatchers.resetMain()
         }
