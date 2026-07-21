@@ -4,7 +4,6 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,10 +20,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -40,15 +39,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+// clip is required for glass card corners
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -57,17 +57,18 @@ import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.presentation.components.status.InfiniteTrackInlineAlert
 import com.example.infinite_track.presentation.components.status.StatusStateSpec
 import com.example.infinite_track.presentation.core.body1
-import com.example.infinite_track.presentation.core.headline2
-import com.example.infinite_track.presentation.core.headline3
+import com.example.infinite_track.presentation.core.body2
+import com.example.infinite_track.presentation.core.body3
 import com.example.infinite_track.presentation.core.headline4
+import com.example.infinite_track.presentation.design.components.button.InfiniteButton
 import com.example.infinite_track.presentation.design.components.button.InfiniteButtonState
 import com.example.infinite_track.presentation.design.components.button.InfiniteButtonVariant
-import com.example.infinite_track.presentation.design.components.button.InfiniteButton
 import com.example.infinite_track.presentation.design.components.navigation.InfiniteTopBar
-import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
-import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
+import com.example.infinite_track.presentation.theme.Blue_500
+import com.example.infinite_track.presentation.theme.Purple_300
+import com.example.infinite_track.presentation.theme.Purple_500
 import com.example.infinite_track.utils.UiState
 
 @Composable
@@ -81,7 +82,6 @@ fun EditProfile(
     val nipNim by viewModel.nipNim.collectAsStateWithLifecycle()
     val updateProfileState by viewModel.updateProfileState.collectAsStateWithLifecycle()
     val canSave by viewModel.canSave.collectAsStateWithLifecycle()
-
     val isSaving = updateProfileState is UiState.Loading
 
     Scaffold(
@@ -90,7 +90,7 @@ fun EditProfile(
         topBar = {
             InfiniteTopBar(
                 title = stringResource(R.string.edit_profile_title),
-                navigationIcon = Icons.Default.KeyboardArrowLeft,
+                navigationIcon = Icons.AutoMirrored.Outlined.ArrowBack,
                 navigationContentDescription = stringResource(R.string.cancel),
                 onNavigationClick = onBackClick
             )
@@ -112,8 +112,8 @@ fun EditProfile(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             EditProfileHeroCard(user = userProfile)
             EditProfileFormCard(
@@ -129,7 +129,7 @@ fun EditProfile(
                 updateProfileState = updateProfileState,
                 onDismiss = { viewModel.resetUpdateState() }
             )
-            Spacer(modifier = Modifier.height(88.dp))
+            Spacer(modifier = Modifier.height(72.dp))
         }
     }
 }
@@ -141,84 +141,70 @@ private fun EditProfileHeroCard(user: UserModel?) {
     val position = user?.positionName?.ifBlank { null } ?: stringResource(R.string.edit_profile_no_position)
     val role = user?.roleName?.ifBlank { unavailable } ?: unavailable
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = InfiniteColors.AccountHubHeroSurface),
-        border = BorderStroke(1.dp, InfiniteColors.AccountHubHeroOutline),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(24.dp),
+                ambientColor = InfiniteColors.Primary.copy(alpha = 0.10f),
+                spotColor = InfiniteColors.Accent.copy(alpha = 0.08f)
+            )
+            .clip(RoundedCornerShape(24.dp))
+            .background(InfiniteColors.AttendanceReportGlassSurface)
+            .border(
+                BorderStroke(1.dp, InfiniteColors.AttendanceReportGlassBorder),
+                RoundedCornerShape(24.dp)
+            )
+            .padding(16.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(InfiniteColors.AccountHubHeroGradient)
-                .padding(22.dp),
-            horizontalArrangement = Arrangement.spacedBy(22.dp),
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(contentAlignment = Alignment.BottomEnd) {
-                Box(
-                    modifier = Modifier
-                        .size(118.dp)
-                        .clip(CircleShape)
-                        .background(InfiniteColors.AccountHubAvatarRingGradient)
-                        .padding(4.dp)
-                ) {
-                    AsyncImage(
-                        model = user?.photoUrl?.takeIf { it.isNotBlank() },
-                        contentDescription = null,
-                        placeholder = painterResource(R.drawable.ic_profile),
-                        error = painterResource(R.drawable.ic_profile),
-                        fallback = painterResource(R.drawable.ic_profile),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape)
-                            .border(3.dp, InfiniteColors.AccountHubOutline, CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                Surface(
-                    modifier = Modifier.size(44.dp),
-                    shape = CircleShape,
-                    color = InfiniteColors.AccountHubFloatingSurface,
-                    border = BorderStroke(1.dp, InfiniteColors.AccountHubStrongOutline),
-                    shadowElevation = 5.dp
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_cameras),
-                            contentDescription = stringResource(R.string.edit_profile_photo_action_disabled),
-                            tint = InfiniteColors.AccountHubPrimary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-            }
-
+            AsyncImage(
+                model = user?.photoUrl?.takeIf { it.isNotBlank() },
+                contentDescription = null,
+                placeholder = painterResource(R.drawable.ic_profile),
+                error = painterResource(R.drawable.ic_profile),
+                fallback = painterResource(R.drawable.ic_profile),
+                modifier = Modifier
+                    .size(84.dp)
+                    .clip(CircleShape)
+                    .border(1.dp, InfiniteColors.AttendanceReportGlassBorder, CircleShape),
+                contentScale = ContentScale.Crop
+            )
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = fullName,
-                    style = headline2,
-                    color = InfiniteColors.AccountHubTitle,
-                    fontWeight = FontWeight.Bold,
+                    style = headline4,
+                    color = Purple_500,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = position,
-                    style = headline3,
-                    color = InfiniteColors.AccountHubMutedText,
+                    style = body1,
+                    color = Purple_300,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                InfiniteStatusPill(
-                    label = role,
-                    variant = InfiniteStatusVariant.Recommended,
-                    size = InfiniteSize.Small,
-                    leadingIcon = null
+                Text(
+                    text = role,
+                    style = body2,
+                    color = Blue_500,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = stringResource(R.string.edit_profile_photo_action_disabled),
+                    style = body3,
+                    color = Purple_300,
+                    maxLines = 2
                 )
             }
         }
@@ -238,37 +224,41 @@ private fun EditProfileFormCard(
     val noDivision = stringResource(R.string.edit_profile_no_division)
     val noPosition = stringResource(R.string.edit_profile_no_position)
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = InfiniteColors.AccountHubHeroSurface),
-        border = BorderStroke(1.dp, InfiniteColors.AccountHubHeroOutline),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(24.dp),
+                ambientColor = InfiniteColors.Primary.copy(alpha = 0.10f),
+                spotColor = InfiniteColors.Accent.copy(alpha = 0.08f)
+            )
+            .clip(RoundedCornerShape(24.dp))
+            .background(InfiniteColors.AttendanceReportGlassSurface)
+            .border(
+                BorderStroke(1.dp, InfiniteColors.AttendanceReportGlassBorder),
+                RoundedCornerShape(24.dp)
+            )
+            .padding(14.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             EditProfileField(
                 label = stringResource(R.string.edit_profile_full_name),
                 value = fullName,
                 onValueChange = onFullNameChange,
-                editable = true,
-                icon = R.drawable.ic_pencil
+                editable = true
             )
             EditProfileField(
                 label = stringResource(R.string.edit_profile_nip_nim),
                 value = nipNim,
                 onValueChange = onNipNimChange,
-                editable = true,
-                icon = R.drawable.ic_pencil
+                editable = true
             )
             EditProfileField(
                 label = stringResource(R.string.edit_profile_phone_number),
                 value = phone,
                 onValueChange = onPhoneChange,
                 editable = true,
-                icon = R.drawable.ic_pencil,
                 keyboardType = KeyboardType.Phone
             )
             EditProfileField(
@@ -300,25 +290,25 @@ private fun EditProfileField(
     value: String,
     onValueChange: (String) -> Unit,
     editable: Boolean,
-    @DrawableRes icon: Int? = null,
     keyboardType: KeyboardType = KeyboardType.Text
 ) {
     var focused by remember { mutableStateOf(false) }
     val borderColor = when {
-        focused && editable -> InfiniteColors.AccountHubPrimary
-        editable -> InfiniteColors.AccountHubOutline
-        else -> InfiniteColors.AccountHubDividerColor
+        focused && editable -> Blue_500
+        editable -> InfiniteColors.AttendanceReportGlassBorder
+        else -> InfiniteColors.AttendanceReportGlassBorder.copy(alpha = 0.7f)
     }
+    val trailingIcon = if (editable) Icons.Outlined.Edit else Icons.Outlined.Lock
+    val trailingTint = if (focused && editable) Blue_500 else if (editable) Purple_300 else Purple_300
     val fieldValue = value.ifBlank {
         if (editable) "" else stringResource(R.string.account_hub_not_available)
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text = label,
-            style = headline4,
-            color = InfiniteColors.AccountHubMutedText,
-            fontWeight = FontWeight.Medium
+            style = body2,
+            color = Purple_300
         )
         OutlinedTextField(
             value = fieldValue,
@@ -329,63 +319,31 @@ private fun EditProfileField(
             enabled = editable,
             readOnly = !editable,
             singleLine = true,
-            textStyle = body1.copy(color = InfiniteColors.AccountHubTitle),
-            shape = RoundedCornerShape(18.dp),
+            textStyle = body1.copy(color = Purple_500),
+            shape = RoundedCornerShape(16.dp),
             trailingIcon = {
-                if (editable && icon != null) {
-                    Icon(
-                        painter = painterResource(icon),
-                        contentDescription = label,
-                        tint = InfiniteColors.AccountHubPrimary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                } else if (!editable) {
-                    ReadOnlyBadge()
-                }
+                Icon(
+                    imageVector = trailingIcon,
+                    contentDescription = label,
+                    tint = trailingTint,
+                    modifier = Modifier.size(18.dp)
+                )
             },
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = InfiniteColors.AccountHubIconSurface,
-                unfocusedContainerColor = InfiniteColors.AccountHubIconSurface,
-                disabledContainerColor = InfiniteColors.AccountHubIconSurface,
+                focusedContainerColor = InfiniteColors.AttendanceReportGlassSurface,
+                unfocusedContainerColor = InfiniteColors.AttendanceReportGlassSurface,
+                disabledContainerColor = InfiniteColors.AttendanceReportGlassSurface,
                 focusedBorderColor = borderColor,
                 unfocusedBorderColor = borderColor,
                 disabledBorderColor = borderColor,
-                cursorColor = InfiniteColors.AccountHubPrimary,
-                focusedTextColor = InfiniteColors.AccountHubTitle,
-                unfocusedTextColor = InfiniteColors.AccountHubTitle,
-                disabledTextColor = InfiniteColors.AccountHubBodyText,
-                disabledTrailingIconColor = InfiniteColors.AccountHubMutedText
+                cursorColor = Blue_500,
+                focusedTextColor = Purple_500,
+                unfocusedTextColor = Purple_500,
+                disabledTextColor = Purple_300,
+                disabledTrailingIconColor = Purple_300
             )
         )
-    }
-}
-
-@Composable
-private fun ReadOnlyBadge() {
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = InfiniteColors.AccountHubFloatingSurface,
-        border = BorderStroke(1.dp, InfiniteColors.AccountHubDividerColor)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Lock,
-                contentDescription = null,
-                tint = InfiniteColors.AccountHubMutedText,
-                modifier = Modifier.size(16.dp)
-            )
-            Text(
-                text = stringResource(R.string.edit_profile_read_only),
-                style = headline4,
-                color = InfiniteColors.AccountHubMutedText,
-                maxLines = 1
-            )
-        }
     }
 }
 
@@ -434,14 +392,14 @@ private fun EditProfileBottomActionBar(
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = InfiniteColors.AccountHubHeroSurface,
+        color = InfiniteColors.AttendanceReportGlassSurface,
         shadowElevation = 8.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             InfiniteButton(
@@ -453,6 +411,7 @@ private fun EditProfileBottomActionBar(
                 onClick = onSave,
                 modifier = Modifier.weight(1f),
                 variant = InfiniteButtonVariant.Primary,
+                size = InfiniteSize.Small,
                 state = primaryState,
                 fullWidth = true
             )
@@ -461,6 +420,7 @@ private fun EditProfileBottomActionBar(
                 onClick = onCancel,
                 modifier = Modifier.weight(1f),
                 variant = InfiniteButtonVariant.Outlined,
+                size = InfiniteSize.Small,
                 state = if (isSaving) InfiniteButtonState.Disabled else InfiniteButtonState.Enabled,
                 fullWidth = true
             )
