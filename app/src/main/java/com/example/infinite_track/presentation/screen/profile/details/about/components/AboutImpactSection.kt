@@ -6,12 +6,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Analytics
-import androidx.compose.material.icons.rounded.Groups
-import androidx.compose.material.icons.rounded.PhoneIphone
-import androidx.compose.material.icons.rounded.TrackChanges
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.PhoneIphone
+import androidx.compose.material.icons.outlined.TrackChanges
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,7 +37,7 @@ fun AboutImpactSection(
     GlassSectionCard(modifier = modifier) {
         AboutSectionTitle(
             title = "Project Impact",
-            icon = Icons.Rounded.Analytics,
+            icon = Icons.Outlined.BarChart,
             tint = InfiniteColors.AboutPurple
         )
         Row(
@@ -69,12 +71,11 @@ private fun ImpactTile(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            AboutSoftIconBadge(
-                icon = impact.semantic.icon,
+            Icon(
+                imageVector = impact.semantic.icon,
+                contentDescription = null,
                 tint = impact.semantic.tint,
-                size = 42.dp,
-                iconSize = 22.dp,
-                background = Color.White.copy(alpha = 0.78f)
+                modifier = Modifier.size(28.dp)
             )
             Text(
                 text = impact.title,
@@ -95,9 +96,9 @@ private fun ImpactTile(
 
 private val AboutImpactSemantic.icon: ImageVector
     get() = when (this) {
-        AboutImpactSemantic.Attendance -> Icons.Rounded.PhoneIphone
-        AboutImpactSemantic.Visibility -> Icons.Rounded.Groups
-        AboutImpactSemantic.DecisionSupport -> Icons.Rounded.TrackChanges
+        AboutImpactSemantic.Attendance -> Icons.Outlined.PhoneIphone
+        AboutImpactSemantic.Visibility -> Icons.Outlined.Groups
+        AboutImpactSemantic.DecisionSupport -> Icons.Outlined.TrackChanges
     }
 
 private val AboutImpactSemantic.tint: Color

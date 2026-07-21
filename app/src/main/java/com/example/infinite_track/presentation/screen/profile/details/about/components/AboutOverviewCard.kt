@@ -5,11 +5,13 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Article
-import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.LocationOn
-import androidx.compose.material.icons.rounded.QueryStats
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,7 +33,7 @@ fun AboutOverviewCard(
     GlassSectionCard(modifier = modifier) {
         AboutSectionTitle(
             title = overview.title,
-            icon = Icons.AutoMirrored.Rounded.Article,
+            icon = Icons.Outlined.Description,
             tint = InfiniteColors.AboutPurple
         )
         Text(
@@ -45,15 +47,20 @@ fun AboutOverviewCard(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             overview.featureChips.forEachIndexed { index, chip ->
-                val icon = when (index % 3) {
-                    0 -> Icons.Rounded.CalendarMonth
-                    1 -> Icons.Rounded.LocationOn
-                    else -> Icons.Rounded.QueryStats
+                val icon = when {
+                    chip.label.contains("Attendance", ignoreCase = true) -> Icons.Outlined.CalendarMonth
+                    chip.label.contains("Location", ignoreCase = true) -> Icons.Outlined.LocationOn
+                    chip.label.contains("Fuzzy", ignoreCase = true) ||
+                        chip.label.contains("AHP", ignoreCase = true) -> Icons.Outlined.BarChart
+                    index % 3 == 0 -> Icons.Outlined.CalendarMonth
+                    index % 3 == 1 -> Icons.Outlined.LocationOn
+                    else -> Icons.Outlined.BarChart
                 }
-                val tint = when (index % 3) {
-                    0 -> InfiniteColors.AboutPurple
-                    1 -> InfiniteColors.AboutCyan
-                    else -> InfiniteColors.AboutPurpleSoft
+                val tint = when {
+                    chip.label.contains("Location", ignoreCase = true) -> InfiniteColors.AboutCyan
+                    chip.label.contains("Fuzzy", ignoreCase = true) ||
+                        chip.label.contains("AHP", ignoreCase = true) -> InfiniteColors.AboutPurpleSoft
+                    else -> InfiniteColors.AboutPurple
                 }
                 AboutPillChip(
                     label = chip.label,
@@ -75,13 +82,13 @@ fun AboutSectionTitle(
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        AboutSoftIconBadge(
-            icon = icon,
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
             tint = tint,
-            size = 34.dp,
-            iconSize = 18.dp
+            modifier = Modifier.size(20.dp)
         )
         Text(
             text = title,

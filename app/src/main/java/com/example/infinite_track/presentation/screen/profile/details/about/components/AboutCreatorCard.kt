@@ -12,15 +12,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Android
-import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.Code
-import androidx.compose.material.icons.rounded.DesignServices
-import androidx.compose.material.icons.rounded.Functions
+import androidx.compose.material.icons.outlined.AccountTree
+import androidx.compose.material.icons.outlined.Android
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Dns
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Functions
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.School
-import androidx.compose.material.icons.rounded.Storage
-import androidx.compose.material.icons.rounded.Workspaces
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -46,7 +46,7 @@ fun AboutCreatorCard(
     GlassSectionCard(modifier = modifier) {
         AboutSectionTitle(
             title = "Created By",
-            icon = Icons.Rounded.Person,
+            icon = Icons.Outlined.Person,
             tint = InfiniteColors.AboutPurple
         )
         Row(
@@ -78,8 +78,8 @@ fun AboutCreatorCard(
                         )
                     }
                 }
-                CreatorInfo(icon = Icons.Rounded.School, text = creator.university)
-                CreatorInfo(icon = Icons.Rounded.Workspaces, text = creator.program)
+                CreatorInfo(icon = Icons.Outlined.School, text = creator.university)
+                CreatorInfo(icon = Icons.Outlined.AccountTree, text = creator.program)
             }
             Text(
                 modifier = Modifier.weight(1f),
@@ -93,19 +93,32 @@ fun AboutCreatorCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            creator.skillTags.forEachIndexed { index, tag ->
-                val icon = when {
-                    tag.contains("Android", ignoreCase = true) -> Icons.Rounded.Android
-                    tag.contains("Backend", ignoreCase = true) || tag.contains("API", ignoreCase = true) -> Icons.Rounded.Storage
-                    tag.contains("UI", ignoreCase = true) || tag.contains("Design", ignoreCase = true) -> Icons.Rounded.DesignServices
-                    tag.contains("Fuzzy", ignoreCase = true) || tag.contains("AHP", ignoreCase = true) -> Icons.Rounded.Functions
-                    tag.contains("Attendance", ignoreCase = true) -> Icons.Rounded.CalendarMonth
-                    else -> Icons.Rounded.Code
-                }
-                val tint = if (index % 2 == 0) InfiniteColors.AboutPurple else InfiniteColors.AboutCyan
+            creator.skillTags.forEach { tag ->
+                val icon = skillIconFor(tag)
+                val tint = skillTintFor(tag)
                 AboutPillChip(label = tag, icon = icon, tint = tint)
             }
         }
+    }
+}
+
+private fun skillIconFor(tag: String): ImageVector {
+    return when {
+        tag.contains("Android", ignoreCase = true) -> Icons.Outlined.Android
+        tag.contains("Backend", ignoreCase = true) || tag.contains("API", ignoreCase = true) -> Icons.Outlined.Dns
+        tag.contains("UI", ignoreCase = true) || tag.contains("Design", ignoreCase = true) -> Icons.Outlined.Edit
+        tag.contains("Fuzzy", ignoreCase = true) || tag.contains("AHP", ignoreCase = true) -> Icons.Outlined.Functions
+        tag.contains("Attendance", ignoreCase = true) -> Icons.Outlined.CalendarMonth
+        else -> Icons.Outlined.Android
+    }
+}
+
+private fun skillTintFor(tag: String): Color {
+    return when {
+        tag.contains("Backend", ignoreCase = true) ||
+            tag.contains("API", ignoreCase = true) ||
+            tag.contains("Fuzzy", ignoreCase = true) -> InfiniteColors.AboutCyan
+        else -> InfiniteColors.AboutPurple
     }
 }
 

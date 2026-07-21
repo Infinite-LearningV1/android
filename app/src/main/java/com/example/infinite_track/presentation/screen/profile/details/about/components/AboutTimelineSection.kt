@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,7 +28,7 @@ fun AboutTimelineSection(
     GlassSectionCard(modifier = modifier) {
         AboutSectionTitle(
             title = "Development Timeline",
-            icon = Icons.Rounded.Schedule,
+            icon = Icons.Outlined.Schedule,
             tint = InfiniteColors.AboutPurple
         )
         Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {

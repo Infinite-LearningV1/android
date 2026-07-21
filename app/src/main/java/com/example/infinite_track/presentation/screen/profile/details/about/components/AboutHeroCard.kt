@@ -10,9 +10,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.WorkspacePremium
+import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -87,7 +88,7 @@ fun AboutHeroCard(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.WorkspacePremium,
+                            imageVector = Icons.Outlined.WorkspacePremium,
                             contentDescription = null,
                             tint = InfiniteColors.AboutPurple,
                             modifier = Modifier.size(15.dp)
@@ -108,37 +109,38 @@ fun AboutHeroCard(
 @Composable
 private fun HeroLogoBadge() {
     Box(
-        modifier = Modifier
-            .size(92.dp)
-            .shadow(
-                elevation = 16.dp,
-                shape = RoundedCornerShape(28.dp),
-                ambientColor = InfiniteColors.AboutPurpleSoft.copy(alpha = 0.28f),
-                spotColor = InfiniteColors.AboutCyan.copy(alpha = 0.24f)
-            )
-            .clip(RoundedCornerShape(28.dp))
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.96f),
-                        InfiniteColors.AboutPurpleSoft.copy(alpha = 0.18f),
-                        InfiniteColors.AboutCyanSoft.copy(alpha = 0.22f)
-                    )
-                )
-            )
-            .background(Color.White.copy(alpha = 0.82f)),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
-                .size(78.dp)
-                .clip(RoundedCornerShape(22.dp))
+                .size(104.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            InfiniteColors.AboutCyanSoft.copy(alpha = 0.42f),
+                            InfiniteColors.AboutPurpleSoft.copy(alpha = 0.22f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .size(84.dp)
+                .shadow(
+                    elevation = 16.dp,
+                    shape = RoundedCornerShape(24.dp),
+                    ambientColor = InfiniteColors.AboutPurpleSoft.copy(alpha = 0.28f),
+                    spotColor = InfiniteColors.AboutCyan.copy(alpha = 0.24f)
+                )
+                .clip(RoundedCornerShape(24.dp))
                 .background(Color.White.copy(alpha = 0.94f))
-                .padding(12.dp),
+                .padding(14.dp),
             contentAlignment = Alignment.Center
         ) {
             Image(
-                painter = painterResource(R.drawable.logo),
+                painter = painterResource(R.drawable.ic_launcher_foreground),
                 contentDescription = null,
                 modifier = Modifier.fillMaxWidth(),
                 contentScale = ContentScale.Fit

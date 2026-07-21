@@ -12,10 +12,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.MilitaryTech
+import androidx.compose.material.icons.outlined.Verified
 import androidx.compose.material.icons.rounded.EmojiEvents
-import androidx.compose.material.icons.rounded.MilitaryTech
 import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -72,7 +72,7 @@ fun AboutAchievementCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.MilitaryTech,
+                        imageVector = Icons.Outlined.MilitaryTech,
                         contentDescription = null,
                         tint = InfiniteColors.AboutGold,
                         modifier = Modifier.size(20.dp)
@@ -100,7 +100,7 @@ fun AboutAchievementCard(
                         verticalAlignment = Alignment.Top
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.WorkspacePremium,
+                            imageVector = Icons.Outlined.Verified,
                             contentDescription = null,
                             tint = InfiniteColors.AboutGoldStrong,
                             modifier = Modifier.size(16.dp)
