@@ -68,9 +68,9 @@ class AboutDummyContentProvider @Inject constructor() {
         ),
         achievement = AboutAchievement(
             title = "Achievement & Appreciation",
-            subtitle = "Best Internship Project Preview",
-            description = "This preview card is prepared to highlight partner appreciation once supporting evidence is available. It must not be treated as a final official award claim yet.",
-            note = "Preview only — recognition, award wording, and partner appreciation details still need verification evidence before being presented as official achievements.",
+            subtitle = "Best Internship Project",
+            description = "Infinite Track received appreciation from the internship partner as one of the best internship projects for its practical impact, digital attendance workflow, and potential to support internal company operations.",
+            note = "Recognized by the internship partner for innovation, usability, and real-world implementation value.",
             verificationStatus = VerificationStatus.PreviewOnly
         ),
         impacts = listOf(

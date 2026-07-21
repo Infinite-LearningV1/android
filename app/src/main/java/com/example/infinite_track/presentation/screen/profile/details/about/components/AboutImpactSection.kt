@@ -9,10 +9,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Analytics
-import androidx.compose.material.icons.rounded.Groups
-import androidx.compose.material.icons.rounded.PhoneIphone
-import androidx.compose.material.icons.rounded.TrackChanges
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.PhoneIphone
+import androidx.compose.material.icons.outlined.TrackChanges
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -22,10 +22,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.domain.model.about.AboutImpactItem
 import com.example.infinite_track.domain.model.about.AboutImpactSemantic
-import com.example.infinite_track.presentation.design.components.data.InfiniteSectionHeader
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 
 @Composable
@@ -34,69 +35,75 @@ fun AboutImpactSection(
     modifier: Modifier = Modifier
 ) {
     GlassSectionCard(modifier = modifier) {
-        InfiniteSectionHeader(
+        AboutSectionTitle(
             title = "Project Impact",
-            subtitle = "Expected product value",
-            leadingIcon = Icons.Rounded.Analytics
+            icon = Icons.Outlined.BarChart,
+            tint = InfiniteColors.AboutPurple
         )
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
             impacts.forEach { impact ->
-                ImpactCard(impact = impact)
+                ImpactTile(
+                    impact = impact,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ImpactCard(
-    impact: AboutImpactItem
+private fun ImpactTile(
+    impact: AboutImpactItem,
+    modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = InfiniteColors.Surface.copy(alpha = 0.58f),
-        border = BorderStroke(1.dp, InfiniteColors.Surface.copy(alpha = 0.84f))
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        color = InfiniteColors.AboutGlassSurfaceStrong.copy(alpha = 0.70f),
+        border = BorderStroke(1.dp, InfiniteColors.AboutGlassBorder),
+        shadowElevation = 3.dp
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Top
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
                 imageVector = impact.semantic.icon,
                 contentDescription = null,
                 tint = impact.semantic.tint,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(28.dp)
             )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = impact.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = InfiniteColors.AccountHubTitle
-                )
-                Text(
-                    text = impact.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = InfiniteColors.AccountHubBodyText
-                )
-            }
+            Text(
+                text = impact.title,
+                style = MaterialTheme.typography.labelLarge,
+                color = impact.semantic.tint,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = impact.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = InfiniteColors.AccountHubBodyText,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
 
 private val AboutImpactSemantic.icon: ImageVector
     get() = when (this) {
-        AboutImpactSemantic.Attendance -> Icons.Rounded.PhoneIphone
-        AboutImpactSemantic.Visibility -> Icons.Rounded.Groups
-        AboutImpactSemantic.DecisionSupport -> Icons.Rounded.TrackChanges
+        AboutImpactSemantic.Attendance -> Icons.Outlined.PhoneIphone
+        AboutImpactSemantic.Visibility -> Icons.Outlined.Groups
+        AboutImpactSemantic.DecisionSupport -> Icons.Outlined.TrackChanges
     }
 
 private val AboutImpactSemantic.tint: Color
     get() = when (this) {
         AboutImpactSemantic.Attendance -> InfiniteColors.AboutPurple
         AboutImpactSemantic.Visibility -> InfiniteColors.AboutCyan
-        AboutImpactSemantic.DecisionSupport -> InfiniteColors.AboutPurple
+        AboutImpactSemantic.DecisionSupport -> InfiniteColors.AboutPurpleSoft
     }
