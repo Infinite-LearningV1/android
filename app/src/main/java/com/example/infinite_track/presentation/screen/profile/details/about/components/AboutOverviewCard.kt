@@ -26,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.domain.model.about.AboutFeatureChip
 import com.example.infinite_track.domain.model.about.AboutOverview
+import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.core.body2
 import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.design.components.data.InfiniteSectionHeader
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
@@ -44,9 +46,8 @@ fun AboutOverviewCard(
         )
         Text(
             text = overview.description,
-            style = headline4,
-            color = InfiniteColors.AccountHubBodyText,
-            fontWeight = FontWeight.Normal
+            style = body1,
+            color = InfiniteColors.AccountHubBodyText
         )
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
@@ -91,9 +92,8 @@ private fun OverviewFeatureChip(
             )
             Text(
                 text = chip.label,
-                style = headline4,
-                color = InfiniteColors.AccountHubTitle,
-                fontWeight = FontWeight.Bold
+                style = body2,
+                color = InfiniteColors.AccountHubTitle
             )
         }
     }

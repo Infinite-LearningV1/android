@@ -1,12 +1,12 @@
 package com.example.infinite_track.presentation.screen.attendance.components
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.infinite_track.presentation.components.button.DualIconButton
+import com.example.infinite_track.presentation.design.components.navigation.InfiniteTopBar
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
 @Composable
@@ -15,14 +15,15 @@ fun AttendanceTopBar(
     onBackClicked: () -> Unit,
     onFocusLocationClicked: () -> Unit
 ) {
-    DualIconButton(
+    InfiniteTopBar(
+        title = "Attendance",
         modifier = modifier,
-        leftIcon = Icons.AutoMirrored.Filled.ArrowBack,
-        rightIcon = Icons.Default.MyLocation,
-        onLeftClick = onBackClicked,
-        onRightClick = onFocusLocationClicked,
-        leftContentDescription = "Back",
-        rightContentDescription = "Focus Location"
+        navigationIcon = Icons.AutoMirrored.Outlined.ArrowBack,
+        navigationContentDescription = "Back",
+        onNavigationClick = onBackClicked,
+        actionIcon = Icons.Outlined.MyLocation,
+        actionContentDescription = "Focus Location",
+        onActionClick = onFocusLocationClicked
     )
 }
 
@@ -31,8 +32,8 @@ fun AttendanceTopBar(
 fun AttendanceTopBarPreview() {
     Infinite_TrackTheme {
         AttendanceTopBar(
-            onBackClicked = { /* Handle back action */ },
-            onFocusLocationClicked = { /* Handle focus location action */ }
+            onBackClicked = {},
+            onFocusLocationClicked = {}
         )
     }
 }

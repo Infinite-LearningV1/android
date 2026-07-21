@@ -17,9 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.infinite_track.presentation.components.button.InfiniteTracButtonBack
 import com.example.infinite_track.presentation.components.empty.ComingSoonAnimation
-import com.example.infinite_track.presentation.core.headline1
+import com.example.infinite_track.presentation.core.headline4
+import com.example.infinite_track.presentation.design.components.navigation.InfiniteTopBar
+import com.example.infinite_track.presentation.theme.Purple_500
 
 @Composable
 fun CompanyServiceComingSoonScreen(
@@ -29,10 +30,9 @@ fun CompanyServiceComingSoonScreen(
         modifier = Modifier.fillMaxSize(),
         containerColor = Color.Transparent,
         topBar = {
-            InfiniteTracButtonBack(
+            InfiniteTopBar(
                 title = "Company Services",
-                navigationBack = onBackClick,
-                modifier = Modifier.padding(top = 12.dp)
+                onNavigationClick = onBackClick
             )
         }
     ) { innerPadding ->
@@ -50,8 +50,9 @@ fun CompanyServiceComingSoonScreen(
                 ComingSoonAnimation(modifier = Modifier.size(350.dp))
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Coming Soon 👾",
-                    style = headline1,
+                    text = "Coming Soon",
+                    style = headline4,
+                    color = Purple_500,
                     textAlign = TextAlign.Center
                 )
             }

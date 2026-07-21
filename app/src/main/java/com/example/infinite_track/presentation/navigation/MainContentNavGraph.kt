@@ -57,7 +57,10 @@ fun NavGraphBuilder.mainContentNavGraph(
     // Contact Screen
     composable(Screen.Contact.route) {
         val contactsViewModel: ContactsViewModel = hiltViewModel()
-        ContactScreen(viewModel = contactsViewModel)
+        ContactScreen(
+            onBackClick = { navController.popBackStack() },
+            viewModel = contactsViewModel
+        )
     }
 
     // History Feature Flow with Shared ViewModel

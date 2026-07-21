@@ -6,17 +6,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import com.example.infinite_track.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.infinite_track.R
 import com.example.infinite_track.presentation.design.components.navigation.InfiniteTopBar
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.screen.profile.details.about.components.AboutAchievementCard
@@ -36,8 +34,7 @@ fun AboutScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
+        modifier = modifier.fillMaxSize()
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -45,8 +42,6 @@ fun AboutScreen(
             topBar = {
                 InfiniteTopBar(
                     title = stringResource(R.string.account_hub_about_title),
-                    navigationIcon = Icons.Default.KeyboardArrowLeft,
-                    navigationContentDescription = stringResource(R.string.cancel),
                     onNavigationClick = onBackClick
                 )
             }
@@ -59,8 +54,8 @@ fun AboutScreen(
                 uiState.content?.let { content ->
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 30.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         item { AboutHeroCard(hero = content.hero) }
                         item { AboutOverviewCard(overview = content.overview) }

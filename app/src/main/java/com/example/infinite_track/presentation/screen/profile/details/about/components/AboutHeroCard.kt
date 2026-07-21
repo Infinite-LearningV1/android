@@ -25,7 +25,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.domain.model.about.AboutHero
-import com.example.infinite_track.presentation.core.headline2
+import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.core.body2
 import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
@@ -77,19 +78,17 @@ fun AboutHeroCard(
                 ) {
                     Text(
                         text = hero.appName,
-                        style = headline2,
-                        color = InfiniteColors.AccountHubTitle,
-                        fontWeight = FontWeight.Bold
+                        style = headline4,
+                        color = InfiniteColors.AccountHubTitle
                     )
                     Text(
                         text = hero.tagline,
-                        style = headline4,
-                        color = InfiniteColors.AboutPurple,
-                        fontWeight = FontWeight.Bold
+                        style = body1,
+                        color = InfiniteColors.AboutPurple
                     )
                     Text(
                         text = hero.description,
-                        style = headline4,
+                        style = body2,
                         color = InfiniteColors.AccountHubBodyText
                     )
                     InfiniteStatusPill(
