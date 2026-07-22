@@ -20,6 +20,7 @@ import com.example.infinite_track.presentation.design.tokens.InfiniteFeedbackTyp
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
 import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
+import com.example.infinite_track.presentation.design.tokens.infiniteFeedbackPalette
 import com.example.infinite_track.presentation.theme.toAttendanceBadgeColor
 
 enum class InfiniteStatusVariant {
@@ -62,11 +63,11 @@ fun InfiniteStatusPill(
 ) {
     val sharedColor = colorOverride ?: variant.toAttendanceBadgeColor()
     val semantic = variant.toSemantic()
-    val semanticColors = infiniteSemanticColors(semantic)
+    val semanticColors = infiniteFeedbackPalette(semantic)
     val containerColor = if (useSharedRequestPalette || colorOverride != null) {
         sharedColor.copy(alpha = 0.13f)
     } else {
-        semanticColors.container
+        semanticColors.surfaceEnd
     }
     val contentColor = if (useSharedRequestPalette || colorOverride != null) {
         sharedColor

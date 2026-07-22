@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -26,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -57,7 +59,7 @@ private fun InfiniteInlineAlertContent(title: String, message: String, semantic:
         modifier = modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = "$title. $message" }
     ) {
         Row(Modifier.padding(InfiniteSpacing.Default.lg), horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.sm), verticalAlignment = Alignment.Top) {
-            Icon(Icons.Default.Error, null, tint = palette.accent, modifier = Modifier.size(22.dp))
+            Icon(semanticIcon(semantic), null, tint = palette.accent, modifier = Modifier.size(22.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, color = palette.content, style = InfiniteFeedbackTypography.snackbarTitle)
                 Text(message, color = palette.supportingContent, style = InfiniteFeedbackTypography.supportingBody)
@@ -86,7 +88,7 @@ internal fun InfiniteStatusDialogContent(title: String, message: String, semanti
     val palette = infiniteFeedbackPalette(semantic)
     Dialog(onDismissRequest = onDismiss) { InfiniteFeedbackGlassSurface(semantic, modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            if (imageRes != null) Image(painterResource(imageRes), null, Modifier.size(112.dp)) else Icon(Icons.Default.Error, null, tint = palette.accent, modifier = Modifier.size(64.dp))
+            if (imageRes != null) Image(painterResource(imageRes), null, Modifier.size(112.dp)) else Icon(semanticIcon(semantic), null, tint = palette.accent, modifier = Modifier.size(64.dp))
             Spacer(Modifier.height(18.dp)); Text(title, style = InfiniteFeedbackTypography.dialogTitle, color = palette.content, textAlign = TextAlign.Center)
             Spacer(Modifier.height(10.dp)); Text(message, style = InfiniteFeedbackTypography.dialogBody, color = palette.supportingContent, textAlign = TextAlign.Center)
             Spacer(Modifier.height(24.dp)); Button(onConfirm, Modifier.fillMaxWidth().sizeIn(minHeight = 48.dp)) { Text(confirmText) }
@@ -105,7 +107,7 @@ internal fun InfiniteConfirmDialogContent(title: String, message: String, semant
     val palette = infiniteFeedbackPalette(semantic)
     Dialog(onDismissRequest = onDismiss) { InfiniteFeedbackGlassSurface(semantic, modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.Error, null, tint = palette.accent, modifier = Modifier.size(58.dp)); Spacer(Modifier.height(18.dp))
+            Icon(semanticIcon(semantic), null, tint = palette.accent, modifier = Modifier.size(58.dp)); Spacer(Modifier.height(18.dp))
             Text(title, style = InfiniteFeedbackTypography.dialogTitle, color = palette.content, textAlign = TextAlign.Center); Spacer(Modifier.height(10.dp))
             Text(message, style = InfiniteFeedbackTypography.dialogBody, color = palette.supportingContent, textAlign = TextAlign.Center); Spacer(Modifier.height(24.dp))
             BoxWithConstraints {
@@ -121,6 +123,13 @@ internal fun InfiniteConfirmDialogContent(title: String, message: String, semant
 @Composable
 private fun DialogButtons(cancelText: String, confirmText: String, onDismiss: () -> Unit, onConfirm: () -> Unit, destructive: Boolean, weighted: Boolean) {
     val modifier = if (weighted) Modifier.sizeIn(minHeight = 48.dp) else Modifier.fillMaxWidth().sizeIn(minHeight = 48.dp)
-    OutlinedButton(onDismiss, modifier) { Text(cancelText) }
-    Button(onConfirm, modifier, colors = ButtonDefaults.buttonColors(containerColor = if (destructive) InfiniteSemantic.Error.let { infiniteFeedbackPalette(it).accent } else White, contentColor = if (destructive) White else infiniteFeedbackPalette(InfiniteSemantic.Primary).content)) { Text(confirmText) }
+    OutlinedButton(onDismiss, modifier) { Text(cancelText, style = InfiniteFeedbackTypography.actionLabel) }
+    Button(onConfirm, modifier, colors = ButtonDefaults.buttonColors(containerColor = if (destructive) InfiniteSemantic.Error.let { infiniteFeedbackPalette(it).accent } else infiniteFeedbackPalette(InfiniteSemantic.Primary).accent, contentColor = White)) { Text(confirmText, style = InfiniteFeedbackTypography.actionLabel) }
+}
+
+private fun semanticIcon(semantic: InfiniteSemantic) = when (semantic) {
+    InfiniteSemantic.Success -> Icons.Default.CheckCircle
+    InfiniteSemantic.Warning -> Icons.Default.Warning
+    InfiniteSemantic.Error -> Icons.Default.Error
+    InfiniteSemantic.Info, InfiniteSemantic.Primary, InfiniteSemantic.Secondary, InfiniteSemantic.Neutral -> Icons.Default.Info
 }

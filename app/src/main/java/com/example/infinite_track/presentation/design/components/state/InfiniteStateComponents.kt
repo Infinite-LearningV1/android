@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,22 +21,28 @@ import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 fun InfiniteEmptyState(
     title: String,
     message: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null
 ) {
     StateColumn(modifier = modifier) {
         Text(text = title, style = InfiniteFeedbackTypography.snackbarTitle, textAlign = TextAlign.Center)
         Text(text = message, style = InfiniteFeedbackTypography.supportingBody, textAlign = TextAlign.Center)
+        StateAction(actionLabel, onAction)
     }
 }
 
 @Composable
 fun InfiniteLoadingState(
     modifier: Modifier = Modifier,
-    message: String = "Loading..."
+    message: String = "Loading...",
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null
 ) {
     StateColumn(modifier = modifier) {
         LoadingAnimation()
         Text(text = message, style = InfiniteFeedbackTypography.supportingBody, textAlign = TextAlign.Center)
+        StateAction(actionLabel, onAction)
     }
 }
 
@@ -67,5 +74,12 @@ private fun StateColumn(
     ) {
         content()
     }
+    }
+}
+
+@Composable
+private fun StateAction(label: String?, onAction: (() -> Unit)?) {
+    if (label != null && onAction != null) androidx.compose.material3.TextButton(onAction, Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)) {
+        Text(label, style = InfiniteFeedbackTypography.actionLabel)
     }
 }
