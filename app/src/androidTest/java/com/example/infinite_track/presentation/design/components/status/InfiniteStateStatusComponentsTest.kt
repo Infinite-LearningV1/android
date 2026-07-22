@@ -7,7 +7,13 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.infinite_track.presentation.design.components.state.InfiniteEmptyState
@@ -54,6 +60,7 @@ class InfiniteStateStatusComponentsTest {
         }
         composeRule.onNodeWithText("Empty").assertIsDisplayed()
         composeRule.onNodeWithText("Loading").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Embedded state").assertIsDisplayed()
         composeRule.onNodeWithText("Retry").performClick()
         assertTrue(recovered)
     }
@@ -78,7 +85,7 @@ class InfiniteStateStatusComponentsTest {
         composeRule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 Infinite_TrackTheme {
-                    InfiniteConfirmDialog(
+                    Box(Modifier.width(320.dp).testTag("dialogHost")) { InfiniteConfirmDialog(
                         title = "Confirm a long action",
                         message = "The actions must reflow instead of being clipped.",
                         semantic = InfiniteSemantic.Warning,
@@ -87,11 +94,15 @@ class InfiniteStateStatusComponentsTest {
                         cancelText = "Not now",
                         onDismiss = {},
                         onConfirm = {}
-                    )
+                    ) }
                 }
             }
         }
         composeRule.onNodeWithText("Not now").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         composeRule.onNodeWithText("Continue").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        val cancel = composeRule.onNodeWithText("Not now").getUnclippedBoundsInRoot()
+        val confirm = composeRule.onNodeWithText("Continue").getUnclippedBoundsInRoot()
+        val host = composeRule.onNodeWithTag("dialogHost").getUnclippedBoundsInRoot()
+        assertTrue(cancel.bottom <= confirm.top && cancel.left >= host.left && confirm.right <= host.right)
     }
 }

@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.example.infinite_track.presentation.design.tokens.InfiniteFeedbackTypography
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
@@ -95,7 +97,7 @@ fun InfiniteStatusPill(
         InfiniteSize.Large -> 8.dp
     }
     Surface(
-        modifier = modifier,
+        modifier = modifier.semantics { contentDescription = label },
         shape = RoundedCornerShape(999.dp),
         color = containerColor,
         contentColor = contentColor,
