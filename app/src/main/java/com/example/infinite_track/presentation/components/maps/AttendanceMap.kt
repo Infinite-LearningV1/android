@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -82,7 +83,12 @@ fun AttendanceMap(
 
     when {
         !hasPreciseLocationPermission -> {
-            Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = modifier
+                    .fillMaxSize()
+                    .testTag("attendanceMapFallback"),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
                     text = "Lokasi presisi belum siap",
                     style = MaterialTheme.typography.bodyMedium,
@@ -129,7 +135,10 @@ fun AttendanceMap(
                         // Berikan kontrol penuh kamera ke ViewModel melalui callback
                         onMapReady.invoke(this)
                     }
-                }, modifier = modifier.fillMaxSize()
+                },
+                modifier = modifier
+                    .fillMaxSize()
+                    .testTag("attendanceMapContent")
             )
         }
     }

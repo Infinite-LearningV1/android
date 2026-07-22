@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -263,15 +266,6 @@ fun AttendanceScreen(
         }
     }
 
-    // Start location updates when UI is ready and data is loaded successfully
-    LaunchedEffect(uiState.uiState, hasPreciseLocationPermission) {
-        if (uiState.uiState is UiState.Success && hasPreciseLocationPermission) {
-            // Only start location updates after data is loaded and UI is ready
-            viewModel.startLocationUpdates()
-            android.util.Log.d("AttendanceScreen", "Location updates started after UI ready")
-        }
-    }
-
     // Penanganan state utama berdasarkan UiState dengan smart cast fix
     when (val currentUiState = uiState.uiState) {
         is UiState.Idle -> {
@@ -414,7 +408,13 @@ fun AttendanceScreen(
                     }
                 }
             ) { _ -> // Renamed paddingValues to _ to indicate it's intentionally unused
-                Box(modifier = Modifier.fillMaxSize()) {
+                AttendanceLocationPermissionGate(
+                    hasPreciseLocationPermission = hasPreciseLocationPermission,
+                    isAttendanceContentReady = true,
+                    onStartLocationUpdates = viewModel::startLocationUpdates,
+                    onNavigatePermissionReadiness = navigatePermissionReadiness,
+                    modifier = Modifier.fillMaxSize()
+                ) {
                     // Fullscreen Map dengan data dari ViewModel - Updated with WFO, WFH, and WFA locations
                     AttendanceMap(
                         hasPreciseLocationPermission = hasPreciseLocationPermission,
@@ -453,16 +453,6 @@ fun AttendanceScreen(
                         onBackClicked = { navController.navigateUp() },
                         onFocusLocationClicked = { viewModel.onFocusLocationClicked() }
                     )
-
-                    if (!hasPreciseLocationPermission) {
-                        AttendancePermissionRevocationRecovery(
-                            onNavigatePermissionReadiness = navigatePermissionReadiness,
-                            modifier = Modifier
-                                .align(Alignment.TopCenter)
-                                .statusBarsPadding()
-                                .padding(top = 80.dp, start = 16.dp, end = 16.dp)
-                        )
-                    }
 
                     // Pick on Map Crosshair - shows static pin in center when Pick on Map mode is active
                     AnimatedVisibility(
@@ -614,6 +604,38 @@ internal fun AttendancePermissionRevocationRecovery(
         onAction = onNavigatePermissionReadiness,
         modifier = modifier
     )
+}
+
+@Composable
+internal fun AttendanceLocationPermissionGate(
+    hasPreciseLocationPermission: Boolean,
+    isAttendanceContentReady: Boolean,
+    onStartLocationUpdates: () -> Unit,
+    onNavigatePermissionReadiness: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit
+) {
+    val currentOnStartLocationUpdates by rememberUpdatedState(onStartLocationUpdates)
+
+    LaunchedEffect(isAttendanceContentReady, hasPreciseLocationPermission) {
+        if (isAttendanceContentReady && hasPreciseLocationPermission) {
+            currentOnStartLocationUpdates()
+        }
+    }
+
+    Box(modifier = modifier) {
+        content()
+        if (!hasPreciseLocationPermission) {
+            AttendancePermissionRevocationRecovery(
+                onNavigatePermissionReadiness = onNavigatePermissionReadiness,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 80.dp, start = 16.dp, end = 16.dp)
+                    .testTag("attendancePermissionRevocationRecovery")
+            )
+        }
+    }
 }
 
 private fun Context.hasPreciseLocationPermission(): Boolean =

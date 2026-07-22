@@ -2,6 +2,7 @@ package com.example.infinite_track.presentation.screen.attendance
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.example.infinite_track.presentation.components.maps.AttendanceMap
@@ -23,21 +24,31 @@ class AttendancePermissionRevocationTest {
             }
         }
 
-        composeRule.onNodeWithText("Lokasi presisi belum siap").assertIsDisplayed()
-        composeRule.onNodeWithText("Mapbox", substring = true).assertDoesNotExist()
+        composeRule.onNodeWithTag("attendanceMapFallback").assertIsDisplayed()
+        composeRule.onNodeWithTag("attendanceMapContent").assertDoesNotExist()
     }
 
     @Test
-    fun persistentRecoveryActionReturnsToPermissionReadiness() {
+    fun productionPermissionGateDoesNotStartUpdatesAndReturnsToReadiness() {
         var navigations = 0
+        var locationUpdateStarts = 0
         composeRule.setContent {
             Infinite_TrackTheme {
-                AttendancePermissionRevocationRecovery(
+                AttendanceLocationPermissionGate(
+                    hasPreciseLocationPermission = false,
+                    isAttendanceContentReady = true,
+                    onStartLocationUpdates = { locationUpdateStarts++ },
                     onNavigatePermissionReadiness = { navigations++ }
-                )
+                ) {
+                    AttendanceMap(hasPreciseLocationPermission = false)
+                }
             }
         }
 
+        composeRule.onNodeWithTag("attendancePermissionRevocationRecovery").assertIsDisplayed()
+        composeRule.onNodeWithTag("attendanceMapContent").assertDoesNotExist()
+        composeRule.onNodeWithText("Berikan Izin").assertDoesNotExist()
+        composeRule.runOnIdle { assertEquals(0, locationUpdateStarts) }
         composeRule.onNodeWithText("Kembali ke kesiapan").performClick()
         composeRule.runOnIdle { assertEquals(1, navigations) }
     }
