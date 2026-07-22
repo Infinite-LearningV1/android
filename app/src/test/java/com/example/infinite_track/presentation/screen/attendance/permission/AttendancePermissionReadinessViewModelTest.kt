@@ -73,7 +73,9 @@ class AttendancePermissionReadinessViewModelTest {
         val viewModel = viewModel(repository)
         advanceUntilIdle()
         val effects = Channel<AttendancePermissionReadinessEffect>(Channel.UNLIMITED)
-        backgroundScope.launch { viewModel.effects.collect { effects.send(it) } }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.effects.collect { effects.send(it) }
+        }
         viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionItemClicked(AttendanceAccess.NOTIFICATION))
         advanceUntilIdle()
         assertEquals(AttendancePermissionReadinessEffect.RequestNotification, effects.receive())
@@ -92,7 +94,9 @@ class AttendancePermissionReadinessViewModelTest {
         val viewModel = viewModel(FakeRepository(allRequiredReady()))
         advanceUntilIdle()
         val effects = Channel<AttendancePermissionReadinessEffect>(Channel.UNLIMITED)
-        backgroundScope.launch { viewModel.effects.collect { effects.send(it) } }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.effects.collect { effects.send(it) }
+        }
         viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked)
         advanceUntilIdle(); assertEquals(AttendancePermissionReadinessEffect.NavigateToWorkMode, effects.receive())
         viewModel.onEvent(AttendancePermissionReadinessEvent.NavigationHandled)
@@ -101,24 +105,42 @@ class AttendancePermissionReadinessViewModelTest {
     }
 
     @Test
-    fun `blocking callback resets pending navigation after fresh OS readiness`() = runTest {
+    fun `blocked OS readiness resets pending navigation before a fresh ready snapshot`() = runTest {
         val repository = FakeRepository(allRequiredReady())
         val viewModel = viewModel(repository); advanceUntilIdle()
         val effects = Channel<AttendancePermissionReadinessEffect>(Channel.UNLIMITED)
-        backgroundScope.launch { viewModel.effects.collect { effects.send(it) } }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.effects.collect { effects.send(it) }
+        }
         viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked); advanceUntilIdle()
-        assertEquals(AttendancePermissionReadinessEffect.NavigateToWorkMode, effects.receive())
-        viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionResultReceived(AttendanceAccess.CAMERA, AttendancePermissionRequestOutcome.DENIED))
-        repository.readiness.value = allRequiredReady(); advanceUntilIdle()
+        assertEquals(
+            AttendancePermissionReadinessEffect.NavigateToWorkMode,
+            effects.tryReceive().getOrNull()
+        )
+        repository.readiness.value = partialReadiness()
+        advanceUntilIdle()
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionResultReceived(
+            AttendanceAccess.CAMERA,
+            AttendancePermissionRequestOutcome.DENIED
+        ))
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.canContinue)
+        repository.readiness.value = allRequiredReady()
+        advanceUntilIdle()
         viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked); advanceUntilIdle()
-        assertEquals(AttendancePermissionReadinessEffect.NavigateToWorkMode, effects.receive())
+        assertEquals(
+            AttendancePermissionReadinessEffect.NavigateToWorkMode,
+            effects.tryReceive().getOrNull()
+        )
     }
 
     @Test
     fun `settings guard clears on return and launch failure`() = runTest {
         val viewModel = viewModel(FakeRepository(partialReadiness())); advanceUntilIdle()
         val effects = Channel<AttendancePermissionReadinessEffect>(Channel.UNLIMITED)
-        backgroundScope.launch { viewModel.effects.collect { effects.send(it) } }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.effects.collect { effects.send(it) }
+        }
         viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionResultReceived(AttendanceAccess.CAMERA, AttendancePermissionRequestOutcome.PERMANENTLY_DENIED))
         viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked); advanceUntilIdle()
         assertEquals(AttendancePermissionReadinessEffect.OpenApplicationSettings(AttendanceAccess.CAMERA), effects.receive())
@@ -135,7 +157,9 @@ class AttendancePermissionReadinessViewModelTest {
     fun `stale feedback events do not clear active feedback`() = runTest {
         val viewModel = viewModel(FakeRepository(partialReadiness())); advanceUntilIdle()
         val effects = Channel<AttendancePermissionReadinessEffect>(Channel.UNLIMITED)
-        backgroundScope.launch { viewModel.effects.collect { effects.send(it) } }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.effects.collect { effects.send(it) }
+        }
         viewModel.onEvent(AttendancePermissionReadinessEvent.SettingsLaunchFailed(AttendanceSettingsDestination.APPLICATION)); advanceUntilIdle()
         val feedback = (effects.receive() as AttendancePermissionReadinessEffect.ShowSnackbar).feedback
         viewModel.onEvent(AttendancePermissionReadinessEvent.SnackbarActionClicked(feedback.id, AttendancePermissionFeedbackAction.RETRY_REFRESH))
@@ -180,7 +204,9 @@ class AttendancePermissionReadinessViewModelTest {
         val viewModel = viewModel(FakeRepository(allRequiredReady()))
         advanceUntilIdle()
         val effects = Channel<AttendancePermissionReadinessEffect>(Channel.UNLIMITED)
-        backgroundScope.launch { viewModel.effects.collect { effects.send(it) } }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.effects.collect { effects.send(it) }
+        }
 
         viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked)
         advanceUntilIdle()
@@ -197,7 +223,9 @@ class AttendancePermissionReadinessViewModelTest {
         val viewModel = viewModel(repository)
         advanceUntilIdle()
         val effects = Channel<AttendancePermissionReadinessEffect>(Channel.UNLIMITED)
-        backgroundScope.launch { viewModel.effects.collect { effects.send(it) } }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.effects.collect { effects.send(it) }
+        }
         repository.readiness.value = allRequiredReady(issues = listOf(optionalIssue()))
         advanceUntilIdle()
 
@@ -278,7 +306,9 @@ class AttendancePermissionReadinessViewModelTest {
     fun `optional inspection issue CTA navigates exactly once`() = runTest {
         val viewModel = viewModel(FakeRepository(allRequiredReady(issues = listOf(optionalIssue())))); advanceUntilIdle()
         val effects = Channel<AttendancePermissionReadinessEffect>(Channel.UNLIMITED)
-        backgroundScope.launch { viewModel.effects.collect { effects.send(it) } }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.effects.collect { effects.send(it) }
+        }
         viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked); advanceUntilIdle()
         assertEquals(AttendancePermissionReadinessEffect.NavigateToWorkMode, effects.receive())
         viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked); advanceUntilIdle()
