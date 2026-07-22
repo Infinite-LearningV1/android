@@ -163,7 +163,11 @@ class AttendancePermissionReadinessViewModelTest {
         val repository = FakeRepository(allRequiredReady())
         val viewModel = viewModel(repository)
         advanceUntilIdle()
-        repository.readiness.value = allRequiredReady(issues = listOf(requiredIssue()))
+        repository.readiness.value = readiness(
+            camera = AttendanceAccessStatus.ACTION_REQUIRED,
+            device = AttendanceAccessStatus.ACTION_REQUIRED,
+            issues = listOf(requiredIssue())
+        )
         advanceUntilIdle()
 
         viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked)
@@ -171,26 +175,67 @@ class AttendancePermissionReadinessViewModelTest {
 
         assertEquals(2, repository.refreshCount)
         assertEquals(3, viewModel.uiState.value.requiredReadyCount)
+        assertEquals("Siap", viewModel.uiState.value.requiredItems[1].statusLabel)
+        assertFalse(viewModel.uiState.value.canContinue)
+        assertEquals("Coba lagi", viewModel.uiState.value.primaryActionLabel)
         assertTrue(viewModel.uiState.value.recoverableFailure != null)
     }
 
     @Test
     fun `callback settings return and retry trigger refresh while duplicate resume is suppressed`() = runTest {
-        val repository = FakeRepository(partialReadiness())
+        val repository = ControlledRepository(partialReadiness())
         val viewModel = viewModel(repository)
         advanceUntilIdle()
+        assertEquals(1, repository.refreshCount)
+        assertTrue(viewModel.uiState.value.isRefreshing)
 
         viewModel.onEvent(AttendancePermissionReadinessEvent.ScreenResumed)
         viewModel.onEvent(AttendancePermissionReadinessEvent.ScreenResumed)
         advanceUntilIdle()
+        assertEquals(1, repository.refreshCount)
+        repository.release(); advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isRefreshing)
+
         viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionResultReceived(
             AttendanceAccess.CAMERA, AttendancePermissionRequestOutcome.DENIED
         ))
+        advanceUntilIdle(); assertEquals(2, repository.refreshCount)
+        assertTrue(viewModel.uiState.value.isRefreshing)
+        repository.release(); advanceUntilIdle(); assertFalse(viewModel.uiState.value.isRefreshing)
         viewModel.onEvent(AttendancePermissionReadinessEvent.ReturnedFromSettings)
+        advanceUntilIdle(); assertEquals(3, repository.refreshCount)
+        repository.release(); advanceUntilIdle(); assertFalse(viewModel.uiState.value.isRefreshing)
         viewModel.onEvent(AttendancePermissionReadinessEvent.RetryRefresh)
         advanceUntilIdle()
+        assertEquals(4, repository.refreshCount)
+        repository.release(); advanceUntilIdle(); assertFalse(viewModel.uiState.value.isRefreshing)
+    }
 
-        assertTrue(repository.refreshCount >= 3)
+    @Test
+    fun `request evidence is non authoritative and clears when OS snapshot is ready or optional`() = runTest {
+        val repository = FakeRepository(partialReadiness())
+        val viewModel = viewModel(repository); advanceUntilIdle()
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionResultReceived(AttendanceAccess.CAMERA, AttendancePermissionRequestOutcome.GRANTED))
+        advanceUntilIdle(); assertFalse(viewModel.uiState.value.cameraGranted)
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionResultReceived(AttendanceAccess.CAMERA, AttendancePermissionRequestOutcome.DENIED))
+        advanceUntilIdle(); assertEquals("Izin ditolak", viewModel.uiState.value.requiredItems[1].statusLabel)
+        repository.readiness.value = allRequiredReady(); advanceUntilIdle(); assertTrue(viewModel.uiState.value.cameraGranted)
+        repository.readiness.value = allRequiredReady(notification = AttendanceAccessStatus.DEGRADED); advanceUntilIdle()
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionResultReceived(AttendanceAccess.NOTIFICATION, AttendancePermissionRequestOutcome.DENIED))
+        repository.readiness.value = allRequiredReady(notification = AttendanceAccessStatus.NOT_REQUIRED_ON_DEVICE); advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.canContinue)
+        assertEquals("Tidak diperlukan di perangkat ini", viewModel.uiState.value.optionalItems[0].statusLabel)
+    }
+
+    @Test
+    fun `optional inspection issue CTA navigates exactly once`() = runTest {
+        val viewModel = viewModel(FakeRepository(allRequiredReady(issues = listOf(optionalIssue())))); advanceUntilIdle()
+        val effects = Channel<AttendancePermissionReadinessEffect>(Channel.UNLIMITED)
+        backgroundScope.launch { viewModel.effects.collect { effects.send(it) } }
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked); advanceUntilIdle()
+        assertEquals(AttendancePermissionReadinessEffect.NavigateToWorkMode, effects.receive())
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked); advanceUntilIdle()
+        assertFalse(effects.tryReceive().isSuccess)
     }
 
     @Test
@@ -210,7 +255,7 @@ class AttendancePermissionReadinessViewModelTest {
         assertTrue(second.await() is AttendancePermissionReadinessEffect.ShowSnackbar)
     }
 
-    private fun viewModel(repository: FakeRepository) = AttendancePermissionReadinessViewModel(
+    private fun viewModel(repository: AttendancePermissionRepository) = AttendancePermissionReadinessViewModel(
         ObserveAttendancePermissionReadinessUseCase(repository),
         RefreshAttendancePermissionReadinessUseCase(repository),
         ResolveNextAttendancePermissionActionUseCase(),
@@ -222,6 +267,15 @@ class AttendancePermissionReadinessViewModelTest {
         var refreshCount = 0
         override fun observeReadiness() = readiness
         override suspend fun refreshReadiness() { refreshCount++ }
+    }
+
+    private class ControlledRepository(initial: AttendancePermissionReadiness) : AttendancePermissionRepository {
+        val readiness = MutableStateFlow(initial)
+        private val releases = Channel<Unit>(Channel.UNLIMITED)
+        var refreshCount = 0
+        override fun observeReadiness() = readiness
+        override suspend fun refreshReadiness() { refreshCount++; releases.receive() }
+        suspend fun release() { releases.send(Unit) }
     }
 
     private fun partialReadiness() = readiness(camera = AttendanceAccessStatus.ACTION_REQUIRED)
