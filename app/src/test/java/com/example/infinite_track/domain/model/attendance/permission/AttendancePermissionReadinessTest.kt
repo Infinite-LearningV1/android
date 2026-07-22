@@ -141,6 +141,18 @@ class AttendancePermissionReadinessTest {
     }
 
     @Test
+    fun grantedRequestEvidence_doesNotPromoteANonReadyRequiredEntry() {
+        val result = readiness(
+            camera = AttendanceAccessStatus.ACTION_REQUIRED
+        ).applyingRequestOutcomes(
+            mapOf(AttendanceAccess.CAMERA to AttendancePermissionRequestOutcome.GRANTED)
+        )
+
+        assertEquals(AttendanceAccessStatus.ACTION_REQUIRED, result.statusOf(AttendanceAccess.CAMERA))
+        assertFalse(result.canEnterAttendance)
+    }
+
+    @Test
     fun unavailable_failsClosedForRequiredAndDegradesOptionalEntries() {
         val result = AttendancePermissionReadiness.unavailable(
             AttendancePermissionFailure.DEVICE_LOCATION_STATUS_UNAVAILABLE
