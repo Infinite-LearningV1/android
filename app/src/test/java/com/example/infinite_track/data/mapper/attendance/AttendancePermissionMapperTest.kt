@@ -53,6 +53,14 @@ class AttendancePermissionMapperTest {
         assertEquals(AttendanceAccessRecovery.REQUEST_PERMISSION, entry.recovery)
     }
 
+    @Test fun noLocationGrantBlocksPreciseLocationWithoutApproximateReason() {
+        val entry = snapshot(fineLocationGranted = false, coarseLocationGranted = false)
+            .toAttendancePermissionReadiness().entryOf(AttendanceAccess.PRECISE_LOCATION)!!
+        assertEquals(AttendanceAccessStatus.ACTION_REQUIRED, entry.status)
+        assertEquals(AttendanceAccessReason.NONE, entry.reason)
+        assertEquals(AttendanceAccessRecovery.REQUEST_PERMISSION, entry.recovery)
+    }
+
     @Test fun missingCameraBlocksWithPermissionRecovery() {
         val entry = snapshot(cameraGranted = false).toAttendancePermissionReadiness().entryOf(AttendanceAccess.CAMERA)!!
         assertEquals(AttendanceAccessStatus.ACTION_REQUIRED, entry.status)
@@ -71,6 +79,25 @@ class AttendancePermissionMapperTest {
         assertEquals(AttendanceAccessStatus.ACTION_REQUIRED, readiness.statusOf(AttendanceAccess.DEVICE_LOCATION))
         assertEquals(AttendancePermissionFailure.DEVICE_LOCATION_STATUS_UNAVAILABLE, readiness.inspectionIssues.single().failure)
         assertEquals(setOf(AttendanceAccess.DEVICE_LOCATION), readiness.inspectionIssues.single().affectedAccesses)
+    }
+
+    @Test fun unavailableDeviceLocationNormalizesExistingDeviceLocationIssueToOneCanonicalIssue() {
+        val readiness = snapshot(
+            deviceLocationStatus = DeviceLocationPlatformStatus.UNAVAILABLE,
+            inspectionIssues = listOf(issue(AttendanceAccess.DEVICE_LOCATION))
+        ).toAttendancePermissionReadiness()
+        assertEquals(1, readiness.inspectionIssues.size)
+        assertEquals(AttendancePermissionFailure.DEVICE_LOCATION_STATUS_UNAVAILABLE, readiness.inspectionIssues.single().failure)
+        assertEquals(setOf(AttendanceAccess.DEVICE_LOCATION), readiness.inspectionIssues.single().affectedAccesses)
+    }
+
+    @Test fun requiredInspectionFailureClearsNativeRecovery() {
+        val entry = snapshot(
+            cameraGranted = false,
+            inspectionIssues = listOf(issue(AttendanceAccess.CAMERA))
+        ).toAttendancePermissionReadiness().entryOf(AttendanceAccess.CAMERA)!!
+        assertEquals(AttendanceAccessStatus.ACTION_REQUIRED, entry.status)
+        assertEquals(AttendanceAccessRecovery.NONE, entry.recovery)
     }
 
     @Test fun optionalInspectionFailureDegradesOnlyAffectedOptionalAccess() {

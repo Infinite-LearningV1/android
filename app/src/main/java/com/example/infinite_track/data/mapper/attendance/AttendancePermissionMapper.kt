@@ -47,5 +47,12 @@ private fun optionalReadiness(access: AttendanceAccess, supported: Boolean, gran
     recovery = if (supported && !granted) recovery else AttendanceAccessRecovery.NONE
 )
 
-private fun AttendancePermissionPlatformSnapshot.snapshotIssues(deviceLocationIssue: AttendancePermissionInspectionIssue?) =
-    inspectionIssues + listOfNotNull(deviceLocationIssue)
+private fun AttendancePermissionPlatformSnapshot.snapshotIssues(
+    deviceLocationIssue: AttendancePermissionInspectionIssue?
+): List<AttendancePermissionInspectionIssue> {
+    if (deviceLocationIssue == null) return inspectionIssues
+    return inspectionIssues.mapNotNull { issue ->
+        val unaffectedAccesses = issue.affectedAccesses - AttendanceAccess.DEVICE_LOCATION
+        issue.takeIf { unaffectedAccesses.isNotEmpty() }?.copy(affectedAccesses = unaffectedAccesses)
+    } + deviceLocationIssue
+}
