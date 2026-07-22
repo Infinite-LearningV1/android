@@ -40,9 +40,10 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
     private var lastTrustworthyReadiness: AttendancePermissionReadiness? = null
     private val requestOutcomes = mutableMapOf<AttendanceAccess, AttendancePermissionRequestOutcome>()
     private var refreshJob: Job? = null
+    private var isRefreshing = false
     private var inFlightAction: AttendancePermissionReadinessEffect? = null
     private var navigationPending = false
-    private var activeFeedbackId: String? = null
+    private var activeFeedback: AttendancePermissionFeedback? = null
 
     init {
         viewModelScope.launch {
@@ -68,6 +69,7 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
                 } else {
                     requestOutcomes.remove(event.access)
                 }
+                if (effectiveReadiness()?.canEnterAttendance != true) navigationPending = false
                 render()
                 refresh()
             }
@@ -76,11 +78,11 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
                 showSettingsLaunchFailure(event.destination)
             }
             is AttendancePermissionReadinessEvent.SnackbarFinished -> {
-                if (activeFeedbackId == event.feedbackId) activeFeedbackId = null
+                if (activeFeedback?.id == event.feedbackId) activeFeedback = null
             }
             is AttendancePermissionReadinessEvent.SnackbarActionClicked -> {
-                if (activeFeedbackId == event.feedbackId) {
-                    activeFeedbackId = null
+                if (activeFeedback?.id == event.feedbackId && activeFeedback?.action == event.action) {
+                    activeFeedback = null
                     when (event.action) {
                         AttendancePermissionFeedbackAction.RETRY_REFRESH -> refresh()
                         AttendancePermissionFeedbackAction.OPEN_APPLICATION_SETTINGS -> Unit
@@ -105,8 +107,7 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
             lastTrustworthyReadiness = readiness
         }
         val effective = effectiveReadiness() ?: return
-        val next = resolveNextAction.forPrimary(effective)
-        if (inFlightAction != null && !isActionApplicable(inFlightAction!!, next)) clearNativeAction()
+        if (inFlightAction != null && !isActionApplicable(inFlightAction!!, effective)) clearNativeAction()
         if (!effective.canEnterAttendance) navigationPending = false
         render()
     }
@@ -153,12 +154,14 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
 
     private fun refresh() {
         if (refreshJob?.isActive == true) return
-        render(isRefreshing = true)
+        isRefreshing = true
         refreshJob = viewModelScope.launch {
+            render()
             try {
                 refreshReadiness()
             } finally {
-                render(isRefreshing = false)
+                isRefreshing = false
+                render()
             }
         }
     }
@@ -166,7 +169,7 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
     private fun effectiveReadiness(): AttendancePermissionReadiness? =
         latestReadiness?.applyingRequestOutcomes(requestOutcomes)
 
-    private fun render(isRefreshing: Boolean = refreshJob?.isActive == true) {
+    private fun render(isRefreshing: Boolean = this.isRefreshing) {
         val current = effectiveReadiness() ?: return
         val next = resolveNextAction.forPrimary(current)
         val hasRequiredInspectionFailure = current.inspectionIssues.any { it.blocksManualAttendance }
@@ -188,22 +191,22 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
 
     private fun isActionApplicable(
         effect: AttendancePermissionReadinessEffect,
-        next: AttendancePermissionNextAction
+        readiness: AttendancePermissionReadiness
     ): Boolean = when (effect) {
         AttendancePermissionReadinessEffect.RequestPreciseLocation ->
-            next == AttendancePermissionNextAction.RequestPermission(AttendanceAccess.PRECISE_LOCATION)
+            resolveNextAction.forAccess(readiness, AttendanceAccess.PRECISE_LOCATION) == AttendancePermissionNextAction.RequestPermission(AttendanceAccess.PRECISE_LOCATION)
         AttendancePermissionReadinessEffect.RequestCamera ->
-            next == AttendancePermissionNextAction.RequestPermission(AttendanceAccess.CAMERA)
+            resolveNextAction.forAccess(readiness, AttendanceAccess.CAMERA) == AttendancePermissionNextAction.RequestPermission(AttendanceAccess.CAMERA)
         AttendancePermissionReadinessEffect.RequestNotification ->
-            next == AttendancePermissionNextAction.RequestPermission(AttendanceAccess.NOTIFICATION)
+            resolveNextAction.forAccess(readiness, AttendanceAccess.NOTIFICATION) == AttendancePermissionNextAction.RequestPermission(AttendanceAccess.NOTIFICATION)
         AttendancePermissionReadinessEffect.RequestBackgroundLocation ->
-            next == AttendancePermissionNextAction.RequestPermission(AttendanceAccess.BACKGROUND_LOCATION)
+            resolveNextAction.forAccess(readiness, AttendanceAccess.BACKGROUND_LOCATION) == AttendancePermissionNextAction.RequestPermission(AttendanceAccess.BACKGROUND_LOCATION)
         is AttendancePermissionReadinessEffect.OpenApplicationSettings ->
-            next == AttendancePermissionNextAction.OpenApplicationSettings(effect.access)
+            resolveNextAction.forAccess(readiness, effect.access) == AttendancePermissionNextAction.OpenApplicationSettings(effect.access)
         AttendancePermissionReadinessEffect.OpenDeviceLocationSettings ->
-            next == AttendancePermissionNextAction.OpenDeviceLocationSettings
+            resolveNextAction.forAccess(readiness, AttendanceAccess.DEVICE_LOCATION) == AttendancePermissionNextAction.OpenDeviceLocationSettings
         AttendancePermissionReadinessEffect.NavigateToWorkMode ->
-            next == AttendancePermissionNextAction.ContinueToWorkMode
+            resolveNextAction.forPrimary(readiness) == AttendancePermissionNextAction.ContinueToWorkMode
         is AttendancePermissionReadinessEffect.ShowSnackbar -> true
     }
 
@@ -218,17 +221,14 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
 
     private fun showSettingsLaunchFailure(destination: AttendanceSettingsDestination) {
         val id = "settings-launch-failed-${destination.name.lowercase()}"
-        if (activeFeedbackId == id) return
-        activeFeedbackId = id
-        emit(
-            AttendancePermissionReadinessEffect.ShowSnackbar(
-                AttendancePermissionFeedback(
+        if (activeFeedback?.id == id) return
+        val feedback = AttendancePermissionFeedback(
                     id = id,
                     message = "Pengaturan tidak dapat dibuka. Silakan coba lagi.",
                     semantic = InfiniteSemantic.Error,
                     duration = AttendanceFeedbackDuration.LONG
                 )
-            )
-        )
+        activeFeedback = feedback
+        emit(AttendancePermissionReadinessEffect.ShowSnackbar(feedback))
     }
 }
