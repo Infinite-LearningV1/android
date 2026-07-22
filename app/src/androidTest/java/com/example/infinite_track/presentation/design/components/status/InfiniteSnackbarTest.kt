@@ -5,10 +5,14 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
@@ -43,7 +47,14 @@ class InfiniteSnackbarTest {
     fun materialVisualsUseSafeInfoFallbackWithMergedReadableSemantics() {
         setSnackbarContent(FakeSnackbarData(DefaultVisuals(message = "Fallback message")))
 
-        composeRule.onNodeWithText("Fallback message").assertIsDisplayed()
+        composeRule.onNodeWithText("Fallback message", useUnmergedTree = false)
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.LiveRegion,
+                    LiveRegionMode.Polite
+                )
+            )
+            .assertIsDisplayed()
     }
 
     @Test
@@ -58,6 +69,7 @@ class InfiniteSnackbarTest {
         setSnackbarContent(data)
 
         composeRule.onNodeWithText("Retry")
+            .assertWidthIsAtLeast(48.dp)
             .assertHeightIsAtLeast(48.dp)
             .performClick()
 
@@ -75,9 +87,34 @@ class InfiniteSnackbarTest {
         )
         setSnackbarContent(data)
 
-        composeRule.onNodeWithContentDescription("Dismiss")
+        composeRule.onNodeWithContentDescription("Tutup notifikasi")
+            .assertWidthIsAtLeast(48.dp)
             .assertHeightIsAtLeast(48.dp)
             .performClick()
+
+        assertTrue(data.dismissed)
+    }
+
+    @Test
+    fun fallbackVisualsStillPerformTheirAction() {
+        val data = FakeSnackbarData(
+            DefaultVisuals(message = "Fallback action", actionLabel = "Coba lagi")
+        )
+        setSnackbarContent(data)
+
+        composeRule.onNodeWithText("Coba lagi").performClick()
+
+        assertTrue(data.actionPerformed)
+    }
+
+    @Test
+    fun fallbackVisualsStillExposeDismissAction() {
+        val data = FakeSnackbarData(
+            DefaultVisuals(message = "Fallback dismiss", withDismissAction = true)
+        )
+        setSnackbarContent(data)
+
+        composeRule.onNodeWithContentDescription("Tutup notifikasi").performClick()
 
         assertTrue(data.dismissed)
     }

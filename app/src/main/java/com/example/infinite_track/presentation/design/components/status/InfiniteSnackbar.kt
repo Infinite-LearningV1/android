@@ -74,7 +74,7 @@ fun InfiniteSnackbar(
         semantic = semantic,
         modifier = modifier
             .fillMaxWidth()
-            .semantics { liveRegion = LiveRegionMode.Polite }
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
     ) {
         Row(
             modifier = Modifier.padding(InfiniteSpacing.Default.lg),
@@ -89,28 +89,28 @@ fun InfiniteSnackbar(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                visuals?.actionLabel?.let { actionLabel ->
+                data.visuals.actionLabel?.let { actionLabel ->
                     TextButton(
                         onClick = data::performAction,
                         modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                     ) {
                         Text(
                             text = actionLabel,
-                            color = palette.accent,
+                            color = palette.content,
                             style = InfiniteFeedbackTypography.actionLabel
                         )
                     }
                 }
             }
-            if (visuals?.withDismissAction == true) {
+            if (data.visuals.withDismissAction) {
                 IconButton(
                     onClick = data::dismiss,
                     modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Dismiss",
-                        tint = palette.accent
+                        contentDescription = "Tutup notifikasi",
+                        tint = palette.content
                     )
                 }
             }
