@@ -24,7 +24,7 @@ This refinement keeps the approved permission semantics. It changes presentation
 3. Hide optional permissions behind an explicit disclosure and keep them non-blocking.
 4. Skip the readiness UI and remove its destination when required access is ready.
 5. Provide a continuously scroll-linked, center-focus History timeline.
-6. Reuse existing colors, typography, shapes, spacing, motion, and `InfiniteStatusPill` behavior.
+6. Reuse existing colors, typography, shapes, spacing, and `InfiniteStatusPill` behavior while applying Material 3 motion specifications.
 7. Keep the implementation accessible, responsive, testable, and free of nested vertical scrolling.
 
 ## Non-goals
@@ -55,6 +55,7 @@ The permission timeline is state-driven. The History timeline is viewport-driven
 - Colors come from `InfiniteColors`, existing semantic palettes, and alpha adjustments. No new hardcoded brand colors are introduced in composables.
 - Text uses existing typography tokens such as `headline4`, `body1`, and `body2`. Call sites must not override `fontSize`, `lineHeight`, or `fontFamily`.
 - Shapes, spacing, and elevation reuse existing design tokens where available.
+- Motion uses Material 3 duration and emphasized easing values from the resolved Material 3 library. The project may expose those otherwise-internal values through a narrow design-token adapter; it must not invent a separate custom motion language or require a dependency upgrade.
 - Active elevation is subtle. The visual state must remain understandable without shadow.
 - Every interactive target is at least 48 dp.
 - Both public components accept `modifier: Modifier = Modifier`, data/state parameters, and callbacks. Neither component reads a ViewModel.
@@ -92,7 +93,7 @@ Behavior:
 
 - only the current actionable pill is elevated;
 - an inactive future pill remains visible but subdued;
-- a ready or not-required item replaces its number with a check using `AnimatedContent` or an equivalent theme-motion-aware content transition;
+- a ready or not-required item replaces its number with a check using `AnimatedContent` with Material 3 state-change motion;
 - connector segments run from one node center to the next and therefore follow each pill's measured height;
 - the accent segment represents completed required access, not scroll position;
 - permanent denial changes the current action to application Settings;
@@ -105,7 +106,7 @@ The three-item list remains a normal `Column`; it must not introduce another scr
 
 The collapsed row is labeled “Pengingat opsional” and summarizes notification and background-location support. It is collapsed by default on each new readiness destination.
 
-Expanding it reveals the existing optional item copy and actions. Expansion uses `AnimatedVisibility` and `animateContentSize` with theme motion. Optional readiness, denial, and inspection issues never disable manual Attendance entry.
+Expanding it reveals the existing optional item copy and actions. Expansion uses `AnimatedVisibility` and `animateContentSize` with asymmetric Material 3 enter and exit motion. Optional readiness, denial, and inspection issues never disable manual Attendance entry.
 
 ## Permission completion and navigation
 
