@@ -1,19 +1,29 @@
 package com.example.infinite_track.presentation.design.components.status
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.SnackbarData
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarVisuals
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
@@ -117,6 +127,82 @@ class InfiniteSnackbarTest {
 
         composeRule.onNodeWithContentDescription("Tutup notifikasi").performClick()
 
+        assertTrue(data.dismissed)
+    }
+
+    @Test
+    fun glassSurfaceDecorationDoesNotExpandContentInsideTallBoundedParent() {
+        composeRule.setContent {
+            Infinite_TrackTheme {
+                Box(Modifier.size(width = 320.dp, height = 600.dp)) {
+                    InfiniteFeedbackGlassSurface(
+                        semantic = InfiniteSemantic.Info,
+                        modifier = Modifier.testTag("contentSizedGlass")
+                    ) {
+                        Box(Modifier.size(width = 200.dp, height = 72.dp))
+                    }
+                }
+            }
+        }
+
+        val surfaceBounds = composeRule.onNodeWithTag("contentSizedGlass")
+            .assertIsDisplayed()
+            .getUnclippedBoundsInRoot()
+
+        assertEquals(72.dp, surfaceBounds.bottom - surfaceBounds.top)
+    }
+
+    @Test
+    fun longMessageAtFontScaleTwoGrowsWithoutClippingAndKeepsTargetsUsable() {
+        val message = "Location access is still unavailable. Open settings, allow precise location, " +
+            "then return to Infinite Track and try attendance again so your work location can be verified."
+        val data = FakeSnackbarData(
+            InfiniteSnackbarVisuals(
+                message = message,
+                semantic = InfiniteSemantic.Warning,
+                actionLabel = "Settings",
+                withDismissAction = true
+            )
+        )
+        composeRule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(density = 1f, fontScale = 2f)) {
+                Infinite_TrackTheme {
+                    Box(
+                        Modifier
+                            .size(width = 320.dp, height = 600.dp)
+                            .testTag("snackbarHost")
+                    ) {
+                        InfiniteSnackbar(
+                            data = data,
+                            modifier = Modifier.testTag("snackbarRoot")
+                        )
+                    }
+                }
+            }
+        }
+
+        val messageNode = composeRule.onNodeWithText(message, useUnmergedTree = true)
+            .assertTextEquals(message)
+            .assertIsDisplayed()
+        val messageBounds = messageNode.getUnclippedBoundsInRoot()
+        val rootBounds = composeRule.onNodeWithTag("snackbarRoot").getUnclippedBoundsInRoot()
+        val hostBounds = composeRule.onNodeWithTag("snackbarHost").getUnclippedBoundsInRoot()
+
+        assertTrue(messageBounds.bottom - messageBounds.top > 80.dp)
+        assertTrue(messageBounds.top >= rootBounds.top && messageBounds.bottom <= rootBounds.bottom)
+        assertTrue(rootBounds.left >= hostBounds.left && rootBounds.right <= hostBounds.right)
+        assertTrue(rootBounds.top >= hostBounds.top && rootBounds.bottom <= hostBounds.bottom)
+
+        composeRule.onNodeWithText("Settings")
+            .assertWidthIsAtLeast(48.dp)
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+        composeRule.onNodeWithContentDescription("Tutup notifikasi")
+            .assertWidthIsAtLeast(48.dp)
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+
+        assertTrue(data.actionPerformed)
         assertTrue(data.dismissed)
     }
 

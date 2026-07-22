@@ -19,7 +19,7 @@ class GeofencePermissionContractTest {
     }
 
     @Test
-    fun `missing precise foreground blocks geofence and manual attendance`() {
+    fun `missing precise foreground blocks automatic geofence registration`() {
         val result = GeofencePermissionContract.evaluate(
             hasPreciseForegroundLocation = false,
             hasBackgroundLocation = true

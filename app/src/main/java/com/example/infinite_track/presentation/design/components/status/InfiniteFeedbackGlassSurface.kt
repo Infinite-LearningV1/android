@@ -42,23 +42,27 @@ fun InfiniteFeedbackGlassSurface(
             .background(Brush.verticalGradient(listOf(palette.surfaceStart, palette.surfaceEnd)))
             .border(1.dp, palette.border, shape)
     ) {
-        if (showAccentRail) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .fillMaxHeight()
-                    .width(InfiniteSpacing.Default.xs)
-                    .background(palette.accent)
-            )
-        }
-        if (showTopHighlight) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(palette.topHighlight)
-            )
+        if (showAccentRail || showTopHighlight) {
+            Box(modifier = Modifier.matchParentSize()) {
+                if (showAccentRail) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .fillMaxHeight()
+                            .width(InfiniteSpacing.Default.xs)
+                            .background(palette.accent)
+                    )
+                }
+                if (showTopHighlight) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(palette.topHighlight)
+                    )
+                }
+            }
         }
         content()
     }

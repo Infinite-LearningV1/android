@@ -116,6 +116,7 @@ fun FaceScannerScreen(
     var shouldShowCameraRationale by remember(activity) {
         mutableStateOf(activity.shouldShowCameraRationale())
     }
+    var cameraSettingsFeedback by rememberSaveable { mutableStateOf<String?>(null) }
 
     val cameraRecoveryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -127,6 +128,7 @@ fun FaceScannerScreen(
     val applicationSettingsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
+        cameraSettingsFeedback = null
         isCameraGranted = context.hasCameraPermission()
         shouldShowCameraRationale = activity.shouldShowCameraRationale()
     }
@@ -248,13 +250,16 @@ fun FaceScannerScreen(
             CameraPermissionRecoveryUi.APPLICATION_SETTINGS -> {
                 CameraPermissionSettings(
                     onOpenSettings = {
-                        applicationSettingsLauncher.launch(
-                            Intent(
-                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                Uri.fromParts("package", context.packageName, null)
+                        cameraSettingsFeedback = launchCameraSettingsSafely {
+                            applicationSettingsLauncher.launch(
+                                Intent(
+                                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    Uri.fromParts("package", context.packageName, null)
+                                )
                             )
-                        )
+                        }.feedback
                     },
+                    feedback = cameraSettingsFeedback,
                     onCloseClick = {
                         publishExitStateOnce(uiState.livenessState)
                     }
@@ -787,6 +792,7 @@ private fun CameraPermissionDenied(
 @Composable
 private fun CameraPermissionSettings(
     onOpenSettings: () -> Unit,
+    feedback: String?,
     onCloseClick: () -> Unit
 ) {
     Box(
@@ -827,6 +833,14 @@ private fun CameraPermissionSettings(
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
+                feedback?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),

@@ -29,7 +29,6 @@ import com.mapbox.maps.plugin.locationcomponent.location
 @SuppressLint("MissingPermission")
 @Composable
 fun AttendanceMap(
-    hasPreciseLocationPermission: Boolean,
     modifier: Modifier = Modifier,
     wfoLocation: Location? = null,        // Work From Office location
     wfhLocation: Location? = null,        // Work From Home location
@@ -40,7 +39,8 @@ fun AttendanceMap(
     onMarkerClick: (Location) -> Unit = {},
     onWfaMarkerClick: (WfaRecommendation) -> Unit = {}, // New callback for WFA markers
     onMapReady: (MapView) -> Unit = {},    // Added callback for when map is ready
-    onCameraIdle: (Point) -> Unit = {}     // New callback for Pick on Map functionality
+    onCameraIdle: (Point) -> Unit = {},    // New callback for Pick on Map functionality
+    hasPreciseLocationPermission: Boolean = false
 ) {
     var mapView: MapView? by remember { mutableStateOf(null) }
 
