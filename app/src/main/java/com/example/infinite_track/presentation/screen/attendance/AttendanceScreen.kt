@@ -18,6 +18,8 @@ import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
@@ -40,7 +42,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
@@ -53,8 +54,8 @@ import com.example.infinite_track.presentation.components.dialog.LocationPermiss
 import com.example.infinite_track.utils.LocalLocationPermissionHelper
 import com.example.infinite_track.utils.LocationPermissionHelper
 import com.example.infinite_track.presentation.components.maps.MarkerViewWfa
-import com.example.infinite_track.presentation.components.status.InfiniteTrackStatusDialog
-import com.example.infinite_track.presentation.components.status.StatusStates
+import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarHost
+import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarVisuals
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
@@ -102,6 +103,27 @@ fun AttendanceScreen(
     val scaffoldState = rememberBottomSheetScaffoldState(
         bottomSheetState = bottomSheetState
     )
+
+    LaunchedEffect(viewModel) {
+        viewModel.transientFeedback.collect { feedback ->
+            val result = scaffoldState.snackbarHostState.showSnackbar(
+                InfiniteSnackbarVisuals(
+                    message = feedback.message,
+                    semantic = feedback.semantic,
+                    actionLabel = feedback.actionLabel,
+                    duration = feedback.duration.toMaterialDuration()
+                )
+            )
+            if (
+                result == SnackbarResult.ActionPerformed &&
+                feedback.action == AttendanceTransientFeedbackAction.NAVIGATE_HOME
+            ) {
+                navController.navigate(Screen.Home.route) {
+                    popUpTo(Screen.Home.route) { inclusive = false }
+                }
+            }
+        }
+    }
 
     // =======================================================
     // NEW: State-driven LaunchedEffect for Navigation
@@ -269,6 +291,9 @@ fun AttendanceScreen(
             // Tampilkan konten utama dengan BottomSheet
             BottomSheetScaffold(
                 scaffoldState = scaffoldState,
+                snackbarHost = {
+                    InfiniteSnackbarHost(hostState = scaffoldState.snackbarHostState)
+                },
                 containerColor = Color.Black.copy(alpha = 0.1f),
                 contentColor = Color.Transparent,
                 sheetContainerColor = Color.Transparent,
@@ -462,51 +487,6 @@ fun AttendanceScreen(
         }
     }
 
-    uiState.activeDialog?.let { dialog ->
-        when (dialog) {
-            is DialogState.Success -> {
-                InfiniteTrackStatusDialog(
-                    status = StatusStates.Success,
-                    title = "Absensi Berhasil",
-                    message = dialog.message,
-                    showDialog = true,
-                    imageRes = R.drawable.icon_success,
-                    onDismiss = { viewModel.onDialogDismissed() },
-                    onConfirm = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.Home.route) {
-                                inclusive = false
-                            }
-                        }
-                        viewModel.onDialogDismissed()
-                    }
-                )
-            }
-
-            is DialogState.Error -> {
-                InfiniteTrackStatusDialog(
-                    status = StatusStates.Error,
-                    title = "Absensi Gagal",
-                    message = dialog.message,
-                    showDialog = true,
-                    onDismiss = { viewModel.onDialogDismissed() },
-                    onConfirm = { viewModel.onDialogDismissed() }
-                )
-            }
-
-            is DialogState.LocationError -> {
-                InfiniteTrackStatusDialog(
-                    status = StatusStates.Error,
-                    title = "Error Lokasi",
-                    message = dialog.message,
-                    showDialog = true,
-                    onDismiss = { viewModel.onDialogDismissed() },
-                    onConfirm = { viewModel.onDialogDismissed() }
-                )
-            }
-        }
-    }
-
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val fallbackFaceVerificationResult = remember { mutableStateOf<String?>(null) }
     val faceVerificationResult by currentBackStackEntry
@@ -554,6 +534,11 @@ fun AttendanceScreen(
             }
         )
     }
+}
+
+private fun AttendanceTransientFeedbackDuration.toMaterialDuration(): SnackbarDuration = when (this) {
+    AttendanceTransientFeedbackDuration.SHORT -> SnackbarDuration.Short
+    AttendanceTransientFeedbackDuration.LONG -> SnackbarDuration.Long
 }
 
 @Preview(showBackground = true)
