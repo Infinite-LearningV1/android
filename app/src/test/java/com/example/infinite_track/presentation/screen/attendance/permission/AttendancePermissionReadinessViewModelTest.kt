@@ -14,7 +14,10 @@ import com.example.infinite_track.domain.use_case.attendance.permission.RefreshA
 import com.example.infinite_track.domain.use_case.attendance.permission.ResolveNextAttendancePermissionActionUseCase
 import com.example.infinite_track.testing.MainDispatcherRule
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -65,6 +68,39 @@ class AttendancePermissionReadinessViewModelTest {
     }
 
     @Test
+    fun `optional request guard survives unchanged observation and clears on callback`() = runTest {
+        val repository = FakeRepository(allRequiredReady(notification = AttendanceAccessStatus.DEGRADED))
+        val viewModel = viewModel(repository)
+        advanceUntilIdle()
+        val effects = Channel<AttendancePermissionReadinessEffect>(Channel.UNLIMITED)
+        backgroundScope.launch { viewModel.effects.collect { effects.send(it) } }
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionItemClicked(AttendanceAccess.NOTIFICATION))
+        advanceUntilIdle()
+        assertEquals(AttendancePermissionReadinessEffect.RequestNotification, effects.receive())
+        repository.readiness.value = allRequiredReady(notification = AttendanceAccessStatus.DEGRADED)
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionItemClicked(AttendanceAccess.NOTIFICATION))
+        advanceUntilIdle()
+        assertFalse(effects.tryReceive().isSuccess)
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionResultReceived(AttendanceAccess.NOTIFICATION, AttendancePermissionRequestOutcome.DENIED))
+        advanceUntilIdle()
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionItemClicked(AttendanceAccess.NOTIFICATION))
+        assertEquals(AttendancePermissionReadinessEffect.RequestNotification, effects.receive())
+    }
+
+    @Test
+    fun `navigation handled permits a later CTA navigation`() = runTest {
+        val viewModel = viewModel(FakeRepository(allRequiredReady()))
+        advanceUntilIdle()
+        val effects = Channel<AttendancePermissionReadinessEffect>(Channel.UNLIMITED)
+        backgroundScope.launch { viewModel.effects.collect { effects.send(it) } }
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked)
+        advanceUntilIdle(); assertEquals(AttendancePermissionReadinessEffect.NavigateToWorkMode, effects.receive())
+        viewModel.onEvent(AttendancePermissionReadinessEvent.NavigationHandled)
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked)
+        advanceUntilIdle(); assertEquals(AttendancePermissionReadinessEffect.NavigateToWorkMode, effects.receive())
+    }
+
+    @Test
     fun `permanent denial overlay opens application settings`() = runTest {
         val viewModel = viewModel(FakeRepository(partialReadiness()))
         advanceUntilIdle()
@@ -96,13 +132,16 @@ class AttendancePermissionReadinessViewModelTest {
     fun `all required ready navigates only after one CTA and suppresses duplicate CTA`() = runTest {
         val viewModel = viewModel(FakeRepository(allRequiredReady()))
         advanceUntilIdle()
-        val effect = async(UnconfinedTestDispatcher(testScheduler)) { viewModel.effects.first() }
+        val effects = Channel<AttendancePermissionReadinessEffect>(Channel.UNLIMITED)
+        backgroundScope.launch { viewModel.effects.collect { effects.send(it) } }
 
         viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked)
-        assertEquals(AttendancePermissionReadinessEffect.NavigateToWorkMode, effect.await())
+        advanceUntilIdle()
+        assertEquals(AttendancePermissionReadinessEffect.NavigateToWorkMode, effects.receive())
         viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked)
+        advanceUntilIdle()
 
-        assertTrue(viewModel.effects.replayCache.isEmpty())
+        assertFalse(effects.tryReceive().isSuccess)
     }
 
     @Test
@@ -110,11 +149,13 @@ class AttendancePermissionReadinessViewModelTest {
         val repository = FakeRepository(allRequiredReady())
         val viewModel = viewModel(repository)
         advanceUntilIdle()
+        val effects = Channel<AttendancePermissionReadinessEffect>(Channel.UNLIMITED)
+        backgroundScope.launch { viewModel.effects.collect { effects.send(it) } }
         repository.readiness.value = allRequiredReady(issues = listOf(optionalIssue()))
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.canContinue)
-        assertTrue(viewModel.effects.replayCache.isEmpty())
+        assertFalse(effects.tryReceive().isSuccess)
     }
 
     @Test
