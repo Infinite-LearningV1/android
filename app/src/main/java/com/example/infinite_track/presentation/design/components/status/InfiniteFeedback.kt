@@ -127,9 +127,11 @@ private fun DialogButtons(cancelText: String, confirmText: String, onDismiss: ()
     Button(onConfirm, modifier, colors = ButtonDefaults.buttonColors(containerColor = if (destructive) InfiniteSemantic.Error.let { infiniteFeedbackPalette(it).accent } else infiniteFeedbackPalette(InfiniteSemantic.Primary).accent, contentColor = White)) { Text(confirmText, style = InfiniteFeedbackTypography.actionLabel) }
 }
 
-private fun semanticIcon(semantic: InfiniteSemantic) = when (semantic) {
+internal fun semanticIcon(semantic: InfiniteSemantic) = when (semantic) {
     InfiniteSemantic.Success -> Icons.Default.CheckCircle
     InfiniteSemantic.Warning -> Icons.Default.Warning
     InfiniteSemantic.Error -> Icons.Default.Error
     InfiniteSemantic.Info, InfiniteSemantic.Primary, InfiniteSemantic.Secondary, InfiniteSemantic.Neutral -> Icons.Default.Info
 }
+
+internal fun statusDialogUsesIllustration(@DrawableRes imageRes: Int?): Boolean = imageRes != null

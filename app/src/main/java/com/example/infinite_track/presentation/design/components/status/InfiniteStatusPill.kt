@@ -47,6 +47,13 @@ enum class InfiniteStatusVariant {
     Neutral
 }
 
+internal data class InfiniteStatusPillPalette(val container: Color, val content: Color, val border: Color, val accent: Color)
+internal fun resolveInfiniteStatusPillPalette(semantic: InfiniteSemantic, shared: Boolean, override: Color?, variant: InfiniteStatusVariant): InfiniteStatusPillPalette {
+    val palette = infiniteFeedbackPalette(semantic); val sharedColor = override ?: variant.toAttendanceBadgeColor()
+    return if (shared || override != null) InfiniteStatusPillPalette(sharedColor.copy(alpha = .13f), sharedColor, sharedColor.copy(alpha = .35f), sharedColor)
+    else InfiniteStatusPillPalette(palette.surfaceEnd, palette.content, palette.border, palette.accent)
+}
+
 @Composable
 fun InfiniteStatusPill(
     label: String,
@@ -62,29 +69,8 @@ fun InfiniteStatusPill(
     useSharedRequestPalette: Boolean = false,
     colorOverride: Color? = null
 ) {
-    val sharedColor = colorOverride ?: variant.toAttendanceBadgeColor()
     val semantic = variant.toSemantic()
-    val semanticColors = infiniteFeedbackPalette(semantic)
-    val containerColor = if (useSharedRequestPalette || colorOverride != null) {
-        sharedColor.copy(alpha = 0.13f)
-    } else {
-        semanticColors.surfaceEnd
-    }
-    val contentColor = if (useSharedRequestPalette || colorOverride != null) {
-        sharedColor
-    } else {
-        semanticColors.content
-    }
-    val borderColor = if (useSharedRequestPalette || colorOverride != null) {
-        sharedColor.copy(alpha = 0.35f)
-    } else {
-        semanticColors.border
-    }
-    val iconTint = if (useSharedRequestPalette || colorOverride != null) {
-        sharedColor
-    } else {
-        semanticColors.accent
-    }
+    val colors = resolveInfiniteStatusPillPalette(semantic, useSharedRequestPalette, colorOverride, variant)
     val horizontal = when (size) {
         InfiniteSize.Small -> 6.dp
         InfiniteSize.Medium -> 10.dp
@@ -98,9 +84,9 @@ fun InfiniteStatusPill(
     Surface(
         modifier = modifier.semantics { contentDescription = label },
         shape = RoundedCornerShape(999.dp),
-        color = containerColor,
-        contentColor = contentColor,
-        border = BorderStroke(if (selected) 1.5.dp else 1.dp, borderColor)
+        color = colors.container,
+        contentColor = colors.content,
+        border = BorderStroke(if (selected) 1.5.dp else 1.dp, colors.border)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = horizontal, vertical = vertical),
@@ -111,7 +97,7 @@ fun InfiniteStatusPill(
                 Icon(
                     imageVector = it,
                     contentDescription = null,
-                    tint = iconTint,
+                    tint = colors.accent,
                     modifier = Modifier.size(if (size == InfiniteSize.Small) 11.dp else 14.dp)
                 )
             }

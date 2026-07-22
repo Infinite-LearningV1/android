@@ -24,6 +24,10 @@ import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
+import androidx.compose.ui.graphics.Color
+import com.example.infinite_track.presentation.design.tokens.infiniteFeedbackPalette
+import com.example.infinite_track.presentation.theme.toAttendanceBadgeColor
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -47,6 +51,25 @@ class InfiniteStateStatusComponentsTest {
         composeRule.onNodeWithText("Retry").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp).performClick()
         composeRule.onNodeWithContentDescription("Dismiss alert").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp).performClick()
         assertTrue(retried && dismissed)
+    }
+
+    @Test fun everySemanticHasDistinctAccessibleFeedbackAndIconContract() {
+        InfiniteSemantic.entries.forEach { semantic ->
+            composeRule.setContent { Infinite_TrackTheme { InfiniteInlineAlert(semantic.name, "Message", semantic) } }
+            composeRule.onNodeWithContentDescription("${semantic.name}. Message").assertIsDisplayed()
+            assertTrue(semanticIcon(semantic) != null)
+        }
+    }
+
+    @Test fun legacyIllustrationSelectorWinsAndPillResolverPreservesPaletteModes() {
+        assertTrue(statusDialogUsesIllustration(android.R.drawable.ic_dialog_info))
+        assertTrue(!statusDialogUsesIllustration(null))
+        val semantic = InfiniteSemantic.Success
+        val default = resolveInfiniteStatusPillPalette(semantic, false, null, InfiniteStatusVariant.Active)
+        assertEquals(infiniteFeedbackPalette(semantic).surfaceEnd, default.container)
+        val override = Color.Magenta
+        assertEquals(override, resolveInfiniteStatusPillPalette(semantic, false, override, InfiniteStatusVariant.Active).content)
+        assertEquals(InfiniteStatusVariant.Active.toAttendanceBadgeColor(), resolveInfiniteStatusPillPalette(semantic, true, null, InfiniteStatusVariant.Active).content)
     }
 
     @Test fun embeddedStatesRenderAndErrorRecoveryPerformsAction() {
