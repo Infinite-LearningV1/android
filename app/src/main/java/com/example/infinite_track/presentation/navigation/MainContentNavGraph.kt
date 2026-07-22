@@ -12,7 +12,7 @@ import androidx.navigation.navArgument
 import com.example.infinite_track.data.soucre.dummy.dummyTimeOff
 import com.example.infinite_track.presentation.screen.attendance.AttendanceScreen
 import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingScreen
-import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessScreen
+import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessRoute
 import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingViewModel
 import com.example.infinite_track.presentation.screen.attendance.face.FaceScannerScreen
 import com.example.infinite_track.presentation.screen.attendance.search.LocationSearchScreen
@@ -159,7 +159,7 @@ fun NavGraphBuilder.mainContentNavGraph(
 
     // Attendance permission readiness gate
     composable(Screen.AttendancePermissionReadiness.route) {
-        AttendancePermissionReadinessScreen(
+        AttendancePermissionReadinessRoute(
             onBackClick = { navController.popBackStack() },
             onContinueToWorkMode = { navController.safeNavigate(Screen.Attendance.route) }
         )

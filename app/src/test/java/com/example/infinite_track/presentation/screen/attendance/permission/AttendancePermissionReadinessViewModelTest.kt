@@ -294,10 +294,14 @@ class AttendancePermissionReadinessViewModelTest {
         val repository = FakeRepository(partialReadiness())
         val viewModel = viewModel(repository); advanceUntilIdle()
         viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionResultReceived(AttendanceAccess.CAMERA, AttendancePermissionRequestOutcome.GRANTED))
-        advanceUntilIdle(); assertFalse(viewModel.uiState.value.cameraGranted)
+        advanceUntilIdle(); assertFalse(
+            viewModel.uiState.value.requiredItems.first { it.access == AttendanceAccess.CAMERA }.isReady
+        )
         viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionResultReceived(AttendanceAccess.CAMERA, AttendancePermissionRequestOutcome.DENIED))
         advanceUntilIdle(); assertEquals("Izin ditolak", viewModel.uiState.value.requiredItems[1].statusLabel)
-        repository.readiness.value = allRequiredReady(); advanceUntilIdle(); assertTrue(viewModel.uiState.value.cameraGranted)
+        repository.readiness.value = allRequiredReady(); advanceUntilIdle(); assertTrue(
+            viewModel.uiState.value.requiredItems.first { it.access == AttendanceAccess.CAMERA }.isReady
+        )
         repository.readiness.value = allRequiredReady(notification = AttendanceAccessStatus.DEGRADED); advanceUntilIdle()
         viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionResultReceived(AttendanceAccess.NOTIFICATION, AttendancePermissionRequestOutcome.DENIED))
         repository.readiness.value = allRequiredReady(notification = AttendanceAccessStatus.NOT_REQUIRED_ON_DEVICE); advanceUntilIdle()

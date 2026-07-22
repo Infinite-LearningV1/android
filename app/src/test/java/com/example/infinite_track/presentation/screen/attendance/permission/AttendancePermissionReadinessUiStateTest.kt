@@ -15,37 +15,37 @@ class AttendancePermissionReadinessUiStateTest {
         assertFalse(state.isRefreshing)
         assertTrue(state.requiredItems.isEmpty())
         assertTrue(state.optionalItems.isEmpty())
+        assertEquals(3, state.requiredTotalCount)
         assertFalse(state.primaryActionEnabled)
     }
 
     @Test
-    fun `legacy projection keeps required progress independent from optional access`() {
-        val state = toAttendancePermissionReadinessUiState(
-            foregroundLocationGranted = true,
-            cameraGranted = false,
-            deviceLocationEnabled = true,
-            notificationGranted = true,
-            backgroundLocationGranted = true
+    fun `typed state keeps required progress independent from optional items`() {
+        val state = AttendancePermissionReadinessUiState(
+            isLoading = false,
+            requiredReadyCount = 2,
+            requiredTotalCount = 3,
+            optionalItems = emptyList(),
+            canContinue = false
         )
 
         assertEquals(2, state.requiredReadyCount)
         assertEquals(3, state.requiredTotalCount)
-        assertEquals("2/3 akses wajib siap", state.progressCopy)
-        assertFalse(state.canContinueToWorkMode)
-        assertEquals(AttendancePermissionAction.REQUEST_CAMERA, state.nextRequiredAction)
+        assertFalse(state.canContinue)
     }
 
     @Test
-    fun `legacy optional access does not block work mode`() {
-        val state = toAttendancePermissionReadinessUiState(
-            foregroundLocationGranted = true,
-            cameraGranted = true,
-            deviceLocationEnabled = true,
-            notificationGranted = false,
-            backgroundLocationGranted = false
+    fun `optional degradation does not override an approved continuation`() {
+        val state = AttendancePermissionReadinessUiState(
+            isLoading = false,
+            requiredReadyCount = 3,
+            requiredTotalCount = 3,
+            canContinue = true,
+            primaryActionLabel = "Lanjut ke Mode Kerja",
+            primaryActionEnabled = true
         )
 
-        assertTrue(state.canContinueToWorkMode)
-        assertEquals(AttendancePermissionAction.CONTINUE_TO_WORK_MODE, state.nextRequiredAction)
+        assertTrue(state.canContinue)
+        assertEquals("Lanjut ke Mode Kerja", state.primaryActionLabel)
     }
 }

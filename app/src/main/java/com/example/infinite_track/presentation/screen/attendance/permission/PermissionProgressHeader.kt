@@ -19,9 +19,15 @@ internal fun PermissionProgressHeader(
     uiState: AttendancePermissionReadinessUiState,
     modifier: Modifier = Modifier
 ) {
+    val progressCopy = "${uiState.requiredReadyCount}/${uiState.requiredTotalCount} akses wajib siap"
+    val progress = if (uiState.requiredTotalCount == 0) {
+        0f
+    } else {
+        uiState.requiredReadyCount / uiState.requiredTotalCount.toFloat()
+    }
     PermissionGlassCard(
         modifier = modifier.fillMaxWidth(),
-        shadowElevation = if (uiState.canContinueToWorkMode) 3.dp else 0.dp
+        shadowElevation = if (uiState.canContinue) 3.dp else 0.dp
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
@@ -30,21 +36,21 @@ internal fun PermissionProgressHeader(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = uiState.progressCopy,
+                    text = progressCopy,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = InfiniteColors.Text.copy(alpha = 0.86f)
                 )
                 Text(
-                    text = if (uiState.canContinueToWorkMode) "Siap" else "Perlu setup",
+                    text = if (uiState.canContinue) "Siap" else "Perlu setup",
                     style = MaterialTheme.typography.labelLarge,
                     color = InfiniteColors.Text.copy(alpha = 0.68f)
                 )
             }
             LinearProgressIndicator(
-                progress = { uiState.requiredReadyCount / uiState.requiredTotalCount.toFloat() },
+                progress = { progress },
                 modifier = Modifier.fillMaxWidth(),
-                color = if (uiState.canContinueToWorkMode) InfiniteColors.Success else InfiniteColors.Primary,
+                color = if (uiState.canContinue) InfiniteColors.Success else InfiniteColors.Primary,
                 trackColor = InfiniteColors.Primary.copy(alpha = 0.14f)
             )
         }
