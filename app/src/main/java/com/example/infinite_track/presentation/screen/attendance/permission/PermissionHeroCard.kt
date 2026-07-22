@@ -53,7 +53,7 @@ internal fun PermissionHeroCard(
             Text(
                 text = if (isLoading) "Memeriksa kesiapan akses" else "Siapkan akses absensi",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
                 color = InfiniteColors.Text.copy(alpha = 0.88f),
                 textAlign = TextAlign.Center
             )

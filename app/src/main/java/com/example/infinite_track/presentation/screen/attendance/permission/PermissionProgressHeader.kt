@@ -38,7 +38,7 @@ internal fun PermissionProgressHeader(
                 Text(
                     text = progressCopy,
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                     color = InfiniteColors.Text.copy(alpha = 0.86f)
                 )
                 Text(
