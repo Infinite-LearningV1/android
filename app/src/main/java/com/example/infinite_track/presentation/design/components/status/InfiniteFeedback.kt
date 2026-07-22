@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -107,7 +108,9 @@ internal fun InfiniteConfirmDialogContent(title: String, message: String, semant
             Icon(Icons.Default.Error, null, tint = palette.accent, modifier = Modifier.size(58.dp)); Spacer(Modifier.height(18.dp))
             Text(title, style = InfiniteFeedbackTypography.dialogTitle, color = palette.content, textAlign = TextAlign.Center); Spacer(Modifier.height(10.dp))
             Text(message, style = InfiniteFeedbackTypography.dialogBody, color = palette.supportingContent, textAlign = TextAlign.Center); Spacer(Modifier.height(24.dp))
-            BoxWithConstraints { val vertical = maxWidth < 360.dp
+            BoxWithConstraints {
+                val fontScale = LocalDensity.current.fontScale
+                val vertical = maxWidth < 360.dp || fontScale >= 1.5f
                 if (vertical) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { DialogButtons(cancelText, confirmText, onDismiss, onConfirm, isDestructive, false) }
                 else Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { DialogButtons(cancelText, confirmText, onDismiss, onConfirm, isDestructive, true) }
             }

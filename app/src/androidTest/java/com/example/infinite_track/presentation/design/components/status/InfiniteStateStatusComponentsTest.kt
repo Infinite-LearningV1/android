@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.infinite_track.presentation.design.components.state.InfiniteEmptyState
@@ -14,6 +15,8 @@ import com.example.infinite_track.presentation.design.components.state.InfiniteE
 import com.example.infinite_track.presentation.design.components.state.InfiniteLoadingState
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -34,6 +37,7 @@ class InfiniteStateStatusComponentsTest {
         }
         composeRule.mainClock.advanceTimeBy(15_000)
         composeRule.onNodeWithText("Try again").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Connection. Try again").assertIsDisplayed()
         composeRule.onNodeWithText("Retry").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp).performClick()
         composeRule.onNodeWithContentDescription("Dismiss alert").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp).performClick()
         assertTrue(retried && dismissed)
@@ -68,5 +72,26 @@ class InfiniteStateStatusComponentsTest {
         composeRule.onNodeWithText("OK").performClick()
         composeRule.onNodeWithText("Cancel").performClick()
         assertTrue(confirmed && cancelled)
+    }
+
+    @Test fun confirmDialogActionsRemainVisibleAt320DpAndFontScaleTwo() {
+        composeRule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
+                Infinite_TrackTheme {
+                    InfiniteConfirmDialog(
+                        title = "Confirm a long action",
+                        message = "The actions must reflow instead of being clipped.",
+                        semantic = InfiniteSemantic.Warning,
+                        showDialog = true,
+                        confirmText = "Continue",
+                        cancelText = "Not now",
+                        onDismiss = {},
+                        onConfirm = {}
+                    )
+                }
+            }
+        }
+        composeRule.onNodeWithText("Not now").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        composeRule.onNodeWithText("Continue").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
     }
 }

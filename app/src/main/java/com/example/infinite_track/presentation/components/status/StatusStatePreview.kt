@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
+import com.example.infinite_track.presentation.design.components.status.InfiniteInlineAlert
+import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 
 @Preview(showBackground = true)
 @Composable
@@ -39,6 +41,14 @@ private fun StatusStateInlineAlertPreview() {
                 message = "Here is an update for your current flow."
             )
         }
+    }
+}
+
+@Preview(name = "Persistent recovery 320dp", showBackground = true, widthDp = 320, fontScale = 2f)
+@Composable
+private fun StatusStatePersistentRecoveryPreview() {
+    Infinite_TrackTheme {
+        InfiniteInlineAlert("Connection lost", "This inline feedback stays until dismissed.", InfiniteSemantic.Error, "Retry", {}, onDismiss = {})
     }
 }
 
