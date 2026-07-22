@@ -51,18 +51,22 @@ class InfiniteStateStatusComponentsTest {
 
     @Test fun embeddedStatesRenderAndErrorRecoveryPerformsAction() {
         var recovered = false
+        var emptyAction = false
+        var loadingAction = false
         composeRule.setContent {
             Infinite_TrackTheme {
-                InfiniteEmptyState("Empty", "Nothing here")
-                InfiniteLoadingState(message = "Loading")
+                InfiniteEmptyState("Empty", "Nothing here", actionLabel = "Add", onAction = { emptyAction = true })
+                InfiniteLoadingState(message = "Loading", actionLabel = "Cancel", onAction = { loadingAction = true })
                 InfiniteErrorState("Failed", "Retry the request", actionLabel = "Retry", onAction = { recovered = true })
             }
         }
         composeRule.onNodeWithText("Empty").assertIsDisplayed()
         composeRule.onNodeWithText("Loading").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Embedded state").assertIsDisplayed()
+        composeRule.onNodeWithText("Add").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp).performClick()
+        composeRule.onNodeWithText("Cancel").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp).performClick()
         composeRule.onNodeWithText("Retry").performClick()
-        assertTrue(recovered)
+        assertTrue(recovered && emptyAction && loadingAction)
     }
 
     @Test fun compactPillAndDialogsExposeExplicitActions() {
@@ -85,15 +89,17 @@ class InfiniteStateStatusComponentsTest {
         composeRule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 Infinite_TrackTheme {
-                    Box(Modifier.width(320.dp).testTag("dialogHost")) { InfiniteConfirmDialog(
+                    Box(Modifier.width(320.dp).testTag("dialogHost")) { InfiniteConfirmDialogContent(
                         title = "Confirm a long action",
                         message = "The actions must reflow instead of being clipped.",
                         semantic = InfiniteSemantic.Warning,
                         showDialog = true,
+                        modifier = Modifier,
                         confirmText = "Continue",
                         cancelText = "Not now",
                         onDismiss = {},
-                        onConfirm = {}
+                        onConfirm = {},
+                        isDestructive = false
                     ) }
                 }
             }

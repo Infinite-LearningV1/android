@@ -91,7 +91,7 @@ internal fun InfiniteStatusDialogContent(title: String, message: String, semanti
             if (imageRes != null) Image(painterResource(imageRes), null, Modifier.size(112.dp)) else Icon(semanticIcon(semantic), null, tint = palette.accent, modifier = Modifier.size(64.dp))
             Spacer(Modifier.height(18.dp)); Text(title, style = InfiniteFeedbackTypography.dialogTitle, color = palette.content, textAlign = TextAlign.Center)
             Spacer(Modifier.height(10.dp)); Text(message, style = InfiniteFeedbackTypography.dialogBody, color = palette.supportingContent, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(24.dp)); Button(onConfirm, Modifier.fillMaxWidth().sizeIn(minHeight = 48.dp)) { Text(confirmText) }
+            Spacer(Modifier.height(24.dp)); Button(onConfirm, Modifier.fillMaxWidth().sizeIn(minHeight = 48.dp), colors = ButtonDefaults.buttonColors(containerColor = infiniteFeedbackPalette(InfiniteSemantic.Primary).accent, contentColor = White)) { Text(confirmText, style = InfiniteFeedbackTypography.actionLabel) }
         }
     }}
 }

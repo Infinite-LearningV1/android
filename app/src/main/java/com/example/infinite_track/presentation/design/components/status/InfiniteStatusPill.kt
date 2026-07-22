@@ -21,7 +21,6 @@ import androidx.compose.ui.semantics.semantics
 import com.example.infinite_track.presentation.design.tokens.InfiniteFeedbackTypography
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
-import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
 import com.example.infinite_track.presentation.design.tokens.infiniteFeedbackPalette
 import com.example.infinite_track.presentation.theme.toAttendanceBadgeColor
 
