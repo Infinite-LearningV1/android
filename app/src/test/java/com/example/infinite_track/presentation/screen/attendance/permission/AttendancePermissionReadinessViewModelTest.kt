@@ -68,7 +68,7 @@ class AttendancePermissionReadinessViewModelTest {
     }
 
     @Test
-    fun `optional request guard survives unchanged observation and clears on callback`() = runTest {
+    fun `optional request guard survives an unrelated observation change and clears on callback`() = runTest {
         val repository = FakeRepository(allRequiredReady(notification = AttendanceAccessStatus.DEGRADED))
         val viewModel = viewModel(repository)
         advanceUntilIdle()
@@ -79,7 +79,10 @@ class AttendancePermissionReadinessViewModelTest {
         viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionItemClicked(AttendanceAccess.NOTIFICATION))
         advanceUntilIdle()
         assertEquals(AttendancePermissionReadinessEffect.RequestNotification, effects.receive())
-        repository.readiness.value = allRequiredReady(notification = AttendanceAccessStatus.DEGRADED)
+        repository.readiness.value = allRequiredReady(
+            notification = AttendanceAccessStatus.DEGRADED,
+            background = AttendanceAccessStatus.DEGRADED
+        )
         viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionItemClicked(AttendanceAccess.NOTIFICATION))
         advanceUntilIdle()
         assertFalse(effects.tryReceive().isSuccess)
@@ -359,13 +362,20 @@ class AttendancePermissionReadinessViewModelTest {
     private fun allRequiredReady(
         device: AttendanceAccessStatus = AttendanceAccessStatus.READY,
         notification: AttendanceAccessStatus = AttendanceAccessStatus.READY,
+        background: AttendanceAccessStatus = AttendanceAccessStatus.READY,
         issues: List<AttendancePermissionInspectionIssue> = emptyList()
-    ) = readiness(device = device, notification = notification, issues = issues)
+    ) = readiness(
+        device = device,
+        notification = notification,
+        background = background,
+        issues = issues
+    )
 
     private fun readiness(
         camera: AttendanceAccessStatus = AttendanceAccessStatus.READY,
         device: AttendanceAccessStatus = AttendanceAccessStatus.READY,
         notification: AttendanceAccessStatus = AttendanceAccessStatus.READY,
+        background: AttendanceAccessStatus = AttendanceAccessStatus.READY,
         issues: List<AttendancePermissionInspectionIssue> = emptyList()
     ) = AttendancePermissionReadiness(
         entries = listOf(
@@ -373,7 +383,7 @@ class AttendancePermissionReadinessViewModelTest {
             entry(AttendanceAccess.CAMERA, camera),
             entry(AttendanceAccess.DEVICE_LOCATION, device),
             entry(AttendanceAccess.NOTIFICATION, notification),
-            entry(AttendanceAccess.BACKGROUND_LOCATION, AttendanceAccessStatus.READY)
+            entry(AttendanceAccess.BACKGROUND_LOCATION, background)
         ),
         inspectionIssues = issues
     )
