@@ -16,12 +16,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.infinite_track.presentation.core.body1
-import com.example.infinite_track.presentation.core.body2
-import com.example.infinite_track.presentation.core.body3
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.example.infinite_track.presentation.design.tokens.InfiniteFeedbackTypography
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
-import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
+import com.example.infinite_track.presentation.design.tokens.infiniteFeedbackPalette
 import com.example.infinite_track.presentation.theme.toAttendanceBadgeColor
 
 enum class InfiniteStatusVariant {
@@ -47,6 +47,13 @@ enum class InfiniteStatusVariant {
     Neutral
 }
 
+internal data class InfiniteStatusPillPalette(val container: Color, val content: Color, val border: Color, val accent: Color)
+internal fun resolveInfiniteStatusPillPalette(semantic: InfiniteSemantic, shared: Boolean, override: Color?, variant: InfiniteStatusVariant): InfiniteStatusPillPalette {
+    val palette = infiniteFeedbackPalette(semantic); val sharedColor = override ?: variant.toAttendanceBadgeColor()
+    return if (shared || override != null) InfiniteStatusPillPalette(sharedColor.copy(alpha = .13f), sharedColor, sharedColor.copy(alpha = .35f), sharedColor)
+    else InfiniteStatusPillPalette(palette.surfaceEnd, palette.content, palette.border, palette.accent)
+}
+
 @Composable
 fun InfiniteStatusPill(
     label: String,
@@ -62,29 +69,8 @@ fun InfiniteStatusPill(
     useSharedRequestPalette: Boolean = false,
     colorOverride: Color? = null
 ) {
-    val sharedColor = colorOverride ?: variant.toAttendanceBadgeColor()
     val semantic = variant.toSemantic()
-    val semanticColors = infiniteSemanticColors(semantic)
-    val containerColor = if (useSharedRequestPalette || colorOverride != null) {
-        sharedColor.copy(alpha = 0.13f)
-    } else {
-        semanticColors.container
-    }
-    val contentColor = if (useSharedRequestPalette || colorOverride != null) {
-        sharedColor
-    } else {
-        semanticColors.content
-    }
-    val borderColor = if (useSharedRequestPalette || colorOverride != null) {
-        sharedColor.copy(alpha = 0.35f)
-    } else {
-        semanticColors.border
-    }
-    val iconTint = if (useSharedRequestPalette || colorOverride != null) {
-        sharedColor
-    } else {
-        semanticColors.accent
-    }
+    val colors = resolveInfiniteStatusPillPalette(semantic, useSharedRequestPalette, colorOverride, variant)
     val horizontal = when (size) {
         InfiniteSize.Small -> 6.dp
         InfiniteSize.Medium -> 10.dp
@@ -95,17 +81,12 @@ fun InfiniteStatusPill(
         InfiniteSize.Medium -> 6.dp
         InfiniteSize.Large -> 8.dp
     }
-    val textStyle = when (size) {
-        InfiniteSize.Small -> body3
-        InfiniteSize.Medium -> body2
-        InfiniteSize.Large -> body1
-    }
     Surface(
-        modifier = modifier,
+        modifier = modifier.semantics { contentDescription = label },
         shape = RoundedCornerShape(999.dp),
-        color = containerColor,
-        contentColor = contentColor,
-        border = BorderStroke(if (selected) 1.5.dp else 1.dp, borderColor)
+        color = colors.container,
+        contentColor = colors.content,
+        border = BorderStroke(if (selected) 1.5.dp else 1.dp, colors.border)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = horizontal, vertical = vertical),
@@ -116,14 +97,14 @@ fun InfiniteStatusPill(
                 Icon(
                     imageVector = it,
                     contentDescription = null,
-                    tint = iconTint,
+                    tint = colors.accent,
                     modifier = Modifier.size(if (size == InfiniteSize.Small) 11.dp else 14.dp)
                 )
             }
             Text(
                 text = label,
-                style = textStyle,
-                fontWeight = if (useSharedRequestPalette || colorOverride != null) FontWeight.SemiBold else FontWeight.Medium
+                style = InfiniteFeedbackTypography.pillLabel,
+                fontWeight = FontWeight.Medium
             )
         }
     }

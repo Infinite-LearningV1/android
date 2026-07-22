@@ -43,7 +43,6 @@ data class AttendanceScreenState(
     val isButtonEnabled: Boolean = false,
     val isCheckInMode: Boolean = true,
     val navigationTarget: NavigationTarget? = null,
-    val activeDialog: DialogState? = null,
     val mapAnimationTarget: MapAnimationTarget? = null,
     val showPermissionDialog: Boolean = false,
     val permissionResult: LocationPermissionHelper.PermissionResult? = null,

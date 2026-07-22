@@ -1,8 +1,12 @@
 package com.example.infinite_track.presentation.screen.attendance
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,14 +22,18 @@ import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,14 +41,19 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
@@ -53,8 +66,10 @@ import com.example.infinite_track.presentation.components.dialog.LocationPermiss
 import com.example.infinite_track.utils.LocalLocationPermissionHelper
 import com.example.infinite_track.utils.LocationPermissionHelper
 import com.example.infinite_track.presentation.components.maps.MarkerViewWfa
-import com.example.infinite_track.presentation.components.status.InfiniteTrackStatusDialog
-import com.example.infinite_track.presentation.components.status.StatusStates
+import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarHost
+import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarVisuals
+import com.example.infinite_track.presentation.design.components.status.InfiniteInlineAlert
+import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
@@ -70,9 +85,25 @@ import com.mapbox.maps.plugin.animation.flyTo
 @Composable
 fun AttendanceScreen(
     navController: NavController,
-    viewModel: AttendanceViewModel = hiltViewModel()
+    viewModel: AttendanceViewModel = hiltViewModel(),
+    navigatePermissionReadiness: () -> Unit = {}
 ) {
     var mapViewInstance by remember { mutableStateOf<MapView?>(null) }
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var hasPreciseLocationPermission by remember(context) {
+        mutableStateOf(context.hasPreciseLocationPermission())
+    }
+
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasPreciseLocationPermission = context.hasPreciseLocationPermission()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     // Observasi state dari ViewModel yang sudah disederhanakan
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -102,6 +133,27 @@ fun AttendanceScreen(
     val scaffoldState = rememberBottomSheetScaffoldState(
         bottomSheetState = bottomSheetState
     )
+
+    LaunchedEffect(viewModel) {
+        viewModel.transientFeedback.collect { feedback ->
+            val result = scaffoldState.snackbarHostState.showSnackbar(
+                InfiniteSnackbarVisuals(
+                    message = feedback.message,
+                    semantic = feedback.semantic,
+                    actionLabel = feedback.actionLabel,
+                    duration = feedback.duration.toMaterialDuration()
+                )
+            )
+            if (
+                result == SnackbarResult.ActionPerformed &&
+                feedback.action == AttendanceTransientFeedbackAction.NAVIGATE_HOME
+            ) {
+                navController.navigate(Screen.Home.route) {
+                    popUpTo(Screen.Home.route) { inclusive = false }
+                }
+            }
+        }
+    }
 
     // =======================================================
     // NEW: State-driven LaunchedEffect for Navigation
@@ -214,15 +266,6 @@ fun AttendanceScreen(
         }
     }
 
-    // Start location updates when UI is ready and data is loaded successfully
-    LaunchedEffect(uiState.uiState) {
-        if (uiState.uiState is UiState.Success) {
-            // Only start location updates after data is loaded and UI is ready
-            viewModel.startLocationUpdates()
-            android.util.Log.d("AttendanceScreen", "Location updates started after UI ready")
-        }
-    }
-
     // Penanganan state utama berdasarkan UiState dengan smart cast fix
     when (val currentUiState = uiState.uiState) {
         is UiState.Idle -> {
@@ -269,6 +312,9 @@ fun AttendanceScreen(
             // Tampilkan konten utama dengan BottomSheet
             BottomSheetScaffold(
                 scaffoldState = scaffoldState,
+                snackbarHost = {
+                    InfiniteSnackbarHost(hostState = scaffoldState.snackbarHostState)
+                },
                 containerColor = Color.Black.copy(alpha = 0.1f),
                 contentColor = Color.Transparent,
                 sheetContainerColor = Color.Transparent,
@@ -362,9 +408,16 @@ fun AttendanceScreen(
                     }
                 }
             ) { _ -> // Renamed paddingValues to _ to indicate it's intentionally unused
-                Box(modifier = Modifier.fillMaxSize()) {
+                AttendanceLocationPermissionGate(
+                    hasPreciseLocationPermission = hasPreciseLocationPermission,
+                    isAttendanceContentReady = true,
+                    onStartLocationUpdates = viewModel::startLocationUpdates,
+                    onNavigatePermissionReadiness = navigatePermissionReadiness,
+                    modifier = Modifier.fillMaxSize()
+                ) {
                     // Fullscreen Map dengan data dari ViewModel - Updated with WFO, WFH, and WFA locations
                     AttendanceMap(
+                        hasPreciseLocationPermission = hasPreciseLocationPermission,
                         modifier = Modifier.fillMaxSize(),
                         wfoLocation = if (uiState.isWfaModeActive) null else uiState.wfoLocation, // Hide WFO when WFA active
                         wfhLocation = if (uiState.isWfaModeActive) null else uiState.wfhLocation, // Hide WFH when WFA active
@@ -462,51 +515,6 @@ fun AttendanceScreen(
         }
     }
 
-    uiState.activeDialog?.let { dialog ->
-        when (dialog) {
-            is DialogState.Success -> {
-                InfiniteTrackStatusDialog(
-                    status = StatusStates.Success,
-                    title = "Absensi Berhasil",
-                    message = dialog.message,
-                    showDialog = true,
-                    imageRes = R.drawable.icon_success,
-                    onDismiss = { viewModel.onDialogDismissed() },
-                    onConfirm = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.Home.route) {
-                                inclusive = false
-                            }
-                        }
-                        viewModel.onDialogDismissed()
-                    }
-                )
-            }
-
-            is DialogState.Error -> {
-                InfiniteTrackStatusDialog(
-                    status = StatusStates.Error,
-                    title = "Absensi Gagal",
-                    message = dialog.message,
-                    showDialog = true,
-                    onDismiss = { viewModel.onDialogDismissed() },
-                    onConfirm = { viewModel.onDialogDismissed() }
-                )
-            }
-
-            is DialogState.LocationError -> {
-                InfiniteTrackStatusDialog(
-                    status = StatusStates.Error,
-                    title = "Error Lokasi",
-                    message = dialog.message,
-                    showDialog = true,
-                    onDismiss = { viewModel.onDialogDismissed() },
-                    onConfirm = { viewModel.onDialogDismissed() }
-                )
-            }
-        }
-    }
-
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val fallbackFaceVerificationResult = remember { mutableStateOf<String?>(null) }
     val faceVerificationResult by currentBackStackEntry
@@ -556,12 +564,18 @@ fun AttendanceScreen(
     }
 }
 
+private fun AttendanceTransientFeedbackDuration.toMaterialDuration(): SnackbarDuration = when (this) {
+    AttendanceTransientFeedbackDuration.SHORT -> SnackbarDuration.Short
+    AttendanceTransientFeedbackDuration.LONG -> SnackbarDuration.Long
+}
+
 @Preview(showBackground = true)
 @Composable
 fun AttendanceScreenPreview() {
     Infinite_TrackTheme {
         Box(modifier = Modifier.fillMaxSize()) {
             AttendanceMap(
+                hasPreciseLocationPermission = false,
                 modifier = Modifier.fillMaxSize(),
                 onMapReady = { }
             )
@@ -576,3 +590,56 @@ fun AttendanceScreenPreview() {
         }
     }
 }
+
+@Composable
+internal fun AttendancePermissionRevocationRecovery(
+    onNavigatePermissionReadiness: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    InfiniteInlineAlert(
+        title = "Lokasi presisi tidak tersedia",
+        message = "Akses lokasi berubah saat Attendance dibuka. Pulihkan akses dari layar kesiapan sebelum melanjutkan.",
+        semantic = InfiniteSemantic.Warning,
+        actionLabel = "Kembali ke kesiapan",
+        onAction = onNavigatePermissionReadiness,
+        modifier = modifier
+    )
+}
+
+@Composable
+internal fun AttendanceLocationPermissionGate(
+    hasPreciseLocationPermission: Boolean,
+    isAttendanceContentReady: Boolean,
+    onStartLocationUpdates: () -> Unit,
+    onNavigatePermissionReadiness: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit
+) {
+    val currentOnStartLocationUpdates by rememberUpdatedState(onStartLocationUpdates)
+
+    LaunchedEffect(isAttendanceContentReady, hasPreciseLocationPermission) {
+        if (isAttendanceContentReady && hasPreciseLocationPermission) {
+            currentOnStartLocationUpdates()
+        }
+    }
+
+    Box(modifier = modifier) {
+        content()
+        if (!hasPreciseLocationPermission) {
+            AttendancePermissionRevocationRecovery(
+                onNavigatePermissionReadiness = onNavigatePermissionReadiness,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 80.dp, start = 16.dp, end = 16.dp)
+                    .testTag("attendancePermissionRevocationRecovery")
+            )
+        }
+    }
+}
+
+private fun Context.hasPreciseLocationPermission(): Boolean =
+    ContextCompat.checkSelfPermission(
+        this,
+        Manifest.permission.ACCESS_FINE_LOCATION
+    ) == PackageManager.PERMISSION_GRANTED

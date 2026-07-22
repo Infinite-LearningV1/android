@@ -2,21 +2,25 @@ package com.example.infinite_track.presentation.screen.attendance.permission
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.presentation.design.components.button.InfiniteButton
 import com.example.infinite_track.presentation.design.components.button.InfiniteButtonVariant
@@ -30,65 +34,100 @@ import com.example.infinite_track.presentation.design.tokens.InfiniteSize
 
 @Composable
 internal fun PermissionMissionRow(
-    title: String,
-    description: String,
+    item: PermissionItemUiModel,
     icon: ImageVector,
-    isGranted: Boolean,
-    isRequired: Boolean,
-    actionLabel: String?,
     modifier: Modifier = Modifier,
     onActionClick: (() -> Unit)? = null
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) {
+                contentDescription = item.title
+                stateDescription = item.stateDescription
+            },
         shape = RoundedCornerShape(16.dp),
         color = Color(0x33FFFFFF),
         border = BorderStroke(
             width = 1.dp,
-            color = if (isGranted) {
+            color = if (item.isReady) {
                 InfiniteColors.Success.copy(alpha = 0.38f)
             } else {
                 Color.White.copy(alpha = 0.72f)
             }
         )
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                InfiniteInfoRow(
-                    label = title,
-                    value = description,
-                    icon = icon,
-                    semantic = if (isGranted) InfiniteSemantic.Success else InfiniteSemantic.Primary,
-                    orientation = InfiniteInfoRowOrientation.Vertical,
-                    statusContent = {
-                        InfiniteStatusPill(
-                            label = if (isRequired) "Wajib" else "Opsional",
-                            variant = if (isRequired) InfiniteStatusVariant.Pending else InfiniteStatusVariant.Neutral,
-                            size = InfiniteSize.Small
-                        )
-                    }
-                )
-                if (!isGranted && actionLabel != null && onActionClick != null) {
+        BoxWithConstraints(modifier = Modifier.padding(14.dp)) {
+            val compact = maxWidth < 360.dp || LocalDensity.current.fontScale >= 1.5f
+            val action: @Composable () -> Unit = {
+                if (item.actionLabel != null && onActionClick != null) {
                     InfiniteButton(
-                        text = actionLabel,
+                        text = item.actionLabel,
                         onClick = onActionClick,
+                        modifier = Modifier
+                            .then(if (compact) Modifier.fillMaxWidth() else Modifier)
+                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp),
                         variant = InfiniteButtonVariant.Ghost,
                         size = InfiniteSize.Small
                     )
                 }
             }
-            Icon(
-                imageVector = if (isGranted) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                contentDescription = if (isGranted) "Siap" else "Belum siap",
-                tint = if (isGranted) InfiniteColors.Success else InfiniteColors.Neutral.copy(alpha = 0.56f)
-            )
+            if (compact) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    PermissionMissionInfo(item = item, icon = icon)
+                    action()
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    PermissionMissionInfo(
+                        item = item,
+                        icon = icon,
+                        modifier = Modifier.weight(1f)
+                    )
+                    action()
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun PermissionMissionInfo(
+    item: PermissionItemUiModel,
+    icon: ImageVector,
+    modifier: Modifier = Modifier
+) {
+    InfiniteInfoRow(
+        label = item.title,
+        value = item.supportingText,
+        modifier = modifier,
+        icon = icon,
+        semantic = item.semantic,
+        orientation = InfiniteInfoRowOrientation.Vertical,
+        statusContent = {
+            InfiniteStatusPill(
+                label = "${item.requirementLabel} · ${item.statusLabel}",
+                variant = item.semantic.toStatusVariant(),
+                size = InfiniteSize.Small,
+                leadingIcon = if (item.isReady) Icons.Default.CheckCircle else null
+            )
+        }
+    )
+}
+
+private fun InfiniteSemantic.toStatusVariant(): InfiniteStatusVariant = when (this) {
+    InfiniteSemantic.Success -> InfiniteStatusVariant.Completed
+    InfiniteSemantic.Warning -> InfiniteStatusVariant.NeedsReview
+    InfiniteSemantic.Error -> InfiniteStatusVariant.Rejected
+    InfiniteSemantic.Info -> InfiniteStatusVariant.Recommended
+    InfiniteSemantic.Primary,
+    InfiniteSemantic.Secondary,
+    InfiniteSemantic.Neutral -> InfiniteStatusVariant.Neutral
 }

@@ -19,14 +19,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
-import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
-import com.example.infinite_track.presentation.design.tokens.InfiniteSize
 
 @Composable
 internal fun PermissionHeroCard(
-    uiState: AttendancePermissionReadinessUiState,
+    isLoading: Boolean,
     modifier: Modifier = Modifier
 ) {
     PermissionGlassCard(
@@ -54,9 +51,9 @@ internal fun PermissionHeroCard(
                 }
             }
             Text(
-                text = "Siapkan akses absensi",
+                text = if (isLoading) "Memeriksa kesiapan akses" else "Siapkan akses absensi",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
                 color = InfiniteColors.Text.copy(alpha = 0.88f),
                 textAlign = TextAlign.Center
             )
@@ -65,15 +62,6 @@ internal fun PermissionHeroCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = InfiniteColors.Text.copy(alpha = 0.72f),
                 textAlign = TextAlign.Center
-            )
-            InfiniteStatusPill(
-                label = uiState.progressCopy,
-                variant = if (uiState.canContinueToWorkMode) {
-                    InfiniteStatusVariant.Completed
-                } else {
-                    InfiniteStatusVariant.Pending
-                },
-                size = InfiniteSize.Medium
             )
         }
     }

@@ -28,6 +28,10 @@ import com.example.infinite_track.presentation.design.components.data.InfiniteSe
 import com.example.infinite_track.presentation.design.components.data.InfiniteTimelineRow
 import com.example.infinite_track.presentation.design.components.data.TimelineConnectorPosition
 import com.example.infinite_track.presentation.design.components.status.InfiniteInlineAlert
+import com.example.infinite_track.presentation.design.components.status.InfiniteConfirmDialog
+import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbar
+import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarVisuals
+import com.example.infinite_track.presentation.design.components.status.InfiniteStatusDialog
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.components.state.InfiniteEmptyState
@@ -40,6 +44,8 @@ import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
 import com.example.infinite_track.presentation.design.tokens.InfiniteSurfaceVariant
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
+import androidx.compose.material3.SnackbarData
+import androidx.compose.material3.SnackbarVisuals
 
 @Preview(showBackground = true, widthDp = 390, heightDp = 1400)
 @Composable
@@ -48,6 +54,14 @@ fun InfiniteComponentGalleryPreview() {
         InfiniteComponentGallery()
     }
 }
+
+@Preview(name = "Feedback 320dp", showBackground = true, widthDp = 320, heightDp = 1200)
+@Composable
+private fun InfiniteFeedbackCompactGalleryPreview() { Infinite_TrackTheme { InfiniteFeedbackGallery() } }
+
+@Preview(name = "Feedback large font", showBackground = true, widthDp = 390, heightDp = 1400, fontScale = 2f)
+@Composable
+private fun InfiniteFeedbackLargeFontGalleryPreview() { Infinite_TrackTheme { InfiniteFeedbackGallery() } }
 
 @Composable
 fun InfiniteComponentGallery() {
@@ -126,6 +140,7 @@ fun InfiniteComponentGallery() {
 
         InfiniteInlineAlert(title = "Success", message = "Your request has been saved.", semantic = InfiniteSemantic.Success)
         InfiniteInlineAlert(title = "Warning", message = "Please review this state before continuing.", semantic = InfiniteSemantic.Warning)
+        InfiniteFeedbackGallery()
         InfiniteErrorState(title = "Unable to load", message = "Try again after checking your connection.")
         InfiniteLoadingState(message = "Preparing component preview...")
         InfiniteEmptyState(title = "No data yet", message = "Reusable empty state for report and WFA lists.")
@@ -136,4 +151,29 @@ fun InfiniteComponentGallery() {
             tertiaryAction = InfiniteAction("PDF", InfiniteIcons.Download, InfiniteButtonVariant.Tonal) {}
         )
     }
+}
+
+@Composable
+private fun InfiniteFeedbackGallery() {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        InfiniteSemantic.entries.forEach { semantic ->
+            InfiniteInlineAlert("${semantic.name} feedback", "Persistent recovery is available.", semantic, "Retry", {})
+        }
+        InfiniteSnackbar(PreviewSnackbarData(InfiniteSnackbarVisuals("Snackbar action and dismiss", InfiniteSemantic.Info, "Retry", true)))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            InfiniteStatusPill("Active", InfiniteStatusVariant.Active, size = InfiniteSize.Small)
+            InfiniteStatusPill("Pending", InfiniteStatusVariant.Pending, size = InfiniteSize.Small)
+            InfiniteStatusPill("Rejected", InfiniteStatusVariant.Rejected, size = InfiniteSize.Small)
+        }
+        InfiniteEmptyState("No results", "Embedded empty state")
+        InfiniteLoadingState(message = "Embedded loading state")
+        InfiniteErrorState("Could not load", "Embedded recoverable state", actionLabel = "Retry", onAction = {})
+        InfiniteStatusDialog("Saved", "Status confirmation dialog", InfiniteSemantic.Success, true, onDismiss = {}, onConfirm = {})
+        InfiniteConfirmDialog("Delete item", "Confirmation dialog", InfiniteSemantic.Error, true, onDismiss = {}, onConfirm = {})
+    }
+}
+
+private class PreviewSnackbarData(override val visuals: SnackbarVisuals) : SnackbarData {
+    override fun performAction() = Unit
+    override fun dismiss() = Unit
 }

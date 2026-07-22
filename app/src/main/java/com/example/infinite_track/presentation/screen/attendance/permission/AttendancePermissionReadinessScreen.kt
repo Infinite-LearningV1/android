@@ -1,15 +1,5 @@
 package com.example.infinite_track.presentation.screen.attendance.permission
 
-import android.Manifest
-import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.location.LocationManager
-import android.net.Uri
-import android.os.Build
-import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,150 +23,27 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.infinite_track.presentation.design.components.button.InfiniteButton
 import com.example.infinite_track.presentation.design.components.button.InfiniteButtonState
 import com.example.infinite_track.presentation.design.components.button.InfiniteButtonVariant
 import com.example.infinite_track.presentation.design.components.data.InfiniteSectionHeader
 import com.example.infinite_track.presentation.design.components.navigation.InfiniteTopBar
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
+import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
 @Composable
 fun AttendancePermissionReadinessScreen(
-    onBackClick: () -> Unit,
-    onContinueToWorkMode: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    var uiState by remember { mutableStateOf(context.readAttendancePermissionState()) }
-
-    fun refreshReadiness() {
-        uiState = context.readAttendancePermissionState()
-    }
-
-    val foregroundLocationLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { refreshReadiness() }
-
-    val cameraLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { refreshReadiness() }
-
-    val notificationLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { refreshReadiness() }
-
-    val backgroundLocationLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { refreshReadiness() }
-
-    val settingsLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { refreshReadiness() }
-
-    DisposableEffect(lifecycleOwner, context) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                refreshReadiness()
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    LaunchedEffect(Unit) {
-        refreshReadiness()
-    }
-
-    fun openAppSettings() {
-        val intent = Intent(
-            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-            Uri.fromParts("package", context.packageName, null)
-        )
-        settingsLauncher.launch(intent)
-    }
-
-    fun requestAction(action: AttendancePermissionAction) {
-        when (action) {
-            AttendancePermissionAction.REQUEST_FOREGROUND_LOCATION -> foregroundLocationLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
-            AttendancePermissionAction.REQUEST_CAMERA -> cameraLauncher.launch(Manifest.permission.CAMERA)
-            AttendancePermissionAction.OPEN_DEVICE_LOCATION_SETTINGS -> settingsLauncher.launch(
-                Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
-            )
-            AttendancePermissionAction.REQUEST_NOTIFICATION -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                } else {
-                    refreshReadiness()
-                }
-            }
-            AttendancePermissionAction.REQUEST_BACKGROUND_LOCATION -> {
-                when {
-                    Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> refreshReadiness()
-                    Build.VERSION.SDK_INT == Build.VERSION_CODES.Q -> backgroundLocationLauncher.launch(
-                        Manifest.permission.ACCESS_BACKGROUND_LOCATION
-                    )
-                    else -> openAppSettings()
-                }
-            }
-            AttendancePermissionAction.CONTINUE_TO_WORK_MODE -> onContinueToWorkMode()
-        }
-    }
-
-    AttendancePermissionReadinessContent(
-        uiState = uiState,
-        modifier = modifier,
-        onBackClick = onBackClick,
-        onPrimaryClick = {
-            val nextAction = uiState.nextRequiredAction
-            if (uiState.canContinueToWorkMode || nextAction == AttendancePermissionAction.CONTINUE_TO_WORK_MODE) {
-                onContinueToWorkMode()
-            } else if (nextAction != null) {
-                requestAction(nextAction)
-            }
-        },
-        onForegroundLocationClick = { requestAction(AttendancePermissionAction.REQUEST_FOREGROUND_LOCATION) },
-        onCameraClick = { requestAction(AttendancePermissionAction.REQUEST_CAMERA) },
-        onNotificationClick = { requestAction(AttendancePermissionAction.REQUEST_NOTIFICATION) },
-        onBackgroundLocationClick = { requestAction(AttendancePermissionAction.REQUEST_BACKGROUND_LOCATION) },
-        onDeviceLocationSettingsClick = { requestAction(AttendancePermissionAction.OPEN_DEVICE_LOCATION_SETTINGS) }
-    )
-}
-
-@Composable
-private fun AttendancePermissionReadinessContent(
     uiState: AttendancePermissionReadinessUiState,
+    onEvent: (AttendancePermissionReadinessEvent) -> Unit,
     onBackClick: () -> Unit,
-    onPrimaryClick: () -> Unit,
-    onForegroundLocationClick: () -> Unit,
-    onCameraClick: () -> Unit,
-    onNotificationClick: () -> Unit,
-    onBackgroundLocationClick: () -> Unit,
-    onDeviceLocationSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -184,37 +51,7 @@ private fun AttendancePermissionReadinessContent(
             .fillMaxSize()
             .background(InfiniteColors.AttendanceReportBackground)
     ) {
-        Box(
-            modifier = Modifier
-                .size(280.dp)
-                .align(Alignment.TopEnd)
-                .padding(top = 24.dp)
-                .background(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            InfiniteColors.Primary.copy(alpha = 0.24f),
-                            Color.Transparent
-                        )
-                    ),
-                    shape = CircleShape
-                )
-                .blur(32.dp)
-        )
-        Box(
-            modifier = Modifier
-                .size(260.dp)
-                .align(Alignment.BottomStart)
-                .background(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            InfiniteColors.Accent.copy(alpha = 0.18f),
-                            Color.Transparent
-                        )
-                    ),
-                    shape = CircleShape
-                )
-                .blur(36.dp)
-        )
+        PermissionBackdrop()
 
         Column(
             modifier = Modifier
@@ -230,138 +67,151 @@ private fun AttendancePermissionReadinessContent(
                 navigationContentDescription = "Kembali",
                 onNavigationClick = onBackClick
             )
-            PermissionHeroCard(uiState = uiState)
+            PermissionHeroCard(isLoading = uiState.isLoading)
             PermissionProgressHeader(uiState = uiState)
 
-            PermissionGlassCard(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    InfiniteSectionHeader(
-                        title = "Akses wajib",
-                        subtitle = "Lengkapi 3 akses utama sebelum lanjut",
-                        leadingIcon = Icons.Default.Shield
-                    )
-                    PermissionMissionRow(
-                        title = "Lokasi presisi",
-                        description = "Dipakai untuk membaca posisi saat absensi.",
-                        icon = Icons.Default.LocationOn,
-                        isGranted = uiState.foregroundLocationGranted,
-                        isRequired = true,
-                        actionLabel = if (uiState.foregroundLocationGranted) null else "Minta izin",
-                        onActionClick = if (uiState.foregroundLocationGranted) null else onForegroundLocationClick
-                    )
-                    PermissionMissionRow(
-                        title = "Kamera",
-                        description = "Dipakai untuk verifikasi wajah saat check-in/check-out.",
-                        icon = Icons.Default.PhotoCamera,
-                        isGranted = uiState.cameraGranted,
-                        isRequired = true,
-                        actionLabel = if (uiState.cameraGranted) null else "Minta izin",
-                        onActionClick = if (uiState.cameraGranted) null else onCameraClick
-                    )
-                    PermissionMissionRow(
-                        title = "Lokasi perangkat aktif",
-                        description = "Pastikan Location/GPS perangkat menyala.",
-                        icon = Icons.Default.Settings,
-                        isGranted = uiState.deviceLocationEnabled,
-                        isRequired = true,
-                        actionLabel = if (uiState.deviceLocationEnabled) null else "Buka pengaturan",
-                        onActionClick = if (uiState.deviceLocationEnabled) null else onDeviceLocationSettingsClick
-                    )
-                }
-            }
+            PermissionSection(
+                title = "Akses wajib",
+                subtitle = "Lengkapi 3 akses utama sebelum lanjut",
+                icon = Icons.Default.Shield,
+                items = uiState.requiredItems,
+                onEvent = onEvent
+            )
 
-            PermissionGlassCard(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    InfiniteSectionHeader(
-                        title = "Pengingat opsional",
-                        subtitle = "Boleh dilewati, absensi manual tetap bisa lanjut",
-                        leadingIcon = Icons.Default.Notifications,
-                        trailingText = "Opsional"
-                    )
-                    PermissionMissionRow(
-                        title = "Notifikasi pengingat",
-                        description = "Membantu mengingatkan aktivitas absensi.",
-                        icon = Icons.Default.Notifications,
-                        isGranted = uiState.notificationGranted,
-                        isRequired = false,
-                        actionLabel = if (uiState.notificationGranted) null else "Aktifkan",
-                        onActionClick = if (uiState.notificationGranted) null else onNotificationClick
-                    )
-                    PermissionMissionRow(
-                        title = "Lokasi latar belakang",
-                        description = "Mengaktifkan reminder geofence dan monitoring aktif.",
-                        icon = Icons.Default.Tune,
-                        isGranted = uiState.backgroundLocationGranted,
-                        isRequired = false,
-                        actionLabel = if (uiState.backgroundLocationGranted) null else "Atur akses",
-                        onActionClick = if (uiState.backgroundLocationGranted) null else onBackgroundLocationClick
-                    )
-                }
-            }
+            PermissionSection(
+                title = "Pengingat opsional",
+                subtitle = "Boleh dilewati, absensi manual tetap bisa lanjut",
+                icon = Icons.Default.Notifications,
+                trailingText = "Opsional",
+                items = uiState.optionalItems,
+                onEvent = onEvent
+            )
 
-            PermissionReadinessInfoBox(uiState = uiState)
+            val guidance = uiState.recoverableFailure
+                ?: uiState.contextualGuidance
+                ?: defaultGuidance(uiState.canContinue)
+            PermissionReadinessInfoBox(
+                guidance = guidance,
+                onAction = when (guidance.action) {
+                    PermissionGuidanceAction.RETRY_REFRESH -> {
+                        { onEvent(AttendancePermissionReadinessEvent.RetryRefresh) }
+                    }
+                    null -> null
+                }
+            )
 
             InfiniteButton(
-                text = if (uiState.canContinueToWorkMode) "Lanjut ke Mode Kerja" else "Lanjutkan Setup",
-                onClick = onPrimaryClick,
+                text = uiState.primaryActionLabel,
+                onClick = { onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked) },
                 modifier = Modifier.fillMaxWidth(),
                 variant = InfiniteButtonVariant.Primary,
-                state = InfiniteButtonState.Enabled,
+                state = when {
+                    uiState.isLoading || uiState.isRefreshing -> InfiniteButtonState.Loading
+                    uiState.primaryActionEnabled -> InfiniteButtonState.Enabled
+                    else -> InfiniteButtonState.Disabled
+                },
                 fullWidth = true
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(112.dp))
         }
     }
 }
 
-private fun Context.readAttendancePermissionState(): AttendancePermissionReadinessUiState =
-    toAttendancePermissionReadinessUiState(
-        foregroundLocationGranted = isPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION),
-        cameraGranted = isPermissionGranted(Manifest.permission.CAMERA),
-        deviceLocationEnabled = isDeviceLocationEnabled(),
-        notificationGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            isPermissionGranted(Manifest.permission.POST_NOTIFICATIONS),
-        backgroundLocationGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
-            isPermissionGranted(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-    )
-
-private fun Context.isPermissionGranted(permission: String): Boolean =
-    ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
-
-private fun Context.isDeviceLocationEnabled(): Boolean {
-    val locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return false
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        locationManager.isLocationEnabled
-    } else {
-        locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
-            locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+@Composable
+private fun PermissionBackdrop() {
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Box(
+            modifier = Modifier
+                .size(280.dp)
+                .align(Alignment.TopEnd)
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            InfiniteColors.Primary.copy(alpha = 0.20f),
+                            Color.Transparent
+                        )
+                    ),
+                    shape = CircleShape
+                )
+        )
+        Box(
+            modifier = Modifier
+                .size(260.dp)
+                .align(Alignment.BottomStart)
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            InfiniteColors.Accent.copy(alpha = 0.16f),
+                            Color.Transparent
+                        )
+                    ),
+                    shape = CircleShape
+                )
+        )
     }
 }
 
+@Composable
+private fun PermissionSection(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    items: List<PermissionItemUiModel>,
+    onEvent: (AttendancePermissionReadinessEvent) -> Unit,
+    modifier: Modifier = Modifier,
+    trailingText: String? = null
+) {
+    PermissionGlassCard(modifier = modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            InfiniteSectionHeader(
+                title = title,
+                subtitle = subtitle,
+                leadingIcon = icon,
+                trailingText = trailingText
+            )
+            items.forEach { item ->
+                PermissionMissionRow(
+                    item = item,
+                    icon = item.iconKey.toImageVector(),
+                    onActionClick = item.actionLabel?.let {
+                        {
+                            onEvent(
+                                AttendancePermissionReadinessEvent.PermissionItemClicked(item.access)
+                            )
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+private fun PermissionIconKey.toImageVector(): ImageVector = when (this) {
+    PermissionIconKey.LOCATION -> Icons.Default.LocationOn
+    PermissionIconKey.CAMERA -> Icons.Default.PhotoCamera
+    PermissionIconKey.DEVICE_LOCATION -> Icons.Default.Settings
+    PermissionIconKey.NOTIFICATION -> Icons.Default.Notifications
+    PermissionIconKey.BACKGROUND_LOCATION -> Icons.Default.Tune
+}
+
+private fun defaultGuidance(canContinue: Boolean): PermissionGuidanceUiModel =
+    PermissionGuidanceUiModel(
+        title = if (canContinue) "Akses wajib sudah siap" else "Selesaikan akses wajib",
+        message = "Notifikasi dan lokasi latar belakang membantu pengingat, tetapi tidak memblokir absensi manual.",
+        semantic = if (canContinue) InfiniteSemantic.Info else InfiniteSemantic.Warning
+    )
+
 @Preview(showBackground = true)
 @Composable
-private fun AttendancePermissionReadinessContentPreview() {
+private fun AttendancePermissionReadinessScreenPreview() {
     Infinite_TrackTheme {
-        AttendancePermissionReadinessContent(
-            uiState = toAttendancePermissionReadinessUiState(
-                foregroundLocationGranted = true,
-                cameraGranted = true,
-                deviceLocationEnabled = false,
-                notificationGranted = false,
-                backgroundLocationGranted = false
-            ),
-            onBackClick = {},
-            onPrimaryClick = {},
-            onForegroundLocationClick = {},
-            onCameraClick = {},
-            onNotificationClick = {},
-            onBackgroundLocationClick = {},
-            onDeviceLocationSettingsClick = {}
+        AttendancePermissionReadinessScreen(
+            uiState = AttendancePermissionReadinessUiState(),
+            onEvent = {},
+            onBackClick = {}
         )
     }
 }

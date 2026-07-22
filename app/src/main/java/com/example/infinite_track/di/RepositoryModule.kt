@@ -5,6 +5,9 @@ import android.util.Log
 import com.example.infinite_track.data.repository.attendance.AttendanceHistoryRepositoryImpl
 import com.example.infinite_track.data.repository.attendance.AttendanceReportPdfRepositoryImpl
 import com.example.infinite_track.data.repository.attendance.AttendanceRepositoryImpl
+import com.example.infinite_track.data.repository.attendance.AttendancePermissionRepositoryImpl
+import com.example.infinite_track.data.soucre.local.permission.AndroidAttendancePermissionDataSource
+import com.example.infinite_track.data.soucre.local.permission.AttendancePermissionDataSource
 import com.example.infinite_track.data.repository.auth.AuthRepositoryImpl
 import com.example.infinite_track.data.repository.auth.AuthRuntimeCleanerImpl
 import com.example.infinite_track.data.repository.booking.BookingRepositoryImpl
@@ -24,6 +27,7 @@ import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
 import com.example.infinite_track.domain.repository.AttendanceReportPdfRepository
 import com.example.infinite_track.domain.repository.AttendanceRepository
+import com.example.infinite_track.domain.repository.AttendancePermissionRepository
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
 import com.example.infinite_track.domain.repository.BookingRepository
@@ -45,6 +49,18 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object RepositoryModule {
+
+    @Provides
+    @Singleton
+    fun provideAttendancePermissionDataSource(
+        @ApplicationContext context: Context
+    ): AttendancePermissionDataSource = AndroidAttendancePermissionDataSource(context)
+
+    @Provides
+    @Singleton
+    fun provideAttendancePermissionRepository(
+        dataSource: AttendancePermissionDataSource
+    ): AttendancePermissionRepository = AttendancePermissionRepositoryImpl(dataSource)
 
     @Provides
     @Singleton

@@ -18,6 +18,7 @@ import com.example.infinite_track.presentation.theme.Orange_50
 import com.example.infinite_track.presentation.theme.Purple_500
 import com.example.infinite_track.presentation.theme.Red_Error
 import com.example.infinite_track.presentation.theme.Yellow_Warning
+import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 
 @Immutable
 data class StatusStateTokens(
@@ -75,4 +76,11 @@ object StatusStates {
     val Error = StatusStateSpec(id = "error", value = "Error")
     val Warning = StatusStateSpec(id = "warning", value = "Warning")
     val Info = StatusStateSpec(id = "info", value = "Info")
+}
+
+fun StatusStateSpec.toInfiniteSemantic(): InfiniteSemantic = when (id.trim().lowercase()) {
+    "success" -> InfiniteSemantic.Success
+    "warning" -> InfiniteSemantic.Warning
+    "error" -> InfiniteSemantic.Error
+    else -> InfiniteSemantic.Info
 }

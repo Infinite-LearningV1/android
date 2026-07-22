@@ -1,6 +1,16 @@
 package com.example.infinite_track.presentation.screen.attendance.face
 
+import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn as AndroidxOptIn
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
@@ -40,6 +50,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,7 +65,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.example.infinite_track.presentation.components.button.ButtonStateType
 import com.example.infinite_track.presentation.screen.attendance.FACE_VERIFICATION_RESULT_KEY
 import com.example.infinite_track.presentation.screen.attendance.FaceVerificationResult
@@ -63,10 +79,6 @@ import com.example.infinite_track.presentation.components.button.StatefulButton
 import com.example.infinite_track.presentation.components.cameras.FaceBoundingBox
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
 import com.example.infinite_track.presentation.theme.Blue_500
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
-import com.google.accompanist.permissions.shouldShowRationale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import androidx.camera.core.Preview as CameraPreview
@@ -83,7 +95,7 @@ private fun NavController.finishFaceScanner(state: LivenessState) {
     finishFaceScanner(FaceVerificationResult.fromScannerExitState(state))
 }
 
-@kotlin.OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
+@kotlin.OptIn(ExperimentalMaterial3Api::class)
 @ExperimentalGetImage
 @Composable
 fun FaceScannerScreen(
@@ -94,9 +106,48 @@ fun FaceScannerScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Camera permission state
-    val cameraPermissionState = rememberPermissionState(
-        android.Manifest.permission.CAMERA
+    val context = LocalContext.current
+    val activity = remember(context) { context.findActivity() }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var isCameraGranted by remember(context) {
+        mutableStateOf(context.hasCameraPermission())
+    }
+    var hasRequestedCameraRecovery by rememberSaveable { mutableStateOf(false) }
+    var shouldShowCameraRationale by remember(activity) {
+        mutableStateOf(activity.shouldShowCameraRationale())
+    }
+    var cameraSettingsFeedback by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val cameraRecoveryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {
+        hasRequestedCameraRecovery = true
+        isCameraGranted = context.hasCameraPermission()
+        shouldShowCameraRationale = activity.shouldShowCameraRationale()
+    }
+    val applicationSettingsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        cameraSettingsFeedback = null
+        isCameraGranted = context.hasCameraPermission()
+        shouldShowCameraRationale = activity.shouldShowCameraRationale()
+    }
+
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isCameraGranted = context.hasCameraPermission()
+                shouldShowCameraRationale = activity.shouldShowCameraRationale()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val cameraRecoveryUi = CameraPermissionRecoveryContract.resolve(
+        isCameraGranted = isCameraGranted,
+        hasRequestedRecovery = hasRequestedCameraRecovery,
+        shouldShowRationale = shouldShowCameraRationale
     )
 
     // Camera executor
@@ -151,8 +202,8 @@ fun FaceScannerScreen(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        when {
-            cameraPermissionState.status.isGranted -> {
+        when (cameraRecoveryUi) {
+            CameraPermissionRecoveryUi.CAMERA -> {
                 // Camera permission granted - show camera interface
                 CameraContent(
                     modifier = Modifier.fillMaxSize(),
@@ -171,11 +222,12 @@ fun FaceScannerScreen(
                 )
             }
 
-            cameraPermissionState.status.shouldShowRationale -> {
+            CameraPermissionRecoveryUi.RATIONALE -> {
                 // Show rationale for camera permission
                 CameraPermissionRationale(
                     onRequestPermission = {
-                        cameraPermissionState.launchPermissionRequest()
+                        hasRequestedCameraRecovery = true
+                        cameraRecoveryLauncher.launch(Manifest.permission.CAMERA)
                     },
                     onCloseClick = {
                         publishExitStateOnce(uiState.livenessState)
@@ -183,12 +235,31 @@ fun FaceScannerScreen(
                 )
             }
 
-            else -> {
-                // Permission denied - show permission request UI
+            CameraPermissionRecoveryUi.RECOVERY_REQUIRED -> {
                 CameraPermissionDenied(
                     onRequestPermission = {
-                        cameraPermissionState.launchPermissionRequest()
+                        hasRequestedCameraRecovery = true
+                        cameraRecoveryLauncher.launch(Manifest.permission.CAMERA)
                     },
+                    onCloseClick = {
+                        publishExitStateOnce(uiState.livenessState)
+                    }
+                )
+            }
+
+            CameraPermissionRecoveryUi.APPLICATION_SETTINGS -> {
+                CameraPermissionSettings(
+                    onOpenSettings = {
+                        cameraSettingsFeedback = launchCameraSettingsSafely {
+                            applicationSettingsLauncher.launch(
+                                Intent(
+                                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    Uri.fromParts("package", context.packageName, null)
+                                )
+                            )
+                        }.feedback
+                    },
+                    feedback = cameraSettingsFeedback,
                     onCloseClick = {
                         publishExitStateOnce(uiState.livenessState)
                     }
@@ -680,14 +751,14 @@ private fun CameraPermissionDenied(
                 )
 
                 Text(
-                    text = "Akses Kamera Dibutuhkan",
+                    text = "Pulihkan Akses Kamera",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
 
                 Text(
-                    text = "Tanpa akses kamera, fitur verifikasi wajah tidak dapat berfungsi. Silakan berikan izin kamera untuk melanjutkan proses absensi.",
+                    text = "Akses kamera tidak tersedia saat verifikasi wajah dibuka. Pemulihan hanya dimulai setelah Anda memilih tindakan di bawah.",
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
@@ -710,13 +781,102 @@ private fun CameraPermissionDenied(
                         onClick = onRequestPermission,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Coba Lagi")
+                        Text("Pulihkan")
                     }
                 }
             }
         }
     }
 }
+
+@Composable
+private fun CameraPermissionSettings(
+    onOpenSettings: () -> Unit,
+    feedback: String?,
+    onCloseClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = Color(0xFFFF3B30)
+                )
+                Text(
+                    text = "Pulihkan Kamera dari Pengaturan",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "Permintaan pemulihan kamera ditolak permanen. Buka pengaturan aplikasi dan aktifkan Kamera untuk melanjutkan verifikasi wajah.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
+                feedback?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedButton(
+                        onClick = onCloseClick,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Tutup")
+                    }
+                    Button(
+                        onClick = onOpenSettings,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Buka Pengaturan")
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun Context.hasCameraPermission(): Boolean =
+    ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
+        PackageManager.PERMISSION_GRANTED
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
+private fun Activity?.shouldShowCameraRationale(): Boolean = this?.let {
+    ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.CAMERA)
+} == true
 
 // Preview Composables for different states
 @Preview(showBackground = true, name = "Check In - Initial State")

@@ -1,9 +1,11 @@
 package com.example.infinite_track.presentation.components.maps
 
-import android.Manifest
 import android.annotation.SuppressLint
-import android.content.pm.PackageManager
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -11,14 +13,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.utils.MapUtils
-import com.example.infinite_track.utils.PermissionUtils
 import com.mapbox.geojson.Point
 import com.mapbox.maps.MapView
 import com.mapbox.maps.plugin.gestures.gestures
@@ -37,20 +39,10 @@ fun AttendanceMap(
     onMarkerClick: (Location) -> Unit = {},
     onWfaMarkerClick: (WfaRecommendation) -> Unit = {}, // New callback for WFA markers
     onMapReady: (MapView) -> Unit = {},    // Added callback for when map is ready
-    onCameraIdle: (Point) -> Unit = {}     // New callback for Pick on Map functionality
+    onCameraIdle: (Point) -> Unit = {},    // New callback for Pick on Map functionality
+    hasPreciseLocationPermission: Boolean = false
 ) {
-    val context = LocalContext.current
     var mapView: MapView? by remember { mutableStateOf(null) }
-
-    val hasForegroundLocationPermission = remember {
-        ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-    }
 
     // Effect untuk update annotations saja - camera control diserahkan ke ViewModel
     LaunchedEffect(
@@ -59,8 +51,13 @@ fun AttendanceMap(
         wfaRecommendations,
         selectedWfaLocation,
         currentUserLocation,
-        mapView
+        mapView,
+        hasPreciseLocationPermission
     ) {
+        if (!hasPreciseLocationPermission) {
+            mapView = null
+            return@LaunchedEffect
+        }
         mapView?.let { map ->
             // Small delay to ensure map is ready
             kotlinx.coroutines.delay(300)
@@ -85,11 +82,20 @@ fun AttendanceMap(
     }
 
     when {
-        !hasForegroundLocationPermission -> {
-            PermissionUtils.PermissionRationale(
-                text = "Akses lokasi belum siap. Kembali ke layar kesiapan Attendance untuk menyiapkan izin lokasi sebelum membuka peta.",
-                onRequestPermission = { }
-            )
+        !hasPreciseLocationPermission -> {
+            Box(
+                modifier = modifier
+                    .fillMaxSize()
+                    .testTag("attendanceMapFallback"),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Lokasi presisi belum siap",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(24.dp)
+                )
+            }
         }
 
         else -> {
@@ -129,7 +135,10 @@ fun AttendanceMap(
                         // Berikan kontrol penuh kamera ke ViewModel melalui callback
                         onMapReady.invoke(this)
                     }
-                }, modifier = modifier.fillMaxSize()
+                },
+                modifier = modifier
+                    .fillMaxSize()
+                    .testTag("attendanceMapContent")
             )
         }
     }
@@ -138,5 +147,5 @@ fun AttendanceMap(
 @Preview(showBackground = true)
 @Composable
 fun AttendanceMapPreview() {
-    AttendanceMap()
+    AttendanceMap(hasPreciseLocationPermission = false)
 }

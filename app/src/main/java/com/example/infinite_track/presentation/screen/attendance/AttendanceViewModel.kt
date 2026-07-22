@@ -32,7 +32,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
@@ -45,15 +48,6 @@ sealed class NavigationTarget {
     data class FaceScanner(val intent: AttendanceActionIntent) : NavigationTarget()
     data class WfaBooking(val route: String) : NavigationTarget()
     data class LocationSearch(val params: String) : NavigationTarget()
-}
-
-/**
- * Sealed class untuk merepresentasikan state dialog
- */
-sealed class DialogState {
-    data class Success(val message: String) : DialogState()
-    data class Error(val message: String) : DialogState()
-    data class LocationError(val message: String) : DialogState()
 }
 
 /**
@@ -94,6 +88,14 @@ class AttendanceViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(AttendanceScreenState())
     val uiState: StateFlow<AttendanceScreenState> = _uiState.asStateFlow()
 
+    private val _transientFeedback = MutableSharedFlow<AttendanceTransientFeedback>(
+        replay = 0,
+        extraBufferCapacity = 1
+    )
+    val transientFeedback: SharedFlow<AttendanceTransientFeedback> =
+        _transientFeedback.asSharedFlow()
+    private var nextTransientFeedbackId = 0L
+
     // Job for UI-focused location updates (display purposes only)
     private var displayLocationJob: Job? = null
 
@@ -121,19 +123,25 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Called by UI after dialog is dismissed
-     * Resets activeDialog to null
-     */
-    fun onDialogDismissed() {
-        _uiState.value = _uiState.value.copy(activeDialog = null)
-    }
-
-    /**
      * Called by UI after map animation is completed
      * Resets mapAnimationTarget to null
      */
     fun onMapAnimationHandled() {
         _uiState.value = _uiState.value.copy(mapAnimationTarget = null)
+    }
+
+    private fun publishTransientFeedback(
+        kind: AttendanceTransientFeedbackKind
+    ): AttendanceTransientFeedback {
+        nextTransientFeedbackId += 1
+        val feedback = AttendanceTransientFeedbackFactory.create(
+            id = nextTransientFeedbackId,
+            kind = kind
+        )
+        if (!_transientFeedback.tryEmit(feedback)) {
+            viewModelScope.launch { _transientFeedback.emit(feedback) }
+        }
+        return feedback
     }
 
     /**
@@ -154,7 +162,7 @@ class AttendanceViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "Error initializing data", e)
                 _uiState.value = _uiState.value.copy(
-                    uiState = UiState.Error("Failed to initialize attendance data: ${e.message}")
+                    uiState = UiState.Error("Data absensi belum dapat dimuat. Silakan coba lagi.")
                 )
             }
         }
@@ -196,9 +204,9 @@ class AttendanceViewModel @Inject constructor(
 
             }.onFailure { exception ->
                 Log.e(TAG, "Failed to fetch today status", exception)
-                val message = exception.message ?: "Status absensi gagal dimuat."
+                val message = "Status absensi belum dapat dimuat. Silakan coba lagi."
                 _uiState.value = _uiState.value.copy(
-                    uiState = UiState.Error("Failed to load attendance status: $message")
+                    uiState = UiState.Error(message)
                 ).withActionState(
                     AttendanceActionState.RetryableFailure(
                         intent = null,
@@ -209,9 +217,9 @@ class AttendanceViewModel @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error in fetchTodayStatus", e)
-            val message = e.message ?: "Terjadi kesalahan tidak terduga."
+            val message = "Status absensi belum dapat dimuat. Silakan coba lagi."
             _uiState.value = _uiState.value.copy(
-                uiState = UiState.Error("Unexpected error: $message")
+                uiState = UiState.Error(message)
             ).withActionState(
                 AttendanceActionState.RetryableFailure(
                     intent = null,
@@ -363,8 +371,8 @@ class AttendanceViewModel @Inject constructor(
                         source = "approved-wfa-booking"
                     )
                 }
-            }.onFailure { exception ->
-                Log.d(TAG, "No approved WFA reminder candidate: ${exception.message}")
+            }.onFailure {
+                Log.d(TAG, "No approved WFA reminder candidate")
             }
         }
 
@@ -675,13 +683,12 @@ class AttendanceViewModel @Inject constructor(
                 }
 
                 resolveTodayApprovedWfaBookingIdUseCase(scheduleDateIso)
-                    .onFailure { exception ->
+                    .onFailure {
                         _uiState.value = _uiState.value.withActionState(
                             AttendanceActionState.Blocked(
                                 reason = AttendanceBlockReason.WFA_BOOKING_REQUIRED,
                                 title = "Booking WFA belum disetujui",
-                                message = exception.message
-                                    ?: "Booking WFA yang disetujui diperlukan sebelum absen dari lokasi WFA."
+                                message = "Booking WFA yang disetujui diperlukan sebelum absen dari lokasi WFA."
                             )
                         )
                     }
@@ -740,6 +747,12 @@ class AttendanceViewModel @Inject constructor(
 
         result.attendanceErrorMessage?.let { errorMessage ->
             Log.d(TAG, "Face verification did not submit attendance: $result")
+            publishTransientFeedback(
+                when (result) {
+                    FaceVerificationResult.TIMEOUT -> AttendanceTransientFeedbackKind.FACE_TIMEOUT
+                    else -> AttendanceTransientFeedbackKind.FACE_FAILED
+                }
+            )
             _uiState.value = _uiState.value.withActionState(
                 AttendanceActionState.RetryableFailure(
                     intent = intent,
@@ -762,10 +775,10 @@ class AttendanceViewModel @Inject constructor(
     fun onUnexpectedFaceVerificationResult() {
         Log.e(TAG, "Unexpected face verification result payload received")
         val intent = (_uiState.value.actionState as? AttendanceActionState.VerifyingFace)?.intent
-        val message = "Hasil verifikasi wajah tidak dikenali. Silakan coba lagi."
-        _uiState.value = _uiState.value.copy(
-            activeDialog = DialogState.Error(message)
-        ).withActionState(
+        val message = publishTransientFeedback(
+            AttendanceTransientFeedbackKind.FACE_UNKNOWN
+        ).message
+        _uiState.value = _uiState.value.withActionState(
             AttendanceActionState.RetryableFailure(
                 intent = intent,
                 title = "Verifikasi wajah gagal",
@@ -788,9 +801,6 @@ class AttendanceViewModel @Inject constructor(
                     Log.w(TAG, "Check-in submit blocked because action state is not Submitting($intent): ${_uiState.value.actionState}")
                     return@launch
                 }
-
-                // Clear any previous error
-                _uiState.value = _uiState.value.copy(activeDialog = null)
 
                 val selectedMode = _uiState.value.selectedWorkMode
                 val target = _uiState.value.selectedTargetLocation ?: resolveSelectedTargetLocationUseCase(
@@ -832,10 +842,10 @@ class AttendanceViewModel @Inject constructor(
                 // Get user info once for this mutation; long-running collection can replay submit.
                 val user = getLoggedInUserUseCase().firstOrNull()
                 if (user == null) {
-                    val message = "User information not available. Please try again."
-                    _uiState.value = _uiState.value.copy(
-                        activeDialog = DialogState.Error(message)
-                    ).withActionState(
+                    val message = publishTransientFeedback(
+                        AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
+                    ).message
+                    _uiState.value = _uiState.value.withActionState(
                         AttendanceActionState.RetryableFailure(
                             intent = intent,
                             title = "Check-in gagal",
@@ -849,10 +859,10 @@ class AttendanceViewModel @Inject constructor(
                     eligibility.approvedWfaBookingId ?: run {
                         val scheduleDateIso = _uiState.value.todayStatus?.todayDate
                         if (scheduleDateIso.isNullOrBlank()) {
-                            val message = "Tanggal attendance hari ini tidak tersedia untuk memvalidasi booking WFA."
-                            _uiState.value = _uiState.value.copy(
-                                activeDialog = DialogState.Error(message)
-                            ).withActionState(
+                            val message = publishTransientFeedback(
+                                AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
+                            ).message
+                            _uiState.value = _uiState.value.withActionState(
                                 AttendanceActionState.RetryableFailure(
                                     intent = intent,
                                     title = "Booking WFA belum disetujui",
@@ -863,12 +873,11 @@ class AttendanceViewModel @Inject constructor(
                         }
 
                         resolveTodayApprovedWfaBookingIdUseCase(scheduleDateIso)
-                            .getOrElse { exception ->
-                                val message = exception.message
-                                    ?: "Booking WFA yang sudah disetujui untuk hari ini tidak ditemukan."
-                                _uiState.value = _uiState.value.copy(
-                                    activeDialog = DialogState.Error(message)
-                                ).withActionState(
+                            .getOrElse {
+                                val message = publishTransientFeedback(
+                                    AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
+                                ).message
+                                _uiState.value = _uiState.value.withActionState(
                                     AttendanceActionState.RetryableFailure(
                                         intent = intent,
                                         title = "Booking WFA belum disetujui",
@@ -887,11 +896,11 @@ class AttendanceViewModel @Inject constructor(
                         workMode = selectedMode,
                         bookingId = bookingId
                     )
-                } catch (exception: IllegalArgumentException) {
-                    val message = exception.message ?: "Payload check-in WFA tidak valid."
-                    _uiState.value = _uiState.value.copy(
-                        activeDialog = DialogState.Error(message)
-                    ).withActionState(
+                } catch (_: IllegalArgumentException) {
+                    val message = publishTransientFeedback(
+                        AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
+                    ).message
+                    _uiState.value = _uiState.value.withActionState(
                         AttendanceActionState.RetryableFailure(
                             intent = intent,
                             title = "Check-in gagal",
@@ -911,28 +920,27 @@ class AttendanceViewModel @Inject constructor(
                 checkInUseCase(attendanceRequest, targetLocation).onSuccess { activeSession ->
                     Log.d(TAG, "Check-in successful: $activeSession")
 
-                    // Refresh today's status from backend after mutation invalidates local cache.
-                    fetchTodayStatus(forceRefresh = true)
-
-                    val successMessage = "Check-in berhasil! Selamat bekerja hari ini."
-                    _uiState.value = _uiState.value.copy(
-                        activeDialog = DialogState.Success(successMessage)
-                    ).withActionState(
+                    val successMessage = publishTransientFeedback(
+                        AttendanceTransientFeedbackKind.CHECK_IN_SUCCESS
+                    ).message
+                    _uiState.value = _uiState.value.withActionState(
                         AttendanceActionState.Success(
                             intent = intent,
                             message = successMessage
                         )
                     )
 
+                    // Finish on backend-resolved state so snackbar auto-dismiss leaves a usable screen.
+                    fetchTodayStatus(forceRefresh = true)
+
                 }.onFailure { exception ->
-                    Log.e(TAG, "Check-in failed: ${exception.message}", exception)
+                    Log.e(TAG, "Check-in failed", exception)
 
-                    // Extract the actual error message from the exception
-                    val errorMessage = exception.message ?: "Check-in gagal. Silakan coba lagi."
+                    val errorMessage = publishTransientFeedback(
+                        AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
+                    ).message
 
-                    _uiState.value = _uiState.value.copy(
-                        activeDialog = DialogState.Error(errorMessage)
-                    ).withActionState(
+                    _uiState.value = _uiState.value.withActionState(
                         AttendanceActionState.RetryableFailure(
                             intent = intent,
                             title = "Check-in gagal",
@@ -943,10 +951,10 @@ class AttendanceViewModel @Inject constructor(
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error in proceedWithCheckIn", e)
-                val message = "Unexpected error during check-in: ${e.message}"
-                _uiState.value = _uiState.value.copy(
-                    activeDialog = DialogState.Error(message)
-                ).withActionState(
+                val message = publishTransientFeedback(
+                    AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
+                ).message
+                _uiState.value = _uiState.value.withActionState(
                     AttendanceActionState.RetryableFailure(
                         intent = intent,
                         title = "Check-in gagal",
@@ -972,37 +980,33 @@ class AttendanceViewModel @Inject constructor(
                     return@launch
                 }
 
-                // Clear any previous error
-                _uiState.value = _uiState.value.copy(activeDialog = null)
-
                 val attendanceId = _uiState.value.todayStatus?.activeAttendanceId
 
                 // Call CheckOutUseCase - it will refresh status if needed, get real-time GPS, and fallback to preference
                 checkOutUseCase(attendanceId).onSuccess { activeSession ->
                     Log.d(TAG, "Check-out successful: $activeSession")
 
-                    // Refresh today's status from backend after mutation invalidates local cache.
-                    fetchTodayStatus(forceRefresh = true)
-
-                    val successMessage = "Check-out berhasil! Terima kasih atas kerja keras Anda hari ini."
-                    _uiState.value = _uiState.value.copy(
-                        activeDialog = DialogState.Success(successMessage)
-                    ).withActionState(
+                    val successMessage = publishTransientFeedback(
+                        AttendanceTransientFeedbackKind.CHECK_OUT_SUCCESS
+                    ).message
+                    _uiState.value = _uiState.value.withActionState(
                         AttendanceActionState.Success(
                             intent = intent,
                             message = successMessage
                         )
                     )
 
+                    // Finish on backend-resolved state so snackbar auto-dismiss leaves a usable screen.
+                    fetchTodayStatus(forceRefresh = true)
+
                 }.onFailure { exception ->
-                    Log.e(TAG, "Check-out failed: ${exception.message}", exception)
+                    Log.e(TAG, "Check-out failed", exception)
 
-                    // Extract the actual error message from the exception
-                    val errorMessage = exception.message ?: "Check-out gagal. Silakan coba lagi."
+                    val errorMessage = publishTransientFeedback(
+                        AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
+                    ).message
 
-                    _uiState.value = _uiState.value.copy(
-                        activeDialog = DialogState.Error(errorMessage)
-                    ).withActionState(
+                    _uiState.value = _uiState.value.withActionState(
                         AttendanceActionState.RetryableFailure(
                             intent = intent,
                             title = "Check-out gagal",
@@ -1013,10 +1017,10 @@ class AttendanceViewModel @Inject constructor(
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error in proceedWithCheckOut", e)
-                val message = "Unexpected error during check-out: ${e.message}"
-                _uiState.value = _uiState.value.copy(
-                    activeDialog = DialogState.Error(message)
-                ).withActionState(
+                val message = publishTransientFeedback(
+                    AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
+                ).message
+                _uiState.value = _uiState.value.withActionState(
                     AttendanceActionState.RetryableFailure(
                         intent = intent,
                         title = "Check-out gagal",
@@ -1025,13 +1029,6 @@ class AttendanceViewModel @Inject constructor(
                 )
             }
         }
-    }
-
-    /**
-     * Clear error message
-     */
-    fun clearError() {
-        _uiState.value = _uiState.value.copy(activeDialog = null)
     }
 
     /**
@@ -1093,14 +1090,16 @@ class AttendanceViewModel @Inject constructor(
                     Log.d(TAG, "This should be your CURRENT GPS location, NOT your home location!")
                 }.onFailure { exception ->
                     Log.e(TAG, "=== GPS LOCATION FAILED ===")
-                    Log.e(TAG, "Failed to get current GPS location: ${exception.message}")
+                    Log.e(TAG, "Failed to get current GPS location", exception)
+                    publishTransientFeedback(AttendanceTransientFeedbackKind.LOCATION_ERROR)
                     _uiState.value = _uiState.value.copy(
                         mapAnimationTarget = MapAnimationTarget.ShowLocationError
                     )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "=== UNEXPECTED ERROR ===")
-                Log.e(TAG, "Error in onFocusLocationClicked: ${e.message}")
+                Log.e(TAG, "Error in onFocusLocationClicked", e)
+                publishTransientFeedback(AttendanceTransientFeedbackKind.LOCATION_ERROR)
                 _uiState.value = _uiState.value.copy(
                     mapAnimationTarget = MapAnimationTarget.ShowLocationError
                 )

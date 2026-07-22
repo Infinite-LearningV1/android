@@ -8,61 +8,44 @@ import org.junit.Test
 class AttendancePermissionReadinessUiStateTest {
 
     @Test
-    fun `required progress counts foreground camera and device location only`() {
-        val state = toAttendancePermissionReadinessUiState(
-            foregroundLocationGranted = true,
-            cameraGranted = false,
-            deviceLocationEnabled = true,
-            notificationGranted = true,
-            backgroundLocationGranted = true
+    fun `default state is a valid loading state`() {
+        val state = AttendancePermissionReadinessUiState()
+
+        assertTrue(state.isLoading)
+        assertFalse(state.isRefreshing)
+        assertTrue(state.requiredItems.isEmpty())
+        assertTrue(state.optionalItems.isEmpty())
+        assertEquals(3, state.requiredTotalCount)
+        assertFalse(state.primaryActionEnabled)
+    }
+
+    @Test
+    fun `typed state keeps required progress independent from optional items`() {
+        val state = AttendancePermissionReadinessUiState(
+            isLoading = false,
+            requiredReadyCount = 2,
+            requiredTotalCount = 3,
+            optionalItems = emptyList(),
+            canContinue = false
         )
 
         assertEquals(2, state.requiredReadyCount)
         assertEquals(3, state.requiredTotalCount)
-        assertEquals("2/3 akses wajib siap", state.progressCopy)
-        assertFalse(state.canContinueToWorkMode)
-        assertEquals(AttendancePermissionAction.REQUEST_CAMERA, state.nextRequiredAction)
+        assertFalse(state.canContinue)
     }
 
     @Test
-    fun `notification denied does not block work mode`() {
-        val state = toAttendancePermissionReadinessUiState(
-            foregroundLocationGranted = true,
-            cameraGranted = true,
-            deviceLocationEnabled = true,
-            notificationGranted = false,
-            backgroundLocationGranted = true
+    fun `optional degradation does not override an approved continuation`() {
+        val state = AttendancePermissionReadinessUiState(
+            isLoading = false,
+            requiredReadyCount = 3,
+            requiredTotalCount = 3,
+            canContinue = true,
+            primaryActionLabel = "Lanjut ke Mode Kerja",
+            primaryActionEnabled = true
         )
 
-        assertTrue(state.canContinueToWorkMode)
-        assertEquals(AttendancePermissionAction.CONTINUE_TO_WORK_MODE, state.nextRequiredAction)
-    }
-
-    @Test
-    fun `background location denied does not block work mode`() {
-        val state = toAttendancePermissionReadinessUiState(
-            foregroundLocationGranted = true,
-            cameraGranted = true,
-            deviceLocationEnabled = true,
-            notificationGranted = true,
-            backgroundLocationGranted = false
-        )
-
-        assertTrue(state.canContinueToWorkMode)
-        assertEquals(AttendancePermissionAction.CONTINUE_TO_WORK_MODE, state.nextRequiredAction)
-    }
-
-    @Test
-    fun `device location setting is a hard blocker`() {
-        val state = toAttendancePermissionReadinessUiState(
-            foregroundLocationGranted = true,
-            cameraGranted = true,
-            deviceLocationEnabled = false,
-            notificationGranted = true,
-            backgroundLocationGranted = true
-        )
-
-        assertFalse(state.canContinueToWorkMode)
-        assertEquals(AttendancePermissionAction.OPEN_DEVICE_LOCATION_SETTINGS, state.nextRequiredAction)
+        assertTrue(state.canContinue)
+        assertEquals("Lanjut ke Mode Kerja", state.primaryActionLabel)
     }
 }

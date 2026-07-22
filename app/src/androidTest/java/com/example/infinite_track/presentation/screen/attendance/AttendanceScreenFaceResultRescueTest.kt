@@ -1,7 +1,11 @@
 package com.example.infinite_track.presentation.screen.attendance
 
 import android.content.Context
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithText
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -18,18 +22,24 @@ import com.example.infinite_track.domain.model.attendance.CheckinWindow
 import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.model.auth.UserModel
+import com.example.infinite_track.domain.model.booking.BookingHistoryPage
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
+import com.example.infinite_track.domain.repository.BookingRepository
 import com.example.infinite_track.domain.repository.LocationRepository
 import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.repository.WfaRepository
 import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
 import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
+import com.example.infinite_track.domain.use_case.attendance.EvaluateWorkModeEligibilityUseCase
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
+import com.example.infinite_track.domain.use_case.attendance.ResolveSelectedTargetLocationUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
+import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingIdUseCase
+import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinatesUseCase
 import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
@@ -42,9 +52,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.After
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -56,6 +64,12 @@ class AttendanceScreenFaceResultRescueTest {
 
     private companion object {
         const val FACE_RESULT_SINK_ROUTE = "face_result_sink"
+        const val FAILED_MESSAGE = "Verifikasi wajah gagal. Silakan coba lagi."
+        const val TIMEOUT_MESSAGE = "Waktu verifikasi wajah habis. Silakan coba lagi."
+        const val SUCCESS_MESSAGE = "Check-in berhasil! Selamat bekerja hari ini."
+        const val UNKNOWN_MESSAGE = "Hasil verifikasi wajah tidak dikenali. Silakan coba lagi."
+        const val ATTENDANCE_ERROR_MESSAGE = "Absensi belum berhasil. Silakan coba lagi."
+        const val SENTINEL_MESSAGE = "SECRET-SERVER-ID-9384"
     }
 
     @Before
@@ -77,15 +91,14 @@ class AttendanceScreenFaceResultRescueTest {
 
         composeRule.waitForIdle()
 
+        composeRule.onAllNodesWithText(FAILED_MESSAGE).assertCountEquals(1)
+        composeRule.onNodeWithText(FAILED_MESSAGE).assertIsDisplayed()
         composeRule.runOnIdle {
-            assertEquals(
-                DialogState.Error("Verifikasi wajah gagal. Silakan coba lagi."),
-                viewModel.uiState.value.activeDialog
-            )
-            assertNull(
+            check(
                 navController.currentBackStackEntry
                     ?.savedStateHandle
                     ?.get<String>(FACE_VERIFICATION_RESULT_KEY)
+                    == null
             )
         }
     }
@@ -103,15 +116,14 @@ class AttendanceScreenFaceResultRescueTest {
 
         composeRule.waitForIdle()
 
+        composeRule.onAllNodesWithText(TIMEOUT_MESSAGE).assertCountEquals(1)
+        composeRule.onNodeWithText(TIMEOUT_MESSAGE).assertIsDisplayed()
         composeRule.runOnIdle {
-            assertEquals(
-                DialogState.Error("Waktu verifikasi wajah habis. Silakan coba lagi."),
-                viewModel.uiState.value.activeDialog
-            )
-            assertNull(
+            check(
                 navController.currentBackStackEntry
                     ?.savedStateHandle
                     ?.get<String>(FACE_VERIFICATION_RESULT_KEY)
+                    == null
             )
         }
     }
@@ -129,16 +141,15 @@ class AttendanceScreenFaceResultRescueTest {
 
         composeRule.waitForIdle()
 
+        composeRule.onAllNodesWithText(SUCCESS_MESSAGE).assertCountEquals(1)
+        composeRule.onNodeWithText(SUCCESS_MESSAGE).assertIsDisplayed()
         composeRule.runOnIdle {
-            assertEquals(
-                DialogState.Success("Check-in berhasil! Selamat bekerja hari ini."),
-                viewModel.uiState.value.activeDialog
-            )
             assertNotNull(viewModel.uiState.value.todayStatus?.checkedInAt)
-            assertNull(
+            check(
                 navController.currentBackStackEntry
                     ?.savedStateHandle
                     ?.get<String>(FACE_VERIFICATION_RESULT_KEY)
+                    == null
             )
         }
     }
@@ -156,12 +167,15 @@ class AttendanceScreenFaceResultRescueTest {
 
         composeRule.waitForIdle()
 
+        composeRule.onNodeWithText(FAILED_MESSAGE).assertDoesNotExist()
+        composeRule.onNodeWithText(TIMEOUT_MESSAGE).assertDoesNotExist()
+        composeRule.onNodeWithText(SUCCESS_MESSAGE).assertDoesNotExist()
         composeRule.runOnIdle {
-            assertNull(viewModel.uiState.value.activeDialog)
-            assertNull(
+            check(
                 navController.currentBackStackEntry
                     ?.savedStateHandle
                     ?.get<String>(FACE_VERIFICATION_RESULT_KEY)
+                    == null
             )
         }
     }
@@ -179,15 +193,14 @@ class AttendanceScreenFaceResultRescueTest {
 
         composeRule.waitForIdle()
 
+        composeRule.onAllNodesWithText(UNKNOWN_MESSAGE).assertCountEquals(1)
+        composeRule.onNodeWithText(UNKNOWN_MESSAGE).assertIsDisplayed()
         composeRule.runOnIdle {
-            assertEquals(
-                DialogState.Error("Hasil verifikasi wajah tidak dikenali. Silakan coba lagi."),
-                viewModel.uiState.value.activeDialog
-            )
-            assertNull(
+            check(
                 navController.currentBackStackEntry
                     ?.savedStateHandle
                     ?.get<String>(FACE_VERIFICATION_RESULT_KEY)
+                    == null
             )
         }
     }
@@ -205,12 +218,8 @@ class AttendanceScreenFaceResultRescueTest {
 
         composeRule.waitForIdle()
 
+        composeRule.onNodeWithText(FAILED_MESSAGE).assertIsDisplayed()
         composeRule.runOnIdle {
-            assertEquals(
-                DialogState.Error("Verifikasi wajah gagal. Silakan coba lagi."),
-                viewModel.uiState.value.activeDialog
-            )
-            viewModel.onDialogDismissed()
             navController.navigate(FACE_RESULT_SINK_ROUTE)
         }
 
@@ -222,13 +231,46 @@ class AttendanceScreenFaceResultRescueTest {
 
         composeRule.waitForIdle()
 
+        composeRule.onNodeWithText(FAILED_MESSAGE).assertDoesNotExist()
         composeRule.runOnIdle {
-            assertEquals(Screen.Attendance.route, navController.currentBackStackEntry?.destination?.route)
-            assertNull(viewModel.uiState.value.activeDialog)
-            assertNull(
+            check(navController.currentBackStackEntry?.destination?.route == Screen.Attendance.route)
+            check(
                 navController.currentBackStackEntry
                     ?.savedStateHandle
                     ?.get<String>(FACE_VERIFICATION_RESULT_KEY)
+                    == null
+            )
+        }
+    }
+
+    @Test
+    fun attendanceScreen_neverSurfacesRepositoryExceptionMessage() {
+        val repository = FakeAttendanceRepository(
+            checkInFailure = IllegalStateException(SENTINEL_MESSAGE)
+        )
+        val viewModel = createAttendanceViewModel(repository)
+        val navController = setAttendanceContent(viewModel)
+
+        composeRule.runOnIdle {
+            navController.currentBackStackEntry
+                ?.savedStateHandle
+                ?.set(FACE_VERIFICATION_RESULT_KEY, FaceVerificationResult.SUCCESS.savedStateValue)
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            viewModel.uiState.value.actionState is AttendanceActionState.RetryableFailure
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onAllNodesWithText(ATTENDANCE_ERROR_MESSAGE).assertCountEquals(1)
+        composeRule.onNodeWithText(ATTENDANCE_ERROR_MESSAGE).assertIsDisplayed()
+        composeRule.onNodeWithText(SENTINEL_MESSAGE, substring = true).assertDoesNotExist()
+        composeRule.runOnIdle {
+            check(
+                navController.currentBackStackEntry
+                    ?.savedStateHandle
+                    ?.get<String>(FACE_VERIFICATION_RESULT_KEY)
+                    == null
             )
         }
     }
@@ -255,6 +297,9 @@ class AttendanceScreenFaceResultRescueTest {
         }
 
         composeRule.waitForIdle()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            viewModel.uiState.value.actionState is AttendanceActionState.Ready
+        }
 
         return navController
     }
@@ -268,12 +313,14 @@ class AttendanceScreenFaceResultRescueTest {
         attendancePreference.clearReminderGeofences()
     }
 
-    private fun createAttendanceViewModel(): AttendanceViewModel {
+    private fun createAttendanceViewModel(
+        attendanceRepository: FakeAttendanceRepository = FakeAttendanceRepository()
+    ): AttendanceViewModel {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val attendancePreference = AttendancePreference(context)
         val geofenceManager = GeofenceManager(context, attendancePreference)
-        val attendanceRepository = FakeAttendanceRepository()
         val locationRepository = FakeLocationRepository()
+        val bookingRepository = FakeBookingRepository()
         val getCurrentCoordinatesUseCase = GetCurrentCoordinatesUseCase(
             fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context),
             userDao = FakeUserDao()
@@ -288,6 +335,16 @@ class AttendanceScreenFaceResultRescueTest {
             attendancePreference = attendancePreference,
             geofenceManager = geofenceManager,
             getLoggedInUserUseCase = GetLoggedInUserUseCase(FakeAuthRepository()),
+            resolveTodayApprovedWfaBookingIdUseCase = ResolveTodayApprovedWfaBookingIdUseCase(
+                bookingRepository
+            ),
+            resolveTodayApprovedWfaBookingUseCase = ResolveTodayApprovedWfaBookingUseCase(
+                bookingRepository
+            ),
+            resolveSelectedTargetLocationUseCase = ResolveSelectedTargetLocationUseCase(),
+            evaluateWorkModeEligibilityUseCase = EvaluateWorkModeEligibilityUseCase(
+                ResolveTodayApprovedWfaBookingIdUseCase(bookingRepository)
+            ),
             checkInUseCase = CheckInUseCase(
                 attendanceRepository = attendanceRepository,
                 getCurrentCoordinatesUseCase = getCurrentCoordinatesUseCase,
@@ -303,10 +360,12 @@ class AttendanceScreenFaceResultRescueTest {
         )
     }
 
-    private class FakeAttendanceRepository : AttendanceRepository {
+    private class FakeAttendanceRepository(
+        private val checkInFailure: Throwable? = null
+    ) : AttendanceRepository {
         private var checkedIn = false
 
-        override suspend fun getTodayStatus(): Result<TodayStatus> {
+        override suspend fun getTodayStatus(forceRefresh: Boolean): Result<TodayStatus> {
             return Result.success(
                 TodayStatus(
                     canCheckIn = !checkedIn,
@@ -338,6 +397,7 @@ class AttendanceScreenFaceResultRescueTest {
         override suspend fun checkIn(
             request: AttendanceRequestModel
         ): Result<ActiveAttendanceSession> {
+            checkInFailure?.let { return Result.failure(it) }
             checkedIn = true
 
             return Result.success(
@@ -365,9 +425,30 @@ class AttendanceScreenFaceResultRescueTest {
 
         override suspend fun getActiveAttendanceId(): Int? = null
 
+        override suspend fun clearTodayStatusCache() = Unit
+
         override suspend fun sendLocationEvent(request: LocationEventRequest): Result<Unit> {
             throw UnsupportedOperationException("Location events are outside this regression")
         }
+    }
+
+    private class FakeBookingRepository : BookingRepository {
+        override suspend fun getBookingHistory(
+            status: String?,
+            page: Int,
+            limit: Int,
+            sortBy: String,
+            sortOrder: String
+        ): Result<BookingHistoryPage> = Result.success(BookingHistoryPage(emptyList()))
+
+        override suspend fun submitBooking(
+            scheduleDate: String,
+            latitude: Double,
+            longitude: Double,
+            radius: Int,
+            description: String,
+            notes: String
+        ): Result<Unit> = Result.success(Unit)
     }
 
     private class FakeLocationRepository : LocationRepository {
