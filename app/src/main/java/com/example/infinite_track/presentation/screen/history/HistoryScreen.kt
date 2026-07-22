@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -35,7 +34,6 @@ import com.example.infinite_track.presentation.design.components.data.InfiniteGl
 import com.example.infinite_track.presentation.design.components.state.InfiniteEmptyState
 import com.example.infinite_track.presentation.design.components.state.InfiniteErrorState
 import com.example.infinite_track.presentation.design.components.state.InfiniteLoadingState
-import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.utils.UiState
 
 private enum class ReportAction {
@@ -125,15 +123,11 @@ fun HistoryScreen(
 
     // MainScreen already applies scaffold/bottom-bar padding.
     // Match Home content insets so History does not double-pad and clip while scrolling.
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = InfiniteColors.Transparent
-    ) { _ ->
-        LazyColumn(
-            state = lazyListState,
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(pullToRefreshConnection),
+    LazyColumn(
+        state = lazyListState,
+        modifier = modifier
+            .fillMaxSize()
+            .nestedScroll(pullToRefreshConnection),
             contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -241,7 +235,6 @@ fun HistoryScreen(
                     }
                 }
             }
-        }
     }
 }
 

@@ -10,9 +10,9 @@ Verified source commit: `5435ef47333290193e2144e24e5606dccd0d0158`
 
 `Needs Verification`
 
-The non-runtime unit-test and debug-assembly gates pass. The full lint gate is not clean because of one unchanged `origin/develop` error in `HistoryScreen.kt`. Runtime and instrumentation evidence is intentionally deferred to branch `develop` by the operator. Therefore INF-230 is not recorded as Done, and the conditional legacy permission-helper cleanup has not been performed.
+The non-runtime unit-test, debug-assembly, and lint gates pass. Runtime and instrumentation evidence is intentionally deferred to branch `develop` by the operator. Therefore INF-230 is not recorded as Done, and the conditional legacy permission-helper cleanup has not been performed.
 
-The initial full gates and lint classification ran at `9ee404a9e63f5f1182d983e0b37e1d171801dcb2`. Commit `8fd0129ab62e165270ab04df971949455b07022d` aligned permission feedback typography. Whole-branch review fixes were then committed at `5435ef47333290193e2144e24e5606dccd0d0158`: content-sized glass decoration, untruncated large-font snackbar text, crash-safe Face Settings recovery, and source-compatible `AttendanceMap` parameters. `app:test`, compile-only Android tests, and `app:assembleDebug` were rerun on that final source commit. Android test compilation proves only that instrumentation sources compile; it is not connected runtime evidence.
+The initial full gates and lint classification ran at `9ee404a9e63f5f1182d983e0b37e1d171801dcb2`. Commit `8fd0129ab62e165270ab04df971949455b07022d` aligned permission feedback typography. Whole-branch review fixes were then committed at `5435ef47333290193e2144e24e5606dccd0d0158`: content-sized glass decoration, untruncated large-font snackbar text, crash-safe Face Settings recovery, and source-compatible `AttendanceMap` parameters. `app:test`, compile-only Android tests, and `app:assembleDebug` were rerun on that final feature-source commit. The later CI unblock removes the redundant `HistoryScreen` scaffold that triggered the repository-wide lint error. Android test compilation proves only that instrumentation sources compile; it is not connected runtime evidence.
 
 No ADB, APK installation, connected test, application-data reset, or device command was run during this Task 11 verification.
 
@@ -36,9 +36,7 @@ The folder name is recorded exactly as configured. It is not evidence of the run
 | `.\gradlew.bat --no-daemon app:test` | Pass; exit `0` in 142.7 seconds at `5435ef4` | 103 JUnit XML suites, 562 tests, 0 failures, 0 errors, 5 skipped |
 | `.\gradlew.bat --no-daemon app:assembleDebug` | Pass; exit `0` at `5435ef4` | `BUILD SUCCESSFUL in 44s` after a clean serialized rebuild; 45 actionable tasks, 20 executed |
 | `.\gradlew.bat --no-daemon app:compileDebugAndroidTestKotlin` | Pass; exit `0` in 139.4 seconds at `5435ef4` | Instrumentation sources and source-compatibility fixtures compiled only, with no emulator/device connection and no instrumentation test execution |
-| `.\gradlew.bat --no-daemon app:lint` | Fail; exit `1` | `1 errors, 302 warnings`; `HistoryScreen.kt:131` reports `UnusedMaterial3ScaffoldPaddingParameter` |
-
-The lint error is not introduced by INF-230. `git diff origin/develop -- app/src/main/java/com/example/infinite_track/presentation/screen/history/HistoryScreen.kt` is empty, and the same `) { _ ->` source exists on `origin/develop`. This classification does not turn the full lint gate into a pass; it remains a pre-existing repository failure.
+| `.\gradlew.bat --no-daemon app:lint` | Pass; exit `0` in 127.3 seconds | Redundant `HistoryScreen` scaffold removed; repository-wide lint gate completed successfully |
 
 Lint report generated locally at:
 
@@ -128,6 +126,5 @@ Deletion may occur only after every six-item Phase 4 runtime gate check passes o
 1. Integrate or reproduce the feature source on `develop` without changing the approved permission semantics.
 2. Run the targeted instrumentation suites and the full runtime matrix on disposable, compatible emulator images.
 3. Record the exact `develop` commit, emulator/API, setup, observations, verdict, and sanitized evidence for every row.
-4. Resolve or baseline the unrelated `HistoryScreen.kt:131` lint error through its owning work, then rerun `app:lint` before claiming a clean lint gate.
-5. Delete the legacy permission helper only if all six Phase 4 runtime checks pass; otherwise retain it and record the failed row.
-6. Obtain final code-review approval before any Done transition, merge, push, or Linear status update.
+4. Delete the legacy permission helper only if all six Phase 4 runtime checks pass; otherwise retain it and record the failed row.
+5. Obtain final code-review approval before any Done transition, merge, push, or Linear status update.
