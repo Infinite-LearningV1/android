@@ -30,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -104,8 +103,13 @@ fun InfiniteConfirmDialog(title: String, message: String, semantic: InfiniteSema
 @Composable
 internal fun InfiniteConfirmDialogContent(title: String, message: String, semantic: InfiniteSemantic, showDialog: Boolean, modifier: Modifier, confirmText: String, cancelText: String, onDismiss: () -> Unit, onConfirm: () -> Unit, isDestructive: Boolean) {
     if (!showDialog) return
+    Dialog(onDismissRequest = onDismiss) { InfiniteConfirmDialogBody(title, message, semantic, modifier, confirmText, cancelText, onDismiss, onConfirm, isDestructive) }
+}
+
+@Composable
+internal fun InfiniteConfirmDialogBody(title: String, message: String, semantic: InfiniteSemantic, modifier: Modifier = Modifier, confirmText: String = "Confirm", cancelText: String = "Cancel", onDismiss: () -> Unit, onConfirm: () -> Unit, isDestructive: Boolean = false) {
     val palette = infiniteFeedbackPalette(semantic)
-    Dialog(onDismissRequest = onDismiss) { InfiniteFeedbackGlassSurface(semantic, modifier.fillMaxWidth()) {
+    InfiniteFeedbackGlassSurface(semantic, modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(semanticIcon(semantic), null, tint = palette.accent, modifier = Modifier.size(58.dp)); Spacer(Modifier.height(18.dp))
             Text(title, style = InfiniteFeedbackTypography.dialogTitle, color = palette.content, textAlign = TextAlign.Center); Spacer(Modifier.height(10.dp))
@@ -117,7 +121,7 @@ internal fun InfiniteConfirmDialogContent(title: String, message: String, semant
                 else Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { DialogButtons(cancelText, confirmText, onDismiss, onConfirm, isDestructive, true) }
             }
         }
-    }}
+    }
 }
 
 @Composable

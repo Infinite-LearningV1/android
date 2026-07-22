@@ -112,11 +112,10 @@ class InfiniteStateStatusComponentsTest {
         composeRule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 Infinite_TrackTheme {
-                    Box(Modifier.width(320.dp).testTag("dialogHost")) { InfiniteConfirmDialogContent(
+                    Box(Modifier.width(320.dp).testTag("dialogHost")) { InfiniteConfirmDialogBody(
                         title = "Confirm a long action",
                         message = "The actions must reflow instead of being clipped.",
                         semantic = InfiniteSemantic.Warning,
-                        showDialog = true,
                         modifier = Modifier,
                         confirmText = "Continue",
                         cancelText = "Not now",
