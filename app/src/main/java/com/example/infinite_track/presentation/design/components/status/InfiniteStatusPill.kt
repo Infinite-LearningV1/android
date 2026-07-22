@@ -16,9 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.infinite_track.presentation.core.body1
-import com.example.infinite_track.presentation.core.body2
-import com.example.infinite_track.presentation.core.body3
+import com.example.infinite_track.presentation.design.tokens.InfiniteFeedbackTypography
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
 import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
@@ -95,11 +93,6 @@ fun InfiniteStatusPill(
         InfiniteSize.Medium -> 6.dp
         InfiniteSize.Large -> 8.dp
     }
-    val textStyle = when (size) {
-        InfiniteSize.Small -> body3
-        InfiniteSize.Medium -> body2
-        InfiniteSize.Large -> body1
-    }
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(999.dp),
@@ -122,8 +115,8 @@ fun InfiniteStatusPill(
             }
             Text(
                 text = label,
-                style = textStyle,
-                fontWeight = if (useSharedRequestPalette || colorOverride != null) FontWeight.SemiBold else FontWeight.Medium
+                style = InfiniteFeedbackTypography.pillLabel,
+                fontWeight = FontWeight.Medium
             )
         }
     }

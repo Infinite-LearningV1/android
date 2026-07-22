@@ -3,15 +3,17 @@ package com.example.infinite_track.presentation.design.components.state
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
 import com.example.infinite_track.presentation.design.components.status.InfiniteInlineAlert
+import com.example.infinite_track.presentation.design.components.status.InfiniteFeedbackGlassSurface
+import com.example.infinite_track.presentation.design.tokens.InfiniteFeedbackTypography
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 
 @Composable
@@ -21,8 +23,8 @@ fun InfiniteEmptyState(
     modifier: Modifier = Modifier
 ) {
     StateColumn(modifier = modifier) {
-        Text(text = title, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-        Text(text = message, textAlign = TextAlign.Center)
+        Text(text = title, style = InfiniteFeedbackTypography.snackbarTitle, textAlign = TextAlign.Center)
+        Text(text = message, style = InfiniteFeedbackTypography.supportingBody, textAlign = TextAlign.Center)
     }
 }
 
@@ -33,7 +35,7 @@ fun InfiniteLoadingState(
 ) {
     StateColumn(modifier = modifier) {
         LoadingAnimation()
-        Text(text = message, textAlign = TextAlign.Center)
+        Text(text = message, style = InfiniteFeedbackTypography.supportingBody, textAlign = TextAlign.Center)
     }
 }
 
@@ -41,14 +43,12 @@ fun InfiniteLoadingState(
 fun InfiniteErrorState(
     title: String,
     message: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null
 ) {
-    InfiniteInlineAlert(
-        title = title,
-        message = message,
-        semantic = InfiniteSemantic.Error,
-        modifier = modifier
-    )
+    if (actionLabel != null && onAction != null) InfiniteInlineAlert(title, message, InfiniteSemantic.Error, actionLabel, onAction, modifier)
+    else InfiniteInlineAlert(title, message, InfiniteSemantic.Error, modifier)
 }
 
 @Composable
@@ -56,11 +56,16 @@ private fun StateColumn(
     modifier: Modifier,
     content: @Composable () -> Unit
 ) {
+    InfiniteFeedbackGlassSurface(
+        semantic = InfiniteSemantic.Neutral,
+        modifier = modifier.fillMaxWidth()
+    ) {
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         content()
+    }
     }
 }
