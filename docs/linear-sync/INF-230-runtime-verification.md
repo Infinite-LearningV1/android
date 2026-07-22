@@ -4,7 +4,7 @@ Date: 2026-07-22
 
 Feature branch: `codex/inf-230-permission-readiness-refinement`
 
-Verified source commit: `8fd0129ab62e165270ab04df971949455b07022d`
+Verified source commit: `5435ef47333290193e2144e24e5606dccd0d0158`
 
 ## Verdict
 
@@ -12,7 +12,7 @@ Verified source commit: `8fd0129ab62e165270ab04df971949455b07022d`
 
 The non-runtime unit-test and debug-assembly gates pass. The full lint gate is not clean because of one unchanged `origin/develop` error in `HistoryScreen.kt`. Runtime and instrumentation evidence is intentionally deferred to branch `develop` by the operator. Therefore INF-230 is not recorded as Done, and the conditional legacy permission-helper cleanup has not been performed.
 
-The full `app:test`, initial `app:assembleDebug`, and `app:lint` gates ran at `9ee404a9e63f5f1182d983e0b37e1d171801dcb2`. Commit `8fd0129ab62e165270ab04df971949455b07022d` then changed only two permission feedback font weights from `SemiBold` to the registered `Medium` weight. The exact architecture audits and `app:assembleDebug` were rerun on that final source commit.
+The initial full gates and lint classification ran at `9ee404a9e63f5f1182d983e0b37e1d171801dcb2`. Commit `8fd0129ab62e165270ab04df971949455b07022d` aligned permission feedback typography. Whole-branch review fixes were then committed at `5435ef47333290193e2144e24e5606dccd0d0158`: content-sized glass decoration, untruncated large-font snackbar text, crash-safe Face Settings recovery, and source-compatible `AttendanceMap` parameters. `app:test`, compile-only Android tests, and `app:assembleDebug` were rerun on that final source commit. Android test compilation proves only that instrumentation sources compile; it is not connected runtime evidence.
 
 No ADB, APK installation, connected test, application-data reset, or device command was run during this Task 11 verification.
 
@@ -33,8 +33,9 @@ The folder name is recorded exactly as configured. It is not evidence of the run
 
 | Gate | Result | Evidence |
 | --- | --- | --- |
-| `.\gradlew.bat --no-daemon app:test` | Pass; exit `0` in 129.4 seconds | 103 JUnit XML suites, 558 tests, 0 failures, 0 errors, 5 skipped |
-| `.\gradlew.bat --no-daemon app:assembleDebug` | Pass; exit `0` | Initial full-gate run: `BUILD SUCCESSFUL in 16s`; final `8fd0129` rerun: `BUILD SUCCESSFUL in 17s`; 45 actionable tasks up-to-date |
+| `.\gradlew.bat --no-daemon app:test` | Pass; exit `0` in 142.7 seconds at `5435ef4` | 103 JUnit XML suites, 562 tests, 0 failures, 0 errors, 5 skipped |
+| `.\gradlew.bat --no-daemon app:assembleDebug` | Pass; exit `0` at `5435ef4` | `BUILD SUCCESSFUL in 44s` after a clean serialized rebuild; 45 actionable tasks, 20 executed |
+| `.\gradlew.bat --no-daemon app:compileDebugAndroidTestKotlin` | Pass; exit `0` in 139.4 seconds at `5435ef4` | Instrumentation sources and source-compatibility fixtures compiled only, with no emulator/device connection and no instrumentation test execution |
 | `.\gradlew.bat --no-daemon app:lint` | Fail; exit `1` | `1 errors, 302 warnings`; `HistoryScreen.kt:131` reports `UnusedMaterial3ScaffoldPaddingParameter` |
 
 The lint error is not introduced by INF-230. `git diff origin/develop -- app/src/main/java/com/example/infinite_track/presentation/screen/history/HistoryScreen.kt` is empty, and the same `) { _ ->` source exists on `origin/develop`. This classification does not turn the full lint gate into a pass; it remains a pre-existing repository failure.
