@@ -120,6 +120,8 @@ class AttendancePermissionReadinessUiMapperTest {
     fun `maps required inspection issue to retry failure guidance`() {
         val state = mapper.map(
             readiness = readiness(
+                camera = AttendanceAccessStatus.ACTION_REQUIRED,
+                cameraRecovery = AttendanceAccessRecovery.NONE,
                 issues = listOf(
                     AttendancePermissionInspectionIssue(
                         failure = AttendancePermissionFailure.PLATFORM_STATE_UNAVAILABLE,
@@ -133,6 +135,9 @@ class AttendancePermissionReadinessUiMapperTest {
         assertEquals("Status akses belum dapat diperiksa", state.recoverableFailure?.title)
         assertEquals("Coba lagi", state.recoverableFailure?.actionLabel)
         assertEquals(PermissionGuidanceAction.RETRY_REFRESH, state.recoverableFailure?.action)
+        assertEquals("Coba lagi", state.requiredItems[1].actionLabel)
+        assertEquals("Coba lagi", state.primaryActionLabel)
+        assertTrue(state.primaryActionEnabled)
         assertNull(state.contextualGuidance)
     }
 
@@ -140,6 +145,8 @@ class AttendancePermissionReadinessUiMapperTest {
     fun `maps optional only inspection issue as non blocking contextual guidance`() {
         val state = mapper.map(
             readiness = readiness(
+                notification = AttendanceAccessStatus.DEGRADED,
+                notificationRecovery = AttendanceAccessRecovery.NONE,
                 issues = listOf(
                     AttendancePermissionInspectionIssue(
                         failure = AttendancePermissionFailure.PLATFORM_STATE_UNAVAILABLE,
@@ -154,6 +161,7 @@ class AttendancePermissionReadinessUiMapperTest {
         assertNull(state.recoverableFailure)
         assertEquals("Pengingat opsional belum dapat diperiksa", state.contextualGuidance?.title)
         assertEquals(InfiniteSemantic.Warning, state.contextualGuidance?.semantic)
+        assertEquals("Coba lagi", state.optionalItems[0].actionLabel)
     }
 
     @Test
@@ -205,15 +213,17 @@ class AttendancePermissionReadinessUiMapperTest {
         device: AttendanceAccessStatus = AttendanceAccessStatus.READY,
         deviceRecovery: AttendanceAccessRecovery = recoveryFor(device),
         notification: AttendanceAccessStatus = AttendanceAccessStatus.READY,
+        notificationRecovery: AttendanceAccessRecovery = recoveryFor(notification),
         background: AttendanceAccessStatus = AttendanceAccessStatus.READY,
+        backgroundRecovery: AttendanceAccessRecovery = recoveryFor(background),
         issues: List<AttendancePermissionInspectionIssue> = emptyList()
     ) = AttendancePermissionReadiness(
         entries = listOf(
             AttendanceAccessReadiness(AttendanceAccess.PRECISE_LOCATION, precise, preciseReason, recoveryFor(precise)),
             AttendanceAccessReadiness(AttendanceAccess.CAMERA, camera, recovery = cameraRecovery),
             AttendanceAccessReadiness(AttendanceAccess.DEVICE_LOCATION, device, recovery = deviceRecovery),
-            AttendanceAccessReadiness(AttendanceAccess.NOTIFICATION, notification, recovery = recoveryFor(notification)),
-            AttendanceAccessReadiness(AttendanceAccess.BACKGROUND_LOCATION, background, recovery = recoveryFor(background))
+            AttendanceAccessReadiness(AttendanceAccess.NOTIFICATION, notification, recovery = notificationRecovery),
+            AttendanceAccessReadiness(AttendanceAccess.BACKGROUND_LOCATION, background, recovery = backgroundRecovery)
         ),
         inspectionIssues = issues
     )

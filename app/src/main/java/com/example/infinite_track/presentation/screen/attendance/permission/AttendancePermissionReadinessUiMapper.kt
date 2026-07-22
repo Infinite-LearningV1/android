@@ -3,6 +3,7 @@ package com.example.infinite_track.presentation.screen.attendance.permission
 import com.example.infinite_track.domain.model.attendance.permission.AttendanceAccess
 import com.example.infinite_track.domain.model.attendance.permission.AttendanceAccessReadiness
 import com.example.infinite_track.domain.model.attendance.permission.AttendanceAccessReason
+import com.example.infinite_track.domain.model.attendance.permission.AttendanceAccessRecovery
 import com.example.infinite_track.domain.model.attendance.permission.AttendanceAccessRequirement
 import com.example.infinite_track.domain.model.attendance.permission.AttendanceAccessStatus
 import com.example.infinite_track.domain.model.attendance.permission.AttendancePermissionNextAction
@@ -36,7 +37,7 @@ class AttendancePermissionReadinessUiMapper @Inject constructor() {
             requiredReadyCount = readiness.requiredReadyCount,
             requiredTotalCount = readiness.requiredTotalCount,
             canContinue = readiness.canEnterAttendance,
-            primaryActionLabel = if (readiness.canEnterAttendance) "Lanjut ke Mode Kerja" else "Lanjutkan Setup",
+            primaryActionLabel = primaryActionLabelFor(nextAction, readiness.canEnterAttendance),
             primaryActionEnabled = !hasRequiredIssue || nextAction is AttendancePermissionNextAction.RetryRefresh,
             contextualGuidance = if (hasOptionalIssue && !hasRequiredIssue) optionalGuidance() else null,
             recoverableFailure = if (hasRequiredIssue) requiredFailureGuidance() else null
@@ -51,26 +52,46 @@ class AttendancePermissionReadinessUiMapper @Inject constructor() {
             supportingText = copy.supportingText,
             requirementLabel = if (entry.access.requirement == AttendanceAccessRequirement.REQUIRED) "Wajib" else "Opsional",
             statusLabel = copy.statusLabel,
-            actionLabel = copy.actionLabel,
+            actionLabel = actionLabelFor(entry),
             iconKey = iconFor(entry.access),
             semantic = copy.semantic,
-            stateDescription = "${titleFor(entry.access)}, ${if (entry.access.requirement == AttendanceAccessRequirement.REQUIRED) "wajib" else "opsional"}, ${copy.statusLabel}${copy.actionLabel?.let { ", aksi $it" }.orEmpty()}",
+            stateDescription = "${titleFor(entry.access)}, ${if (entry.access.requirement == AttendanceAccessRequirement.REQUIRED) "wajib" else "opsional"}, ${copy.statusLabel}${actionLabelFor(entry)?.let { ", aksi $it" }.orEmpty()}",
             isReady = entry.status == AttendanceAccessStatus.READY || entry.status == AttendanceAccessStatus.NOT_REQUIRED_ON_DEVICE
         )
     }
 
     private fun copyFor(entry: AttendanceAccessReadiness): ItemCopy = when (entry.status) {
-        AttendanceAccessStatus.READY -> ItemCopy("Siap", readyText(entry.access), null, InfiniteSemantic.Success)
-        AttendanceAccessStatus.NOT_REQUIRED_ON_DEVICE -> ItemCopy("Tidak diperlukan di perangkat ini", "Fitur ini tidak memerlukan izin pada perangkat Anda.", null, InfiniteSemantic.Info)
-        AttendanceAccessStatus.DEVICE_LOCATION_DISABLED -> ItemCopy("GPS belum aktif", "Nyalakan Location atau GPS perangkat untuk melanjutkan absensi.", "Buka pengaturan", InfiniteSemantic.Warning)
-        AttendanceAccessStatus.PERMANENTLY_DENIED -> ItemCopy("Izin diblokir", "Izin perlu diaktifkan dari pengaturan aplikasi.", "Buka pengaturan", InfiniteSemantic.Error)
-        AttendanceAccessStatus.DENIED -> ItemCopy("Izin ditolak", "Izin diperlukan agar fitur ini dapat digunakan.", "Minta izin", InfiniteSemantic.Warning)
-        AttendanceAccessStatus.DEGRADED -> ItemCopy("Terbatas", "Fitur opsional belum aktif. Absensi manual tetap dapat dilanjutkan.", "Aktifkan", InfiniteSemantic.Warning)
+        AttendanceAccessStatus.READY -> ItemCopy("Siap", readyText(entry.access), InfiniteSemantic.Success)
+        AttendanceAccessStatus.NOT_REQUIRED_ON_DEVICE -> ItemCopy("Tidak diperlukan di perangkat ini", "Fitur ini tidak memerlukan izin pada perangkat Anda.", InfiniteSemantic.Info)
+        AttendanceAccessStatus.DEVICE_LOCATION_DISABLED -> ItemCopy("GPS belum aktif", "Nyalakan Location atau GPS perangkat untuk melanjutkan absensi.", InfiniteSemantic.Warning)
+        AttendanceAccessStatus.PERMANENTLY_DENIED -> ItemCopy("Izin diblokir", "Izin perlu diaktifkan dari pengaturan aplikasi.", InfiniteSemantic.Error)
+        AttendanceAccessStatus.DENIED -> ItemCopy("Izin ditolak", "Izin diperlukan agar fitur ini dapat digunakan.", InfiniteSemantic.Warning)
+        AttendanceAccessStatus.DEGRADED -> ItemCopy("Terbatas", "Fitur opsional belum aktif. Absensi manual tetap dapat dilanjutkan.", InfiniteSemantic.Warning)
         AttendanceAccessStatus.ACTION_REQUIRED -> if (entry.reason == AttendanceAccessReason.APPROXIMATE_LOCATION_ONLY) {
-            ItemCopy("Lokasi presisi diperlukan", "Lokasi perkiraan aktif. Izinkan lokasi presisi untuk absensi.", "Minta izin", InfiniteSemantic.Warning)
+            ItemCopy("Lokasi presisi diperlukan", "Lokasi perkiraan aktif. Izinkan lokasi presisi untuk absensi.", InfiniteSemantic.Warning)
         } else {
-            ItemCopy("Perlu diatur", requiredText(entry.access), "Minta izin", InfiniteSemantic.Primary)
+            ItemCopy("Perlu diatur", requiredText(entry.access), InfiniteSemantic.Primary)
         }
+    }
+
+    private fun actionLabelFor(entry: AttendanceAccessReadiness): String? = when (entry.recovery) {
+        AttendanceAccessRecovery.REQUEST_PERMISSION -> "Minta izin"
+        AttendanceAccessRecovery.OPEN_APPLICATION_SETTINGS,
+        AttendanceAccessRecovery.OPEN_DEVICE_LOCATION_SETTINGS -> "Buka pengaturan"
+        AttendanceAccessRecovery.NONE -> when (entry.status) {
+            AttendanceAccessStatus.READY,
+            AttendanceAccessStatus.NOT_REQUIRED_ON_DEVICE -> null
+            else -> "Coba lagi"
+        }
+    }
+
+    private fun primaryActionLabelFor(
+        nextAction: AttendancePermissionNextAction,
+        canContinue: Boolean
+    ): String = when (nextAction) {
+        AttendancePermissionNextAction.RetryRefresh -> "Coba lagi"
+        AttendancePermissionNextAction.ContinueToWorkMode -> "Lanjut ke Mode Kerja"
+        else -> if (canContinue) "Lanjut ke Mode Kerja" else "Lanjutkan Setup"
     }
 
     private fun titleFor(access: AttendanceAccess) = when (access) {
@@ -122,7 +143,6 @@ class AttendancePermissionReadinessUiMapper @Inject constructor() {
     private data class ItemCopy(
         val statusLabel: String,
         val supportingText: String,
-        val actionLabel: String?,
         val semantic: InfiniteSemantic
     )
 }
