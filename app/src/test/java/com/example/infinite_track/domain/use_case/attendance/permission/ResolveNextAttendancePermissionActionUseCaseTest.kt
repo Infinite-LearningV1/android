@@ -36,6 +36,41 @@ class ResolveNextAttendancePermissionActionUseCaseTest {
     }
 
     @Test
+    fun primary_prioritizesPreciseLocationOverCameraWhenBothAreIncomplete() {
+        val readiness = readiness(
+            precise = actionRequired(),
+            camera = actionRequired()
+        )
+
+        assertEquals(
+            AttendancePermissionNextAction.RequestPermission(AttendanceAccess.PRECISE_LOCATION),
+            useCase.forPrimary(readiness)
+        )
+    }
+
+    @Test
+    fun primary_prioritizesCameraOverDeviceLocationWhenBothAreIncomplete() {
+        val readiness = readiness(
+            camera = actionRequired(),
+            deviceLocation = deviceLocationDisabled()
+        )
+
+        assertEquals(
+            AttendancePermissionNextAction.RequestPermission(AttendanceAccess.CAMERA),
+            useCase.forPrimary(readiness)
+        )
+    }
+
+    @Test
+    fun primary_retriesRefreshWhenRequiredAccessHasNoRecoveryAction() {
+        val readiness = readiness(
+            camera = entry(AttendanceAccessStatus.ACTION_REQUIRED)
+        )
+
+        assertEquals(AttendancePermissionNextAction.RetryRefresh, useCase.forPrimary(readiness))
+    }
+
+    @Test
     fun primary_retriesRefreshWhenRequiredInspectionFails() {
         val readiness = readiness(
             inspectionIssues = listOf(
