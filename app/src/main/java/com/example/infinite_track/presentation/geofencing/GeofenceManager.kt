@@ -78,19 +78,14 @@ class GeofenceManager @Inject constructor(
      * Basic/manual attendance readiness is owned by AttendancePermissionReadinessScreen.
      */
     fun hasAllRequiredPermissions(): Boolean {
-        return hasForegroundLocationPermission() && hasBackgroundLocationPermission()
+        return currentPermissionDecision().canRegisterAutomaticMonitoring
     }
 
     /**
      * Get detailed geofence monitoring permission status for UI feedback.
      */
     fun getPermissionStatusMessage(): String {
-        return when {
-            hasAllRequiredPermissions() -> "Izin pemantauan geofence telah diberikan"
-            !hasForegroundLocationPermission() -> "Izin lokasi diperlukan untuk fitur absensi"
-            !hasBackgroundLocationPermission() -> "Lokasi latar belakang belum aktif. Pengingat geofence berjalan terbatas, tetapi absensi manual tetap bisa digunakan."
-            else -> "Status izin tidak diketahui"
-        }
+        return currentPermissionDecision().message
     }
 
     /**
@@ -142,22 +137,10 @@ class GeofenceManager @Inject constructor(
         radius: Float,
         onPermissionError: ((String) -> Unit)? = null
     ) {
-        // Enhanced permission guards with user feedback
-        if (!hasForegroundLocationPermission()) {
-            val errorMsg = "Izin lokasi (FINE/COARSE) diperlukan untuk fitur geofencing. Silakan berikan izin di pengaturan aplikasi."
-            Log.e(TAG, errorMsg)
-            onPermissionError?.invoke(errorMsg)
-            return
-        }
-        if (!hasBackgroundLocationPermission()) {
-            val errorMsg = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                "Izin lokasi latar belakang diperlukan untuk pemantauan area kerja otomatis (Android 10+). " +
-                "Pilih 'Izinkan sepanjang waktu' di pengaturan lokasi aplikasi."
-            } else {
-                "Izin lokasi latar belakang tidak tersedia."
-            }
-            Log.e(TAG, errorMsg)
-            onPermissionError?.invoke(errorMsg)
+        val initialPermissionDecision = currentPermissionDecision()
+        if (!initialPermissionDecision.canRegisterAutomaticMonitoring) {
+            Log.e(TAG, initialPermissionDecision.message)
+            onPermissionError?.invoke(initialPermissionDecision.message)
             return
         }
 
@@ -173,6 +156,12 @@ class GeofenceManager @Inject constructor(
 
         settingsClient.checkLocationSettings(settingsRequest)
             .addOnSuccessListener {
+                val latestPermissionDecision = currentPermissionDecision()
+                if (!latestPermissionDecision.canRegisterAutomaticMonitoring) {
+                    Log.e(TAG, latestPermissionDecision.message)
+                    onPermissionError?.invoke(latestPermissionDecision.message)
+                    return@addOnSuccessListener
+                }
                 val requestId = id
                 val geofence = Geofence.Builder()
                     .setRequestId(requestId)
@@ -185,6 +174,13 @@ class GeofenceManager @Inject constructor(
                     .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
                     .addGeofence(geofence)
                     .build()
+
+                val beforePlayServicesDecision = currentPermissionDecision()
+                if (!beforePlayServicesDecision.canRegisterAutomaticMonitoring) {
+                    Log.e(TAG, beforePlayServicesDecision.message)
+                    onPermissionError?.invoke(beforePlayServicesDecision.message)
+                    return@addOnSuccessListener
+                }
 
                 geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent).run {
                     addOnSuccessListener {
@@ -232,12 +228,9 @@ class GeofenceManager @Inject constructor(
      */
     @SuppressLint("MissingPermission")
     fun addReminderGeofence(id: String, latitude: Double, longitude: Double, radius: Float) {
-        if (!hasForegroundLocationPermission()) {
-            Log.e(TAG, "Tidak ada izin ACCESS_FINE_LOCATION. Reminder geofence tidak dapat ditambahkan.")
-            return
-        }
-        if (!hasBackgroundLocationPermission()) {
-            Log.e(TAG, "Tidak ada izin ACCESS_BACKGROUND_LOCATION. Reminder geofence gagal (API 29+).")
+        val initialPermissionDecision = currentPermissionDecision()
+        if (!initialPermissionDecision.canRegisterAutomaticMonitoring) {
+            Log.e(TAG, initialPermissionDecision.message)
             return
         }
 
@@ -254,6 +247,12 @@ class GeofenceManager @Inject constructor(
             .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
             .addGeofence(geofence)
             .build()
+
+        val beforePlayServicesDecision = currentPermissionDecision()
+        if (!beforePlayServicesDecision.canRegisterAutomaticMonitoring) {
+            Log.e(TAG, beforePlayServicesDecision.message)
+            return
+        }
 
         geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent).run {
             addOnSuccessListener {
@@ -382,6 +381,12 @@ class GeofenceManager @Inject constructor(
             "active:$activeAttendanceId:wfa:$lat,$lng"
         }
     }
+
+    private fun currentPermissionDecision(): GeofencePermissionDecision =
+        GeofencePermissionContract.evaluate(
+            hasPreciseForegroundLocation = hasForegroundLocationPermission(),
+            hasBackgroundLocation = hasBackgroundLocationPermission()
+        )
 }
 
 private suspend fun <T> Task<T>.awaitTask(): T = suspendCancellableCoroutine { continuation ->

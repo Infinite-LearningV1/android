@@ -167,7 +167,12 @@ fun NavGraphBuilder.mainContentNavGraph(
 
     // Attendance Screen
     composable(Screen.Attendance.route) {
-        AttendanceScreen(navController = navController)
+        AttendanceScreen(
+            navController = navController,
+            navigatePermissionReadiness = {
+                navController.safeNavigate(Screen.AttendancePermissionReadiness.route)
+            }
+        )
     }
 
     // Location Search Screen - untuk pencarian lokasi attendance

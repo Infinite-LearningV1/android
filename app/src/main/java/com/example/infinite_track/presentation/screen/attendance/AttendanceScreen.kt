@@ -1,5 +1,8 @@
 package com.example.infinite_track.presentation.screen.attendance
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -24,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,11 +39,16 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.infinite_track.domain.model.attendance.WorkMode
@@ -56,6 +65,8 @@ import com.example.infinite_track.utils.LocationPermissionHelper
 import com.example.infinite_track.presentation.components.maps.MarkerViewWfa
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarHost
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarVisuals
+import com.example.infinite_track.presentation.design.components.status.InfiniteInlineAlert
+import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
@@ -71,9 +82,25 @@ import com.mapbox.maps.plugin.animation.flyTo
 @Composable
 fun AttendanceScreen(
     navController: NavController,
-    viewModel: AttendanceViewModel = hiltViewModel()
+    viewModel: AttendanceViewModel = hiltViewModel(),
+    navigatePermissionReadiness: () -> Unit = {}
 ) {
     var mapViewInstance by remember { mutableStateOf<MapView?>(null) }
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var hasPreciseLocationPermission by remember(context) {
+        mutableStateOf(context.hasPreciseLocationPermission())
+    }
+
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasPreciseLocationPermission = context.hasPreciseLocationPermission()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     // Observasi state dari ViewModel yang sudah disederhanakan
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -237,8 +264,8 @@ fun AttendanceScreen(
     }
 
     // Start location updates when UI is ready and data is loaded successfully
-    LaunchedEffect(uiState.uiState) {
-        if (uiState.uiState is UiState.Success) {
+    LaunchedEffect(uiState.uiState, hasPreciseLocationPermission) {
+        if (uiState.uiState is UiState.Success && hasPreciseLocationPermission) {
             // Only start location updates after data is loaded and UI is ready
             viewModel.startLocationUpdates()
             android.util.Log.d("AttendanceScreen", "Location updates started after UI ready")
@@ -390,6 +417,7 @@ fun AttendanceScreen(
                 Box(modifier = Modifier.fillMaxSize()) {
                     // Fullscreen Map dengan data dari ViewModel - Updated with WFO, WFH, and WFA locations
                     AttendanceMap(
+                        hasPreciseLocationPermission = hasPreciseLocationPermission,
                         modifier = Modifier.fillMaxSize(),
                         wfoLocation = if (uiState.isWfaModeActive) null else uiState.wfoLocation, // Hide WFO when WFA active
                         wfhLocation = if (uiState.isWfaModeActive) null else uiState.wfhLocation, // Hide WFH when WFA active
@@ -425,6 +453,16 @@ fun AttendanceScreen(
                         onBackClicked = { navController.navigateUp() },
                         onFocusLocationClicked = { viewModel.onFocusLocationClicked() }
                     )
+
+                    if (!hasPreciseLocationPermission) {
+                        AttendancePermissionRevocationRecovery(
+                            onNavigatePermissionReadiness = navigatePermissionReadiness,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .statusBarsPadding()
+                                .padding(top = 80.dp, start = 16.dp, end = 16.dp)
+                        )
+                    }
 
                     // Pick on Map Crosshair - shows static pin in center when Pick on Map mode is active
                     AnimatedVisibility(
@@ -547,6 +585,7 @@ fun AttendanceScreenPreview() {
     Infinite_TrackTheme {
         Box(modifier = Modifier.fillMaxSize()) {
             AttendanceMap(
+                hasPreciseLocationPermission = false,
                 modifier = Modifier.fillMaxSize(),
                 onMapReady = { }
             )
@@ -561,3 +600,24 @@ fun AttendanceScreenPreview() {
         }
     }
 }
+
+@Composable
+internal fun AttendancePermissionRevocationRecovery(
+    onNavigatePermissionReadiness: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    InfiniteInlineAlert(
+        title = "Lokasi presisi tidak tersedia",
+        message = "Akses lokasi berubah saat Attendance dibuka. Pulihkan akses dari layar kesiapan sebelum melanjutkan.",
+        semantic = InfiniteSemantic.Warning,
+        actionLabel = "Kembali ke kesiapan",
+        onAction = onNavigatePermissionReadiness,
+        modifier = modifier
+    )
+}
+
+private fun Context.hasPreciseLocationPermission(): Boolean =
+    ContextCompat.checkSelfPermission(
+        this,
+        Manifest.permission.ACCESS_FINE_LOCATION
+    ) == PackageManager.PERMISSION_GRANTED
