@@ -101,6 +101,53 @@ class AttendancePermissionReadinessViewModelTest {
     }
 
     @Test
+    fun `blocking callback resets pending navigation after fresh OS readiness`() = runTest {
+        val repository = FakeRepository(allRequiredReady())
+        val viewModel = viewModel(repository); advanceUntilIdle()
+        val effects = Channel<AttendancePermissionReadinessEffect>(Channel.UNLIMITED)
+        backgroundScope.launch { viewModel.effects.collect { effects.send(it) } }
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked); advanceUntilIdle()
+        assertEquals(AttendancePermissionReadinessEffect.NavigateToWorkMode, effects.receive())
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionResultReceived(AttendanceAccess.CAMERA, AttendancePermissionRequestOutcome.DENIED))
+        repository.readiness.value = allRequiredReady(); advanceUntilIdle()
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked); advanceUntilIdle()
+        assertEquals(AttendancePermissionReadinessEffect.NavigateToWorkMode, effects.receive())
+    }
+
+    @Test
+    fun `settings guard clears on return and launch failure`() = runTest {
+        val viewModel = viewModel(FakeRepository(partialReadiness())); advanceUntilIdle()
+        val effects = Channel<AttendancePermissionReadinessEffect>(Channel.UNLIMITED)
+        backgroundScope.launch { viewModel.effects.collect { effects.send(it) } }
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PermissionResultReceived(AttendanceAccess.CAMERA, AttendancePermissionRequestOutcome.PERMANENTLY_DENIED))
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked); advanceUntilIdle()
+        assertEquals(AttendancePermissionReadinessEffect.OpenApplicationSettings(AttendanceAccess.CAMERA), effects.receive())
+        viewModel.onEvent(AttendancePermissionReadinessEvent.ReturnedFromSettings)
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked); advanceUntilIdle()
+        assertEquals(AttendancePermissionReadinessEffect.OpenApplicationSettings(AttendanceAccess.CAMERA), effects.receive())
+        viewModel.onEvent(AttendancePermissionReadinessEvent.SettingsLaunchFailed(AttendanceSettingsDestination.APPLICATION)); advanceUntilIdle()
+        assertTrue(effects.receive() is AttendancePermissionReadinessEffect.ShowSnackbar)
+        viewModel.onEvent(AttendancePermissionReadinessEvent.PrimaryActionClicked); advanceUntilIdle()
+        assertEquals(AttendancePermissionReadinessEffect.OpenApplicationSettings(AttendanceAccess.CAMERA), effects.receive())
+    }
+
+    @Test
+    fun `stale feedback events do not clear active feedback`() = runTest {
+        val viewModel = viewModel(FakeRepository(partialReadiness())); advanceUntilIdle()
+        val effects = Channel<AttendancePermissionReadinessEffect>(Channel.UNLIMITED)
+        backgroundScope.launch { viewModel.effects.collect { effects.send(it) } }
+        viewModel.onEvent(AttendancePermissionReadinessEvent.SettingsLaunchFailed(AttendanceSettingsDestination.APPLICATION)); advanceUntilIdle()
+        val feedback = (effects.receive() as AttendancePermissionReadinessEffect.ShowSnackbar).feedback
+        viewModel.onEvent(AttendancePermissionReadinessEvent.SnackbarActionClicked(feedback.id, AttendancePermissionFeedbackAction.RETRY_REFRESH))
+        viewModel.onEvent(AttendancePermissionReadinessEvent.SnackbarFinished("wrong"))
+        viewModel.onEvent(AttendancePermissionReadinessEvent.SettingsLaunchFailed(AttendanceSettingsDestination.APPLICATION)); advanceUntilIdle()
+        assertFalse(effects.tryReceive().isSuccess)
+        viewModel.onEvent(AttendancePermissionReadinessEvent.SnackbarFinished(feedback.id))
+        viewModel.onEvent(AttendancePermissionReadinessEvent.SettingsLaunchFailed(AttendanceSettingsDestination.APPLICATION)); advanceUntilIdle()
+        assertTrue(effects.receive() is AttendancePermissionReadinessEffect.ShowSnackbar)
+    }
+
+    @Test
     fun `permanent denial overlay opens application settings`() = runTest {
         val viewModel = viewModel(FakeRepository(partialReadiness()))
         advanceUntilIdle()
