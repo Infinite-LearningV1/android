@@ -71,7 +71,7 @@ Initial result at `9ee404a`: not clean; exit `0`. It found the following two `Fo
 - `PermissionHeroCard.kt:56`
 - `PermissionProgressHeader.kt:41`
 
-Final result at `8fd0129`: pass; exit `1` with no matches. The correction replaces both uses with the registered `FontWeight.Medium` feedback weight; no blur, render effect, shadow API, or `SemiBold` match remains in the audited paths.
+Result introduced at `8fd0129` and rechecked on final verified source `5435ef4`: pass; exit `1` with no matches. The correction replaces both uses with the registered `FontWeight.Medium` feedback weight; no blur, render effect, shadow API, or `SemiBold` match remains in the audited paths.
 
 ```powershell
 git diff origin/develop -- app/src/main/java/com/example/infinite_track/di/NetworkModule.kt app/src/main/res/xml/network_security_config.xml
@@ -87,7 +87,7 @@ A prior Task 9 diagnostic on the feature branch found an Android 17 / API 37 emu
 
 ## Deferred runtime matrix
 
-For every row, the build commit is `Pending develop commit`; `8fd0129ab62e165270ab04df971949455b07022d` is only the feature-source commit used for the final non-runtime verification. Evidence paths must be filled with sanitized screenshots or concise logs from a disposable emulator. Do not attach credentials, tokens, personal data, raw authentication logs, or large recordings.
+For every row, the build commit is `Pending develop commit`; `5435ef47333290193e2144e24e5606dccd0d0158` is the feature-source commit used for the final non-runtime verification. Evidence paths must be filled with sanitized screenshots or concise logs from a disposable emulator. Do not attach credentials, tokens, personal data, raw authentication logs, or large recordings.
 
 | Scenario | Required emulator/API | Exact setup on `develop` | Expected result | Observed result | Status / evidence |
 | --- | --- | --- | --- | --- | --- |
