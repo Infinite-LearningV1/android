@@ -4,8 +4,13 @@ Date: 2026-07-25
 
 Branch: `codex/inf-223-geofence-runtime-spec-plan`
 
-Feature source verified before documentation commit:
+Historical feature source before the original evidence commit:
 `abfa9b6006fbad669782840ffc7ce2a4c5d52d70`.
+
+The post-evidence token-delivery correction changes production code,
+deterministic tests, and the geofence reconciliation ADR. Its final source
+commit and fresh gates are recorded below; this evidence update does not
+promote any device/runtime scenario.
 
 ## Verdict
 
@@ -72,6 +77,27 @@ contained the intentional Task 1-12 commit sequence without author email
 output.  The merge base was `384de7496d49fb2719acec0718b98475ac502c53`; against
 HEAD `e53d14cc937f9016a7dfe394028e049ce652fbfe`,
 `git diff --name-only <merge-base>...<head>` counted exactly 75 changed files.
+
+## Final Token-Delivery Correction Gates
+
+The final token-delivery source head is
+`6fc693d64bb2234876bce46126611dd9f6cb1b6d`. The commands below ran against
+the same production and test source content immediately before that source
+commit; the ADR/path-sanitization text and this evidence update are
+documentation-only. The correction uses a durable token, awaits the coordinator
+before conditional acknowledgement, and adds deterministic
+cancellation/follow-up coverage.
+
+| Start - end (UTC+08:00) | Exact command | Exit | Exact count / result |
+| --- | --- | ---: | --- |
+| 15:58:00.861 - 15:58:30.605 | `.\gradlew.bat --no-daemon app:testDebugUnitTest` | 0 | `BUILD SUCCESSFUL in 29s`; 116 XML suites, 561 tests, 0 failures, 0 errors, 2 skipped |
+| 16:02:05.225 - 16:02:23.635 | `.\gradlew.bat --no-daemon app:compileDebugAndroidTestKotlin` | 0 | `BUILD SUCCESSFUL in 18s`; 0 compilation failures |
+| 15:59:28.715 - 16:01:16.415 | `.\gradlew.bat --no-daemon app:lintDebug` | 0 | `BUILD SUCCESSFUL in 1m 47s`; 0 errors, 320 warnings, 20 informational issues |
+| 16:01:27.976 - 16:01:58.261 | `.\gradlew.bat --no-daemon app:assembleDebug` | 0 | `BUILD SUCCESSFUL in 29s`; 0 assembly failures |
+
+All 13 rows in the device/runtime matrix remain **Needs Verification**. These
+automated gates and deterministic unit tests do not prove authenticated
+backend, Play services, notification, WorkManager, or device lifecycle flows.
 
 ## Architecture and Cleanup Audit
 
