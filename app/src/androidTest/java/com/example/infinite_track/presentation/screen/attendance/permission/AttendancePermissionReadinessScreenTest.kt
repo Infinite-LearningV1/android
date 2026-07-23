@@ -189,6 +189,10 @@ class AttendancePermissionReadinessScreenTest {
             pillActionBounds.left >= hostBounds.left &&
                 pillActionBounds.right <= hostBounds.right
         )
+        assertTrue(
+            pillActionBounds.top >= hostBounds.top &&
+                pillActionBounds.bottom <= hostBounds.bottom
+        )
 
         val primaryButton = composeRule.onNodeWithText("Lanjutkan Setup")
             .performScrollTo()
@@ -198,6 +202,10 @@ class AttendancePermissionReadinessScreenTest {
         assertTrue(
             primaryButtonBounds.left >= hostBounds.left &&
                 primaryButtonBounds.right <= hostBounds.right
+        )
+        assertTrue(
+            primaryButtonBounds.top >= hostBounds.top &&
+                primaryButtonBounds.bottom <= hostBounds.bottom
         )
     }
 

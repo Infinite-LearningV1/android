@@ -138,7 +138,7 @@ private fun PermissionReadinessContent(
             leadingIcon = Icons.Default.Shield
         )
 
-        Column(verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.sm)) {
+        Column {
             uiState.requiredItems.forEachIndexed { index, item ->
                 PermissionTimelinePill(
                     item = item,

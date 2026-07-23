@@ -95,6 +95,7 @@ fun PermissionTimelinePill(
         Surface(
             modifier = Modifier
                 .weight(1f)
+                .padding(vertical = InfiniteSpacing.Default.xs)
                 .then(
                     if (enabled) {
                         Modifier.clickable { onClick?.invoke() }
