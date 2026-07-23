@@ -73,10 +73,6 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}" />
-        <meta-data
-            android:name="com.mapbox.maps.AccessToken"
-            android:value="${MAPBOX_PUBLIC_TOKEN}" />
-
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

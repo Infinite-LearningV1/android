@@ -24,7 +24,7 @@ This document provides comprehensive instructions for building a production-read
 - [ ] **local.properties** configured with:
   ```properties
   sdk.dir=/path/to/android/sdk
-  MAPBOX_ACCESS_TOKEN=your_mapbox_token
+  MAPS_API_KEY=your_android_restricted_key
   ```
 
 ### 2. Configuration Verification
@@ -177,7 +177,7 @@ The `BuildConfigReleaseTest` will verify:
 - ✅ BuildConfig.DEBUG = false
 - ✅ Application ID correct
 - ✅ Version code/name set
-- ✅ Mapbox token configured
+- ✅ Google Maps Platform key configured
 
 ### Manual Verification
 
@@ -315,9 +315,8 @@ Our `proguard-rules.pro` includes comprehensive rules for:
 8. **Room Database** - Database entities and DAOs
 9. **WorkManager** - Background workers
 10. **Google Play Services** - Maps, Location, Places
-11. **Mapbox** - Map rendering
-12. **Firebase** - FCM messaging
-13. **Parcelize** - Parcelable classes
+11. **Firebase** - FCM messaging
+12. **Parcelize** - Parcelable classes
 
 Each section is documented with WHY the rule is needed.
 
@@ -341,8 +340,8 @@ The following logs are automatically stripped in release:
 
 ### 2. API Keys
 
-- ✅ Mapbox token stored in `local.properties` (not in Git)
-- ✅ Google Maps API key in manifest (consider using BuildConfig)
+- ✅ Google Maps Platform key stored in `local.properties` (not in Git)
+- ✅ Manifest receives the key through `${MAPS_API_KEY}`
 - ⚠️ **NEVER** hardcode sensitive API keys in code
 
 ### 3. Obfuscation

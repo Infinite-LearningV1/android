@@ -27,9 +27,6 @@
     <string name="forgot_password">Forgot Password?</string>
     <string name="email_password_empty_error">Email and Password Can\'t Be Empty</string>
 
-    <!-- Mapbox Configuration -->
-    <string name="mapbox_access_token">pk.eyJ1IjoiZmVicml5YWRpIiwiYSI6ImNtYzMzdHV3MjAweGgybHF0YTM5YTFrbXAifQ.PKZdzYcZcFsvnPBjWF827w</string>
-
     <!--  Component  -->
     //Component
     <string name="address_label">Address</string>

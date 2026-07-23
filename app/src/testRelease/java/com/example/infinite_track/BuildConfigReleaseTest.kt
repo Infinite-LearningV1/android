@@ -63,19 +63,6 @@ class BuildConfigReleaseTest {
     }
 
     @Test
-    fun `verify Mapbox token is configured when provided`() {
-        assumeTrue(
-            "Mapbox token verification requires MAPBOX_PUBLIC_TOKEN in this test environment",
-            BuildConfig.MAPBOX_PUBLIC_TOKEN.isNotEmpty()
-        )
-
-        assertTrue(
-            "Mapbox token must not be blank when provided to the release test environment",
-            BuildConfig.MAPBOX_PUBLIC_TOKEN.isNotBlank()
-        )
-    }
-
-    @Test
     fun `display build information`() {
         println("========================================")
         println("Build Configuration Information:")

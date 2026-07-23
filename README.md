@@ -33,7 +33,7 @@ Android is treated as a trusted data-capture client. Backend state remains the f
 - **Networking:** Retrofit + OkHttp
 - **Persistence:** Room + DataStore
 - **Background Work:** WorkManager
-- **Maps & Location:** Mapbox + Google Play Services Location / Geofencing
+- **Maps & Location:** Google Maps Compose + Places + Google Play Services Location / Geofencing
 - **Camera & ML:** CameraX + ML Kit Face Detection + TensorFlow Lite
 - **Firebase:** Firebase Cloud Messaging, Firebase App Distribution workflow integration
 
@@ -44,15 +44,15 @@ Android is treated as a trusted data-capture client. Backend state remains the f
 - JDK 17-compatible Android toolchain
 - Reachable backend environment for device/runtime testing
 - Firebase app config for Android
-- Mapbox access token
+- Android-restricted Google Maps Platform API key
 
 ### Local Configuration
 
-#### 1. Mapbox token
+#### 1. Google Maps Platform key
 Create `local.properties` in the repository root:
 
 ```properties
-MAPBOX_ACCESS_TOKEN=YOUR_MAPBOX_ACCESS_TOKEN
+MAPS_API_KEY=YOUR_ANDROID_RESTRICTED_KEY
 ```
 
 #### 2. Firebase config
@@ -73,7 +73,7 @@ Kontrak workflow distribusi:
 - Workflow mencakup cleanup temporary secret/config files: `release-keystore.jks`, `firebase-service-account.json`, `app/google-services.json`, dan `local.properties`.
 
 Input GitHub yang dibutuhkan:
-- Secrets: `MAPBOX_ACCESS_TOKEN`, `GOOGLE_SERVICES_JSON_BASE64` preferred atau `GOOGLE_SERVICES_JSON`, `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_APP_ID`.
+- Secrets: `MAPS_API_KEY`, `GOOGLE_SERVICES_JSON_BASE64` preferred atau `GOOGLE_SERVICES_JSON`, `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_APP_ID`.
 - Variable: `FIREBASE_TESTER_GROUPS`.
 
 Catatan governance: repo dapat mendokumentasikan kontrak workflow, tetapi branch protection / ruleset GitHub untuk enforcement promosi `develop -> master` tetap **Needs Verification** di settings GitHub.
@@ -158,8 +158,8 @@ Important distinction:
 - **DataStore** — lightweight preference and session storage
 
 ### Location & Maps
-- **Mapbox Maps SDK** — map rendering and camera control
-- **Mapbox Compose Extension** — Compose integration for map UI
+- **Google Maps Compose** — map rendering, markers, and camera control
+- **Places SDK for Android** — place search and details
 - **Google Play Services Location** — current location and geofencing support
 
 ### Camera & ML

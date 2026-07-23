@@ -9,8 +9,8 @@ Android = trusted data-capture client (Kotlin/Jetpack Compose). Login/session, a
 
 ## STYLE
 - Clean Architecture: presentation -> domain -> data, DI via Hilt.
-- Stack: Compose + Material 3, Retrofit/OkHttp, Room/DataStore, WorkManager, Mapbox, CameraX + ML Kit + TFLite, FCM.
-- Jangan ekspos/print secret (local.properties, google-services.json, keystore, Mapbox token).
+- Stack: Compose + Material 3, Retrofit/OkHttp, Room/DataStore, WorkManager, Google Maps Compose + Places, CameraX + ML Kit + TFLite, FCM.
+- Jangan ekspos/print secret (local.properties, google-services.json, keystore, Google Maps Platform key).
 
 ## GOTCHAS
 - Base URL backend dipilih hardcoded di NetworkModule.kt: emulator 10.0.2.2:3005, device fisik LAN IP hardcoded (mis. 192.168.1.64:3005). Rawan gagal jika environment network berubah.

@@ -15,7 +15,7 @@
 - **Dependency Injection**: Hilt
 - **Networking**: Retrofit + OkHttp
 - **Local Storage**: Room Database + DataStore
-- **Maps**: Mapbox SDK
+- **Maps**: Google Maps Compose + Places SDK
 - **Image Processing**: CameraX untuk face recognition
 
 ### Key Libraries & Dependencies
@@ -126,7 +126,7 @@ data class AttendanceRequestModel(
 - **Reactive State Management**: StateFlow untuk UI state
 - **Geofence Integration**: Real-time geofence status monitoring
 - **Multi-Mode Support**: WFO, WFH, WFA locations
-- **Map Integration**: Mapbox integration dengan camera controls
+- **Map Integration**: Google Maps Compose dengan provider-neutral camera effects
 
 **State Management:**
 ```kotlin
@@ -147,7 +147,7 @@ data class AttendanceScreenState(
 ### 4. UI Components Architecture
 
 **AttendanceScreen:**
-- **Mapbox Integration**: Real-time map dengan multi-marker support
+- **Google Maps Integration**: Real-time map dengan multi-marker support
 - **Bottom Sheet**: Attendance controls dengan dynamic content
 - **Reactive Updates**: Real-time location dan geofence status updates
 
@@ -227,7 +227,7 @@ data class AttendanceScreenState(
 - **Response Format**: Standardized API response dengan success/error handling
 
 ### Maps Integration
-- **Mapbox SDK**: Custom map styling dengan business locations
+- **Google Maps Compose**: Map rendering dengan business locations
 - **Marker Management**: Dynamic marker creation untuk WFO/WFH/WFA
 - **Camera Controls**: Smooth camera animations dan bounds fitting
 
