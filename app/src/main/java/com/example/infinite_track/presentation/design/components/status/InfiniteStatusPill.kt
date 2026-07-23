@@ -14,7 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -49,9 +48,23 @@ enum class InfiniteStatusVariant {
 
 internal data class InfiniteStatusPillPalette(val container: Color, val content: Color, val border: Color, val accent: Color)
 internal fun resolveInfiniteStatusPillPalette(semantic: InfiniteSemantic, shared: Boolean, override: Color?, variant: InfiniteStatusVariant): InfiniteStatusPillPalette {
-    val palette = infiniteFeedbackPalette(semantic); val sharedColor = override ?: variant.toAttendanceBadgeColor()
-    return if (shared || override != null) InfiniteStatusPillPalette(sharedColor.copy(alpha = .13f), sharedColor, sharedColor.copy(alpha = .35f), sharedColor)
-    else InfiniteStatusPillPalette(palette.stateContainer, palette.content, palette.border, palette.accent)
+    val palette = infiniteFeedbackPalette(semantic)
+    val sharedColor = override ?: variant.toAttendanceBadgeColor()
+    return if (shared || override != null) {
+        InfiniteStatusPillPalette(
+            container = palette.surface,
+            content = sharedColor,
+            border = sharedColor.copy(alpha = .35f),
+            accent = sharedColor
+        )
+    } else {
+        InfiniteStatusPillPalette(
+            container = palette.surface,
+            content = palette.content,
+            border = palette.border,
+            accent = palette.accent
+        )
+    }
 }
 
 @Composable
@@ -103,8 +116,7 @@ fun InfiniteStatusPill(
             }
             Text(
                 text = label,
-                style = InfiniteFeedbackTypography.pillLabel,
-                fontWeight = FontWeight.Medium
+                style = InfiniteFeedbackTypography.pillLabel
             )
         }
     }
