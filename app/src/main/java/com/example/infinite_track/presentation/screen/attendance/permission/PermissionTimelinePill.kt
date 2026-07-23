@@ -13,13 +13,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
@@ -40,10 +37,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.presentation.core.body1
 import com.example.infinite_track.presentation.core.body2
@@ -66,90 +65,155 @@ fun PermissionTimelinePill(
     modifier: Modifier = Modifier
 ) {
     val colors = infiniteSemanticColors(item.semantic)
-    val enabled = isCurrentAction && onClick != null
+    val clickAction = if (isCurrentAction) onClick else null
+    val enabled = clickAction != null
+    val futureInactive = !item.isReady && !isCurrentAction
     val shape = RoundedCornerShape(18.dp)
+    val accessKey = item.access.name.lowercase()
+    val stateCopy = buildList {
+        item.requirementLabel.takeIf(String::isNotBlank)?.let(::add)
+        item.statusLabel.takeIf(String::isNotBlank)?.let(::add)
+        if (enabled) {
+            item.actionLabel?.takeIf(String::isNotBlank)?.let { add("Aksi $it") }
+        }
+    }.joinToString(", ")
+    val surfaceColor = if (futureInactive) {
+        colors.container.copy(alpha = 0.55f)
+    } else {
+        colors.container
+    }
+    val borderColor = if (futureInactive) {
+        colors.border.copy(alpha = 0.55f)
+    } else {
+        colors.border
+    }
+    val contentColor = if (futureInactive) {
+        colors.content.copy(alpha = 0.72f)
+    } else {
+        colors.content
+    }
+    val supportingColor = if (futureInactive) {
+        colors.content.copy(alpha = 0.62f)
+    } else {
+        colors.content.copy(alpha = 0.74f)
+    }
+    val labelColor = if (futureInactive) contentColor else colors.accent
+    val labelTag = if (enabled) {
+        "permission-step-action-$accessKey"
+    } else {
+        "permission-step-status-$accessKey"
+    }
+    val railAccent = if (futureInactive) colors.accent.copy(alpha = 0.55f) else colors.accent
 
-    Row(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
-            .testTag("permission-step-${item.access.name.lowercase()}")
+            .testTag("permission-step-$accessKey")
             .semantics(mergeDescendants = true) {
                 contentDescription = item.title
-                stateDescription = item.stateDescription
+                stateDescription = stateCopy
                 if (enabled) role = Role.Button
             }
     ) {
-        PermissionTimelineRail(
-            stepNumber = stepNumber,
-            complete = item.isReady,
-            showTop = showTopConnector,
-            showBottom = showBottomConnector,
-            topComplete = topConnectorComplete,
-            bottomComplete = bottomConnectorComplete,
-            accent = colors.accent,
-            modifier = Modifier.fillMaxHeight(),
-            nodeTag = "permission-step-node-${item.access.name.lowercase()}"
+        val density = LocalDensity.current
+        val compact = maxWidth < 360.dp || density.fontScale >= 1.5f
+        val nodeDiameter = maxOf(
+            32.dp,
+            with(density) { body1.lineHeight.toDp() } + InfiniteSpacing.Default.sm
         )
-        Spacer(Modifier.width(InfiniteSpacing.Default.sm))
-        Surface(
-            modifier = Modifier
-                .weight(1f)
-                .padding(vertical = InfiniteSpacing.Default.xs)
-                .then(
-                    if (enabled) {
-                        Modifier.clickable { onClick?.invoke() }
-                    } else {
-                        Modifier
+        val railWidth = nodeDiameter + InfiniteSpacing.Default.xs
+
+        Box(Modifier.fillMaxWidth()) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = railWidth + InfiniteSpacing.Default.sm,
+                        top = InfiniteSpacing.Default.xs,
+                        bottom = InfiniteSpacing.Default.xs
+                    )
+                    .then(
+                        if (clickAction != null) {
+                            Modifier.clickable(
+                                role = Role.Button,
+                                onClick = clickAction
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .sizeIn(minHeight = 48.dp),
+                shape = shape,
+                color = surfaceColor,
+                border = BorderStroke(1.dp, borderColor),
+                shadowElevation = if (enabled) 3.dp else 0.dp
+            ) {
+                Box(Modifier.padding(InfiniteSpacing.Default.lg)) {
+                    val copy: @Composable (Modifier) -> Unit = { copyModifier ->
+                        Column(
+                            modifier = copyModifier
+                                .clearAndSetSemantics {}
+                                .testTag("permission-step-copy-$accessKey"),
+                            verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)
+                        ) {
+                            Text(item.title, style = headline4, color = contentColor)
+                            Text(
+                                item.supportingText,
+                                style = body2,
+                                color = supportingColor
+                            )
+                        }
                     }
-                )
-                .sizeIn(minHeight = 48.dp),
-            shape = shape,
-            color = colors.container,
-            border = BorderStroke(1.dp, colors.border),
-            shadowElevation = if (isCurrentAction) 3.dp else 0.dp
-        ) {
-            BoxWithConstraints(Modifier.padding(InfiniteSpacing.Default.lg)) {
-                val compact = maxWidth < 360.dp || LocalDensity.current.fontScale >= 1.5f
-                val copy: @Composable (Modifier) -> Unit = { copyModifier ->
-                    Column(
-                        modifier = copyModifier,
-                        verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)
-                    ) {
-                        Text(item.title, style = headline4, color = colors.content)
+                    val label: @Composable () -> Unit = {
                         Text(
-                            item.supportingText,
-                            style = body2,
-                            color = colors.content.copy(alpha = 0.74f)
+                            text = if (enabled) {
+                                item.actionLabel ?: item.statusLabel
+                            } else {
+                                item.statusLabel
+                            },
+                            style = body1,
+                            color = labelColor,
+                            modifier = Modifier
+                                .clearAndSetSemantics {}
+                                .testTag(labelTag)
+                                .sizeIn(minHeight = 48.dp)
+                                .wrapContentHeight()
                         )
                     }
-                }
-                val label: @Composable () -> Unit = {
-                    Text(
-                        text = item.actionLabel ?: item.statusLabel,
-                        style = body1,
-                        color = colors.accent,
-                        modifier = Modifier
-                            .sizeIn(minHeight = 48.dp)
-                            .wrapContentHeight()
-                    )
-                }
-                if (compact) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.sm)
-                    ) {
-                        copy(Modifier.fillMaxWidth())
-                        label()
-                    }
-                } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.md)
-                    ) {
-                        copy(Modifier.weight(1f))
-                        label()
+                    if (compact) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.sm)
+                        ) {
+                            copy(Modifier.fillMaxWidth())
+                            label()
+                        }
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.md)
+                        ) {
+                            copy(Modifier.weight(1f))
+                            label()
+                        }
                     }
                 }
+            }
+            Box(Modifier.matchParentSize()) {
+                PermissionTimelineRail(
+                    stepNumber = stepNumber,
+                    complete = item.isReady,
+                    showTop = showTopConnector,
+                    showBottom = showBottomConnector,
+                    topComplete = topConnectorComplete,
+                    bottomComplete = bottomConnectorComplete,
+                    accent = railAccent,
+                    nodeDiameter = nodeDiameter,
+                    modifier = Modifier
+                        .width(railWidth)
+                        .fillMaxHeight(),
+                    nodeTag = "permission-step-node-$accessKey",
+                    nodeLabelTag = "permission-step-node-label-$accessKey"
+                )
             }
         }
     }
@@ -164,11 +228,13 @@ private fun PermissionTimelineRail(
     topComplete: Boolean,
     bottomComplete: Boolean,
     accent: Color,
+    nodeDiameter: Dp,
     modifier: Modifier = Modifier,
-    nodeTag: String
+    nodeTag: String,
+    nodeLabelTag: String
 ) {
     Box(
-        modifier = modifier.width(36.dp),
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         Canvas(Modifier.fillMaxSize()) {
@@ -191,11 +257,8 @@ private fun PermissionTimelineRail(
         }
         Surface(
             modifier = Modifier
-                .size(32.dp)
-                .testTag(nodeTag)
-                .semantics {
-                    contentDescription = if (complete) "Selesai" else "Langkah $stepNumber"
-                },
+                .size(nodeDiameter)
+                .testTag(nodeTag),
             shape = CircleShape,
             color = accent.copy(alpha = if (complete) 0.20f else 0.12f),
             border = BorderStroke(1.dp, accent.copy(alpha = 0.42f))
@@ -222,7 +285,14 @@ private fun PermissionTimelineRail(
                 if (isComplete) {
                     Icon(Icons.Default.Check, contentDescription = null, tint = accent)
                 } else {
-                    Text(stepNumber.toString(), style = body1, color = accent)
+                    Text(
+                        stepNumber.toString(),
+                        style = body1,
+                        color = accent,
+                        modifier = Modifier
+                            .clearAndSetSemantics {}
+                            .testTag(nodeLabelTag)
+                    )
                 }
             }
         }

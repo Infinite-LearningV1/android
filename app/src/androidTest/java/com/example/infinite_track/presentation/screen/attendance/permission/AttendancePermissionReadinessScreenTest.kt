@@ -7,6 +7,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -17,7 +18,6 @@ import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -62,11 +62,22 @@ class AttendancePermissionReadinessScreenTest {
             }
         }
 
-        composeRule.onNodeWithTag("permission-step-camera").assertHasClickAction()
+        composeRule.onNodeWithTag("permission-step-camera")
+            .assertContentDescriptionEquals("Kamera")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    "Wajib, Perlu diatur, Aksi Minta izin"
+                )
+            )
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .assertHasClickAction()
         composeRule.onNodeWithTag(
             "permission-step-node-camera",
             useUnmergedTree = true
-        ).assertContentDescriptionEquals("Langkah 2")
+        ).assert(
+            SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription)
+        )
     }
 
     @Test
@@ -109,10 +120,13 @@ class AttendancePermissionReadinessScreenTest {
             onEvent = events::add
         )
 
-        composeRule.onNodeWithTag(
-            "permission-step-node-precise_location",
-            useUnmergedTree = true
-        ).assertContentDescriptionEquals("Selesai")
+        composeRule.onNodeWithTag("permission-step-precise_location")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    "Wajib, Siap"
+                )
+            )
         composeRule.onNodeWithTag("permission-step-camera").assertHasClickAction().performClick()
         composeRule.onNodeWithTag("permission-step-device_location").assertHasNoClickAction()
         assertEquals(
@@ -122,6 +136,93 @@ class AttendancePermissionReadinessScreenTest {
                 )
             ),
             events
+        )
+    }
+
+    @Test
+    fun futureRequiredStepShowsStatusWithoutUnavailableActionSemantics() {
+        val item = permissionItem(
+            AttendanceAccess.DEVICE_LOCATION,
+            status = "Perlu diatur",
+            action = "Buka pengaturan",
+            semantic = InfiniteSemantic.Warning
+        )
+        composeRule.setContent {
+            Infinite_TrackTheme {
+                PermissionTimelinePill(
+                    item = item,
+                    stepNumber = 3,
+                    isCurrentAction = false,
+                    showTopConnector = true,
+                    showBottomConnector = false,
+                    topConnectorComplete = false,
+                    bottomConnectorComplete = false,
+                    onClick = null
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("permission-step-device_location")
+            .assertContentDescriptionEquals("Lokasi perangkat aktif")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    "Wajib, Perlu diatur"
+                )
+            )
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Role))
+            .assertHasNoClickAction()
+        composeRule.onNodeWithTag(
+            "permission-step-status-device_location",
+            useUnmergedTree = true
+        ).assertIsDisplayed()
+        composeRule.onNodeWithTag(
+            "permission-step-action-device_location",
+            useUnmergedTree = true
+        )
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun permissionNodeContainsNumberAtFontScaleTwo() {
+        val item = permissionItem(
+            AttendanceAccess.CAMERA,
+            status = "Perlu diatur",
+            action = "Minta izin",
+            semantic = InfiniteSemantic.Primary
+        )
+        composeRule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
+                Infinite_TrackTheme {
+                    Box(Modifier.width(320.dp)) {
+                        PermissionTimelinePill(
+                            item = item,
+                            stepNumber = 2,
+                            isCurrentAction = true,
+                            showTopConnector = true,
+                            showBottomConnector = true,
+                            topConnectorComplete = true,
+                            bottomConnectorComplete = false,
+                            onClick = {}
+                        )
+                    }
+                }
+            }
+        }
+
+        val node = composeRule.onNodeWithTag(
+            "permission-step-node-camera",
+            useUnmergedTree = true
+        ).getUnclippedBoundsInRoot()
+        val label = composeRule.onNodeWithTag(
+            "permission-step-node-label-camera",
+            useUnmergedTree = true
+        ).getUnclippedBoundsInRoot()
+        assertTrue(
+            label.left >= node.left &&
+                label.top >= node.top &&
+                label.right <= node.right &&
+                label.bottom <= node.bottom
         )
     }
 
@@ -176,10 +277,10 @@ class AttendancePermissionReadinessScreenTest {
             }
         }
 
-        val activePillAction = composeRule.onAllNodesWithText(
-            "Minta izin",
+        val activePillAction = composeRule.onNodeWithTag(
+            "permission-step-action-precise_location",
             useUnmergedTree = true
-        )[0]
+        )
             .performScrollTo()
             .assertHeightIsAtLeast(48.dp)
             .assertIsDisplayed()

@@ -9,12 +9,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -52,17 +51,30 @@ class AttendanceHistoryTimelinePillTest {
             }
         }
 
-        composeRule.onNodeWithText("22 July 2026").assertIsDisplayed()
-        composeRule.onNodeWithText("08:00 - 17:00").assertIsDisplayed()
-        composeRule.onNodeWithText("Head Office").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("On Time").assertIsDisplayed()
         composeRule.onNodeWithTag("history-pill")
+            .assertIsDisplayed()
+            .assertContentDescriptionEquals(
+                "22 July 2026, 08:00 - 17:00, Head Office"
+            )
             .assert(
                 SemanticsMatcher.expectValue(
                     SemanticsProperties.StateDescription,
-                    "22 July 2026, 08:00 - 17:00, On Time"
+                    "On Time"
                 )
             )
+        composeRule.onNodeWithTag(
+            "history-pill-status",
+            useUnmergedTree = true
+        ).assert(
+            SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription)
+        )
+        composeRule.onNodeWithTag(
+            "history-pill-rail",
+            useUnmergedTree = true
+        )
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Text))
     }
 
     @Test

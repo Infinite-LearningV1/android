@@ -25,6 +25,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
@@ -55,12 +57,18 @@ fun AttendanceHistoryTimelinePill(
     val transform = resolveHistoryFocusTransform(focusFraction, motionEnabled)
     val density = LocalDensity.current
     val shape = RoundedCornerShape(18.dp)
+    val recordDescription = listOfNotNull(
+        dateLabel,
+        timeRange,
+        supportingText?.takeIf(String::isNotBlank)
+    ).joinToString(", ")
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .semantics(mergeDescendants = true) {
-                stateDescription = "$dateLabel, $timeRange, $statusLabel"
+                contentDescription = recordDescription
+                stateDescription = statusLabel
             }
     ) {
         val compact = maxWidth < 360.dp || density.fontScale >= 1.5f
@@ -76,8 +84,8 @@ fun AttendanceHistoryTimelinePill(
                     .fillMaxWidth()
                     .padding(
                         start = railWidth + InfiniteSpacing.Default.sm,
-                        top = InfiniteSpacing.Default.xs,
-                        bottom = InfiniteSpacing.Default.xs
+                        top = InfiniteSpacing.Default.md / 2,
+                        bottom = InfiniteSpacing.Default.md / 2
                     )
                     .graphicsLayer {
                         alpha = transform.alpha
@@ -95,7 +103,9 @@ fun AttendanceHistoryTimelinePill(
                 Box(Modifier.padding(InfiniteSpacing.Default.lg)) {
                     val copy: @Composable (Modifier) -> Unit = { copyModifier ->
                         Column(
-                            modifier = copyModifier.testTag("history-pill-copy"),
+                            modifier = copyModifier
+                                .clearAndSetSemantics {}
+                                .testTag("history-pill-copy"),
                             verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)
                         ) {
                             Text(
@@ -118,7 +128,11 @@ fun AttendanceHistoryTimelinePill(
                         }
                     }
                     val status: @Composable () -> Unit = {
-                        Box(Modifier.testTag("history-pill-status")) {
+                        Box(
+                            Modifier
+                                .clearAndSetSemantics {}
+                                .testTag("history-pill-status")
+                        ) {
                             InfiniteStatusPill(
                                 label = statusLabel,
                                 variant = statusVariant,
@@ -176,7 +190,7 @@ private fun HistoryTimelineRail(
         connectorPosition == TimelineConnectorPosition.First
 
     Box(
-        modifier = modifier,
+        modifier = modifier.testTag("history-pill-rail"),
         contentAlignment = Alignment.Center
     ) {
         Canvas(Modifier.fillMaxSize()) {
@@ -224,7 +238,9 @@ private fun HistoryTimelineRail(
                     text = nodeLabel,
                     style = body1,
                     color = accent,
-                    modifier = Modifier.testTag("history-pill-node-label")
+                    modifier = Modifier
+                        .clearAndSetSemantics {}
+                        .testTag("history-pill-node-label")
                 )
             }
         }

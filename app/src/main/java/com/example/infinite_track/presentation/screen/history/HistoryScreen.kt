@@ -3,11 +3,12 @@ package com.example.infinite_track.presentation.screen.history
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.provider.Settings
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -24,6 +25,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -39,6 +41,7 @@ import com.example.infinite_track.presentation.design.components.data.InfiniteSe
 import com.example.infinite_track.presentation.design.components.state.InfiniteEmptyState
 import com.example.infinite_track.presentation.design.components.state.InfiniteErrorState
 import com.example.infinite_track.presentation.design.components.state.InfiniteLoadingState
+import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
 import com.example.infinite_track.utils.UiState
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -184,10 +187,14 @@ fun HistoryScreen(
         modifier = modifier
             .fillMaxSize()
             .nestedScroll(pullToRefreshConnection),
-            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = 16.dp,
+                end = 16.dp,
+                bottom = 16.dp
+            )
         ) {
-            item {
+            historySectionItem(topPadding = 0.dp) {
                 InfiniteAttendancePeriodFilterCard(
                     selectedPeriod = uiState.selectedPeriod,
                     onPeriodSelected = viewModel::onFilterChanged,
@@ -197,7 +204,7 @@ fun HistoryScreen(
             }
 
             if (uiState.isRefreshing) {
-                item {
+                historySectionItem {
                     InfiniteGlassReportCard {
                         InfiniteLoadingState(message = "Refreshing attendance report...")
                     }
@@ -206,7 +213,7 @@ fun HistoryScreen(
 
             when {
                 uiState.isLoading && uiState.records.isEmpty() -> {
-                    item {
+                    historySectionItem {
                         InfiniteGlassReportCard {
                             InfiniteLoadingState(message = "Loading personal attendance report...")
                         }
@@ -214,7 +221,7 @@ fun HistoryScreen(
                 }
 
                 uiState.error != null && uiState.records.isEmpty() -> {
-                    item {
+                    historySectionItem {
                         InfiniteGlassReportCard {
                             InfiniteErrorState(
                                 title = "Report unavailable",
@@ -225,7 +232,7 @@ fun HistoryScreen(
                 }
 
                 else -> {
-                    item {
+                    historySectionItem {
                         InfiniteAttendanceReportSummaryCard(
                             summaryState = uiState.summary?.let { UiState.Success(it) } ?: UiState.Loading,
                             periodInfo = uiState.periodInfo,
@@ -233,7 +240,7 @@ fun HistoryScreen(
                         )
                     }
 
-                    item {
+                    historySectionItem {
                         InfiniteAttendanceModeDistributionCard(
                             wfoCount = uiState.summary?.modeDistribution?.wfo?.count ?: (uiState.summary?.totalWfo ?: 0),
                             wfaCount = uiState.summary?.modeDistribution?.wfa?.count ?: (uiState.summary?.totalWfa ?: 0),
@@ -243,7 +250,7 @@ fun HistoryScreen(
                         )
                     }
 
-                    item {
+                    historySectionItem {
                         InfiniteAttendanceReportActionsCard(
                             selectedPeriod = uiState.selectedPeriod,
                             exportEnabled = uiState.exportState !is ReportExportUiState.Downloading,
@@ -261,7 +268,7 @@ fun HistoryScreen(
                     }
 
                     if (uiState.exportState is ReportExportUiState.Error) {
-                        item {
+                        historySectionItem {
                             InfiniteAttendanceReportNoticeCard(
                                 title = "PDF unavailable",
                                 message = (uiState.exportState as ReportExportUiState.Error).message
@@ -269,7 +276,11 @@ fun HistoryScreen(
                         }
                     }
 
-                    item(key = "history-timeline-header", contentType = "history-header") {
+                    historySectionItem(
+                        key = "history-timeline-header",
+                        contentType = "history-header",
+                        bottomPadding = InfiniteSpacing.Default.md / 2
+                    ) {
                         InfiniteSectionHeader(
                             title = "Attendance Timeline",
                             subtitle = "Scroll untuk memusatkan detail kehadiran",
@@ -277,7 +288,11 @@ fun HistoryScreen(
                         )
                     }
                     if (uiState.records.isEmpty()) {
-                        item(key = "history-timeline-empty", contentType = "history-empty") {
+                        historySectionItem(
+                            key = "history-timeline-empty",
+                            contentType = "history-empty",
+                            topPadding = InfiniteSpacing.Default.md / 2
+                        ) {
                             InfiniteGlassReportCard {
                                 InfiniteEmptyState(
                                     title = "No attendance records",
@@ -295,7 +310,7 @@ fun HistoryScreen(
                     }
 
                     if (uiState.error != null && uiState.records.isNotEmpty()) {
-                        item {
+                        historySectionItem(topPadding = InfiniteSpacing.Default.md / 2) {
                             InfiniteAttendanceReportNoticeCard(
                                 title = "Some records may be missing",
                                 message = uiState.error ?: "Unable to load more attendance records."
@@ -308,6 +323,25 @@ fun HistoryScreen(
 }
 
 private const val PullToRefreshThresholdPx = 160f
+
+private fun LazyListScope.historySectionItem(
+    key: Any? = null,
+    contentType: Any? = null,
+    topPadding: Dp = InfiniteSpacing.Default.md,
+    bottomPadding: Dp = 0.dp,
+    content: @Composable () -> Unit
+) {
+    item(key = key, contentType = contentType) {
+        Box(
+            modifier = Modifier.padding(
+                top = topPadding,
+                bottom = bottomPadding
+            )
+        ) {
+            content()
+        }
+    }
+}
 
 private fun LazyListState.isAtTop(): Boolean =
     firstVisibleItemIndex == 0 && firstVisibleItemScrollOffset == 0

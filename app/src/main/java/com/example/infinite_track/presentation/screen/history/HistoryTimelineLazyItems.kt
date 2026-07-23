@@ -1,10 +1,7 @@
 package com.example.infinite_track.presentation.screen.history
 
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.example.infinite_track.data.mapper.attendance.toReportDateLabel
 import com.example.infinite_track.data.mapper.attendance.toReportStatus
 import com.example.infinite_track.data.mapper.attendance.toReportTimeRangeLabel
@@ -40,8 +37,7 @@ internal fun LazyListScope.attendanceHistoryTimelineItems(
             connectorAccent = resolveHistoryConnectorAccent(index, records.size, timelineProgress),
             focusFraction = focusByKey[key] ?: 0f,
             motionEnabled = motionEnabled,
-            modeAccentColor = attendanceModeColor(record.modeKey ?: record.modeLabel),
-            modifier = Modifier.padding(vertical = 2.dp)
+            modeAccentColor = attendanceModeColor(record.modeKey ?: record.modeLabel)
         )
     }
 }
