@@ -490,13 +490,6 @@ class AttendanceViewModel @Inject constructor(
      */
     fun onWorkModeSelected(mode: WorkMode) {
         Log.d(TAG, "Work mode selected: ${mode.shortLabel}")
-
-        if (mode == WorkMode.WFA) {
-            onEnterPickOnMapMode()
-        } else {
-            onExitPickOnMapMode()
-        }
-
         resolveAndApplyTargetForMode(mode)
     }
 
@@ -519,7 +512,8 @@ class AttendanceViewModel @Inject constructor(
             },
             eligibility = AttendancePreparationEligibility.Resolving
         )
-        _uiState.value = _uiState.value.copy(
+        _uiState.value = AttendanceSelectionTransition.beginSelection(
+            state = _uiState.value,
             preparation = resolvingPreparation
         ).withResolvedActionStatePreservingInFlightSubmit()
 
@@ -575,7 +569,7 @@ class AttendanceViewModel @Inject constructor(
 
                 if (!latestSelectionGuard.isCurrent(request, mode)) return@launch
                 (resolution as? TargetLocationResolution.Resolved)?.target?.let { target ->
-                    animateMapToTarget(target)
+                    animateMapToTarget(target, request)
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -613,9 +607,18 @@ class AttendanceViewModel @Inject constructor(
 
     private fun animateMapToTarget(
         target: AuthoritativeTargetLocation,
+        request: SelectionRequestToken,
         zoomLevel: Double = 15.0
-    ) {
-        _mapCameraEffects.tryEmit(
+    ): Boolean {
+        val preparation = _uiState.value.preparation
+        if (!latestSelectionGuard.isCurrent(request, preparation.selectedMode)) return false
+        if (
+            AttendanceSelectionTransition.resolvedTargetForInteraction(
+                preparation = preparation,
+                selectedTargetId = target.targetId
+            ) == null
+        ) return false
+        return _mapCameraEffects.tryEmit(
             MapCameraEffect.Focus(
                 id = nextMapCameraEffectId++,
                 coordinate = target.coordinate,
@@ -724,16 +727,6 @@ class AttendanceViewModel @Inject constructor(
             preparation = _uiState.value.preparation.copy(
                 wfaDiscovery = discovery.copy(selectedKey = null)
             )
-        )
-    }
-
-    /**
-     * Handle marker info dialog dismissal
-     */
-    fun onDismissMarkerInfo() {
-        Log.d(TAG, "Marker info dialog dismissed")
-        _uiState.value = _uiState.value.copy(
-            selectedMarkerInfo = null
         )
     }
 
@@ -1062,16 +1055,6 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Handle map marker click
-     */
-    fun onMarkerClicked(target: AuthoritativeTargetLocation) {
-        Log.d(TAG, "Marker clicked for location: ${target.displayName}")
-        _uiState.value = _uiState.value.copy(
-            selectedMarkerInfo = target.toAttendanceLocation()
-        )
-    }
-
-    /**
      * Handle focus location button click
      * This should ONLY focus on current user location, not work mode locations
      * Always gets fresh location data when clicked
@@ -1140,10 +1123,10 @@ class AttendanceViewModel @Inject constructor(
      */
     fun onMapReady() {
         Log.d(TAG, "Map is ready, focusing to selected target location")
+        val request = latestSelectionRequest
         val target = (_uiState.value.preparation.targetResolution as? TargetLocationResolution.Resolved)
             ?.target
-        if (target != null) {
-            animateMapToTarget(target)
+        if (target != null && animateMapToTarget(target, request)) {
             Log.d(TAG, "Initial camera focus sent to selected target location")
         } else {
             Log.w(TAG, "Target location not available for initial focus")
@@ -1174,31 +1157,12 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Enter Pick on Map mode - enables crosshair and map interaction
-     */
-    fun onEnterPickOnMapMode() {
-        _uiState.value = _uiState.value.copy(
-            isPickOnMapModeActive = true
-        )
-    }
-
-    /**
-     * Exit Pick on Map mode - disables crosshair and map interaction
-     */
-    fun onExitPickOnMapMode() {
-        Log.d(TAG, "Exiting Pick on Map mode")
-        _uiState.value = _uiState.value.copy(
-            isPickOnMapModeActive = false
-        )
-    }
-
-    /**
      * Handle map idle event - called when user stops moving the map
      * Performs reverse geocoding for the center point of the map
      */
     fun onMapIdle(centerPoint: GeoCoordinate) {
         // Only perform reverse geocoding if Pick on Map mode is active
-        if (!_uiState.value.isPickOnMapModeActive) return
+        if (!AttendanceSelectionTransition.isMapPickEnabled(_uiState.value.preparation)) return
         val request = latestSelectionRequest
         if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return
 

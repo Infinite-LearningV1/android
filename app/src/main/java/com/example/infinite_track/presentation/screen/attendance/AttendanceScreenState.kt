@@ -1,6 +1,5 @@
 package com.example.infinite_track.presentation.screen.attendance
 
-import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
 import com.example.infinite_track.utils.LocationPermissionHelper
@@ -16,8 +15,6 @@ data class AttendanceScreenState(
     val todayStatus: TodayStatus? = null,
     val preparation: AttendancePreparationState = AttendancePreparationState(),
     val currentUserAddress: String = "",
-    val selectedMarkerInfo: Location? = null,
-    val isPickOnMapModeActive: Boolean = false,
     val error: String? = null,
     val actionState: AttendanceActionState = AttendanceActionState.Loading,
     val buttonText: String = "Loading...",

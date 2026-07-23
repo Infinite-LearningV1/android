@@ -59,6 +59,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.SelectedTargetLocation
+import com.example.infinite_track.domain.model.attendance.TargetLocationId
 import com.example.infinite_track.domain.model.attendance.TargetLocationResolution
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.presentation.components.button.attendance.AttendanceBottomSheetContent
@@ -115,9 +116,14 @@ fun AttendanceScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val permissionUiState by permissionViewModel.uiState.collectAsStateWithLifecycle()
     var cameraEffect by remember { mutableStateOf<MapCameraEffect?>(null) }
+    var selectedTargetMarkerId by remember { mutableStateOf<TargetLocationId?>(null) }
     var showPermissionPanel by rememberSaveable { mutableStateOf(false) }
     var initialPermissionCheckHandled by rememberSaveable { mutableStateOf(false) }
     val locationPermissionHelper = LocalLocationPermissionHelper.current
+
+    LaunchedEffect(uiState.preparation.selectedMode) {
+        selectedTargetMarkerId = null
+    }
 
     LaunchedEffect(
         permissionUiState.isLoading,
@@ -277,6 +283,10 @@ fun AttendanceScreen(
             val selectedWfaMarker = discovery?.recommendations?.firstOrNull {
                 it.stableKey == discovery.selectedKey
             }
+            val selectedTargetMarker = AttendanceSelectionTransition.resolvedTargetForInteraction(
+                preparation = preparation,
+                selectedTargetId = selectedTargetMarkerId
+            )
             val hasWfaPreview = discovery?.selectedKey != null || discovery?.searchPreview != null
 
             // Tampilkan konten utama dengan BottomSheet
@@ -414,7 +424,7 @@ fun AttendanceScreen(
                                             (uiState.preparation.targetResolution
                                                 as? TargetLocationResolution.Resolved)
                                             ?.target
-                                            ?.let(viewModel::onMarkerClicked)
+                                            ?.let { selectedTargetMarkerId = it.targetId }
                                         MapMarkerRole.WFA_RECOMMENDATION ->
                                             (uiState.preparation.wfaDiscovery
                                                 as? WfaDiscoveryState.Content)
@@ -444,7 +454,7 @@ fun AttendanceScreen(
 
                     // Pick on Map Crosshair - shows static pin in center when Pick on Map mode is active
                     AnimatedVisibility(
-                        visible = uiState.isPickOnMapModeActive,
+                        visible = AttendanceSelectionTransition.isMapPickEnabled(preparation),
                         modifier = Modifier.align(Alignment.Center)
                     ) {
                         Icon(
@@ -455,7 +465,7 @@ fun AttendanceScreen(
                         )
                     }
 
-                    uiState.selectedMarkerInfo?.let { selectedMarker ->
+                    selectedTargetMarker?.let { selectedMarker ->
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -463,11 +473,11 @@ fun AttendanceScreen(
                             contentAlignment = Alignment.TopCenter
                         ) {
                             MarkerView(
-                                title = selectedMarker.description,
-                                description = "Kategori: ${selectedMarker.category}",
-                                radius = "${selectedMarker.radius} meter",
-                                coordinates = "${selectedMarker.latitude}, ${selectedMarker.longitude}",
-                                onClose = { viewModel.onDismissMarkerInfo() }
+                                title = selectedMarker.displayName,
+                                description = "Kategori: ${selectedMarker.mode.shortLabel}",
+                                radius = "${selectedMarker.radius.value.toInt()} meter",
+                                coordinates = "${selectedMarker.coordinate.latitude}, ${selectedMarker.coordinate.longitude}",
+                                onClose = { selectedTargetMarkerId = null }
                             )
                         }
                     }
