@@ -1,5 +1,9 @@
 # 📉 REKOMENDASI PENGURANGAN UKURAN APK - INFINITE TRACK
 
+> Historical analysis. Migrasi Google Maps dan cleanup legacy SDK telah selesai
+> melalui INF-140. Jangan jalankan langkah lama di dokumen ini yang menyarankan
+> penghapusan dependency Google Maps.
+
 ## 🎯 MASALAH: APK MASIH TERLALU BESAR
 
 **Ukuran Saat Ini:** ~13-16 MB (setelah optimasi agresif)  

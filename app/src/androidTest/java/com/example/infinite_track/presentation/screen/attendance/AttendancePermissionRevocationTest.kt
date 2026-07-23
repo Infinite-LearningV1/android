@@ -5,7 +5,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.example.infinite_track.presentation.components.maps.AttendanceMap
+import com.example.infinite_track.presentation.map.adapter.AttendanceMap
+import com.example.infinite_track.presentation.map.model.MapUiState
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -20,7 +21,11 @@ class AttendancePermissionRevocationTest {
     fun revokedPreciseLocationRendersPassiveFallbackWithoutMapContent() {
         composeRule.setContent {
             Infinite_TrackTheme {
-                AttendanceMap(hasPreciseLocationPermission = false)
+                AttendanceMap(
+                    state = MapUiState(hasPreciseLocationPermission = false),
+                    cameraEffect = null,
+                    onEvent = {}
+                )
             }
         }
 
@@ -40,7 +45,11 @@ class AttendancePermissionRevocationTest {
                     onStartLocationUpdates = { locationUpdateStarts++ },
                     onOpenPermissionPanel = { navigations++ }
                 ) {
-                    AttendanceMap(hasPreciseLocationPermission = false)
+                    AttendanceMap(
+                        state = MapUiState(hasPreciseLocationPermission = false),
+                        cameraEffect = null,
+                        onEvent = {}
+                    )
                 }
             }
         }

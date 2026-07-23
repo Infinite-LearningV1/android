@@ -1,13 +1,3 @@
-import java.util.Properties
-
-// Kode untuk membaca local.properties
-val localProperties = Properties()
-val localPropertiesFile = rootProject.file("local.properties")
-if (localPropertiesFile.exists()) {
-    localProperties.load(localPropertiesFile.inputStream())
-}
-val mapboxAccessToken: String = localProperties.getProperty("MAPBOX_ACCESS_TOKEN") ?: ""
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
@@ -35,10 +25,6 @@ android {
             useSupportLibrary = true
         }
 
-        // Add Mapbox access token to manifest dan BuildConfig
-        manifestPlaceholders["MAPBOX_PUBLIC_TOKEN"] = mapboxAccessToken
-        buildConfigField("String", "MAPBOX_PUBLIC_TOKEN", "\"$mapboxAccessToken\"")
-        
         // Optimize native libraries - only include necessary ABIs
         ndk {
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
@@ -265,10 +251,6 @@ dependencies {
 
     // Accompanist Permissions (untuk handling permissions di Compose)
     implementation(libs.accompanist.permissions)
-
-    // Mapbox
-    implementation(libs.mapboxMapsSdk)
-    implementation(libs.mapboxMapsComposeExtension) // Added Mapbox Compose Extension
 
     // Room Database
     implementation(libs.androidx.room.runtime)

@@ -4,7 +4,6 @@ import android.os.Build
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
-import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
 import com.example.infinite_track.data.soucre.network.auth.AuthRefreshInterceptor
 import com.example.infinite_track.data.soucre.network.auth.RefreshSingleFlightCoordinator
 import com.example.infinite_track.domain.use_case.auth.ForceReauthUseCase
@@ -114,25 +113,7 @@ object NetworkModule {
             .build()
     }
 
-    // 7. Menyediakan Retrofit untuk Mapbox API (BARU)
-    @Provides
-    @Singleton
-    @Named("mapbox")
-    fun provideMapboxRetrofit(): Retrofit {
-        return Retrofit.Builder()
-            .baseUrl("https://api.mapbox.com/") // Base URL Mapbox langsung
-            .addConverterFactory(GsonConverterFactory.create())
-            .client(
-                OkHttpClient.Builder()
-                    .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
-                    .connectTimeout(30, TimeUnit.SECONDS)
-                    .readTimeout(30, TimeUnit.SECONDS)
-                    .build()
-            )
-            .build()
-    }
-
-    // 6. ApiService untuk Backend (yang sudah ada)
+    // 7. ApiService untuk Backend
     @Provides
     @Singleton
     fun provideApiService(@Named("backend") retrofit: Retrofit): ApiService {
@@ -143,13 +124,6 @@ object NetworkModule {
     @Singleton
     fun provideAuthSessionApiService(@Named("authSession") retrofit: Retrofit): AuthSessionApiService {
         return retrofit.create(AuthSessionApiService::class.java)
-    }
-
-    // 7. MapboxApiService untuk Mapbox API (BARU)
-    @Provides
-    @Singleton
-    fun provideMapboxApiService(@Named("mapbox") retrofit: Retrofit): MapboxApiService {
-        return retrofit.create(MapboxApiService::class.java)
     }
 
     // Provide Gson instance for dependency injection

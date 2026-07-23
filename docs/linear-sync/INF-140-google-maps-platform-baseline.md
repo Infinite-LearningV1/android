@@ -116,8 +116,8 @@ GitHub Actions writes `MAPS_API_KEY` from an encrypted repository/environment
 secret into the ephemeral `local.properties` it already creates, then removes
 that file in cleanup.
 
-During the migration, `local.properties` may contain both the Mapbox token and
-`MAPS_API_KEY`. Remove the Mapbox path only after the runtime parity gate.
+After migration, `local.properties` contains only `MAPS_API_KEY` for map and
+place capabilities. Legacy provider token wiring is removed.
 
 ## SDK initialization ownership
 

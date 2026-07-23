@@ -31,10 +31,9 @@ jobs:
       - name: Create local.properties for CI
         shell: bash
         env:
-          MAPBOX_ACCESS_TOKEN: ${{ secrets.MAPBOX_ACCESS_TOKEN }}
           MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
         run: |
-          printf 'MAPBOX_ACCESS_TOKEN=%s\n' "$MAPBOX_ACCESS_TOKEN" > local.properties
+          : > local.properties
           if [ -n "$MAPS_API_KEY" ]; then
             printf 'MAPS_API_KEY=%s\n' "$MAPS_API_KEY" >> local.properties
           fi

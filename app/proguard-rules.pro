@@ -232,18 +232,6 @@
 -keep class com.google.android.libraries.places.** { *; }
 
 # ================================================================================================
-# MAPBOX RULES
-# ================================================================================================
-# WHY: Mapbox uses reflection and native rendering
-
-# Keep Mapbox classes
--keep class com.mapbox.** { *; }
--keep interface com.mapbox.** { *; }
-
-# Mapbox services
--dontwarn com.mapbox.services.**
-
-# ================================================================================================
 # COIL IMAGE LOADING RULES
 # ================================================================================================
 # WHY: Coil uses reflection for image loading

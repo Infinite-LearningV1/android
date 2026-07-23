@@ -88,7 +88,6 @@ ndk {
 | **Room Database**        | ✅ Entities, DAOs            | Annotation processing             |
 | **WorkManager**          | ✅ Worker classes            | Background tasks                  |
 | **Google Play Services** | ✅ Maps, Location, Places    | Native code                       |
-| **Mapbox**               | ✅ Map SDK                   | Native rendering                  |
 | **Firebase**             | ✅ FCM service               | Messaging                         |
 | **Coil**                 | ✅ Image loading             | Reflection                        |
 | **Lottie**               | ✅ Animation parsing         | JSON parsing                      |
@@ -145,7 +144,7 @@ build-release.bat
 - ✅ Application ID is correct
 - ✅ Version code > 0
 - ✅ Version name not empty
-- ✅ Mapbox token configured
+- ✅ Google Maps Platform key configured
 - ✅ Display build information
 
 **Run:**

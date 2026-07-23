@@ -52,7 +52,9 @@ was not installed or launched. Every row below remains blocking evidence.
 | Reverse geocode resolved and coordinate-only behavior is correct | Needs Verification |
 | Geofence registration and reboot restoration remain compatible | Needs Verification |
 | Attendance submission uses only the authoritative target | Needs Verification |
-| No Mapbox runtime code executes | Needs Verification |
+| No legacy provider runtime code executes | Static Verified; Runtime Needs Verification |
 
-Mapbox code, dependencies, token wiring, and the rollback renderer must remain
-until every required runtime row passes on `develop`.
+The INF-140 cleanup branch removes legacy provider code, dependencies, token
+wiring, and the rollback renderer now that the Google adapter is the only
+production map path. The remaining runtime rows still require emulator/device
+verification after merge to `develop`.

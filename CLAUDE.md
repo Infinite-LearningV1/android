@@ -77,7 +77,7 @@ Primary stack:
 - Retrofit + OkHttp for networking
 - Room + DataStore for persistence
 - WorkManager for retryable/background work
-- Mapbox + Google Play Services Location / Geofencing
+- Google Maps Compose + Places + Google Play Services Location / Geofencing
 - CameraX + ML Kit Face Detection + TensorFlow Lite
 - Firebase Cloud Messaging + Firebase App Distribution workflow integration
 
@@ -191,7 +191,7 @@ firebase-service-account.json
 docs/ci/
 ```
 
-Do not expose or repeat secret values from `local.properties`, Firebase service account material, keystores, Mapbox tokens, Google/Firebase config, manifests, generated runtime artifacts, screenshots, logs, or XML dumps. If a tracked config file appears to contain sensitive values, flag the posture instead of quoting values.
+Do not expose or repeat secret values from `local.properties`, Firebase service account material, keystores, Google Maps Platform keys, Google/Firebase config, manifests, generated runtime artifacts, screenshots, logs, or XML dumps. If a tracked config file appears to contain sensitive values, flag the posture instead of quoting values.
 
 Network/environment caveats to verify before changing:
 
