@@ -68,6 +68,7 @@ class InfiniteStateStatusComponentsTest {
         }
 
         composeRule.onNodeWithText("Attendance saved").assertIsDisplayed()
+        composeRule.onNodeWithTag(INLINE_ALERT_TIMER_TAG, useUnmergedTree = true).assertIsDisplayed()
         composeRule.mainClock.advanceTimeBy(4_250)
         composeRule.onNodeWithText("Attendance saved").assertDoesNotExist()
         composeRule.runOnIdle { assertTrue(dismissed) }
@@ -78,6 +79,21 @@ class InfiniteStateStatusComponentsTest {
             InfiniteInlineAlertDuration.Persistent,
             InfiniteSemantic.Success.defaultInlineAlertDuration(hasAction = true)
         )
+    }
+
+    @Test fun persistentAlertDoesNotRenderAutoDismissTimer() {
+        composeRule.setContent {
+            Infinite_TrackTheme {
+                InfiniteInlineAlert(
+                    title = "Location required",
+                    message = "Open access settings.",
+                    semantic = InfiniteSemantic.Warning
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Location required").assertIsDisplayed()
+        composeRule.onNodeWithTag(INLINE_ALERT_TIMER_TAG, useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test fun everySemanticHasDistinctAccessibleFeedbackAndIconContract() {

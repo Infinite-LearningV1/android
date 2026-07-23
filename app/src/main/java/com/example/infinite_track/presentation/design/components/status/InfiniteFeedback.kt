@@ -2,14 +2,19 @@ package com.example.infinite_track.presentation.design.components.status
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -41,8 +46,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -55,6 +63,8 @@ import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
 import com.example.infinite_track.presentation.design.tokens.infiniteFeedbackPalette
 import com.example.infinite_track.presentation.theme.White
 import kotlinx.coroutines.delay
+
+internal const val INLINE_ALERT_TIMER_TAG = "inlineAlertTimer"
 
 enum class InfiniteInlineAlertDuration(internal val timeoutMillis: Int?) {
     Short(4_000),
@@ -117,11 +127,19 @@ private fun InfiniteInlineAlertContent(
     val palette = infiniteFeedbackPalette(semantic)
     var visible by remember(title, message, semantic, duration) { mutableStateOf(true) }
     var dismissalRequested by remember(title, message, semantic, duration) { mutableStateOf(false) }
+    val timerProgress = remember(title, message, semantic, duration) { Animatable(1f) }
     val currentOnDismiss by rememberUpdatedState(onDismiss)
 
     LaunchedEffect(title, message, semantic, duration) {
+        timerProgress.snapTo(1f)
         duration.timeoutMillis?.let { timeout ->
-            delay(timeout.toLong())
+            timerProgress.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(
+                    durationMillis = timeout,
+                    easing = LinearEasing
+                )
+            )
             if (!dismissalRequested) {
                 dismissalRequested = true
                 visible = false
@@ -146,19 +164,22 @@ private fun InfiniteInlineAlertContent(
                 .semantics(mergeDescendants = true) { contentDescription = "$title. $message" }
         ) {
             Row(
-                Modifier.padding(InfiniteSpacing.Default.lg),
-                horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.md),
+                Modifier.padding(
+                    horizontal = InfiniteSpacing.Default.md,
+                    vertical = InfiniteSpacing.Default.sm
+                ),
+                horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.sm),
                 verticalAlignment = Alignment.Top
             ) {
-                FeedbackIcon(semantic = semantic, size = 44.dp, iconSize = 24.dp)
+                FeedbackIcon(semantic = semantic, size = 36.dp, iconSize = 20.dp)
                 Column(
                     Modifier
                         .weight(1f)
-                        .padding(top = 2.dp),
-                    verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)
+                        .padding(top = 1.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Text(title, color = palette.content, style = InfiniteFeedbackTypography.snackbarTitle)
-                    Text(message, color = palette.supportingContent, style = InfiniteFeedbackTypography.supportingBody)
+                    Text(title, color = palette.content, style = InfiniteFeedbackTypography.inlineTitle)
+                    Text(message, color = palette.supportingContent, style = InfiniteFeedbackTypography.inlineBody)
                     if (actionLabel != null && onAction != null) TextButton(actionLabel, onAction)
                 }
                 if (onDismiss != null || duration != InfiniteInlineAlertDuration.Persistent) {
@@ -176,7 +197,43 @@ private fun InfiniteInlineAlertContent(
                     }
                 }
             }
+            if (duration.timeoutMillis != null) {
+                InlineAlertTimer(
+                    progress = { timerProgress.value },
+                    trackColor = palette.stateContainer,
+                    progressColor = palette.accent
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun BoxScope.InlineAlertTimer(
+    progress: () -> Float,
+    trackColor: androidx.compose.ui.graphics.Color,
+    progressColor: androidx.compose.ui.graphics.Color
+) {
+    Canvas(
+        modifier = Modifier
+            .align(Alignment.BottomStart)
+            .fillMaxWidth()
+            .height(3.dp)
+            .testTag(INLINE_ALERT_TIMER_TAG)
+    ) {
+        val radius = size.height / 2f
+        drawRoundRect(
+            color = trackColor,
+            cornerRadius = CornerRadius(radius, radius)
+        )
+        drawRoundRect(
+            color = progressColor,
+            size = Size(
+                width = size.width * progress().coerceIn(0f, 1f),
+                height = size.height
+            ),
+            cornerRadius = CornerRadius(radius, radius)
+        )
     }
 }
 
