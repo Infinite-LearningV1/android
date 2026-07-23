@@ -11,7 +11,16 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,6 +39,10 @@ import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.presentation.components.base.BaseLayout
 import com.example.infinite_track.presentation.components.status.InfiniteTrackStatusDialog
 import com.example.infinite_track.presentation.components.status.StatusStates
+import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarHost
+import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
+import com.example.infinite_track.presentation.feedback.AppFeedbackController
+import com.example.infinite_track.presentation.feedback.toSnackbarVisuals
 import com.example.infinite_track.presentation.screen.auth.toReauthUiCopy
 import com.example.infinite_track.presentation.navigation.AppNavigator
 import com.example.infinite_track.presentation.navigation.NavigationEvent
@@ -48,7 +61,8 @@ fun InfiniteTrackApp(
     appNavigator: AppNavigator? = null,
     sessionManager: SessionManager? = null,
     locationPermissionHelper: LocationPermissionHelper? = null,
-    splashViewModel: SplashViewModel
+    splashViewModel: SplashViewModel,
+    appFeedbackController: AppFeedbackController
 ) {
     // Root level NavController - handles top-level navigation
     val navController = rememberNavController()
@@ -57,6 +71,13 @@ fun InfiniteTrackApp(
     val reauthReason by sessionManager?.reauthReason?.collectAsState() ?: remember { androidx.compose.runtime.mutableStateOf(null) }
     var pendingAttendanceNavigation by remember { mutableStateOf(false) }
     var showSessionExpiredDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(appFeedbackController) {
+        appFeedbackController.events.collect { event ->
+            snackbarHostState.showSnackbar(event.toSnackbarVisuals())
+        }
+    }
 
     // Handle session expiration
     LaunchedEffect(sessionExpired) {
@@ -159,27 +180,50 @@ fun InfiniteTrackApp(
             modifier = Modifier.fillMaxSize(),
             color = Color.Transparent
         ) {
-            // Provide LocationPermissionHelper throughout the app
-            CompositionLocalProvider(LocalLocationPermissionHelper provides locationPermissionHelper) {
-                // Root NavHost with only top-level navigation concerns
-                NavHost(
-                    navController = navController,
-                    startDestination = Screen.Splash.route
-                ) {
-                    // Connect to the app navigation graph
-                    composable(Screen.Home.route) {
-                        MainScreen(
-                            rootNavController = navController,
-                            navigateToAttendance = pendingAttendanceNavigation,
-                            onAttendanceNavigationHandled = {
-                                pendingAttendanceNavigation = false
-                            }
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                containerColor = Color.Transparent,
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                snackbarHost = {
+                    InfiniteSnackbarHost(
+                        hostState = snackbarHostState,
+                        modifier = Modifier
+                            .windowInsetsPadding(
+                                WindowInsets.safeDrawing.only(
+                                    WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+                                )
+                            )
+                            .imePadding()
+                            .padding(
+                                horizontal = InfiniteSpacing.Default.md,
+                                vertical = InfiniteSpacing.Default.sm
+                            )
+                    )
+                }
+            ) { innerPadding ->
+                // Provide LocationPermissionHelper throughout the app
+                CompositionLocalProvider(LocalLocationPermissionHelper provides locationPermissionHelper) {
+                    // Root NavHost with only top-level navigation concerns
+                    NavHost(
+                        navController = navController,
+                        startDestination = Screen.Splash.route,
+                        modifier = Modifier.padding(innerPadding)
+                    ) {
+                        // Connect to the app navigation graph
+                        composable(Screen.Home.route) {
+                            MainScreen(
+                                rootNavController = navController,
+                                navigateToAttendance = pendingAttendanceNavigation,
+                                onAttendanceNavigationHandled = {
+                                    pendingAttendanceNavigation = false
+                                }
+                            )
+                        }
+                        appNavGraph(
+                            navController = navController,
+                            splashViewModel = splashViewModel
                         )
                     }
-                    appNavGraph(
-                        navController = navController,
-                        splashViewModel = splashViewModel
-                    )
                 }
             }
         }

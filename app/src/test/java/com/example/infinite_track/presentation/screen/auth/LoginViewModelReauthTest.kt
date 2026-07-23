@@ -1,18 +1,9 @@
 package com.example.infinite_track.presentation.screen.auth
 
-import android.content.ContextWrapper
-import com.example.infinite_track.data.face.FaceProcessor
-import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.model.auth.ReauthReason
-import com.example.infinite_track.domain.model.auth.UserModel
-import com.example.infinite_track.domain.repository.AuthRefreshResult
-import com.example.infinite_track.domain.repository.AuthRepository
-import com.example.infinite_track.domain.repository.ProfileSyncResult
-import com.example.infinite_track.domain.use_case.auth.LoginUseCase
+import com.example.infinite_track.presentation.feedback.AppFeedbackEmitter
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -70,20 +61,10 @@ class LoginViewModelReauthTest {
     }
 
     private fun createViewModel(sessionManager: SessionManager): LoginViewModel {
-        val authRepository = object : AuthRepository {
-            override suspend fun refreshSession(): Result<AuthRefreshResult> = Result.failure(NotImplementedError())
-            override suspend fun login(credentials: LoginCredentials): Result<UserModel> = Result.failure(NotImplementedError())
-            override suspend fun syncUserProfile(): ProfileSyncResult = ProfileSyncResult.TemporaryFailure(NotImplementedError())
-            override suspend fun logout(): Result<Unit> = Result.success(Unit)
-            override fun getLoggedInUser(): Flow<UserModel?> = flowOf(null)
-            override suspend fun saveFaceEmbedding(userId: Int, embedding: ByteArray): Result<Unit> = Result.success(Unit)
-        }
         return LoginViewModel(
-            loginUseCase = LoginUseCase(
-                authRepository = authRepository,
-                faceProcessor = FaceProcessor(appContext = ContextWrapper(null))
-            ),
-            sessionManager = sessionManager
+            loginExecutor = LoginExecutor { _, _ -> Result.failure(NotImplementedError()) },
+            sessionManager = sessionManager,
+            appFeedbackEmitter = AppFeedbackEmitter { }
         )
     }
 }
