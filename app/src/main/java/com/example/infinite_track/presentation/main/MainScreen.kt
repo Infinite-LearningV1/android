@@ -47,8 +47,8 @@ fun MainScreen(
 
     LaunchedEffect(navigateToAttendance, currentRoute) {
         if (navigateToAttendance) {
-            if (currentRoute != Screen.AttendancePermissionReadiness.route) {
-                mainContentNavController.safeNavigate(Screen.AttendancePermissionReadiness.route)
+            if (currentRoute != Screen.Attendance.route) {
+                mainContentNavController.safeNavigate(Screen.Attendance.route)
             }
             onAttendanceNavigationHandled()
         }
@@ -77,7 +77,7 @@ fun MainScreen(
             if (isBottomBarVisible && (userRole == "Management" || userRole == "Internship")) {
                 CustomFAB(userRole = userRole) {
                     when (userRole) {
-                        "Internship" -> mainContentNavController.safeNavigate(Screen.AttendancePermissionReadiness.route)
+                        "Internship" -> mainContentNavController.safeNavigate(Screen.Attendance.route)
                         "Management" -> mainContentNavController.safeNavigate(Screen.TimeOffReq.route)
                         else -> Toast.makeText(
                             context,

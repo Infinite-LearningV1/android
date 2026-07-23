@@ -60,27 +60,24 @@ class AttendancePermissionReadinessScreenTest {
             .assert(
                 SemanticsMatcher.expectValue(
                     SemanticsProperties.StateDescription,
-                    "Wajib, Perlu diatur"
+                    "Kamera, wajib, Perlu diatur, aksi Minta izin"
                 )
             )
             .assertHasClickAction()
-        composeRule.onNodeWithTag(
-            "permission-access-action-camera",
-            useUnmergedTree = true
-        ).assertIsDisplayed()
+        composeRule.onNodeWithText("Minta izin").assertIsDisplayed()
     }
 
     @Test
-    fun loadingShellDoesNotRenderPermissionTimelineOrReadyAlert() {
+    fun loadingPanelDoesNotRenderPermissionItems() {
         render(AttendancePermissionReadinessUiState())
 
         composeRule.onNodeWithText("Lokasi presisi").assertDoesNotExist()
         composeRule.onNodeWithText("Akses wajib sudah siap").assertDoesNotExist()
-        composeRule.onNodeWithText("Attendance").assertIsDisplayed()
+        composeRule.onNodeWithText("Memeriksa kesiapan akses...").assertIsDisplayed()
     }
 
     @Test
-    fun requiredCardsExposeStateAndOnlyCurrentStepIsActionable() {
+    fun requiredCardsExposeStateAndIncompleteItemsAreActionable() {
         val events = mutableListOf<AttendancePermissionReadinessEvent>()
         render(
             partialState(
@@ -114,14 +111,14 @@ class AttendancePermissionReadinessScreenTest {
             .assert(
                 SemanticsMatcher.expectValue(
                     SemanticsProperties.StateDescription,
-                    "Wajib, Siap"
+                    "Lokasi presisi, wajib, Siap"
                 )
             )
         composeRule.onNodeWithTag("permission-access-card-camera")
             .assertHasClickAction()
             .performClick()
         composeRule.onNodeWithTag("permission-access-card-device_location")
-            .assertHasNoClickAction()
+            .assertHasClickAction()
         assertEquals(
             listOf(
                 AttendancePermissionReadinessEvent.PermissionItemClicked(
@@ -154,15 +151,10 @@ class AttendancePermissionReadinessScreenTest {
             .assert(
                 SemanticsMatcher.expectValue(
                     SemanticsProperties.StateDescription,
-                    "Wajib, Perlu diatur"
+                    "Lokasi perangkat aktif, wajib, Perlu diatur, aksi Buka pengaturan"
                 )
             )
             .assertHasNoClickAction()
-        composeRule.onNodeWithTag(
-            "permission-access-action-device_location",
-            useUnmergedTree = true
-        )
-            .assertDoesNotExist()
     }
 
     @Test
@@ -189,10 +181,10 @@ class AttendancePermissionReadinessScreenTest {
     }
 
     @Test
-    fun readyAlertIsNeverRendered() {
+    fun readyPanelShowsReadySummary() {
         render(readyState(optionalReady = false))
 
-        composeRule.onNodeWithText("Akses wajib sudah siap").assertDoesNotExist()
+        composeRule.onNodeWithText("Akses attendance siap").assertIsDisplayed()
     }
 
     @Test
@@ -206,10 +198,9 @@ class AttendancePermissionReadinessScreenTest {
                             .fillMaxSize()
                             .testTag("screenHost")
                     ) {
-                        AttendancePermissionReadinessScreen(
+                        AttendancePermissionPanelContent(
                             uiState = partialState(),
-                            onEvent = {},
-                            onBackClick = {}
+                            onEvent = {}
                         )
                     }
                 }
@@ -217,8 +208,7 @@ class AttendancePermissionReadinessScreenTest {
         }
 
         val activeCardAction = composeRule.onNodeWithTag(
-            "permission-access-action-precise_location",
-            useUnmergedTree = true
+            "permission-access-card-precise_location"
         )
             .performScrollTo()
             .assertHeightIsAtLeast(48.dp)
@@ -255,10 +245,9 @@ class AttendancePermissionReadinessScreenTest {
     ) {
         composeRule.setContent {
             Infinite_TrackTheme {
-                AttendancePermissionReadinessScreen(
+                AttendancePermissionPanelContent(
                     uiState = state,
-                    onEvent = onEvent,
-                    onBackClick = {}
+                    onEvent = onEvent
                 )
             }
         }
@@ -337,7 +326,7 @@ class AttendancePermissionReadinessScreenTest {
             requiredReadyCount = 3,
             requiredTotalCount = 3,
             canContinue = true,
-            primaryActionLabel = "Lanjut ke Mode Kerja",
+            primaryActionLabel = "Selesai",
             primaryActionEnabled = true
         )
 

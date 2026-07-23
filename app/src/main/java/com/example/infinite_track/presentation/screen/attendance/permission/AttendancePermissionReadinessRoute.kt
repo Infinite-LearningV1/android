@@ -12,12 +12,16 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -26,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
@@ -38,12 +43,12 @@ import com.example.infinite_track.domain.model.attendance.permission.AttendanceA
 import com.example.infinite_track.domain.model.attendance.permission.AttendancePermissionRequestOutcome
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarHost
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarVisuals
-import kotlinx.coroutines.flow.onSubscription
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AttendancePermissionReadinessRoute(
-    onBackClick: () -> Unit,
-    onContinueToWorkMode: () -> Unit,
+fun AttendancePermissionPanelHost(
+    visible: Boolean,
+    onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: AttendancePermissionReadinessViewModel = hiltViewModel()
 ) {
@@ -51,9 +56,9 @@ fun AttendancePermissionReadinessRoute(
     val activity = remember(context) { context.findActivity() }
     val lifecycleOwner = LocalLifecycleOwner.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val latestOnBackClick by rememberUpdatedState(onBackClick)
-    val latestOnContinueToWorkMode by rememberUpdatedState(onContinueToWorkMode)
+    val latestOnDismissRequest by rememberUpdatedState(onDismissRequest)
     val snackbarHostState = remember { SnackbarHostState() }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val requestedPermissions = remember { mutableSetOf<String>() }
 
     val preciseLocationLauncher = rememberLauncherForActivityResult(
@@ -150,12 +155,7 @@ fun AttendancePermissionReadinessRoute(
     }
 
     LaunchedEffect(viewModel) {
-        try {
-            viewModel.effects
-                .onSubscription {
-                    viewModel.onEvent(AttendancePermissionReadinessEvent.EffectCollectorStarted)
-                }
-                .collect { effect ->
+        viewModel.effects.collect { effect ->
             when (effect) {
                 AttendancePermissionReadinessEffect.RequestPreciseLocation -> {
                     requestedPermissions += Manifest.permission.ACCESS_FINE_LOCATION
@@ -247,9 +247,8 @@ fun AttendancePermissionReadinessRoute(
                     )
                 }
 
-                AttendancePermissionReadinessEffect.NavigateToWorkMode -> {
-                    latestOnContinueToWorkMode()
-                    viewModel.onEvent(AttendancePermissionReadinessEvent.NavigationHandled)
+                AttendancePermissionReadinessEffect.ClosePermissionPanel -> {
+                    latestOnDismissRequest()
                 }
 
                 is AttendancePermissionReadinessEffect.ShowSnackbar -> {
@@ -278,21 +277,25 @@ fun AttendancePermissionReadinessRoute(
                         )
                     }
                 }
-                }
             }
-        } finally {
-            viewModel.onEvent(AttendancePermissionReadinessEvent.EffectCollectorStopped)
         }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        if (shouldRenderPermissionReadiness(uiState)) {
-            AttendancePermissionReadinessScreen(
-                uiState = uiState,
-                onEvent = viewModel::onEvent,
-                onBackClick = { latestOnBackClick() },
-                modifier = Modifier.fillMaxSize()
-            )
+        if (visible) {
+            ModalBottomSheet(
+                onDismissRequest = { latestOnDismissRequest() },
+                sheetState = sheetState,
+                containerColor = Color.White,
+                scrimColor = Color.Black.copy(alpha = 0.34f),
+                dragHandle = null
+            ) {
+                AttendancePermissionPanelContent(
+                    uiState = uiState,
+                    onEvent = viewModel::onEvent,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
         InfiniteSnackbarHost(
             hostState = snackbarHostState,
@@ -304,10 +307,6 @@ fun AttendancePermissionReadinessRoute(
         )
     }
 }
-
-internal fun shouldRenderPermissionReadiness(
-    uiState: AttendancePermissionReadinessUiState
-): Boolean = !uiState.isLoading && !uiState.canContinue
 
 private fun permissionOutcome(
     activity: Activity?,

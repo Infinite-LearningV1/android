@@ -1,40 +1,48 @@
 package com.example.infinite_track.presentation.screen.attendance.permission
 
+import com.example.infinite_track.presentation.screen.attendance.shouldAutoOpenPermissionPanel
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class AttendancePermissionRouteVisibilityTest {
+class AttendancePermissionPanelVisibilityTest {
 
     @Test
-    fun gateStaysInvisibleWhileReadinessIsLoading() {
+    fun panelStaysClosedWhileReadinessIsLoading() {
         assertFalse(
-            shouldRenderPermissionReadiness(
-                AttendancePermissionReadinessUiState(isLoading = true)
+            shouldAutoOpenPermissionPanel(
+                isLoading = true,
+                canContinue = false,
+                initialCheckHandled = false
             )
         )
     }
 
     @Test
-    fun gateStaysInvisibleWhenRequiredAccessIsAlreadyReady() {
+    fun panelStaysClosedWhenRequiredAccessIsAlreadyReady() {
         assertFalse(
-            shouldRenderPermissionReadiness(
-                AttendancePermissionReadinessUiState(
-                    isLoading = false,
-                    canContinue = true
-                )
+            shouldAutoOpenPermissionPanel(
+                isLoading = false,
+                canContinue = true,
+                initialCheckHandled = false
             )
         )
     }
 
     @Test
-    fun gateRendersOnlyWhenRequiredAccessNeedsAttention() {
+    fun panelAutoOpensOnceWhenRequiredAccessNeedsAttention() {
         assertTrue(
-            shouldRenderPermissionReadiness(
-                AttendancePermissionReadinessUiState(
-                    isLoading = false,
-                    canContinue = false
-                )
+            shouldAutoOpenPermissionPanel(
+                isLoading = false,
+                canContinue = false,
+                initialCheckHandled = false
+            )
+        )
+        assertFalse(
+            shouldAutoOpenPermissionPanel(
+                isLoading = false,
+                canContinue = false,
+                initialCheckHandled = true
             )
         )
     }

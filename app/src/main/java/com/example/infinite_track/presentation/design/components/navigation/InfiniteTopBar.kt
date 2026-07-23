@@ -46,7 +46,7 @@ fun InfiniteTopBar(
     onActionClick: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
-    Row(
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 10.dp)
@@ -62,17 +62,15 @@ fun InfiniteTopBar(
                 BorderStroke(1.dp, InfiniteColors.AttendanceReportGlassBorder),
                 RoundedCornerShape(999.dp)
             )
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         if (onNavigationClick != null) {
-            AppBarCircleButton(
+            InfiniteTopBarActionButton(
                 icon = navigationIcon,
                 contentDescription = navigationContentDescription,
-                onClick = onNavigationClick
+                onClick = onNavigationClick,
+                modifier = Modifier.align(Alignment.CenterStart)
             )
-        } else {
-            Box(modifier = Modifier.size(42.dp))
         }
 
         Text(
@@ -83,33 +81,35 @@ fun InfiniteTopBar(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 8.dp)
+                .align(Alignment.Center)
+                .padding(horizontal = 52.dp)
         )
 
-        if (actionIcon != null && onActionClick != null) {
-            AppBarCircleButton(
-                icon = actionIcon,
-                contentDescription = actionContentDescription,
-                onClick = onActionClick
-            )
-        } else {
-            Row(content = actions)
-            if (actionIcon == null) {
-                Box(modifier = Modifier.size(42.dp))
+        Row(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (actionIcon != null && onActionClick != null) {
+                InfiniteTopBarActionButton(
+                    icon = actionIcon,
+                    contentDescription = actionContentDescription,
+                    onClick = onActionClick
+                )
             }
+            actions()
         }
     }
 }
 
 @Composable
-private fun AppBarCircleButton(
+fun InfiniteTopBarActionButton(
     icon: ImageVector,
     contentDescription: String?,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(42.dp)
             .shadow(
                 elevation = 4.dp,

@@ -42,8 +42,6 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
     private var refreshJob: Job? = null
     private var isRefreshing = false
     private var inFlightAction: AttendancePermissionReadinessEffect? = null
-    private var navigationPending = false
-    private var effectCollectorActive = false
     private var activeFeedback: AttendancePermissionFeedback? = null
 
     init {
@@ -55,8 +53,6 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
 
     fun onEvent(event: AttendancePermissionReadinessEvent) {
         when (event) {
-            AttendancePermissionReadinessEvent.EffectCollectorStarted -> onEffectCollectorStarted()
-            AttendancePermissionReadinessEvent.EffectCollectorStopped -> effectCollectorActive = false
             AttendancePermissionReadinessEvent.ScreenResumed,
             AttendancePermissionReadinessEvent.ReturnedFromSettings,
             AttendancePermissionReadinessEvent.RetryRefresh -> {
@@ -72,7 +68,6 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
                 } else {
                     requestOutcomes.remove(event.access)
                 }
-                if (effectiveReadiness()?.canEnterAttendance != true) navigationPending = false
                 render()
                 refresh()
             }
@@ -92,10 +87,6 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
                     }
                 }
             }
-            AttendancePermissionReadinessEvent.NavigationHandled -> {
-                navigationPending = false
-                clearNativeAction()
-            }
         }
     }
 
@@ -111,46 +102,15 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
         }
         val effective = effectiveReadiness() ?: return
         if (inFlightAction != null && !isActionApplicable(inFlightAction!!, effective)) clearNativeAction()
-        if (!effective.canEnterAttendance) navigationPending = false
         render()
-        maybeNavigateToWorkMode(effective)
-    }
-
-    private fun onEffectCollectorStarted() {
-        effectCollectorActive = true
-        val readiness = effectiveReadiness() ?: return
-        val requiredInspectionFailed = readiness.inspectionIssues.any { it.blocksManualAttendance }
-        if (navigationPending && readiness.canEnterAttendance && !requiredInspectionFailed) {
-            emit(AttendancePermissionReadinessEffect.NavigateToWorkMode)
-        } else {
-            maybeNavigateToWorkMode(readiness)
-        }
-    }
-
-    private fun maybeNavigateToWorkMode(readiness: AttendancePermissionReadiness) {
-        val requiredInspectionFailed = readiness.inspectionIssues.any { it.blocksManualAttendance }
-        if (
-            effectCollectorActive &&
-            readiness.canEnterAttendance &&
-            !requiredInspectionFailed &&
-            !navigationPending &&
-            inFlightAction == null
-        ) {
-            navigationPending = true
-            emit(
-                AttendancePermissionReadinessEffect.NavigateToWorkMode,
-                trackInFlight = true
-            )
-        }
     }
 
     private fun onPrimaryActionClicked() {
         val readiness = effectiveReadiness() ?: return
         when (val action = resolveNextAction.forPrimary(readiness)) {
             AttendancePermissionNextAction.ContinueToWorkMode -> {
-                if (!navigationPending && inFlightAction == null) {
-                    navigationPending = true
-                    emit(AttendancePermissionReadinessEffect.NavigateToWorkMode, trackInFlight = true)
+                if (inFlightAction == null) {
+                    emit(AttendancePermissionReadinessEffect.ClosePermissionPanel)
                 }
             }
             AttendancePermissionNextAction.RetryRefresh -> refresh()
@@ -237,7 +197,7 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
             resolveNextAction.forAccess(readiness, effect.access) == AttendancePermissionNextAction.OpenApplicationSettings(effect.access)
         AttendancePermissionReadinessEffect.OpenDeviceLocationSettings ->
             resolveNextAction.forAccess(readiness, AttendanceAccess.DEVICE_LOCATION) == AttendancePermissionNextAction.OpenDeviceLocationSettings
-        AttendancePermissionReadinessEffect.NavigateToWorkMode ->
+        AttendancePermissionReadinessEffect.ClosePermissionPanel ->
             resolveNextAction.forPrimary(readiness) == AttendancePermissionNextAction.ContinueToWorkMode
         is AttendancePermissionReadinessEffect.ShowSnackbar -> true
     }
