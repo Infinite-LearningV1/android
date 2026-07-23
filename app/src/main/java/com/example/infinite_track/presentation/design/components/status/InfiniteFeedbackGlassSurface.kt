@@ -14,7 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -30,8 +29,8 @@ fun InfiniteFeedbackGlassSurface(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(InfiniteRadius.Large),
     shadowElevation: Dp = InfiniteElevation.Soft,
-    showAccentRail: Boolean = true,
-    showTopHighlight: Boolean = true,
+    showAccentRail: Boolean = false,
+    showTopHighlight: Boolean = false,
     content: @Composable BoxScope.() -> Unit
 ) {
     val palette = infiniteFeedbackPalette(semantic)
@@ -39,7 +38,7 @@ fun InfiniteFeedbackGlassSurface(
         modifier = modifier
             .shadow(shadowElevation, shape, ambientColor = palette.shadow, spotColor = palette.shadow)
             .clip(shape)
-            .background(Brush.verticalGradient(listOf(palette.surfaceStart, palette.surfaceEnd)))
+            .background(palette.surface)
             .border(1.dp, palette.border, shape)
     ) {
         if (showAccentRail || showTopHighlight) {

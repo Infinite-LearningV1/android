@@ -10,13 +10,12 @@ import com.example.infinite_track.presentation.theme.sfCompact_font
 
 @Immutable
 data class InfiniteFeedbackPalette(
-    val surfaceStart: Color,
-    val surfaceEnd: Color,
+    val surface: Color,
+    val stateContainer: Color,
     val content: Color,
     val supportingContent: Color,
     val border: Color,
     val accent: Color,
-    val glow: Color,
     val shadow: Color,
     val topHighlight: Color
 )
@@ -69,15 +68,14 @@ object InfiniteFeedbackTypography {
 fun infiniteFeedbackPalette(semantic: InfiniteSemantic): InfiniteFeedbackPalette {
     val semanticColors = semanticColors(semantic)
     return InfiniteFeedbackPalette(
-        surfaceStart = White.copy(alpha = 0.92f),
-        surfaceEnd = semanticColors.container.copy(alpha = 0.72f),
+        surface = White.copy(alpha = 0.94f),
+        stateContainer = semanticColors.container,
         content = semanticColors.content,
         supportingContent = semanticColors.content.copy(alpha = 0.76f),
-        border = semanticColors.border.copy(alpha = 0.82f),
+        border = semanticColors.border.copy(alpha = 0.72f),
         accent = semanticColors.accent,
-        glow = semanticColors.accent.copy(alpha = 0.20f),
-        shadow = semanticColors.accent.copy(alpha = 0.18f),
-        topHighlight = White.copy(alpha = 0.96f)
+        shadow = InfiniteColors.Text.copy(alpha = 0.10f),
+        topHighlight = White.copy(alpha = 0.88f)
     )
 }
 
