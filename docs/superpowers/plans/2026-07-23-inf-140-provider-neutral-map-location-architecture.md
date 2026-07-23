@@ -74,8 +74,8 @@ runtime switch.
 4. Put the developer key under `MAPS_API_KEY` in ignored `local.properties`.
 5. Replace the Manifest literal with `${MAPS_API_KEY}` and keep only
    `com.google.android.geo.API_KEY`.
-6. Consume `BuildConfig.MAPS_API_KEY` for later Places initialization; do not add
-   another manual Google-key `Properties` reader.
+6. Consume the resolved `com.google.android.geo.API_KEY` Manifest metadata for
+   later Places initialization; do not add another Google-key source.
 7. Update both GitHub Actions workflows to append `MAPS_API_KEY` from an
    encrypted secret to their ephemeral `local.properties`, then retain cleanup.
 8. Prefer separate development and release credentials behind the same
@@ -254,8 +254,9 @@ FetchPlaceRequest(placeId)
 Steps:
 
 1. Lazily initialize pinned Places SDK 2.6.0 once at the application boundary
-   with `BuildConfig.MAPS_API_KEY`; use `Places.initialize` and keep client
-   creation outside composables. Places API (New) remains a separate upgrade.
+   with the resolved `com.google.android.geo.API_KEY` Manifest metadata; use
+   `Places.initialize` and keep client creation outside composables. Places API
+   (New) remains a separate upgrade.
 2. Treat missing/default configuration as a typed failure and never log the key.
 3. Use one `AutocompleteSessionToken` per active search session.
 4. Reuse that token for predictions and the selected Place Details request.

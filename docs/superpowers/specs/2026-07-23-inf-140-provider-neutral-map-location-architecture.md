@@ -1032,15 +1032,15 @@ Local developer configuration:
 MAPS_API_KEY=<local Android-restricted key>
 ```
 
-The plugin reads ignored `local.properties` and exposes the same property to:
+The plugin reads ignored `local.properties` and resolves:
 
 ```text
 Manifest placeholder ${MAPS_API_KEY}
-BuildConfig.MAPS_API_KEY
 ```
 
-The Manifest placeholder initializes Maps SDK. The BuildConfig value initializes
-Places once at the application/data boundary, never inside a composable.
+The resolved `com.google.android.geo.API_KEY` Manifest metadata initializes Maps
+SDK and is read by the application/data boundary to initialize Places once,
+never inside a composable.
 
 Tracked defaults contain only the non-secret `MAPS_API_KEY=missing` schema marker. CI writes the
 real value from its encrypted secret into the ephemeral `local.properties` that

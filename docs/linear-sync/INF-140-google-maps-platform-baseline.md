@@ -98,9 +98,8 @@ MAPS_API_KEY=<developer Android-restricted key>
     android:value="${MAPS_API_KEY}" />
 ```
 
-The plugin exposes the same property as `BuildConfig.MAPS_API_KEY` for one-time
-Places initialization. Keep only the recommended
-`com.google.android.geo.API_KEY` metadata name.
+The resolved `com.google.android.geo.API_KEY` Manifest metadata is the single
+runtime key source for both Maps and one-time Places initialization.
 
 Add a tracked defaults file containing only:
 
@@ -124,7 +123,8 @@ During the migration, `local.properties` may contain both the Mapbox token and
 
 - Maps SDK is initialized by Manifest metadata.
 - Places SDK 2.6.0 is initialized lazily at the application boundary with
-  `Places.initialize`; the API key is never read by a composable.
+  `Places.initialize`; its provider reads the resolved Manifest metadata and the
+  API key is never read by a composable.
 - Migration to Places API (New) and `Places.initializeWithNewPlacesApiEnabled`
   is deferred to the separate Places dependency-upgrade task.
 - A singleton `PlacesClient` is provided through Hilt.
