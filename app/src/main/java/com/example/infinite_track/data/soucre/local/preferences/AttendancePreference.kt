@@ -11,6 +11,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.example.infinite_track.domain.model.location.DistanceMeters
+import com.example.infinite_track.domain.model.location.GeoCoordinate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -94,12 +96,12 @@ class AttendancePreference internal constructor(
 	/**
 	 * Persist full geofence parameters for restoration after reboot
 	 */
-	suspend fun saveLastGeofenceParams(requestId: String, latitude: Double, longitude: Double, radiusMeters: Float) {
+	suspend fun saveLastGeofenceParams(geofence: StoredGeofence) {
 		dataStore.edit { preferences ->
-			preferences[LAST_GEOFENCE_REQUEST_ID_KEY] = requestId
-			preferences[LAST_GEOFENCE_LAT_KEY] = latitude.toFloat()
-			preferences[LAST_GEOFENCE_LNG_KEY] = longitude.toFloat()
-			preferences[LAST_GEOFENCE_RADIUS_KEY] = radiusMeters
+			preferences[LAST_GEOFENCE_REQUEST_ID_KEY] = geofence.id
+			preferences[LAST_GEOFENCE_LAT_KEY] = geofence.coordinate.latitude.toFloat()
+			preferences[LAST_GEOFENCE_LNG_KEY] = geofence.coordinate.longitude.toFloat()
+			preferences[LAST_GEOFENCE_RADIUS_KEY] = geofence.radius.value.toFloat()
 		}
 	}
 
@@ -113,16 +115,22 @@ class AttendancePreference internal constructor(
 	}
 
 	/**
-	 * Retrieve last geofence parameters as Triple(requestId, Pair(lat,lng), radiusMeters)
+	 * Retrieve persisted active geofence while preserving the existing scalar DataStore keys.
 	 */
-	fun getLastGeofenceParams(): Flow<Triple<String, Pair<Double, Double>, Int>?> {
+	fun getLastGeofenceParams(): Flow<StoredGeofence?> {
 		return dataStore.data.map { preferences ->
 			val requestId = preferences[LAST_GEOFENCE_REQUEST_ID_KEY]
 			val lat = preferences[LAST_GEOFENCE_LAT_KEY]
 			val lng = preferences[LAST_GEOFENCE_LNG_KEY]
 			val radius = preferences[LAST_GEOFENCE_RADIUS_KEY]
 			if (requestId != null && lat != null && lng != null && radius != null) {
-				Triple(requestId, Pair(lat.toDouble(), lng.toDouble()), radius.toInt())
+				runCatching {
+					StoredGeofence(
+						id = requestId,
+						coordinate = GeoCoordinate(lat.toDouble(), lng.toDouble()),
+						radius = DistanceMeters(radius.toDouble())
+					)
+				}.getOrNull()
 			} else {
 				null
 			}
@@ -243,14 +251,24 @@ class AttendancePreference internal constructor(
 
 data class ReminderGeofence(
 	val id: String,
-	val latitude: Double,
-	val longitude: Double,
-	val radiusMeters: Float
+	val coordinate: GeoCoordinate,
+	val radius: DistanceMeters
+)
+
+data class StoredGeofence(
+	val id: String,
+	val coordinate: GeoCoordinate,
+	val radius: DistanceMeters
 )
 
 // Extension utilities for ReminderGeofence <-> String serialization
 private fun ReminderGeofence.serialize(): String =
-	listOf(id, latitude.toString(), longitude.toString(), radiusMeters.toString()).joinToString("|")
+	listOf(
+		id,
+		coordinate.latitude.toString(),
+		coordinate.longitude.toString(),
+		radius.value.toFloat().toString()
+	).joinToString("|")
 
 private fun String.deserializeToReminder(): ReminderGeofence? {
 	return try {
@@ -260,9 +278,8 @@ private fun String.deserializeToReminder(): ReminderGeofence? {
 		} else {
 			ReminderGeofence(
 				id = parts[0],
-				latitude = parts[1].toDouble(),
-				longitude = parts[2].toDouble(),
-				radiusMeters = parts[3].toFloat()
+				coordinate = GeoCoordinate(parts[1].toDouble(), parts[2].toDouble()),
+				radius = DistanceMeters(parts[3].toDouble())
 			)
 		}
 	} catch (e: Exception) {

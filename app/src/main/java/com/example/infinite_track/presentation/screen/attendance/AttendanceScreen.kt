@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -57,11 +58,9 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.location.LocationResult
-import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.presentation.components.button.attendance.AttendanceBottomSheetContent
 import com.example.infinite_track.presentation.components.empty.ErrorAnimation
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
-import com.example.infinite_track.presentation.components.maps.AttendanceMap
 import com.example.infinite_track.presentation.components.maps.MarkerView
 import com.example.infinite_track.presentation.components.dialog.LocationPermissionDialog
 import com.example.infinite_track.utils.LocalLocationPermissionHelper
@@ -72,27 +71,25 @@ import com.example.infinite_track.presentation.design.components.status.Infinite
 import com.example.infinite_track.presentation.design.components.status.InfiniteInlineAlert
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.navigation.Screen
+import com.example.infinite_track.presentation.map.adapter.AttendanceMap
+import com.example.infinite_track.presentation.map.mapper.AttendanceMapUiMapper
+import com.example.infinite_track.presentation.map.model.AttendanceMapEvent
+import com.example.infinite_track.presentation.map.model.MapCameraEffect
+import com.example.infinite_track.presentation.map.model.MapMarkerRole
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionPanelHost
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessEvent
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessViewModel
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import com.example.infinite_track.utils.UiState
-import com.mapbox.geojson.Point
-import com.mapbox.maps.CameraOptions
-import com.mapbox.maps.MapView
-import com.mapbox.maps.MapboxDelicateApi
-import com.mapbox.maps.plugin.animation.MapAnimationOptions
-import com.mapbox.maps.plugin.animation.flyTo
 
-@OptIn(ExperimentalMaterial3Api::class, MapboxDelicateApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AttendanceScreen(
     navController: NavController,
     viewModel: AttendanceViewModel = hiltViewModel(),
     permissionViewModel: AttendancePermissionReadinessViewModel = hiltViewModel()
 ) {
-    var mapViewInstance by remember { mutableStateOf<MapView?>(null) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var hasPreciseLocationPermission by remember(context) {
@@ -112,6 +109,7 @@ fun AttendanceScreen(
     // Observasi state dari ViewModel yang sudah disederhanakan
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val permissionUiState by permissionViewModel.uiState.collectAsStateWithLifecycle()
+    var cameraEffect by remember { mutableStateOf<MapCameraEffect?>(null) }
     var showPermissionPanel by rememberSaveable { mutableStateOf(false) }
     var initialPermissionCheckHandled by rememberSaveable { mutableStateOf(false) }
     val locationPermissionHelper = LocalLocationPermissionHelper.current
@@ -181,6 +179,12 @@ fun AttendanceScreen(
         }
     }
 
+    LaunchedEffect(viewModel) {
+        viewModel.mapCameraEffects.collect { effect ->
+            cameraEffect = effect
+        }
+    }
+
     // =======================================================
     // NEW: State-driven LaunchedEffect for Navigation
     // =======================================================
@@ -216,79 +220,6 @@ fun AttendanceScreen(
             }
             // Notify ViewModel that navigation has been handled
             viewModel.onNavigationHandled()
-        }
-    }
-
-    // =======================================================
-    // NEW: State-driven LaunchedEffect for Map Animation
-    // =======================================================
-    LaunchedEffect(uiState.mapAnimationTarget) {
-        uiState.mapAnimationTarget?.let { animationTarget ->
-            when (animationTarget) {
-                is MapAnimationTarget.AnimateToLocation -> {
-                    mapViewInstance?.let { mapView ->
-                        val cameraOptions = CameraOptions.Builder()
-                            .center(animationTarget.point)
-                            .zoom(animationTarget.zoomLevel)
-                            .pitch(0.0)
-                            .bearing(0.0)
-                            .build()
-
-                        mapView.mapboxMap.flyTo(
-                            cameraOptions,
-                            MapAnimationOptions.Builder()
-                                .duration(1200L)
-                                .build()
-                        )
-
-                        android.util.Log.d(
-                            "AttendanceScreen",
-                            "Camera animated to ${animationTarget.point.latitude()}, ${animationTarget.point.longitude()} with zoom ${animationTarget.zoomLevel}"
-                        )
-                    }
-                }
-
-                is MapAnimationTarget.AnimateToFitBounds -> {
-                    mapViewInstance?.let { mapView ->
-                        if (animationTarget.points.isNotEmpty()) {
-                            val cameraOptions = mapView.mapboxMap.cameraForCoordinates(
-                                coordinates = animationTarget.points,
-                                camera = CameraOptions.Builder().build(),
-                                coordinatesPadding = com.mapbox.maps.EdgeInsets(
-                                    50.0,
-                                    50.0,
-                                    50.0,
-                                    50.0
-                                ),
-                                maxZoom = null,
-                                offset = null
-                            )
-
-                            mapView.mapboxMap.flyTo(
-                                cameraOptions,
-                                MapAnimationOptions.Builder()
-                                    .duration(1500L)
-                                    .build()
-                            )
-
-                            android.util.Log.d(
-                                "AttendanceScreen",
-                                "Camera animated to fit ${animationTarget.points.size} WFA locations"
-                            )
-                        }
-                    }
-                }
-
-                is MapAnimationTarget.ShowLocationError -> {
-                    android.util.Log.e(
-                        "AttendanceScreen",
-                        "Failed to get current location for focus"
-                    )
-                    // Could show a Toast or Snackbar here
-                }
-            }
-            // Notify ViewModel that map animation has been handled
-            viewModel.onMapAnimationHandled()
         }
     }
 
@@ -444,34 +375,39 @@ fun AttendanceScreen(
                     },
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Fullscreen Map dengan data dari ViewModel - Updated with WFO, WFH, and WFA locations
+                    val mapUiState = AttendanceMapUiMapper.map(
+                        state = uiState,
+                        hasPreciseLocationPermission = hasPreciseLocationPermission
+                    )
+
                     AttendanceMap(
-                        hasPreciseLocationPermission = hasPreciseLocationPermission,
+                        state = mapUiState,
+                        cameraEffect = cameraEffect,
                         modifier = Modifier.fillMaxSize(),
-                        wfoLocation = if (uiState.isWfaModeActive) null else uiState.wfoLocation, // Hide WFO when WFA active
-                        wfhLocation = if (uiState.isWfaModeActive) null else uiState.wfhLocation, // Hide WFH when WFA active
-                        wfaRecommendations = uiState.wfaRecommendations, // WFA recommendations
-                        selectedWfaLocation = uiState.selectedWfaLocation, // Selected WFA location
-                        targetLocation = uiState.targetLocationMarker, // Keep for backward compatibility
-                        currentUserLocation = uiState.currentUserLatitude?.let { lat ->
-                            uiState.currentUserLongitude?.let { lng ->
-                                Point.fromLngLat(lng, lat)
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            top = 96.dp,
+                            end = 16.dp,
+                            bottom = 176.dp
+                        ),
+                        onEvent = { event ->
+                            when (event) {
+                                AttendanceMapEvent.Ready -> viewModel.onMapReady()
+                                is AttendanceMapEvent.CameraIdle -> viewModel.onMapIdle(event.center)
+                                is AttendanceMapEvent.MarkerClicked -> {
+                                    when (event.marker.role) {
+                                        MapMarkerRole.CURRENT_USER -> Unit
+                                        MapMarkerRole.WFO -> uiState.wfoLocation?.let(viewModel::onMarkerClicked)
+                                        MapMarkerRole.WFH -> uiState.wfhLocation?.let(viewModel::onMarkerClicked)
+                                        MapMarkerRole.WFA_RECOMMENDATION -> uiState.wfaRecommendations
+                                            .firstOrNull {
+                                                AttendanceMapUiMapper.recommendationMarkerId(it) == event.marker.id
+                                            }
+                                            ?.let(viewModel::onWfaMarkerClicked)
+                                    }
+                                }
                             }
-                        },
-                        onMarkerClick = { location -> viewModel.onMarkerClicked(location) },
-                        onWfaMarkerClick = { recommendation: WfaRecommendation ->
-                            viewModel.onWfaMarkerClicked(
-                                recommendation
-                            )
-                        }, // Handle WFA marker clicks
-                        onMapReady = { mapView ->
-                            mapViewInstance = mapView
-                            // Notify ViewModel that map is ready for initial focus
-                            viewModel.onMapReady()
-                        },
-                        onCameraIdle = { point ->
-                            viewModel.onMapIdle(point)
-                        } // Handle Pick on Map functionality
+                        }
                     )
 
                     // Top bar with location focus button - fixed parameters
@@ -612,9 +548,12 @@ fun AttendanceScreenPreview() {
     Infinite_TrackTheme {
         Box(modifier = Modifier.fillMaxSize()) {
             AttendanceMap(
-                hasPreciseLocationPermission = false,
+                state = com.example.infinite_track.presentation.map.model.MapUiState(
+                    hasPreciseLocationPermission = false
+                ),
+                cameraEffect = null,
                 modifier = Modifier.fillMaxSize(),
-                onMapReady = { }
+                onEvent = { }
             )
             AttendanceTopBar(
                 modifier = Modifier

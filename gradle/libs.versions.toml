@@ -37,6 +37,7 @@ places = "2.6.0"
 playServicesLocation = "21.3.0"
 playServicesMaps = "18.1.0"
 retrofit = "2.11.0"
+secretsGradlePlugin = "2.0.1"
 datastorePreferencesCoreJvm = "1.1.1"
 tensorflowLite = "2.13.0"
 tensorflowLiteMetadataVersion = "0.4.4"
@@ -123,3 +124,4 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 android-application = { id = "com.android.application", version.ref = "agp" }
 jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
+google-maps-secrets = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version.ref = "secretsGradlePlugin" }

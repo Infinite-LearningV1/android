@@ -52,18 +52,14 @@ object AttendanceActionResolver {
             }
 
             WorkMode.WFA -> {
-                when {
-                    state.selectedTargetLocation?.location == null && state.selectedWfaLocation == null -> AttendanceActionState.Blocked(
-                        reason = AttendanceBlockReason.TARGET_LOCATION_UNAVAILABLE,
-                        title = "Target location tidak tersedia",
-                        message = "Pilih lokasi WFA sebelum melanjutkan verifikasi wajah."
-                    )
-                    state.todayStatus?.todayDate.isNullOrBlank() -> AttendanceActionState.Blocked(
+                if (state.selectedTargetLocation?.location == null) {
+                    AttendanceActionState.Blocked(
                         reason = AttendanceBlockReason.WFA_BOOKING_REQUIRED,
                         title = "Booking WFA belum disetujui",
                         message = "Booking WFA yang disetujui diperlukan sebelum absen dari lokasi WFA."
                     )
-                    else -> null
+                } else {
+                    null
                 }
             }
 

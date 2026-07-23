@@ -9,6 +9,10 @@ import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
+import com.example.infinite_track.data.soucre.local.preferences.ReminderGeofence
+import com.example.infinite_track.data.soucre.local.preferences.StoredGeofence
+import com.example.infinite_track.domain.model.location.DistanceMeters
+import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofenceStatusCodes
@@ -131,10 +135,9 @@ class GeofenceManager @Inject constructor(
 
     @SuppressLint("MissingPermission")
     fun addGeofence(
-        id: String, 
-        latitude: Double, 
-        longitude: Double, 
-        radius: Float,
+        id: String,
+        coordinate: GeoCoordinate,
+        radius: DistanceMeters,
         onPermissionError: ((String) -> Unit)? = null
     ) {
         val initialPermissionDecision = currentPermissionDecision()
@@ -144,7 +147,7 @@ class GeofenceManager @Inject constructor(
             return
         }
 
-        val safeRadius = radius
+        val safeRadius = radius.value.toFloat()
 
         // Check device location settings first (GPS/location must be ON)
         val locationRequest = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10_000L)
@@ -165,7 +168,7 @@ class GeofenceManager @Inject constructor(
                 val requestId = id
                 val geofence = Geofence.Builder()
                     .setRequestId(requestId)
-                    .setCircularRegion(latitude, longitude, safeRadius)
+                    .setCircularRegion(coordinate.latitude, coordinate.longitude, safeRadius)
                     .setExpirationDuration(Geofence.NEVER_EXPIRE)
                     .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
                     .build()
@@ -186,11 +189,13 @@ class GeofenceManager @Inject constructor(
                     addOnSuccessListener {
                         Log.d(
                             TAG,
-                            "Active geofence berhasil ditambahkan: $requestId (lat: $latitude, lng: $longitude, radius: ${safeRadius}m)"
+                            "Active geofence berhasil ditambahkan: $requestId (radius: ${safeRadius}m)"
                         )
                         ioScope.launch {
                             attendancePreference.saveLastGeofenceRequestId(requestId)
-                            attendancePreference.saveLastGeofenceParams(requestId, latitude, longitude, safeRadius)
+                            attendancePreference.saveLastGeofenceParams(
+                                StoredGeofence(requestId, coordinate, radius)
+                            )
                         }
                     }
                     addOnFailureListener { exception ->
@@ -227,18 +232,22 @@ class GeofenceManager @Inject constructor(
      * Add reminder geofence WITHOUT clearing existing ones
      */
     @SuppressLint("MissingPermission")
-    fun addReminderGeofence(id: String, latitude: Double, longitude: Double, radius: Float) {
+    fun addReminderGeofence(
+        id: String,
+        coordinate: GeoCoordinate,
+        radius: DistanceMeters
+    ) {
         val initialPermissionDecision = currentPermissionDecision()
         if (!initialPermissionDecision.canRegisterAutomaticMonitoring) {
             Log.e(TAG, initialPermissionDecision.message)
             return
         }
 
-        val safeRadius = radius
+        val safeRadius = radius.value.toFloat()
 
         val geofence = Geofence.Builder()
             .setRequestId(id)
-            .setCircularRegion(latitude, longitude, safeRadius)
+            .setCircularRegion(coordinate.latitude, coordinate.longitude, safeRadius)
             .setExpirationDuration(Geofence.NEVER_EXPIRE)
             .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
             .build()
@@ -260,11 +269,10 @@ class GeofenceManager @Inject constructor(
                 ioScope.launch {
                     attendancePreference.addReminderGeofences(
                         listOf(
-                            com.example.infinite_track.data.soucre.local.preferences.ReminderGeofence(
+                            ReminderGeofence(
                                 id = id,
-                                latitude = latitude,
-                                longitude = longitude,
-                                radiusMeters = safeRadius
+                                coordinate = coordinate,
+                                radius = radius
                             )
                         )
                     )
@@ -290,9 +298,8 @@ class GeofenceManager @Inject constructor(
         candidates.forEach { candidate ->
             addReminderGeofence(
                 id = candidate.id,
-                latitude = candidate.latitude,
-                longitude = candidate.longitude,
-                radius = candidate.radiusMeters
+                coordinate = candidate.coordinate,
+                radius = candidate.radius
             )
         }
     }
@@ -317,7 +324,7 @@ class GeofenceManager @Inject constructor(
         ioScope.launch {
             val reminders = attendancePreference.getReminderGeofences().first()
             reminders.forEach { reminder ->
-                addReminderGeofence(reminder.id, reminder.latitude, reminder.longitude, reminder.radiusMeters)
+                addReminderGeofence(reminder.id, reminder.coordinate, reminder.radius)
             }
             Log.d(TAG, "Reminder geofences restored: ${reminders.map { it.id }}")
         }
@@ -331,9 +338,8 @@ class GeofenceManager @Inject constructor(
         val requestId = buildActiveMonitoringRequestId(location, activeAttendanceId)
         addGeofence(
             id = requestId,
-            latitude = location.latitude,
-            longitude = location.longitude,
-            radius = location.radius.toFloat()
+            coordinate = location.coordinate,
+            radius = DistanceMeters(location.radius.toDouble())
         )
         Log.d(TAG, "Active monitoring geofence requested: $requestId for attendance=$activeAttendanceId")
     }
@@ -376,8 +382,8 @@ class GeofenceManager @Inject constructor(
         return if (location.locationId != 0) {
             "active:$activeAttendanceId:${location.locationId}"
         } else {
-            val lat = String.format("%.6f", location.latitude)
-            val lng = String.format("%.6f", location.longitude)
+            val lat = String.format("%.6f", location.coordinate.latitude)
+            val lng = String.format("%.6f", location.coordinate.longitude)
             "active:$activeAttendanceId:wfa:$lat,$lng"
         }
     }

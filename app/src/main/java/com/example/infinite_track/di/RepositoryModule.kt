@@ -13,7 +13,13 @@ import com.example.infinite_track.data.repository.auth.AuthRuntimeCleanerImpl
 import com.example.infinite_track.data.repository.booking.BookingRepositoryImpl
 import com.example.infinite_track.data.repository.contact.ContactRepositoryImpl
 import com.example.infinite_track.data.repository.localization.LocalizationRepositoryImpl
-import com.example.infinite_track.data.repository.location.LocationRepositoryImpl
+import com.example.infinite_track.data.location.address.AddressGeocoderDataSource
+import com.example.infinite_track.data.location.address.AndroidGeocoderAddressResolver
+import com.example.infinite_track.data.location.address.AndroidGeocoderDataSource
+import com.example.infinite_track.data.location.current.CurrentLocationDataSource
+import com.example.infinite_track.data.location.current.CurrentLocationRepositoryImpl
+import com.example.infinite_track.data.location.current.PlayServicesCurrentLocationDataSource
+import com.example.infinite_track.data.location.discovery.GooglePlacesDiscoveryRepository
 import com.example.infinite_track.data.repository.profile.ProfileRepositoryImpl
 import com.example.infinite_track.data.repository.wfa.WfaRepositoryImpl
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
@@ -23,7 +29,6 @@ import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
-import com.example.infinite_track.data.soucre.network.retrofit.MapboxApiService
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
 import com.example.infinite_track.domain.repository.AttendanceReportPdfRepository
 import com.example.infinite_track.domain.repository.AttendanceRepository
@@ -33,11 +38,12 @@ import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
 import com.example.infinite_track.domain.repository.BookingRepository
 import com.example.infinite_track.domain.repository.ContactRepository
 import com.example.infinite_track.domain.repository.LocalizationRepository
-import com.example.infinite_track.domain.repository.LocationRepository
+import com.example.infinite_track.domain.repository.location.AddressResolver
+import com.example.infinite_track.domain.repository.location.CurrentLocationRepository
+import com.example.infinite_track.domain.repository.location.PlaceDiscoveryRepository
 import com.example.infinite_track.domain.repository.ProfileRepository
 import com.example.infinite_track.domain.repository.WfaRepository
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
-import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.gson.Gson
 import dagger.Module
 import dagger.Provides
@@ -49,6 +55,36 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object RepositoryModule {
+
+    @Provides
+    @Singleton
+    fun provideCurrentLocationDataSource(
+        dataSource: PlayServicesCurrentLocationDataSource
+    ): CurrentLocationDataSource = dataSource
+
+    @Provides
+    @Singleton
+    fun provideCurrentLocationRepository(
+        repository: CurrentLocationRepositoryImpl
+    ): CurrentLocationRepository = repository
+
+    @Provides
+    @Singleton
+    fun providePlaceDiscoveryRepository(
+        repository: GooglePlacesDiscoveryRepository
+    ): PlaceDiscoveryRepository = repository
+
+    @Provides
+    @Singleton
+    fun provideAddressGeocoderDataSource(
+        dataSource: AndroidGeocoderDataSource
+    ): AddressGeocoderDataSource = dataSource
+
+    @Provides
+    @Singleton
+    fun provideAddressResolver(
+        resolver: AndroidGeocoderAddressResolver
+    ): AddressResolver = resolver
 
     @Provides
     @Singleton
@@ -141,20 +177,6 @@ object RepositoryModule {
         attendanceReportPdfRepositoryImpl: AttendanceReportPdfRepositoryImpl
     ): AttendanceReportPdfRepository {
         return attendanceReportPdfRepositoryImpl
-    }
-
-    @Provides
-    @Singleton
-    fun provideLocationRepository(
-        @ApplicationContext context: Context,
-        fusedLocationProviderClient: FusedLocationProviderClient,
-        mapboxApiService: MapboxApiService
-    ): LocationRepository {
-        return LocationRepositoryImpl(
-            context,
-            fusedLocationProviderClient,
-            mapboxApiService
-        )
     }
 
     @Provides

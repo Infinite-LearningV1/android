@@ -16,6 +16,7 @@ plugins {
     id("kotlin-parcelize")
     id("com.google.dagger.hilt.android")
     alias(libs.plugins.google.gms.google.services)
+    alias(libs.plugins.google.maps.secrets)
 }
 
 android {
@@ -278,4 +279,9 @@ dependencies {
     implementation(libs.tensorflow.lite)
     implementation(libs.tensorflow.lite.metadata)
     implementation(libs.tensorflow.lite.support)
+}
+
+secrets {
+    defaultPropertiesFileName = "local.defaults.properties"
+    ignoreList.add("sdk.*")
 }

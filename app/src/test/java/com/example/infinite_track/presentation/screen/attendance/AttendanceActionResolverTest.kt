@@ -4,6 +4,7 @@ import com.example.infinite_track.domain.model.attendance.CheckinWindow
 import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.model.attendance.WorkMode
+import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -114,6 +115,33 @@ class AttendanceActionResolverTest {
         assertTrue(actionState is AttendanceActionState.Blocked)
         assertEquals(
             AttendanceBlockReason.TARGET_LOCATION_UNAVAILABLE,
+            (actionState as AttendanceActionState.Blocked).reason
+        )
+    }
+
+    @Test
+    fun resolve_doesNotTreatWfaRecommendationPreviewAsAttendanceTarget() {
+        val state = AttendanceScreenState(
+            todayStatus = todayStatus(checkedInAt = null, canCheckIn = true, canCheckOut = false),
+            selectedWorkMode = WorkMode.WFA,
+            selectedTargetLocation = null,
+            selectedWfaLocation = WfaRecommendation(
+                name = "Preview cafe",
+                address = "Preview address",
+                latitude = -6.2,
+                longitude = 106.8,
+                score = 0.9,
+                label = "Recommended",
+                category = "Cafe",
+                distance = 1.0
+            )
+        )
+
+        val actionState = AttendanceActionResolver.resolve(state)
+
+        assertTrue(actionState is AttendanceActionState.Blocked)
+        assertEquals(
+            AttendanceBlockReason.WFA_BOOKING_REQUIRED,
             (actionState as AttendanceActionState.Blocked).reason
         )
     }

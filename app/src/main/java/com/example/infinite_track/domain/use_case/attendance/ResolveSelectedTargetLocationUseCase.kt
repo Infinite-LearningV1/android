@@ -3,7 +3,6 @@ package com.example.infinite_track.domain.use_case.attendance
 import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.SelectedTargetLocation
 import com.example.infinite_track.domain.model.attendance.WorkMode
-import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import javax.inject.Inject
 
 class ResolveSelectedTargetLocationUseCase @Inject constructor() {
@@ -11,7 +10,7 @@ class ResolveSelectedTargetLocationUseCase @Inject constructor() {
         mode: WorkMode,
         wfoLocation: Location?,
         wfhLocation: Location?,
-        selectedWfaLocation: WfaRecommendation?
+        approvedWfaLocation: Location?
     ): SelectedTargetLocation {
         return when (mode) {
             WorkMode.WFO -> resolveFixedLocation(
@@ -29,15 +28,14 @@ class ResolveSelectedTargetLocationUseCase @Inject constructor() {
             )
 
             WorkMode.WFA -> {
-                val location = selectedWfaLocation?.toAttendanceLocation()
                 SelectedTargetLocation(
                     mode = mode,
-                    location = location,
-                    displayName = selectedWfaLocation?.name ?: "Pilih lokasi WFA",
-                    description = selectedWfaLocation?.address,
-                    isAvailable = location != null,
-                    unavailableReason = if (location == null) {
-                        "Pilih lokasi WFA terlebih dahulu."
+                    location = approvedWfaLocation,
+                    displayName = approvedWfaLocation?.description ?: "Booking WFA belum disetujui",
+                    description = approvedWfaLocation?.category,
+                    isAvailable = approvedWfaLocation != null,
+                    unavailableReason = if (approvedWfaLocation == null) {
+                        "Booking WFA yang disetujui untuk hari ini belum tersedia."
                     } else {
                         null
                     }
@@ -59,17 +57,6 @@ class ResolveSelectedTargetLocationUseCase @Inject constructor() {
             description = location?.category,
             isAvailable = location != null,
             unavailableReason = if (location == null) unavailableReason else null
-        )
-    }
-
-    private fun WfaRecommendation.toAttendanceLocation(): Location {
-        return Location(
-            locationId = 0,
-            latitude = latitude,
-            longitude = longitude,
-            radius = 100,
-            description = name,
-            category = category
         )
     }
 }

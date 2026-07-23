@@ -41,11 +41,11 @@ versions are required; `+` and `latest` are not allowed.
 
 | Item | Current repository | Official baseline reviewed | Decision |
 |---|---:|---:|---|
-| `compileSdk` | 34 | 34 or newer | compatible |
+| `compileSdk` | 34 | 34 or newer | keep 34 for this migration |
 | `minSdk` | 26 | Maps 23+, Places 24+ | compatible |
-| Maps Compose | 2.11.0 | 6.12.0 | upgrade behind a compile/runtime gate |
-| Play Services Maps | 18.1.0 | 20.0.0 | align with Maps Compose and verify dependency graph |
-| Places SDK | 2.6.0 | 5.1.1 | upgrade and use Places API (New) |
+| Maps Compose | 2.11.0 | 6.12.0 | keep 2.11.0; upgrade separately |
+| Play Services Maps | 18.1.0 | 20.0.0 | keep 18.1.0; upgrade separately |
+| Places SDK | 2.6.0 | 5.1.1 | keep 2.6.0; upgrade separately |
 | Secrets Gradle Plugin | absent | 2.0.1 | add through the version catalog |
 | `buildConfig` | enabled | required for Places key access | keep enabled |
 
@@ -53,16 +53,23 @@ The Google SDK upgrade is not a blind version replacement. Run Gradle
 `dependencyInsight`, compile tests, and a Play-enabled emulator/device smoke test
 before migrating production consumers.
 
+Dependency upgrades are explicitly outside this migration. The implementation
+keeps Gradle 8.7, AGP 8.5.2, `compileSdk` 34, and the repository's existing
+Google SDK versions. A later dependency-upgrade task can evaluate the current
+official baseline behind its own compile and runtime gates.
+
 ## Google Cloud project checklist
 
 Required before Google runtime cutover:
 
 1. Billing is enabled for the intended Google Cloud project.
 2. Maps SDK for Android is enabled.
-3. Places API (New) is enabled.
+3. The existing project already has Places API (Legacy) enabled for the pinned
+   Places SDK 2.6.0 runtime; new projects cannot enable this legacy service.
 4. The Android credential is restricted to the Infinite Track application ID
    and the appropriate signing-certificate fingerprints.
-5. API restrictions allow only Maps SDK for Android and Places API (New).
+5. API restrictions allow only Maps SDK for Android and the existing Places
+   API (Legacy) service used by this pinned baseline.
 6. Development, CI/release, and Play App Signing fingerprints are inventoried
    without committing their values.
 7. The previously tracked credential is rotated after the replacement
@@ -98,7 +105,7 @@ Places initialization. Keep only the recommended
 Add a tracked defaults file containing only:
 
 ```properties
-MAPS_API_KEY=DEFAULT_API_KEY
+MAPS_API_KEY=missing
 ```
 
 Configure the plugin with
@@ -116,9 +123,10 @@ During the migration, `local.properties` may contain both the Mapbox token and
 ## SDK initialization ownership
 
 - Maps SDK is initialized by Manifest metadata.
-- Places SDK is initialized once from `InfiniteTrackApplication` or an
-  application-scoped initializer using
-  `Places.initializeWithNewPlacesApiEnabled`.
+- Places SDK 2.6.0 is initialized lazily at the application boundary with
+  `Places.initialize`; the API key is never read by a composable.
+- Migration to Places API (New) and `Places.initializeWithNewPlacesApiEnabled`
+  is deferred to the separate Places dependency-upgrade task.
 - A singleton `PlacesClient` is provided through Hilt.
 - Composables never read keys, initialize SDKs, create repositories, request
   permissions, or own search sessions.
@@ -195,7 +203,9 @@ integration without hiding required map content or attribution.
 
 ## Places search policy
 
-Use Places SDK (New) programmatically behind `PlaceDiscoveryRepository`.
+Use pinned Places SDK 2.6.0 programmatically behind
+`PlaceDiscoveryRepository`; the provider boundary allows a later New SDK
+upgrade without changing UI contracts.
 
 - Start one `AutocompleteSessionToken` when a user begins a search session.
 - Reuse it across prediction requests and the selected Place Details request.
@@ -206,8 +216,8 @@ Use Places SDK (New) programmatically behind `PlaceDiscoveryRepository`.
 - Use Indonesia as the country/region context.
 - Prefer location bias around a fresh current location or authoritative target;
   do not hard-restrict the result area unless the product contract requires it.
-- Request only fields needed by the domain:
-  `ID`, `DISPLAY_NAME`, `FORMATTED_ADDRESS`, and `LOCATION`.
+- Request only fields available and needed on 2.6.0:
+  `ID`, `NAME`, `ADDRESS`, and `LAT_LNG`.
 - A suggestion remains an opaque `placeId` plus display text until an explicit
   Place Details resolution succeeds.
 - Provide typed empty, unavailable, rate-limited, authentication, and network
@@ -217,16 +227,17 @@ Use Places SDK (New) programmatically behind `PlaceDiscoveryRepository`.
 
 ## App Check rollout
 
-App Check protects Places SDK (New), not the map renderer itself. Treat it as a
-separate hardening phase:
+App Check protects Places SDK (New), not the map renderer or the pinned 2.6.0
+legacy path. Defer this hardening phase until the separate Places SDK upgrade:
 
-1. Upgrade to Places SDK 5.1.1 and complete functional migration.
-2. Register the Android package and its SHA-256 fingerprint for App Check.
-3. Integrate Firebase App Check with Play Integrity at application startup
+1. Complete the functional migration on the pinned Places SDK 2.6.0 baseline.
+2. Upgrade to a supported Places SDK (New) baseline.
+3. Register the Android package and its SHA-256 fingerprint for App Check.
+4. Integrate Firebase App Check with Play Integrity at application startup
    before constructing the Places client.
-4. Use only the Firebase debug provider/token path for local emulator and CI.
-5. Observe verified, outdated, and invalid traffic metrics.
-6. Enable enforcement only after legitimate released clients are predominantly
+5. Use only the Firebase debug provider/token path for local emulator and CI.
+6. Observe verified, outdated, and invalid traffic metrics.
+7. Enable enforcement only after legitimate released clients are predominantly
    verified.
 
 The rollout must account for startup attestation latency, Play Integrity quota,

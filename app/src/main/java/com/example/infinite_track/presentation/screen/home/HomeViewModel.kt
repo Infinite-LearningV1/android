@@ -9,6 +9,7 @@ import com.example.infinite_track.domain.model.attendance.AttendanceSummaryInfo
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.model.booking.BookingHistoryItem
+import com.example.infinite_track.domain.model.location.AddressResolutionResult
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.booking.GetBookingHistoryUseCase
@@ -116,13 +117,19 @@ class HomeViewModel @Inject constructor(
 
 	private fun fetchCurrentAddress() {
 		viewModelScope.launch {
-			getCurrentAddressUseCase().onSuccess { address ->
-				_currentAddressState.value = address
-			}.onFailure {
-				_currentAddressState.value = "Unable to fetch location"
+			when (val result = getCurrentAddressUseCase()) {
+				is AddressResolutionResult.Resolved ->
+					_currentAddressState.value = result.address.formattedAddress
+				is AddressResolutionResult.CoordinateOnly ->
+					_currentAddressState.value = result.coordinate.toDisplayText()
+				is AddressResolutionResult.Failed ->
+					_currentAddressState.value = "Unable to fetch location"
 			}
 		}
 	}
+
+	private fun com.example.infinite_track.domain.model.location.GeoCoordinate.toDisplayText(): String =
+		"Lat: %.6f, Lng: %.6f".format(java.util.Locale.US, latitude, longitude)
 
 	fun fetchTodayStatus(forceRefresh: Boolean = false) {
 		viewModelScope.launch {

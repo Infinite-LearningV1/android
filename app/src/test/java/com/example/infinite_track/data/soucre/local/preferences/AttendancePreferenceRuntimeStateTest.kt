@@ -3,6 +3,8 @@ package com.example.infinite_track.data.soucre.local.preferences
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import com.example.infinite_track.domain.model.location.DistanceMeters
+import com.example.infinite_track.domain.model.location.GeoCoordinate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -41,18 +43,18 @@ class AttendancePreferenceRuntimeStateTest {
         attendancePreference.saveActiveAttendanceId(123)
         attendancePreference.setUserInsideGeofence(true)
         attendancePreference.saveLastGeofenceParams(
-            requestId = "geofence-request-123",
-            latitude = -0.898,
-            longitude = 119.87,
-            radiusMeters = 100f
+            StoredGeofence(
+                id = "geofence-request-123",
+                coordinate = GeoCoordinate(-0.898, 119.87),
+                radius = DistanceMeters(100.0)
+            )
         )
         attendancePreference.addReminderGeofences(
             listOf(
                 ReminderGeofence(
                     id = "reminder-1",
-                    latitude = -0.898,
-                    longitude = 119.87,
-                    radiusMeters = 100f
+                    coordinate = GeoCoordinate(-0.898, 119.87),
+                    radius = DistanceMeters(100.0)
                 )
             )
         )

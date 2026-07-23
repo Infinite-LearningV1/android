@@ -4,6 +4,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
+import com.example.infinite_track.data.soucre.local.preferences.StoredGeofence
+import com.example.infinite_track.domain.model.location.DistanceMeters
+import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.data.soucre.local.preferences.CachedTodayStatusPayload
 import com.example.infinite_track.data.soucre.local.preferences.TodayStatusPreference
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
@@ -53,7 +56,13 @@ class ClearAuthenticatedRuntimeUseCaseTest {
         userDao.insertOrUpdateUserProfile(sampleUserEntity())
         attendancePreference.saveActiveAttendanceId(99)
         attendancePreference.setUserInsideGeofence(true)
-        attendancePreference.saveLastGeofenceParams("attendance-geofence", -0.9, 119.8, 100f)
+        attendancePreference.saveLastGeofenceParams(
+            StoredGeofence(
+                "attendance-geofence",
+                GeoCoordinate(-0.9, 119.8),
+                DistanceMeters(100.0)
+            )
+        )
         todayStatusPreference.saveTodayStatusCache(sampleCachedTodayStatus())
 
         useCase()
@@ -146,7 +155,13 @@ class ClearAuthenticatedRuntimeUseCaseTest {
         userDao.insertOrUpdateUserProfile(sampleUserEntity())
         attendancePreference.saveActiveAttendanceId(100)
         attendancePreference.setUserInsideGeofence(true)
-        attendancePreference.saveLastGeofenceParams("attendance-geofence", -1.0, 120.0, 150f)
+        attendancePreference.saveLastGeofenceParams(
+            StoredGeofence(
+                "attendance-geofence",
+                GeoCoordinate(-1.0, 120.0),
+                DistanceMeters(150.0)
+            )
+        )
         todayStatusPreference.saveTodayStatusCache(sampleCachedTodayStatus())
 
         try {

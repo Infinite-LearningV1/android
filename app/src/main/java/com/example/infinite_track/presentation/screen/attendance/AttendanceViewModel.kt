@@ -8,7 +8,11 @@ import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
 import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.model.attendance.WorkMode
+import com.example.infinite_track.domain.model.booking.BookingHistoryItem
 import com.example.infinite_track.domain.model.location.LocationResult
+import com.example.infinite_track.domain.model.location.GeoCoordinate
+import com.example.infinite_track.domain.model.location.DistanceMeters
+import com.example.infinite_track.domain.model.location.AddressResolutionResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
 import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
@@ -19,15 +23,16 @@ import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingIdUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
-import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinatesUseCase
+import com.example.infinite_track.domain.use_case.location.GetCurrentLocationUseCase
+import com.example.infinite_track.domain.model.location.CurrentLocationResult
 import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
 import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.example.infinite_track.presentation.geofencing.ReminderGeofenceCandidate
 import com.example.infinite_track.presentation.navigation.Screen
+import com.example.infinite_track.presentation.map.model.MapCameraEffect
 import com.example.infinite_track.utils.LocationPermissionHelper
 import com.example.infinite_track.utils.UiState
-import com.mapbox.geojson.Point
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -39,6 +44,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import java.util.Locale
 import javax.inject.Inject
 
 /**
@@ -51,15 +57,6 @@ sealed class NavigationTarget {
 }
 
 /**
- * Sealed class untuk map animation commands
- */
-sealed class MapAnimationTarget {
-    data class AnimateToLocation(val point: Point, val zoomLevel: Double) : MapAnimationTarget()
-    data class AnimateToFitBounds(val points: List<Point>) : MapAnimationTarget()
-    object ShowLocationError : MapAnimationTarget()
-}
-
-/**
  * Simplified ViewModel that is fully reactive to geofence state
  * Removed manual GPS tracking and distance calculation logic
  * Uses geofence as the single source of truth for validation
@@ -69,7 +66,7 @@ sealed class MapAnimationTarget {
 class AttendanceViewModel @Inject constructor(
     private val getTodayStatusUseCase: GetTodayStatusUseCase,
     private val getCurrentAddressUseCase: GetCurrentAddressUseCase,
-    private val getCurrentCoordinatesUseCase: GetCurrentCoordinatesUseCase,
+    private val getCurrentLocationUseCase: GetCurrentLocationUseCase,
     private val getWfaRecommendationsUseCase: GetWfaRecommendationsUseCase,
     private val reverseGeocodeUseCase: ReverseGeocodeUseCase,
     private val attendancePreference: AttendancePreference,
@@ -96,6 +93,13 @@ class AttendanceViewModel @Inject constructor(
         _transientFeedback.asSharedFlow()
     private var nextTransientFeedbackId = 0L
 
+    private val _mapCameraEffects = MutableSharedFlow<MapCameraEffect>(
+        replay = 0,
+        extraBufferCapacity = 1
+    )
+    val mapCameraEffects: SharedFlow<MapCameraEffect> = _mapCameraEffects.asSharedFlow()
+    private var nextMapCameraEffectId = 0L
+
     // Job for UI-focused location updates (display purposes only)
     private var displayLocationJob: Job? = null
 
@@ -120,14 +124,6 @@ class AttendanceViewModel @Inject constructor(
      */
     fun onNavigationHandled() {
         _uiState.value = _uiState.value.copy(navigationTarget = null)
-    }
-
-    /**
-     * Called by UI after map animation is completed
-     * Resets mapAnimationTarget to null
-     */
-    fun onMapAnimationHandled() {
-        _uiState.value = _uiState.value.copy(mapAnimationTarget = null)
     }
 
     private fun publishTransientFeedback(
@@ -180,6 +176,15 @@ class AttendanceViewModel @Inject constructor(
                 )
 
                 val selectedMode = WorkMode.fromRaw(todayStatus.activeMode) ?: WorkMode.WFO
+                val approvedWfaLocation = if (
+                    selectedMode == WorkMode.WFA && todayStatus.todayDate.isNotBlank()
+                ) {
+                    resolveTodayApprovedWfaBookingUseCase(todayStatus.todayDate)
+                        .getOrNull()
+                        ?.toAttendanceLocation()
+                } else {
+                    null
+                }
 
                 val nextState = _uiState.value.copy(
                     todayStatus = todayStatus,
@@ -188,6 +193,7 @@ class AttendanceViewModel @Inject constructor(
                     targetLocationMarker = todayStatus.activeLocation,
                     selectedWorkMode = selectedMode,
                     isWfaModeActive = selectedMode == WorkMode.WFA,
+                    approvedWfaLocation = approvedWfaLocation,
                     uiState = UiState.Success(Unit)
                 )
                 _uiState.value = nextState.withResolvedActionStatePreservingInFlightSubmit()
@@ -336,9 +342,8 @@ class AttendanceViewModel @Inject constructor(
                 id = "reminder:primary:${primary.locationId}",
                 modeKey = WorkMode.fromRaw(todayStatus.activeMode)?.shortLabel?.lowercase() ?: WorkMode.WFO.shortLabel.lowercase(),
                 label = primary.description,
-                latitude = primary.latitude,
-                longitude = primary.longitude,
-                radiusMeters = primary.radius.toFloat(),
+                coordinate = primary.coordinate,
+                radius = DistanceMeters(primary.radius.toDouble()),
                 source = "status-today.active_location"
             )
         }
@@ -348,9 +353,8 @@ class AttendanceViewModel @Inject constructor(
                 id = "reminder:wfh:user_home:${home.locationId}",
                 modeKey = WorkMode.WFH.shortLabel.lowercase(),
                 label = home.description,
-                latitude = home.latitude,
-                longitude = home.longitude,
-                radiusMeters = home.radius.toFloat(),
+                coordinate = home.coordinate,
+                radius = DistanceMeters(home.radius.toDouble()),
                 source = "/me"
             )
         }
@@ -361,13 +365,13 @@ class AttendanceViewModel @Inject constructor(
                 val latitude = booking.latitude
                 val longitude = booking.longitude
                 if (latitude != null && longitude != null && !isDuplicateWithPrimary(todayStatus.activeLocation, latitude, longitude)) {
-                    candidates += ReminderGeofenceCandidate(
+                    val coordinate = runCatching { GeoCoordinate(latitude, longitude) }.getOrNull()
+                    if (coordinate != null) candidates += ReminderGeofenceCandidate(
                         id = "reminder:wfa:${booking.bookingId}:${booking.locationId ?: 0}",
                         modeKey = WorkMode.WFA.shortLabel.lowercase(),
                         label = booking.locationDescription,
-                        latitude = latitude,
-                        longitude = longitude,
-                        radiusMeters = booking.radiusMeters ?: 100f,
+                        coordinate = coordinate,
+                        radius = DistanceMeters((booking.radiusMeters ?: 100f).toDouble()),
                         source = "approved-wfa-booking"
                     )
                 }
@@ -412,25 +416,32 @@ class AttendanceViewModel @Inject constructor(
     private suspend fun updateDisplayLocation() {
         try {
             // Update current address for display - menggunakan Geocoding API yang sudah diperbaiki
-            getCurrentAddressUseCase().onSuccess { address ->
-                _uiState.value = _uiState.value.copy(currentUserAddress = address)
-                Log.d(TAG, "Display address updated: $address")
-            }.onFailure { exception ->
-                Log.w(TAG, "Failed to get display address", exception)
-                // Set fallback address jika gagal
-                _uiState.value = _uiState.value.copy(currentUserAddress = "Mengambil alamat...")
+            when (val addressResult = getCurrentAddressUseCase()) {
+                is AddressResolutionResult.Resolved -> {
+                    _uiState.value = _uiState.value.copy(
+                        currentUserAddress = addressResult.address.formattedAddress
+                    )
+                }
+                is AddressResolutionResult.CoordinateOnly -> {
+                    _uiState.value = _uiState.value.copy(
+                        currentUserAddress = addressResult.coordinate.toDisplayText()
+                    )
+                }
+                is AddressResolutionResult.Failed -> {
+                    _uiState.value = _uiState.value.copy(currentUserAddress = "Mengambil alamat...")
+                }
             }
 
-            // Update current coordinates for map display - menggunakan database fallback untuk display
-            getCurrentCoordinatesUseCase(useRealTimeGPS = false).onSuccess { coordinates ->
-                val (latitude, longitude) = coordinates
-                _uiState.value = _uiState.value.copy(
-                    currentUserLatitude = latitude,
-                    currentUserLongitude = longitude
-                )
-                Log.d(TAG, "Display coordinates updated: $latitude, $longitude")
-            }.onFailure { exception ->
-                Log.w(TAG, "Failed to get display coordinates", exception)
+            when (val current = getCurrentLocationUseCase()) {
+                is CurrentLocationResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        currentUserLatitude = current.location.coordinate.latitude,
+                        currentUserLongitude = current.location.coordinate.longitude
+                    )
+                }
+                is CurrentLocationResult.Failure -> {
+                    Log.w(TAG, "Failed to get display coordinates: $current")
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error in updateDisplayLocation", e)
@@ -475,7 +486,7 @@ class AttendanceViewModel @Inject constructor(
                 mode = mode,
                 wfoLocation = state.wfoLocation,
                 wfhLocation = state.wfhLocation,
-                selectedWfaLocation = state.selectedWfaLocation
+                approvedWfaLocation = state.approvedWfaLocation
             )
 
             val eligibility = evaluateWorkModeEligibilityUseCase(
@@ -498,11 +509,11 @@ class AttendanceViewModel @Inject constructor(
     }
 
     private fun animateMapToTarget(location: Location, zoomLevel: Double = 15.0) {
-        val point = Point.fromLngLat(location.longitude, location.latitude)
-        _uiState.value = _uiState.value.copy(
-            mapAnimationTarget = MapAnimationTarget.AnimateToLocation(
-                point = point,
-                zoomLevel = zoomLevel
+        _mapCameraEffects.tryEmit(
+            MapCameraEffect.Focus(
+                id = nextMapCameraEffectId++,
+                coordinate = location.coordinate,
+                zoom = zoomLevel.toFloat()
             )
         )
     }
@@ -514,72 +525,36 @@ class AttendanceViewModel @Inject constructor(
     private fun fetchWfaRecommendations() {
         viewModelScope.launch {
             try {
-                Log.d(TAG, "Fetching WFA recommendations - getting fresh GPS location...")
-
-                // Set loading state for WFA recommendations
                 _uiState.value = _uiState.value.copy(isLoadingWfaRecommendations = true)
-
-                // PENTING: Gunakan GPS real-time untuk WFA recommendations
-                getCurrentCoordinatesUseCase(useRealTimeGPS = true).onSuccess { coordinates ->
-                    val (lat, lng) = coordinates
-
-                    Log.d(TAG, "Using GPS real-time location for WFA: $lat, $lng")
-
-                    getWfaRecommendationsUseCase(lat, lng).onSuccess { recommendations ->
-                        _uiState.value = _uiState.value.copy(wfaRecommendations = recommendations)
-
-                        // Send event to zoom out and show all recommendations
-                        if (recommendations.isNotEmpty()) {
-                            val points =
-                                recommendations.map { Point.fromLngLat(it.longitude, it.latitude) }
-                            _uiState.value = _uiState.value.copy(
-                                mapAnimationTarget = MapAnimationTarget.AnimateToFitBounds(points)
-                            )
-                            Log.d(
-                                TAG,
-                                "WFA recommendations fetched: ${recommendations.size} locations"
-                            )
-                        } else {
-                            Log.w(TAG, "No WFA recommendations found for GPS location: $lat, $lng")
-                        }
-                    }.onFailure { exception ->
-                        Log.e(TAG, "Failed to fetch WFA recommendations", exception)
-                        // Keep empty list on error
-                        _uiState.value = _uiState.value.copy(wfaRecommendations = emptyList())
-                    }
-
-                }.onFailure { exception ->
-                    Log.e(TAG, "Failed to get GPS location for WFA recommendations", exception)
-                    // Fallback to cached location if GPS fails
-                    val lat = _uiState.value.currentUserLatitude ?: return@launch
-                    val lng = _uiState.value.currentUserLongitude ?: return@launch
-
-                    Log.w(TAG, "GPS failed, using cached location for WFA: $lat, $lng")
-
-                    getWfaRecommendationsUseCase(lat, lng).onSuccess { recommendations ->
-                        _uiState.value = _uiState.value.copy(wfaRecommendations = recommendations)
-                        if (recommendations.isNotEmpty()) {
-                            val points =
-                                recommendations.map { Point.fromLngLat(it.longitude, it.latitude) }
-                            _uiState.value = _uiState.value.copy(
-                                mapAnimationTarget = MapAnimationTarget.AnimateToFitBounds(points)
-                            )
-                            Log.d(
-                                TAG,
-                                "WFA recommendations fetched with cached location: ${recommendations.size} locations"
-                            )
-                        }
-                    }.onFailure { exception ->
-                        Log.e(
-                            TAG,
-                            "Failed to fetch WFA recommendations with cached location",
-                            exception
-                        )
-                        _uiState.value = _uiState.value.copy(wfaRecommendations = emptyList())
-                    }
+                val coordinate = when (val current = getCurrentLocationUseCase()) {
+                    is CurrentLocationResult.Success -> current.location.coordinate
+                    is CurrentLocationResult.Failure -> cachedCurrentCoordinateOrNull()
+                }
+                if (coordinate == null) {
+                    _uiState.value = _uiState.value.copy(
+                        wfaRecommendations = emptyList(),
+                        isLoadingWfaRecommendations = false
+                    )
+                    return@launch
                 }
 
-                // Reset loading state
+                getWfaRecommendationsUseCase(
+                    coordinate.latitude,
+                    coordinate.longitude
+                ).onSuccess { recommendations ->
+                    _uiState.value = _uiState.value.copy(wfaRecommendations = recommendations)
+                    if (recommendations.isNotEmpty()) {
+                        _mapCameraEffects.tryEmit(
+                            MapCameraEffect.Fit(
+                                id = nextMapCameraEffectId++,
+                                coordinates = recommendations.map(WfaRecommendation::coordinate)
+                            )
+                        )
+                    }
+                }.onFailure { exception ->
+                    Log.e(TAG, "Failed to fetch WFA recommendations", exception)
+                    _uiState.value = _uiState.value.copy(wfaRecommendations = emptyList())
+                }
                 _uiState.value = _uiState.value.copy(isLoadingWfaRecommendations = false)
             } catch (e: Exception) {
                 Log.e(TAG, "Unexpected error in fetchWfaRecommendations", e)
@@ -601,8 +576,6 @@ class AttendanceViewModel @Inject constructor(
             selectedWfaMarkerInfo = recommendation // Show marker details
         )
         refreshResolvedActionState()
-
-        resolveAndApplyTargetForMode(WorkMode.WFA)
     }
 
     /**
@@ -807,7 +780,7 @@ class AttendanceViewModel @Inject constructor(
                     mode = selectedMode,
                     wfoLocation = _uiState.value.wfoLocation,
                     wfhLocation = _uiState.value.wfhLocation,
-                    selectedWfaLocation = _uiState.value.selectedWfaLocation
+                    approvedWfaLocation = _uiState.value.approvedWfaLocation
                 )
                 val targetLocation = target.location
 
@@ -1045,66 +1018,40 @@ class AttendanceViewModel @Inject constructor(
      * Always gets fresh location data when clicked
      */
     fun onFocusLocationClicked() {
-        Log.d(TAG, "=== FOCUS LOCATION BUTTON CLICKED ===")
-        Log.d(TAG, "Current work mode: ${_uiState.value.selectedWorkMode}")
-        Log.d(TAG, "Current WFH location: ${_uiState.value.wfhLocation}")
-        Log.d(TAG, "Getting fresh GPS coordinates...")
-
         viewModelScope.launch {
             try {
-                // PENTING: Gunakan GPS real-time, bukan dari database
-                getCurrentCoordinatesUseCase(useRealTimeGPS = true).onSuccess { coordinates ->
-                    val (latitude, longitude) = coordinates
-
-                    Log.d(TAG, "=== FRESH GPS COORDINATES RECEIVED ===")
-                    Log.d(TAG, "GPS Real-time Latitude: $latitude")
-                    Log.d(TAG, "GPS Real-time Longitude: $longitude")
-                    Log.d(TAG, "WFH Latitude: ${_uiState.value.wfhLocation?.latitude}")
-                    Log.d(TAG, "WFH Longitude: ${_uiState.value.wfhLocation?.longitude}")
-
-                    // Pastikan koordinat berbeda dari WFH
-                    if (latitude == _uiState.value.wfhLocation?.latitude &&
-                        longitude == _uiState.value.wfhLocation?.longitude
-                    ) {
-                        Log.w(TAG, "WARNING: GPS coordinates sama dengan WFH location!")
-                        Log.w(TAG, "Ini mungkin karena GPS masih menggunakan cached location")
-                    }
-
-                    // Update state untuk immediate display
-                    _uiState.value = _uiState.value.copy(
-                        currentUserLatitude = latitude,
-                        currentUserLongitude = longitude
-                    )
-
-                    // Send map animation event
-                    val focusPoint = Point.fromLngLat(longitude, latitude)
-                    _uiState.value = _uiState.value.copy(
-                        mapAnimationTarget = MapAnimationTarget.AnimateToLocation(
-                            point = focusPoint,
-                            zoomLevel = 15.0
+                when (val current = getCurrentLocationUseCase()) {
+                    is CurrentLocationResult.Success -> {
+                        val coordinate = current.location.coordinate
+                        _uiState.value = _uiState.value.copy(
+                            currentUserLatitude = coordinate.latitude,
+                            currentUserLongitude = coordinate.longitude
                         )
-                    )
-
-                    Log.d(TAG, "=== MAP ANIMATION SENT ===")
-                    Log.d(TAG, "Focus point: ${focusPoint.latitude()}, ${focusPoint.longitude()}")
-                    Log.d(TAG, "This should be your CURRENT GPS location, NOT your home location!")
-                }.onFailure { exception ->
-                    Log.e(TAG, "=== GPS LOCATION FAILED ===")
-                    Log.e(TAG, "Failed to get current GPS location", exception)
-                    publishTransientFeedback(AttendanceTransientFeedbackKind.LOCATION_ERROR)
-                    _uiState.value = _uiState.value.copy(
-                        mapAnimationTarget = MapAnimationTarget.ShowLocationError
-                    )
+                        _mapCameraEffects.tryEmit(
+                            MapCameraEffect.Focus(
+                                id = nextMapCameraEffectId++,
+                                coordinate = coordinate,
+                                zoom = 15f
+                            )
+                        )
+                    }
+                    is CurrentLocationResult.Failure -> {
+                        Log.e(TAG, "Failed to get current GPS location: $current")
+                        publishTransientFeedback(AttendanceTransientFeedbackKind.LOCATION_ERROR)
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "=== UNEXPECTED ERROR ===")
                 Log.e(TAG, "Error in onFocusLocationClicked", e)
                 publishTransientFeedback(AttendanceTransientFeedbackKind.LOCATION_ERROR)
-                _uiState.value = _uiState.value.copy(
-                    mapAnimationTarget = MapAnimationTarget.ShowLocationError
-                )
             }
         }
+    }
+
+    private fun cachedCurrentCoordinateOrNull(): GeoCoordinate? {
+        val latitude = _uiState.value.currentUserLatitude ?: return null
+        val longitude = _uiState.value.currentUserLongitude ?: return null
+        return runCatching { GeoCoordinate(latitude, longitude) }.getOrNull()
     }
 
     /**
@@ -1152,8 +1099,6 @@ class AttendanceViewModel @Inject constructor(
                 isWfaModeActive = true
             )
             refreshResolvedActionState()
-
-            resolveAndApplyTargetForMode(WorkMode.WFA)
         }
     }
 
@@ -1182,7 +1127,7 @@ class AttendanceViewModel @Inject constructor(
      * Handle map idle event - called when user stops moving the map
      * Performs reverse geocoding for the center point of the map
      */
-    fun onMapIdle(centerPoint: Point) {
+    fun onMapIdle(centerPoint: GeoCoordinate) {
         // Only perform reverse geocoding if Pick on Map mode is active
         if (!_uiState.value.isPickOnMapModeActive) return
 
@@ -1190,46 +1135,75 @@ class AttendanceViewModel @Inject constructor(
             try {
                 Log.d(
                     TAG,
-                    "Map idle detected in Pick on Map mode: ${centerPoint.latitude()}, ${centerPoint.longitude()}"
+                    "Map idle detected in Pick on Map mode: ${centerPoint.latitude}, ${centerPoint.longitude}"
                 )
 
                 // Perform reverse geocoding for the center point
-                reverseGeocodeUseCase(
-                    latitude = centerPoint.latitude(),
-                    longitude = centerPoint.longitude()
-                ).onSuccess { locationResult ->
-                    Log.d(TAG, "Reverse geocoding successful: ${locationResult.placeName}")
-
-                    // Update the picked location
-                    _uiState.value = _uiState.value.copy(
-                        pickedLocation = locationResult,
-                        selectedWfaLocation = WfaRecommendation(
-                            name = locationResult.placeName,
-                            address = locationResult.address,
-                            latitude = locationResult.latitude,
-                            longitude = locationResult.longitude,
-                            score = 0.0,
-                            label = "Picked on Map",
-                            category = "Manual Selection",
-                            distance = 0.0
+                when (val result = reverseGeocodeUseCase(centerPoint)) {
+                    is AddressResolutionResult.Resolved -> applyPickedLocation(
+                        coordinate = centerPoint,
+                        placeName = result.address.name ?: "Lokasi dipilih",
+                        address = result.address.formattedAddress
+                    )
+                    is AddressResolutionResult.CoordinateOnly -> applyPickedLocation(
+                        coordinate = result.coordinate,
+                        placeName = "Lokasi dipilih",
+                        address = result.coordinate.toDisplayText()
+                    )
+                    is AddressResolutionResult.Failed -> {
+                        _uiState.value = _uiState.value.copy(
+                            pickedLocation = null,
+                            selectedWfaLocation = null,
+                            error = "Gagal mendapatkan detail lokasi. Periksa koneksi Anda."
                         )
-                    )
-                    resolveAndApplyTargetForMode(WorkMode.WFA)
-                }.onFailure { exception ->
-                    Log.e(TAG, "Reverse geocoding failed", exception)
-
-                    _uiState.value = _uiState.value.copy(
-                        pickedLocation = null, // Ensure picked location is null
-                        selectedWfaLocation = null,
-                        error = "Gagal mendapatkan detail lokasi. Periksa koneksi Anda."
-                    )
-                    resolveAndApplyTargetForMode(WorkMode.WFA)
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Unexpected error in onMapIdle", e)
             }
         }
     }
+
+    private fun applyPickedLocation(
+        coordinate: GeoCoordinate,
+        placeName: String,
+        address: String
+    ) {
+        val locationResult = LocationResult(
+            placeName = placeName,
+            address = address,
+            latitude = coordinate.latitude,
+            longitude = coordinate.longitude
+        )
+        _uiState.value = _uiState.value.copy(
+            pickedLocation = locationResult,
+            selectedWfaLocation = WfaRecommendation(
+                name = placeName,
+                address = address,
+                coordinate = coordinate,
+                score = 0.0,
+                label = "Picked on Map",
+                category = "Manual Selection",
+                distance = 0.0
+            )
+        )
+    }
+
+    private fun BookingHistoryItem.toAttendanceLocation(): Location? {
+        val latitude = latitude ?: return null
+        val longitude = longitude ?: return null
+        val coordinate = runCatching { GeoCoordinate(latitude, longitude) }.getOrNull() ?: return null
+        return Location(
+            locationId = locationId ?: bookingId,
+            coordinate = coordinate,
+            radius = radiusMeters?.toInt() ?: 100,
+            description = locationDescription,
+            category = "WFA"
+        )
+    }
+
+    private fun GeoCoordinate.toDisplayText(): String =
+        "Lat: %.6f, Lng: %.6f".format(Locale.US, latitude, longitude)
 
     // ===========================================
     // Permission Dialog Handling

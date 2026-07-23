@@ -29,6 +29,7 @@ jobs:
         shell: bash
         env:
           MAPBOX_ACCESS_TOKEN: ${{ secrets.MAPBOX_ACCESS_TOKEN }}
+          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -42,6 +43,7 @@ jobs:
           missing=()
           for name in \
             MAPBOX_ACCESS_TOKEN \
+            MAPS_API_KEY \
             ANDROID_KEYSTORE_BASE64 \
             ANDROID_KEYSTORE_PASSWORD \
             ANDROID_KEY_ALIAS \
@@ -68,8 +70,10 @@ jobs:
         shell: bash
         env:
           MAPBOX_ACCESS_TOKEN: ${{ secrets.MAPBOX_ACCESS_TOKEN }}
+          MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
         run: |
           printf 'MAPBOX_ACCESS_TOKEN=%s\n' "$MAPBOX_ACCESS_TOKEN" > local.properties
+          printf 'MAPS_API_KEY=%s\n' "$MAPS_API_KEY" >> local.properties
 
       - name: Restore google-services.json
         shell: bash

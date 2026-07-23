@@ -1,5 +1,7 @@
 package com.example.infinite_track.domain.model.wfa
 
+import com.example.infinite_track.domain.model.location.GeoCoordinate
+
 /**
  * Domain models for WFA (Work From Anywhere) recommendations
  * These are clean models used by the UI layer
@@ -7,13 +9,37 @@ package com.example.infinite_track.domain.model.wfa
 data class WfaRecommendation(
     val name: String,
     val address: String,
-    val latitude: Double,
-    val longitude: Double,
+    val coordinate: GeoCoordinate,
     val score: Double,
     val label: String,
     val category: String,
     val distance: Double
-)
+) {
+    constructor(
+        name: String,
+        address: String,
+        latitude: Double,
+        longitude: Double,
+        score: Double,
+        label: String,
+        category: String,
+        distance: Double
+    ) : this(
+        name = name,
+        address = address,
+        coordinate = GeoCoordinate(latitude, longitude),
+        score = score,
+        label = label,
+        category = category,
+        distance = distance
+    )
+
+    val latitude: Double
+        get() = coordinate.latitude
+
+    val longitude: Double
+        get() = coordinate.longitude
+}
 
 /**
  * Detailed WFA recommendation with score breakdown
@@ -21,8 +47,7 @@ data class WfaRecommendation(
 data class WfaRecommendationDetail(
     val name: String,
     val address: String,
-    val latitude: Double,
-    val longitude: Double,
+    val coordinate: GeoCoordinate,
     val category: String,
     val suitabilityScore: Double,
     val suitabilityLabel: String,
@@ -32,7 +57,42 @@ data class WfaRecommendationDetail(
     val crowdDensity: ScoreItem,
     val operationalHours: ScoreItem,
     val amenities: AmenityItem
-)
+) {
+    constructor(
+        name: String,
+        address: String,
+        latitude: Double,
+        longitude: Double,
+        category: String,
+        suitabilityScore: Double,
+        suitabilityLabel: String,
+        distanceKm: Double,
+        wifiQuality: ScoreItem,
+        noiseLevel: ScoreItem,
+        crowdDensity: ScoreItem,
+        operationalHours: ScoreItem,
+        amenities: AmenityItem
+    ) : this(
+        name = name,
+        address = address,
+        coordinate = GeoCoordinate(latitude, longitude),
+        category = category,
+        suitabilityScore = suitabilityScore,
+        suitabilityLabel = suitabilityLabel,
+        distanceKm = distanceKm,
+        wifiQuality = wifiQuality,
+        noiseLevel = noiseLevel,
+        crowdDensity = crowdDensity,
+        operationalHours = operationalHours,
+        amenities = amenities
+    )
+
+    val latitude: Double
+        get() = coordinate.latitude
+
+    val longitude: Double
+        get() = coordinate.longitude
+}
 
 data class ScoreItem(
     val score: Double,

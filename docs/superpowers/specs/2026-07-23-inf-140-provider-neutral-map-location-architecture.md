@@ -246,9 +246,11 @@ The declared Google dependencies are substantially behind the official
 | Places SDK for Android | 2.6.0 | 5.1.1 |
 | Secrets Gradle Plugin | absent | 2.0.1 |
 
-The project `compileSdk` 34 and `minSdk` 26 satisfy the published SDK minimums.
-Versions are upgraded as a locked set behind dependency-resolution, compile, and
-runtime gates; they are not changed independently or specified with `+`.
+The project `minSdk` 26 satisfies the published SDK minimums. This migration
+does not upgrade Android or Google SDK dependencies: it keeps Gradle 8.7, AGP
+8.5.2, `compileSdk` 34, `targetSdk` 34, Maps Compose 2.11.0, Play Services Maps
+18.1.0, and Places 2.6.0. The newer official baseline remains documented for a
+separate dependency-upgrade task with independent compile and runtime gates.
 
 The tracked Manifest contains a literal Google Maps API key. The exact value is
 treated as sensitive and must never be copied into source, docs, logs, tests, or
@@ -489,8 +491,9 @@ Rules:
 6. API status/exception details map to typed failures; raw provider messages do
    not enter UI state.
 7. No Places widget launches itself from a composable.
-8. Use Places API (New) and initialize it once with
-   `Places.initializeWithNewPlacesApiEnabled` at the application boundary.
+8. Use the pinned Places SDK 2.6.0 legacy surface and initialize it lazily with
+   `Places.initialize` at the application boundary. Migration to Places API
+   (New) is deferred with the dependency upgrade.
 9. Reuse the search token for prediction calls and the selected Place Details
    request; never reuse a completed token.
 10. Request only `ID`, `DISPLAY_NAME`, `FORMATTED_ADDRESS`, and `LOCATION` from
@@ -1039,7 +1042,7 @@ BuildConfig.MAPS_API_KEY
 The Manifest placeholder initializes Maps SDK. The BuildConfig value initializes
 Places once at the application/data boundary, never inside a composable.
 
-Tracked defaults contain only `MAPS_API_KEY=DEFAULT_API_KEY`. CI writes the
+Tracked defaults contain only the non-secret `MAPS_API_KEY=missing` schema marker. CI writes the
 real value from its encrypted secret into the ephemeral `local.properties` that
 the workflows already create, and cleanup removes it. Release assembly fails
 clearly if the default remains, without printing the configured value.
@@ -1047,7 +1050,8 @@ clearly if the default remains, without printing the configured value.
 Prefer separate development and release credentials behind the same property
 name. Restrict each credential to the Infinite Track application ID and its
 applicable debug, CI/release, or Play App Signing certificate fingerprint.
-Restrict enabled APIs to Maps SDK for Android and Places API (New).
+Restrict enabled APIs to Maps SDK for Android and the existing Places API
+(Legacy) service required by the pinned Places SDK 2.6.0 baseline.
 
 An Android API key is still extractable from an APK. Security comes from Google
 Cloud restrictions for the application ID plus signing-certificate SHA
@@ -1059,7 +1063,8 @@ the packaged value as an unrecoverable secret.
 Before runtime cutover:
 
 1. Billing is enabled.
-2. Maps SDK for Android and Places API (New) are enabled.
+2. Maps SDK for Android is enabled and Places API (Legacy) is already enabled
+   on this existing project.
 3. The replacement credential is restricted before distribution.
 4. Usage, quota, billing-budget, and unexpected-credential alerts are assigned
    to a monitored owner.
@@ -1138,8 +1143,8 @@ Mapbox code and dependencies may be removed only when:
       local/ephemeral CI configuration.
 - [ ] Previously tracked Google keys are rotated, Android-restricted, and
       API-restricted.
-- [ ] Maps SDK for Android, Places API (New), billing, quota, usage, and budget
-      monitoring are configured.
+- [ ] Maps SDK for Android, the existing Places API (Legacy) service, billing,
+      quota, usage, and budget monitoring are configured.
 - [ ] Map attribution remains visible and TalkBack/non-gesture access is
       verified.
 - [ ] App Check observe/enforcement status is explicitly recorded; enforcement

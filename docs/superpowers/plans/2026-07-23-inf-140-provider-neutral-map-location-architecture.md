@@ -69,7 +69,7 @@ runtime switch.
 1. Confirm without printing it that the Manifest contains a literal Google key.
 2. Add Secrets Gradle Plugin 2.0.1 through the version catalog and apply it to
    the app module.
-3. Add `MAPS_API_KEY=DEFAULT_API_KEY` to the tracked defaults file and configure
+3. Add the non-secret `MAPS_API_KEY=missing` schema marker to the tracked defaults file and configure
    `defaultPropertiesFileName = "local.defaults.properties"`.
 4. Put the developer key under `MAPS_API_KEY` in ignored `local.properties`.
 5. Replace the Manifest literal with `${MAPS_API_KEY}` and keep only
@@ -83,7 +83,8 @@ runtime switch.
 9. Fail release assembly clearly when the default remains, without echoing the
    configured value.
 10. Keep `local.properties` ignored and never stage it.
-11. Enable billing, Maps SDK for Android, and Places API (New).
+11. Enable billing and Maps SDK for Android, and confirm that this existing
+    project already has Places API (Legacy) enabled for Places SDK 2.6.0.
 12. Restrict each replacement credential by Android application ID, applicable
     signing SHA fingerprints, and only the required APIs.
 13. Record debug, CI/release, and Play App Signing fingerprint coverage without
@@ -91,9 +92,10 @@ runtime switch.
 14. Configure usage, quota, billing-budget, and unexpected-credential alerts
     for a monitored project owner.
 15. Rotate the previously tracked key after the replacement is verified.
-16. Upgrade and lock the official Google dependency baseline:
-    Maps Compose 6.12.0, Play Services Maps 20.0.0, and Places 5.1.1.
-17. Use fixed versions and inspect dependency convergence before feature work.
+16. Keep the repository dependency baseline unchanged: Maps Compose 2.11.0,
+    Play Services Maps 18.1.0, and Places 2.6.0.
+17. Keep AGP 8.5.2, Gradle 8.7, `compileSdk` 34, and `targetSdk` 34 unchanged.
+18. Treat dependency and Android toolchain upgrades as a separate task.
 
 **Gate:**
 
@@ -251,9 +253,9 @@ FetchPlaceRequest(placeId)
 
 Steps:
 
-1. Initialize Places API (New) once at the application boundary with
-   `BuildConfig.MAPS_API_KEY` and provide one application-scoped `PlacesClient`
-   through Hilt.
+1. Lazily initialize pinned Places SDK 2.6.0 once at the application boundary
+   with `BuildConfig.MAPS_API_KEY`; use `Places.initialize` and keep client
+   creation outside composables. Places API (New) remains a separate upgrade.
 2. Treat missing/default configuration as a typed failure and never log the key.
 3. Use one `AutocompleteSessionToken` per active search session.
 4. Reuse that token for predictions and the selected Place Details request.
@@ -686,8 +688,8 @@ Record INF-140 Google migration evidence
 - [ ] Google key is injected through Secrets Gradle Plugin from ignored
       local/ephemeral CI configuration.
 - [ ] Previously tracked keys are rotated and Android/API-restricted.
-- [ ] Billing, Maps SDK for Android, Places API (New), quota, usage, and budget
-      monitoring are configured.
+- [ ] Billing, Maps SDK for Android, the existing Places API (Legacy) service,
+      quota, usage, and budget monitoring are configured.
 - [ ] `GeoCoordinate` is the shared coordinate primitive.
 - [ ] Domain and ViewModels contain no map-provider SDK types.
 - [ ] No final coordinate contract uses `Pair<Double, Double>`.
