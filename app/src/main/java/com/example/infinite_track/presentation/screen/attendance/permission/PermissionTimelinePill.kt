@@ -78,22 +78,22 @@ fun PermissionTimelinePill(
         }
     }.joinToString(", ")
     val surfaceColor = if (futureInactive) {
-        colors.container.copy(alpha = 0.55f)
+        colors.container.withMultipliedAlpha(0.55f)
     } else {
         colors.container
     }
     val borderColor = if (futureInactive) {
-        colors.border.copy(alpha = 0.55f)
+        colors.border.withMultipliedAlpha(0.55f)
     } else {
         colors.border
     }
     val contentColor = if (futureInactive) {
-        colors.content.copy(alpha = 0.72f)
+        colors.content.withMultipliedAlpha(0.72f)
     } else {
         colors.content
     }
     val supportingColor = if (futureInactive) {
-        colors.content.copy(alpha = 0.62f)
+        colors.content.withMultipliedAlpha(0.62f)
     } else {
         colors.content.copy(alpha = 0.74f)
     }
@@ -103,7 +103,11 @@ fun PermissionTimelinePill(
     } else {
         "permission-step-status-$accessKey"
     }
-    val railAccent = if (futureInactive) colors.accent.copy(alpha = 0.55f) else colors.accent
+    val railAccent = if (futureInactive) {
+        colors.accent.withMultipliedAlpha(0.55f)
+    } else {
+        colors.accent
+    }
 
     BoxWithConstraints(
         modifier = modifier
@@ -218,6 +222,9 @@ fun PermissionTimelinePill(
         }
     }
 }
+
+internal fun Color.withMultipliedAlpha(multiplier: Float): Color =
+    copy(alpha = alpha * multiplier.coerceIn(0f, 1f))
 
 @Composable
 private fun PermissionTimelineRail(
