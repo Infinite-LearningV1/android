@@ -12,16 +12,16 @@ Worktree: `E:\skrisi\android\.worktrees\inf-140-provider-neutral-location`
 
 Base: `origin/develop` at `6f1c171`
 
-Status: Draft for operator approval
+Status: Draft revision 2 for operator approval
 
 ## Summary
 
 INF-140 extracts the existing Attendance map and location flow behind
-project-owned, capability-based contracts while Mapbox remains the active
-provider.
+project-owned, capability-based contracts and completes the runtime cutover
+from Mapbox to Google Maps Platform.
 
-The design does not introduce a universal `MapRepository`, a runtime provider
-switch, or Google Maps UI. It separates six concerns:
+The design does not introduce a universal `MapRepository` or a runtime provider
+switch. It separates six concerns:
 
 ```text
 Geographic primitives
@@ -32,8 +32,10 @@ Map presentation
 Authoritative Attendance target
 ```
 
-The extraction is complete only when real consumers use these contracts.
-Creating unused interfaces beside the legacy flow is not sufficient.
+The migration is complete only when real consumers use these contracts, Google
+Maps/Places are the active implementations, and verified Mapbox code and
+dependencies have been removed. Creating unused interfaces beside either
+provider flow is not sufficient.
 
 ## Goals
 
@@ -52,25 +54,52 @@ Creating unused interfaces beside the legacy flow is not sufficient.
 8. Make camera requests semantic one-time effects rather than SDK commands
    stored in persistent screen state.
 9. Keep `SelectedTargetLocation` as the only authoritative Attendance target.
-10. Preserve current Mapbox rendering, search, reverse-geocode, camera, and
-    current-location behavior through the migration seam.
-11. Leave explicit rollback checkpoints after every implementation phase.
+10. Replace Mapbox rendering with Google Maps Compose.
+11. Replace Mapbox place discovery with the Google Places SDK.
+12. Preserve current user-facing map, marker, camera, search, address, and
+    current-location behavior through the cutover.
+13. Remove Mapbox code, dependencies, token wiring, and provider DTOs only
+    after Google runtime verification passes.
+14. Move the Google Maps API key from the tracked Manifest literal into
+    ignored `local.properties`/CI environment injection.
+15. Leave explicit rollback checkpoints after every implementation phase.
 
 ## Non-goals
 
-- No Google Maps rendering or Places implementation.
-- No Google Maps visual parity work.
 - No Work Mode or Target Location visual redesign.
 - No Attendance Action Hub implementation.
 - No geofence lifecycle rewrite.
 - No backend Attendance, WFA, or booking contract changes.
-- No removal of Mapbox dependencies in this issue.
 - No permanent provider registry or provider selection UI.
 - No generic provider framework intended to support both providers forever.
 - No marker click that silently replaces the authoritative Attendance target.
 - No migration of transport DTO latitude/longitude fields when the backend
   contract requires scalar coordinates.
 - No broad navigation refactor.
+
+## Operator Scope Revision
+
+On 2026-07-23 the operator expanded INF-140 from architecture extraction before
+Google migration to architecture extraction plus the Google runtime migration.
+This revision supersedes the earlier draft's Mapbox-retention non-goals.
+
+Current repository evidence:
+
+```text
+Google Maps Compose dependency       → present
+Play Services Maps dependency        → present
+Google Places SDK dependency         → present
+Google Maps API metadata             → present as a tracked literal
+Google Maps Compose production code  → absent from develop
+historical MapPicker/MapsScreen       → recoverable from repository history
+```
+
+The historical implementation is reference material, not code to restore
+unchanged. It directly owned permission requests, `Geocoder`, `LatLng`,
+camera state, Places initialization, and local UI state in composables. It also
+contained hardcoded key usage in history. The new implementation reuses the
+installed dependencies and proven interaction concepts while following the
+approved capability, Route, ViewModel, and security boundaries.
 
 ## Current Repository Findings
 
@@ -203,9 +232,15 @@ booking or another explicit authoritative contract.
 
 ### Existing dependency state
 
-The project already declares both Google Maps and Mapbox dependencies. INF-140
-does not use this as permission to start Google rendering. Dependency cleanup is
-deferred until the later provider migration is complete.
+The project already declares Google Maps Compose, Play Services Maps, Google
+Places, and Mapbox dependencies. The current `develop` source contains no active
+`GoogleMap`, `LatLng`, or `CameraPositionState` production implementation.
+
+The tracked Manifest contains a literal Google Maps API key. The exact value is
+treated as sensitive and must never be copied into source, docs, logs, tests, or
+tool output. Moving it to `local.properties` does not remove it from Git
+history, so the existing key must also be rotated and restricted in Google
+Cloud Console.
 
 ## Locked Architecture
 
@@ -217,7 +252,7 @@ Compose Screen
 → Use case
 → capability repository
 → provider/platform data source
-→ current Mapbox or Play Services implementation
+→ Google Maps / Google Places / Android Geocoder / Play Services implementation
 ```
 
 Rules:
@@ -232,8 +267,11 @@ Rules:
 7. Discovery and preview state never mutate the authoritative target implicitly.
 8. Backend identity and coordinates remain authoritative; address text is
    supporting content.
-9. The migration seam is temporary and compile-time. There is no runtime
+9. The migration seam is temporary and branch-local. There is no runtime
    provider switch.
+10. Google becomes the only active map/place provider after verification.
+11. Mapbox remains only as a rollback checkpoint until the Google runtime gate
+    passes, then its code and dependencies are removed.
 
 ## Shared Geographic Primitives
 
@@ -408,23 +446,32 @@ data class PlaceDetails(
 Search suggestions do not expose provider DTOs or automatically become place
 details.
 
-### Mapbox transition behavior
+### Google Places implementation
 
-The current Mapbox forward endpoint already returns detail-like features rather
-than a separate suggest/retrieve exchange. To preserve runtime behavior without
-changing provider endpoints during INF-140:
+`GooglePlacesDiscoveryRepository` uses the installed Google Places SDK:
 
-1. `MapboxPlaceDiscoveryDataSource` fetches the existing forward results.
-2. `MapboxPlaceDiscoveryMapper` creates `PlaceSuggestion` values.
-3. A feature-local, in-memory candidate store retains the mapped `PlaceDetails`
-   by stable provider feature ID for the active search flow.
-4. `resolvePlace(placeId)` retrieves and validates the corresponding detail.
-5. Missing or expired candidate identity returns a typed result and prompts a
-   new search; it never guesses by display text.
+```text
+FindAutocompletePredictionsRequest
+→ AutocompletePrediction
+→ PlaceSuggestion
 
-The candidate store is a temporary Mapbox adapter detail, not a domain cache and
-not a permanent provider framework. The later Google Places implementation can
-replace it with autocomplete/details calls without changing consumers.
+FetchPlaceRequest(placeId)
+→ Place
+→ PlaceDetails
+```
+
+Rules:
+
+1. One `AutocompleteSessionToken` scopes a user search session.
+2. Predictions expose provider identity only as the opaque `placeId`.
+3. The UI receives project-owned suggestion text and optional distance only.
+4. Selection always calls `resolvePlace(placeId)` before coordinates enter
+   preview state.
+5. Session tokens are renewed after selection, cancellation, or a completed
+   search flow.
+6. API status/exception details map to typed failures; raw provider messages do
+   not enter UI state.
+7. No Places widget launches itself from a composable.
 
 ## Capability 3 — Address Resolution
 
@@ -476,10 +523,15 @@ Rules:
 Implementation:
 
 ```text
-MapboxAddressDataSource
-→ MapboxAddressMapper
-→ MapboxAddressResolver
+AndroidGeocoderDataSource
+→ AndroidAddressMapper
+→ AndroidGeocoderAddressResolver
 ```
+
+The Android-restricted Maps/Places key is not sent to a direct Google Geocoding
+REST endpoint. If product requirements later require Google Geocoding API
+guarantees, that must use a separately reviewed secure backend or restricted
+service credential.
 
 ## Capability 4 — Map Presentation
 
@@ -570,7 +622,7 @@ Execution:
 AttendanceViewModel emits MapCameraEffect
 → Attendance Route collects the one-time effect
 → AttendanceMap passes it to the active adapter
-→ MapboxAttendanceMapAdapter maps it to CameraOptions / flyTo / bounds
+→ GoogleAttendanceMap maps it to CameraUpdateFactory / CameraPositionState
 ```
 
 The adapter owns SDK lifecycle, style readiness, annotation managers, camera
@@ -669,15 +721,14 @@ data/location/current/
 └── CurrentLocationRepositoryImpl.kt
 
 data/location/discovery/
-├── MapboxPlaceDiscoveryDataSource.kt
-├── MapboxPlaceDiscoveryMapper.kt
-├── MapboxPlaceCandidateStore.kt
-└── MapboxPlaceDiscoveryRepository.kt
+├── GooglePlacesDataSource.kt
+├── GooglePlacesMapper.kt
+└── GooglePlacesDiscoveryRepository.kt
 
 data/location/address/
-├── MapboxAddressDataSource.kt
-├── MapboxAddressMapper.kt
-└── MapboxAddressResolver.kt
+├── AndroidGeocoderDataSource.kt
+├── AndroidAddressMapper.kt
+└── AndroidGeocoderAddressResolver.kt
 
 presentation/map/model/
 ├── MapUiState.kt
@@ -692,7 +743,7 @@ presentation/map/mapper/
 
 presentation/map/adapter/
 ├── AttendanceMap.kt
-└── MapboxAttendanceMapAdapter.kt
+└── GoogleAttendanceMap.kt
 ```
 
 Existing package spelling such as `data/soucre` is not expanded further.
@@ -703,8 +754,12 @@ without broad unrelated package renames.
 
 The implementation uses five bounded phases.
 
-### Phase 1 — Characterization and geographic primitives
+### Phase 1 — Security/configuration, characterization, and primitives
 
+- Replace the tracked Manifest key literal with a Gradle placeholder.
+- Read `GOOGLE_MAPS_API_KEY` from ignored `local.properties`, with a CI
+  environment fallback.
+- Rotate and Android-restrict the previously tracked key.
 - Record the exact provider leak inventory.
 - Add characterization tests for current target selection, search mapping,
   reverse-geocode fallbacks, map effects, and geofence persistence.
@@ -712,55 +767,63 @@ The implementation uses five bounded phases.
 - Migrate domain geographic models through compatibility mappers.
 - Do not change Mapbox rendering behavior.
 
-Rollback: revert primitive/model commits; no provider execution changes yet.
+Rollback: retain the previous build commit for source rollback, but never restore
+the literal key. Key rotation is not rolled back.
 
-### Phase 2 — Split location capabilities
+### Phase 2 — Split capabilities and implement Google Places/address
 
 - Add current-location, place-discovery, and address-resolution contracts.
-- Add Play Services and Mapbox implementations.
+- Add Play Services current location, Google Places discovery/details, and
+  Android Geocoder address implementations.
 - Replace `LocationRepository` consumers one vertical slice at a time.
 - Remove Fused Location access from domain use cases.
-- Preserve current search endpoint behavior through the Mapbox candidate store.
+- Preserve search UX through Google autocomplete/detail resolution.
 
-Rollback: Hilt can temporarily bind legacy adapters while each consumer is
-migrated. The old `LocationRepository` is deleted only after the reference scan
-is empty.
+Rollback: Hilt can temporarily restore legacy bindings from the prior phase
+commit while each consumer is migrated. The old `LocationRepository` and
+Mapbox search code are deleted only after Google Places runtime evidence passes.
 
-### Phase 3 — Provider-neutral map presentation
+### Phase 3 — Google Maps Compose presentation
 
 - Add map UI models, marker roles, map events, and semantic camera effects.
-- Move Mapbox lifecycle, annotations, and camera calls to the adapter.
+- Implement `GoogleAttendanceMap` with Maps Compose.
+- Map project markers to Google `Marker`/`Circle` and semantic camera effects
+  to `CameraUpdateFactory`.
 - Replace `MapAnimationTarget` state with `SharedFlow<MapCameraEffect>`.
 - Remove Mapbox types from ViewModel and public screen/map contracts.
 
 Rollback: keep a checkpoint immediately before changing the public
-`AttendanceMap` contract. Revert the phase as a unit if runtime map, marker,
-camera, or pick-on-map evidence regresses.
+`AttendanceMap` contract. Revert the Google renderer phase as a unit if runtime
+map, marker, camera, or pick-on-map evidence regresses.
 
-### Phase 4 — Authoritative target and geofence consumers
+### Phase 4 — Authoritative target, geofence, and Google cutover
 
 - Project authoritative targets into map markers.
 - Separate WFA preview selection from approved WFA target ownership.
 - Remove duplicated Attendance target/marker fields.
 - Migrate geofence candidates and persistence boundaries to `GeoCoordinate`.
 - Keep geofence lifecycle unchanged.
+- Make Google rendering and Google Places the only active runtime paths.
+- Run the Google parity matrix before deleting Mapbox.
 
 Rollback: retain characterization tests for the old target resolver and
-DataStore fixtures. Do not delete compatibility mapping until device evidence
-passes.
+DataStore fixtures. The Git checkpoint before the Google cutover is the provider
+rollback mechanism; no runtime provider flag is added.
 
-### Phase 5 — Cleanup, evidence, and migration gate
+### Phase 5 — Remove Mapbox, evidence, and closure
 
 - Delete legacy `LocationRepository`, `LocationResult`, final `Pair` contracts,
   `MapAnimationTarget`, and obsolete MapUtils paths.
+- Delete Mapbox rendering/search/address code, DTOs, Retrofit service, token
+  wiring, Gradle dependencies, and Manifest metadata.
 - Prove domain/ViewModel provider scans are empty.
 - Run unit, compile, build, instrumentation, and runtime matrix.
 - Write ADR and runtime evidence.
-- Record the exact cleanup gate for the later Google Maps issue.
+- Record the Google cutover and Mapbox-removal evidence.
 
-Rollback: Mapbox dependencies, Retrofit service, and provider adapter remain
-present and operational. The next provider migration does not start if this
-phase is `Needs Verification`.
+Rollback: Mapbox removal happens only after the full Google runtime gate. If the
+gate fails, stop in Phase 4 and keep Mapbox code available on the pre-cutover Git
+checkpoint. Do not keep both providers as a shipped runtime option.
 
 ## State and Compose Ownership
 
@@ -811,9 +874,10 @@ Required tests include:
 ```text
 GeoCoordinate validation and mapping
 Android Location → CurrentLocation
-Mapbox search DTO → suggestion/detail
-Mapbox reverse-geocode DTO → resolved/coordinate-only/failure
-search candidate identity and expiry behavior
+Google autocomplete prediction → suggestion
+Google Place → place details
+Android Geocoder → resolved/coordinate-only/failure
+Places session-token lifecycle
 camera effect focus/fit/follow semantics
 SelectedTargetLocation → AUTHORITATIVE_TARGET marker
 WFA recommendation → WFA_RECOMMENDATION marker
@@ -857,9 +921,10 @@ Expected final result:
 Runtime instrumentation/device verification covers:
 
 ```text
+Google Maps SDK initialization
 current precise location success
 location unavailable/failure recovery
-Mapbox style and map rendering
+Google base map rendering
 authoritative target marker
 WFA recommendation markers
 preview marker selection
@@ -872,6 +937,7 @@ place detail selection
 reverse-geocode resolved and coordinate-only
 geofence registration/restoration compatibility
 Attendance check-in/out target request
+Mapbox code is unreachable before deletion
 ```
 
 Compile-only evidence cannot mark runtime-sensitive acceptance items Done.
@@ -879,11 +945,42 @@ Compile-only evidence cannot mark runtime-sensitive acceptance items Done.
 ## Security and Privacy
 
 - Do not log Mapbox tokens, request authorization, or user-identifying data.
+- Do not log the Google Maps API key, Places requests, or exact user
+  coordinates.
 - Avoid verbose production logs containing exact current coordinates.
-- Provider Retrofit logging behavior is not expanded in this issue.
 - No coordinate or address is persisted beyond existing product requirements.
-- Candidate-store contents are memory-only and scoped to the active search
-  flow.
+- Places session tokens and prediction results are memory-only and scoped to the
+  active search flow.
+
+### API key injection
+
+Tracked source contains only:
+
+```xml
+android:value="${GOOGLE_MAPS_API_KEY}"
+```
+
+Local developer configuration:
+
+```properties
+GOOGLE_MAPS_API_KEY=<local secret>
+```
+
+Gradle reads `local.properties` and optionally the CI environment variable of
+the same name, then injects:
+
+```text
+manifestPlaceholders["GOOGLE_MAPS_API_KEY"]
+BuildConfig.GOOGLE_MAPS_API_KEY
+```
+
+The Manifest placeholder initializes Maps SDK. The BuildConfig value initializes
+Places once at the application/data boundary, never inside a composable.
+
+An Android API key is still extractable from an APK. Security comes from Google
+Cloud restrictions for the application ID plus signing-certificate SHA
+fingerprints, enabled-API restrictions, quotas, and rotation—not from treating
+the packaged value as an unrecoverable secret.
 
 ## ADR and Documentation
 
@@ -899,23 +996,26 @@ The ADR records:
 - capability-based architecture decision;
 - rejection of a generic `MapRepository`;
 - rejection of permanent multi-provider/runtime switching;
-- temporary Mapbox candidate store;
+- Google Places session-token and detail-resolution boundary;
 - semantic camera-effect ownership;
 - authoritative target invariant;
-- Google migration entry and rollback gates.
+- Google cutover, key rotation, and Mapbox removal gates.
 
-## Google Migration Entry Gate
+## Mapbox Removal Gate
 
-Google rendering/search migration may begin only when:
+Mapbox code and dependencies may be removed only when:
 
-1. Domain and ViewModels contain no provider SDK types.
-2. All real location consumers use the split capabilities.
-3. `SelectedTargetLocation` is the only Attendance target truth.
-4. Mapbox runs only through isolated data/presentation adapters.
-5. Unit and build gates pass.
-6. Device evidence proves current Mapbox map, marker, camera, search,
-   reverse-geocode, current-location, and geofence behavior.
-7. Remaining gaps are explicitly `Needs Verification`.
+1. The tracked Google key literal has been removed and rotated.
+2. Domain and ViewModels contain no provider SDK types.
+3. All real location consumers use split capabilities.
+4. Google Maps renders every required marker/circle and camera behavior.
+5. Google Places search and detail resolution pass runtime verification.
+6. `SelectedTargetLocation` is the only Attendance target truth.
+7. Address and current-location behavior pass typed-result tests.
+8. Unit, build, lint, and instrumentation gates pass.
+9. Device evidence proves map, marker, camera, search, address,
+   current-location, Attendance submission, and geofence behavior.
+10. No required Google runtime row remains `Needs Verification`.
 
 ## Acceptance Checklist
 
@@ -937,11 +1037,19 @@ Google rendering/search migration may begin only when:
 - [ ] Approved WFA booking remains the WFA authority.
 - [ ] Geofence lifecycle behavior is unchanged while coordinate plumbing is
       migrated.
-- [ ] Existing Mapbox runtime behavior remains functional.
+- [ ] Google runtime behavior matches the required Mapbox-era product
+      capabilities before Mapbox removal.
+- [ ] Google Maps Compose is the active and verified renderer.
+- [ ] Google Places SDK is the active and verified discovery/details provider.
+- [ ] Google Maps key is injected from ignored local/CI configuration.
+- [ ] Previously tracked Google keys are rotated and Android-restricted.
+- [ ] Mapbox code, dependencies, service, DTOs, token wiring, and Manifest
+      metadata are removed after the runtime gate.
 - [ ] Mapper, repository, camera, target projection, cancellation, and
       persistence compatibility tests pass.
 - [ ] Build, lint, instrumentation, and runtime evidence are recorded.
-- [ ] ADR, Google migration gate, and rollback checkpoints are documented.
+- [ ] ADR, Google cutover, Mapbox removal, and rollback checkpoints are
+      documented.
 
 ## Approval Gate
 
