@@ -6,13 +6,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,8 +24,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.presentation.core.body1
 import com.example.infinite_track.presentation.core.body2
@@ -57,89 +56,106 @@ fun AttendanceHistoryTimelinePill(
     val density = LocalDensity.current
     val shape = RoundedCornerShape(18.dp)
 
-    Row(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
             .semantics(mergeDescendants = true) {
                 stateDescription = "$dateLabel, $timeRange, $statusLabel"
             }
     ) {
-        HistoryTimelineRail(
-            nodeLabel = nodeLabel,
-            connectorPosition = connectorPosition,
-            connectorAccent = connectorAccent,
-            accent = modeAccentColor,
-            modifier = Modifier.fillMaxHeight()
+        val compact = maxWidth < 360.dp || density.fontScale >= 1.5f
+        val nodeDiameter = maxOf(
+            32.dp,
+            with(density) { body1.lineHeight.toDp() } + InfiniteSpacing.Default.sm
         )
-        Spacer(Modifier.width(InfiniteSpacing.Default.sm))
-        Surface(
-            modifier = Modifier
-                .weight(1f)
-                .padding(vertical = InfiniteSpacing.Default.xs)
-                .graphicsLayer {
-                    alpha = transform.alpha
-                    scaleX = transform.scale
-                    scaleY = transform.scale
-                    translationY = with(density) { transform.translationYDp.dp.toPx() }
-                    shadowElevation = with(density) { transform.elevationDp.dp.toPx() }
-                    this.shape = shape
-                    clip = false
-                },
-            shape = shape,
-            color = InfiniteColors.AttendanceReportGlassSurface,
-            border = BorderStroke(1.dp, InfiniteColors.AttendanceReportGlassBorder)
-        ) {
-            BoxWithConstraints(Modifier.padding(InfiniteSpacing.Default.lg)) {
-                val compact = maxWidth < 360.dp || LocalDensity.current.fontScale >= 1.5f
-                val copy: @Composable (Modifier) -> Unit = { copyModifier ->
-                    Column(
-                        modifier = copyModifier,
-                        verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)
-                    ) {
-                        Text(
-                            text = dateLabel,
-                            style = body1,
-                            color = InfiniteColors.Text
-                        )
-                        Text(
-                            text = timeRange,
-                            style = body1,
-                            color = InfiniteColors.AttendanceReportBodyText
-                        )
-                        supportingText?.let {
+        val railWidth = nodeDiameter + InfiniteSpacing.Default.xs
+
+        Box(Modifier.fillMaxWidth()) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = railWidth + InfiniteSpacing.Default.sm,
+                        top = InfiniteSpacing.Default.xs,
+                        bottom = InfiniteSpacing.Default.xs
+                    )
+                    .graphicsLayer {
+                        alpha = transform.alpha
+                        scaleX = transform.scale
+                        scaleY = transform.scale
+                        translationY = with(density) { transform.translationYDp.dp.toPx() }
+                        shadowElevation = with(density) { transform.elevationDp.dp.toPx() }
+                        this.shape = shape
+                        clip = false
+                    },
+                shape = shape,
+                color = InfiniteColors.AttendanceReportGlassSurface,
+                border = BorderStroke(1.dp, InfiniteColors.AttendanceReportGlassBorder)
+            ) {
+                Box(Modifier.padding(InfiniteSpacing.Default.lg)) {
+                    val copy: @Composable (Modifier) -> Unit = { copyModifier ->
+                        Column(
+                            modifier = copyModifier.testTag("history-pill-copy"),
+                            verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)
+                        ) {
                             Text(
-                                text = it,
-                                style = body2,
-                                color = InfiniteColors.AttendanceReportMutedText
+                                text = dateLabel,
+                                style = body1,
+                                color = InfiniteColors.Text
+                            )
+                            Text(
+                                text = timeRange,
+                                style = body1,
+                                color = InfiniteColors.AttendanceReportBodyText
+                            )
+                            supportingText?.let {
+                                Text(
+                                    text = it,
+                                    style = body2,
+                                    color = InfiniteColors.AttendanceReportMutedText
+                                )
+                            }
+                        }
+                    }
+                    val status: @Composable () -> Unit = {
+                        Box(Modifier.testTag("history-pill-status")) {
+                            InfiniteStatusPill(
+                                label = statusLabel,
+                                variant = statusVariant,
+                                size = InfiniteSize.Small,
+                                useSharedRequestPalette = true
                             )
                         }
                     }
-                }
-                val status: @Composable () -> Unit = {
-                    InfiniteStatusPill(
-                        label = statusLabel,
-                        variant = statusVariant,
-                        size = InfiniteSize.Small,
-                        useSharedRequestPalette = true
-                    )
-                }
-                if (compact) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.sm)
-                    ) {
-                        copy(Modifier.fillMaxWidth())
-                        status()
-                    }
-                } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.md)
-                    ) {
-                        copy(Modifier.weight(1f))
-                        status()
+                    if (compact) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.sm)
+                        ) {
+                            copy(Modifier.fillMaxWidth())
+                            status()
+                        }
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.md)
+                        ) {
+                            copy(Modifier.weight(1f))
+                            status()
+                        }
                     }
                 }
+            }
+            Box(Modifier.matchParentSize()) {
+                HistoryTimelineRail(
+                    nodeLabel = nodeLabel,
+                    nodeDiameter = nodeDiameter,
+                    connectorPosition = connectorPosition,
+                    connectorAccent = connectorAccent,
+                    accent = modeAccentColor,
+                    modifier = Modifier
+                        .width(railWidth)
+                        .fillMaxHeight()
+                )
             }
         }
     }
@@ -148,6 +164,7 @@ fun AttendanceHistoryTimelinePill(
 @Composable
 private fun HistoryTimelineRail(
     nodeLabel: String,
+    nodeDiameter: Dp,
     connectorPosition: TimelineConnectorPosition,
     connectorAccent: HistoryTimelineConnectorAccent,
     accent: Color,
@@ -159,7 +176,7 @@ private fun HistoryTimelineRail(
         connectorPosition == TimelineConnectorPosition.First
 
     Box(
-        modifier = modifier.width(36.dp),
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         Canvas(Modifier.fillMaxSize()) {
@@ -195,13 +212,20 @@ private fun HistoryTimelineRail(
             }
         }
         Surface(
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier
+                .size(nodeDiameter)
+                .testTag("history-pill-node"),
             shape = CircleShape,
             color = accent.copy(alpha = if (connectorAccent.nodeComplete) 0.20f else 0.12f),
             border = BorderStroke(1.dp, accent.copy(alpha = 0.42f))
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Text(text = nodeLabel, style = body1, color = accent)
+                Text(
+                    text = nodeLabel,
+                    style = body1,
+                    color = accent,
+                    modifier = Modifier.testTag("history-pill-node-label")
+                )
             }
         }
     }

@@ -66,7 +66,7 @@ class AttendanceHistoryTimelinePillTest {
     }
 
     @Test
-    fun pillRemainsWithin320DpHostAtLargeFontScale() {
+    fun pillAndResponsiveNodeRemainContainedAt320DpAndLargeFontScale() {
         composeRule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 Infinite_TrackTheme {
@@ -92,11 +92,60 @@ class AttendanceHistoryTimelinePillTest {
 
         val host = composeRule.onNodeWithTag("history-pill-host").getUnclippedBoundsInRoot()
         val pill = composeRule.onNodeWithTag("history-pill").getUnclippedBoundsInRoot()
+        val node = composeRule.onNodeWithTag(
+            "history-pill-node",
+            useUnmergedTree = true
+        ).getUnclippedBoundsInRoot()
+        val nodeLabel = composeRule.onNodeWithTag(
+            "history-pill-node-label",
+            useUnmergedTree = true
+        ).getUnclippedBoundsInRoot()
+        assertTrue(
+            nodeLabel.left >= node.left &&
+                nodeLabel.top >= node.top &&
+                nodeLabel.right <= node.right &&
+                nodeLabel.bottom <= node.bottom
+        )
         assertTrue(
             pill.left >= host.left &&
                 pill.top >= host.top &&
                 pill.right <= host.right &&
                 pill.bottom <= host.bottom
         )
+    }
+
+    @Test
+    fun normalOuterWidthKeepsStatusBesideCopy() {
+        composeRule.setContent {
+            Infinite_TrackTheme {
+                Box(Modifier.width(411.dp).testTag("history-pill-host")) {
+                    AttendanceHistoryTimelinePill(
+                        nodeLabel = "22",
+                        dateLabel = "22 July 2026",
+                        timeRange = "08:00 - 17:00",
+                        supportingText = "Head Office",
+                        statusLabel = "On Time",
+                        statusVariant = InfiniteStatusVariant.OnTime,
+                        connectorPosition = TimelineConnectorPosition.Middle,
+                        connectorAccent = HistoryTimelineConnectorAccent(1f, true, 0.5f),
+                        focusFraction = 1f,
+                        motionEnabled = true,
+                        modeAccentColor = InfiniteColors.Primary,
+                        modifier = Modifier.testTag("history-pill")
+                    )
+                }
+            }
+        }
+
+        val copy = composeRule.onNodeWithTag(
+            "history-pill-copy",
+            useUnmergedTree = true
+        ).getUnclippedBoundsInRoot()
+        val status = composeRule.onNodeWithTag(
+            "history-pill-status",
+            useUnmergedTree = true
+        ).getUnclippedBoundsInRoot()
+        assertTrue(status.left >= copy.right)
+        assertTrue(status.top < copy.bottom && status.bottom > copy.top)
     }
 }
