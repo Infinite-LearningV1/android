@@ -15,7 +15,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
@@ -28,9 +27,9 @@ import com.example.infinite_track.presentation.design.components.data.InfiniteIn
 import com.example.infinite_track.presentation.design.components.data.InfiniteInfoRowOrientation
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
-import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
+import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
 
 @Composable
 internal fun PermissionMissionRow(
@@ -39,6 +38,7 @@ internal fun PermissionMissionRow(
     modifier: Modifier = Modifier,
     onActionClick: (() -> Unit)? = null
 ) {
+    val colors = infiniteSemanticColors(item.semantic)
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -47,15 +47,8 @@ internal fun PermissionMissionRow(
                 stateDescription = item.stateDescription
             },
         shape = RoundedCornerShape(16.dp),
-        color = Color(0x33FFFFFF),
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (item.isReady) {
-                InfiniteColors.Success.copy(alpha = 0.38f)
-            } else {
-                Color.White.copy(alpha = 0.72f)
-            }
-        )
+        color = colors.container,
+        border = BorderStroke(1.dp, colors.border)
     ) {
         BoxWithConstraints(modifier = Modifier.padding(14.dp)) {
             val compact = maxWidth < 360.dp || LocalDensity.current.fontScale >= 1.5f

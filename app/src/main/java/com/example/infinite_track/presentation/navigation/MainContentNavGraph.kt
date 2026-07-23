@@ -5,10 +5,12 @@ import androidx.compose.runtime.remember
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
+import androidx.navigation.NavOptions
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
+import androidx.navigation.navOptions
 import com.example.infinite_track.data.soucre.dummy.dummyTimeOff
 import com.example.infinite_track.presentation.screen.attendance.AttendanceScreen
 import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingScreen
@@ -35,6 +37,13 @@ import com.example.infinite_track.presentation.screen.profile.details.my_documen
 import com.example.infinite_track.presentation.screen.profile.details.pay_slip.PaySlipScreen
 import com.example.infinite_track.presentation.screen.wfa.WfaHistoryScreen
 import com.example.infinite_track.utils.safeNavigate
+
+internal fun attendanceReadyNavOptions(): NavOptions = navOptions {
+    popUpTo(Screen.AttendancePermissionReadiness.route) {
+        inclusive = true
+    }
+    launchSingleTop = true
+}
 
 @ExperimentalGetImage
 fun NavGraphBuilder.mainContentNavGraph(
@@ -161,7 +170,12 @@ fun NavGraphBuilder.mainContentNavGraph(
     composable(Screen.AttendancePermissionReadiness.route) {
         AttendancePermissionReadinessRoute(
             onBackClick = { navController.popBackStack() },
-            onContinueToWorkMode = { navController.safeNavigate(Screen.Attendance.route) }
+            onContinueToWorkMode = {
+                navController.navigate(
+                    Screen.Attendance.route,
+                    attendanceReadyNavOptions()
+                )
+            }
         )
     }
 

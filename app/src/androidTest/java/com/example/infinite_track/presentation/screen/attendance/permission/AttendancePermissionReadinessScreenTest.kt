@@ -4,20 +4,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
-import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -40,109 +40,224 @@ class AttendancePermissionReadinessScreenTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun defaultLoadingRendersOneRequiredProgressSummary() {
-        render(AttendancePermissionReadinessUiState())
-
-        composeRule.onNodeWithText("Memeriksa kesiapan akses").assertIsDisplayed()
-        composeRule.onAllNodesWithText("0/3 akses wajib siap").assertCountEquals(1)
-    }
-
-    @Test
-    fun readinessVariantsRenderTypedRequiredAndOptionalStates() {
-        val variants = listOf(
-            partialState() to "Perlu diatur",
-            readyState(optionalReady = false) to "Terbatas",
-            readyState(optionalReady = true) to "Siap",
-            partialState(firstStatus = "Izin ditolak", firstSemantic = InfiniteSemantic.Warning) to "Izin ditolak",
-            partialState(firstStatus = "Izin diblokir", firstSemantic = InfiniteSemantic.Error, firstAction = "Buka pengaturan") to "Izin diblokir",
-            partialState(optionalStatus = "Terbatas") to "Terbatas",
-            partialState(optionalStatus = "Tidak diperlukan di perangkat ini", optionalAction = null, optionalReady = true) to "Tidak diperlukan di perangkat ini",
-            partialState(deviceStatus = "GPS belum aktif", deviceAction = "Buka pengaturan") to "GPS belum aktif",
-            partialState(
-                recoverableFailure = PermissionGuidanceUiModel(
-                    title = "Status akses belum dapat diperiksa",
-                    message = "Periksa kembali status akses sebelum melanjutkan absensi.",
-                    semantic = InfiniteSemantic.Error,
-                    actionLabel = "Coba lagi",
-                    action = PermissionGuidanceAction.RETRY_REFRESH
-                )
-            ) to "Status akses belum dapat diperiksa"
+    fun permissionTimelinePillExposesCompletedNodeAndCurrentAction() {
+        val item = permissionItem(
+            AttendanceAccess.CAMERA,
+            status = "Perlu diatur",
+            action = "Minta izin",
+            semantic = InfiniteSemantic.Primary
         )
-
-        val currentState = mutableStateOf(variants.first().first)
         composeRule.setContent {
             Infinite_TrackTheme {
-                AttendancePermissionReadinessScreen(
-                    uiState = currentState.value,
-                    onEvent = {},
-                    onBackClick = {}
+                PermissionTimelinePill(
+                    item = item,
+                    stepNumber = 2,
+                    isCurrentAction = true,
+                    showTopConnector = true,
+                    showBottomConnector = true,
+                    topConnectorComplete = true,
+                    bottomConnectorComplete = false,
+                    onClick = {}
                 )
             }
         }
 
-        variants.forEach { (state, expectedCopy) ->
-            composeRule.runOnIdle { currentState.value = state }
-            composeRule.waitForIdle()
-            composeRule.onAllNodesWithText(expectedCopy, substring = true)[0].assertExists()
-        }
+        composeRule.onNodeWithTag("permission-step-camera")
+            .assertContentDescriptionEquals("Kamera")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    "Wajib, Perlu diatur, Aksi Minta izin"
+                )
+            )
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .assertHasClickAction()
+        composeRule.onNodeWithTag(
+            "permission-step-node-camera",
+            useUnmergedTree = true
+        ).assert(
+            SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription)
+        )
     }
 
     @Test
-    fun requiredProgressIgnoresOptionalRowsAndAppearsExactlyOnce() {
-        render(partialState(requiredReadyCount = 2))
+    fun loadingShellDoesNotRenderPermissionTimelineOrReadyAlert() {
+        render(AttendancePermissionReadinessUiState())
 
-        composeRule.onAllNodesWithText("2/3 akses wajib siap").assertCountEquals(1)
-        composeRule.onNodeWithText("Akses wajib").assertIsDisplayed()
-        composeRule.onNodeWithText("Pengingat opsional").assertIsDisplayed()
+        composeRule.onNodeWithText("Lokasi presisi").assertDoesNotExist()
+        composeRule.onNodeWithText("Akses wajib sudah siap").assertDoesNotExist()
+        composeRule.onNodeWithText("Attendance").assertIsDisplayed()
     }
 
     @Test
-    fun retryRowAndPrimaryActionsEmitTypedEvents() {
+    fun requiredTimelineShowsChecksAndOnlyCurrentStepIsClickable() {
         val events = mutableListOf<AttendancePermissionReadinessEvent>()
         render(
             partialState(
-                recoverableFailure = PermissionGuidanceUiModel(
-                    title = "Status akses belum dapat diperiksa",
-                    message = "Periksa kembali status akses sebelum melanjutkan absensi.",
-                    semantic = InfiniteSemantic.Error,
-                    actionLabel = "Coba lagi",
-                    action = PermissionGuidanceAction.RETRY_REFRESH
+                requiredReadyCount = 1,
+                requiredItems = listOf(
+                    permissionItem(
+                        AttendanceAccess.PRECISE_LOCATION,
+                        "Siap",
+                        null,
+                        InfiniteSemantic.Success,
+                        true
+                    ),
+                    permissionItem(
+                        AttendanceAccess.CAMERA,
+                        "Perlu diatur",
+                        "Minta izin",
+                        InfiniteSemantic.Primary
+                    ),
+                    permissionItem(
+                        AttendanceAccess.DEVICE_LOCATION,
+                        "Perlu diatur",
+                        "Buka pengaturan",
+                        InfiniteSemantic.Warning
+                    )
                 )
             ),
             onEvent = events::add
         )
 
-        composeRule.onAllNodesWithText("Minta izin")[0].performScrollTo().performClick()
-        composeRule.onNodeWithText("Coba lagi").performClick()
-        composeRule.onNodeWithText("Lanjutkan Setup").performScrollTo().performClick()
-
+        composeRule.onNodeWithTag("permission-step-precise_location")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    "Wajib, Siap"
+                )
+            )
+        composeRule.onNodeWithTag("permission-step-camera").assertHasClickAction().performClick()
+        composeRule.onNodeWithTag("permission-step-device_location").assertHasNoClickAction()
         assertEquals(
             listOf(
-                AttendancePermissionReadinessEvent.PermissionItemClicked(AttendanceAccess.PRECISE_LOCATION),
-                AttendancePermissionReadinessEvent.RetryRefresh,
-                AttendancePermissionReadinessEvent.PrimaryActionClicked
+                AttendancePermissionReadinessEvent.PermissionItemClicked(
+                    AttendanceAccess.CAMERA
+                )
             ),
             events
         )
     }
 
     @Test
-    fun rowSemanticsAnnounceRequirementStateAndAction() {
+    fun futureRequiredStepShowsStatusWithoutUnavailableActionSemantics() {
         val item = permissionItem(
-            access = AttendanceAccess.PRECISE_LOCATION,
-            status = "Lokasi presisi diperlukan",
-            action = "Minta izin",
+            AttendanceAccess.DEVICE_LOCATION,
+            status = "Perlu diatur",
+            action = "Buka pengaturan",
             semantic = InfiniteSemantic.Warning
         )
-        render(partialState(requiredItems = listOf(item) + readyRequiredItems().drop(1)))
+        composeRule.setContent {
+            Infinite_TrackTheme {
+                PermissionTimelinePill(
+                    item = item,
+                    stepNumber = 3,
+                    isCurrentAction = false,
+                    showTopConnector = true,
+                    showBottomConnector = false,
+                    topConnectorComplete = false,
+                    bottomConnectorComplete = false,
+                    onClick = null
+                )
+            }
+        }
 
-        composeRule.onNodeWithContentDescription(item.title)
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, item.stateDescription))
-            .assertIsDisplayed()
+        composeRule.onNodeWithTag("permission-step-device_location")
+            .assertContentDescriptionEquals("Lokasi perangkat aktif")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    "Wajib, Perlu diatur"
+                )
+            )
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Role))
+            .assertHasNoClickAction()
+        composeRule.onNodeWithTag(
+            "permission-step-status-device_location",
+            useUnmergedTree = true
+        ).assertIsDisplayed()
+        composeRule.onNodeWithTag(
+            "permission-step-action-device_location",
+            useUnmergedTree = true
+        )
+            .assertDoesNotExist()
     }
 
     @Test
-    fun width320AndFontScaleTwoKeepRowAndPrimaryActionsUsable() {
+    fun permissionNodeContainsNumberAtFontScaleTwo() {
+        val item = permissionItem(
+            AttendanceAccess.CAMERA,
+            status = "Perlu diatur",
+            action = "Minta izin",
+            semantic = InfiniteSemantic.Primary
+        )
+        composeRule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
+                Infinite_TrackTheme {
+                    Box(Modifier.width(320.dp)) {
+                        PermissionTimelinePill(
+                            item = item,
+                            stepNumber = 2,
+                            isCurrentAction = true,
+                            showTopConnector = true,
+                            showBottomConnector = true,
+                            topConnectorComplete = true,
+                            bottomConnectorComplete = false,
+                            onClick = {}
+                        )
+                    }
+                }
+            }
+        }
+
+        val node = composeRule.onNodeWithTag(
+            "permission-step-node-camera",
+            useUnmergedTree = true
+        ).getUnclippedBoundsInRoot()
+        val label = composeRule.onNodeWithTag(
+            "permission-step-node-label-camera",
+            useUnmergedTree = true
+        ).getUnclippedBoundsInRoot()
+        assertTrue(
+            label.left >= node.left &&
+                label.top >= node.top &&
+                label.right <= node.right &&
+                label.bottom <= node.bottom
+        )
+    }
+
+    @Test
+    fun optionalPermissionsAreCollapsedUntilExplicitlyExpanded() {
+        render(partialState())
+
+        composeRule.onNodeWithText("Notifikasi pengingat").assertDoesNotExist()
+        composeRule.onNodeWithTag("permission-optional-toggle")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    "Diciutkan"
+                )
+            )
+            .performClick()
+        composeRule.onNodeWithText("Notifikasi pengingat").assertIsDisplayed()
+        composeRule.onNodeWithTag("permission-optional-toggle")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.StateDescription,
+                    "Diperluas"
+                )
+            )
+    }
+
+    @Test
+    fun readyAlertIsNeverRendered() {
+        render(readyState(optionalReady = false))
+
+        composeRule.onNodeWithText("Akses wajib sudah siap").assertDoesNotExist()
+    }
+
+    @Test
+    fun width320AndFontScaleTwoKeepActivePillActionAndPrimaryButtonUsable() {
         composeRule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 Infinite_TrackTheme {
@@ -162,18 +277,37 @@ class AttendancePermissionReadinessScreenTest {
             }
         }
 
-        val rowAction = composeRule.onAllNodesWithText("Minta izin")[0]
+        val activePillAction = composeRule.onNodeWithTag(
+            "permission-step-action-precise_location",
+            useUnmergedTree = true
+        )
             .performScrollTo()
             .assertHeightIsAtLeast(48.dp)
             .assertIsDisplayed()
-        val actionBounds = rowAction.getUnclippedBoundsInRoot()
         val hostBounds = composeRule.onNodeWithTag("screenHost").getUnclippedBoundsInRoot()
-        assertTrue(actionBounds.left >= hostBounds.left && actionBounds.right <= hostBounds.right)
+        val pillActionBounds = activePillAction.getUnclippedBoundsInRoot()
+        assertTrue(
+            pillActionBounds.left >= hostBounds.left &&
+                pillActionBounds.right <= hostBounds.right
+        )
+        assertTrue(
+            pillActionBounds.top >= hostBounds.top &&
+                pillActionBounds.bottom <= hostBounds.bottom
+        )
 
-        composeRule.onNodeWithText("Lanjutkan Setup")
+        val primaryButton = composeRule.onNodeWithText("Lanjutkan Setup")
             .performScrollTo()
             .assertHeightIsAtLeast(48.dp)
             .assertIsDisplayed()
+        val primaryButtonBounds = primaryButton.getUnclippedBoundsInRoot()
+        assertTrue(
+            primaryButtonBounds.left >= hostBounds.left &&
+                primaryButtonBounds.right <= hostBounds.right
+        )
+        assertTrue(
+            primaryButtonBounds.top >= hostBounds.top &&
+                primaryButtonBounds.bottom <= hostBounds.bottom
+        )
     }
 
     private fun render(
@@ -193,32 +327,52 @@ class AttendancePermissionReadinessScreenTest {
 
     private fun partialState(
         requiredReadyCount: Int = 0,
-        firstStatus: String = "Perlu diatur",
-        firstSemantic: InfiniteSemantic = InfiniteSemantic.Primary,
-        firstAction: String? = "Minta izin",
-        deviceStatus: String = "Perlu diatur",
-        deviceAction: String? = "Buka pengaturan",
-        optionalStatus: String = "Terbatas",
-        optionalAction: String? = "Aktifkan",
-        optionalReady: Boolean = false,
         requiredItems: List<PermissionItemUiModel> = listOf(
-            permissionItem(AttendanceAccess.PRECISE_LOCATION, firstStatus, firstAction, firstSemantic),
-            permissionItem(AttendanceAccess.CAMERA, "Perlu diatur", "Minta izin", InfiniteSemantic.Primary),
-            permissionItem(AttendanceAccess.DEVICE_LOCATION, deviceStatus, deviceAction, InfiniteSemantic.Warning)
-        ),
-        recoverableFailure: PermissionGuidanceUiModel? = null
+            permissionItem(
+                AttendanceAccess.PRECISE_LOCATION,
+                "Perlu diatur",
+                "Minta izin",
+                InfiniteSemantic.Primary
+            ),
+            permissionItem(
+                AttendanceAccess.CAMERA,
+                "Perlu diatur",
+                "Minta izin",
+                InfiniteSemantic.Primary
+            ),
+            permissionItem(
+                AttendanceAccess.DEVICE_LOCATION,
+                "Perlu diatur",
+                "Buka pengaturan",
+                InfiniteSemantic.Warning
+            )
+        )
     ) = AttendancePermissionReadinessUiState(
         isLoading = false,
         requiredItems = requiredItems,
         optionalItems = listOf(
-            permissionItem(AttendanceAccess.NOTIFICATION, optionalStatus, optionalAction, InfiniteSemantic.Warning, optionalReady),
-            permissionItem(AttendanceAccess.BACKGROUND_LOCATION, optionalStatus, "Atur akses", InfiniteSemantic.Warning, optionalReady)
+            permissionItem(
+                AttendanceAccess.NOTIFICATION,
+                "Terbatas",
+                "Aktifkan",
+                InfiniteSemantic.Warning
+            ),
+            permissionItem(
+                AttendanceAccess.BACKGROUND_LOCATION,
+                "Terbatas",
+                "Atur akses",
+                InfiniteSemantic.Warning
+            )
         ),
         requiredReadyCount = requiredReadyCount,
         requiredTotalCount = 3,
         primaryActionLabel = "Lanjutkan Setup",
         primaryActionEnabled = true,
-        recoverableFailure = recoverableFailure
+        contextualGuidance = PermissionGuidanceUiModel(
+            title = "Pengingat opsional",
+            message = "Notifikasi dan lokasi latar belakang membantu pengingat.",
+            semantic = InfiniteSemantic.Info
+        )
     )
 
     private fun readyState(optionalReady: Boolean): AttendancePermissionReadinessUiState =
@@ -226,8 +380,20 @@ class AttendancePermissionReadinessScreenTest {
             isLoading = false,
             requiredItems = readyRequiredItems(),
             optionalItems = listOf(
-                permissionItem(AttendanceAccess.NOTIFICATION, if (optionalReady) "Siap" else "Terbatas", if (optionalReady) null else "Aktifkan", if (optionalReady) InfiniteSemantic.Success else InfiniteSemantic.Warning, optionalReady),
-                permissionItem(AttendanceAccess.BACKGROUND_LOCATION, if (optionalReady) "Siap" else "Terbatas", if (optionalReady) null else "Atur akses", if (optionalReady) InfiniteSemantic.Success else InfiniteSemantic.Warning, optionalReady)
+                permissionItem(
+                    AttendanceAccess.NOTIFICATION,
+                    if (optionalReady) "Siap" else "Terbatas",
+                    if (optionalReady) null else "Aktifkan",
+                    if (optionalReady) InfiniteSemantic.Success else InfiniteSemantic.Warning,
+                    optionalReady
+                ),
+                permissionItem(
+                    AttendanceAccess.BACKGROUND_LOCATION,
+                    if (optionalReady) "Siap" else "Terbatas",
+                    if (optionalReady) null else "Atur akses",
+                    if (optionalReady) InfiniteSemantic.Success else InfiniteSemantic.Warning,
+                    optionalReady
+                )
             ),
             requiredReadyCount = 3,
             requiredTotalCount = 3,
@@ -237,9 +403,27 @@ class AttendancePermissionReadinessScreenTest {
         )
 
     private fun readyRequiredItems() = listOf(
-        permissionItem(AttendanceAccess.PRECISE_LOCATION, "Siap", null, InfiniteSemantic.Success, true),
-        permissionItem(AttendanceAccess.CAMERA, "Siap", null, InfiniteSemantic.Success, true),
-        permissionItem(AttendanceAccess.DEVICE_LOCATION, "Siap", null, InfiniteSemantic.Success, true)
+        permissionItem(
+            AttendanceAccess.PRECISE_LOCATION,
+            "Siap",
+            null,
+            InfiniteSemantic.Success,
+            true
+        ),
+        permissionItem(
+            AttendanceAccess.CAMERA,
+            "Siap",
+            null,
+            InfiniteSemantic.Success,
+            true
+        ),
+        permissionItem(
+            AttendanceAccess.DEVICE_LOCATION,
+            "Siap",
+            null,
+            InfiniteSemantic.Success,
+            true
+        )
     )
 
     private fun permissionItem(
@@ -256,12 +440,17 @@ class AttendancePermissionReadinessScreenTest {
             AttendanceAccess.NOTIFICATION -> "Notifikasi pengingat"
             AttendanceAccess.BACKGROUND_LOCATION -> "Lokasi latar belakang"
         }
-        val requirement = if (access in setOf(
+        val requirement = if (
+            access in setOf(
                 AttendanceAccess.PRECISE_LOCATION,
                 AttendanceAccess.CAMERA,
                 AttendanceAccess.DEVICE_LOCATION
             )
-        ) "Wajib" else "Opsional"
+        ) {
+            "Wajib"
+        } else {
+            "Opsional"
+        }
         return PermissionItemUiModel(
             access = access,
             title = title,
@@ -277,7 +466,9 @@ class AttendancePermissionReadinessScreenTest {
                 AttendanceAccess.BACKGROUND_LOCATION -> PermissionIconKey.BACKGROUND_LOCATION
             },
             semantic = semantic,
-            stateDescription = "$title, ${requirement.lowercase()}, $status${action?.let { ", aksi $it" }.orEmpty()}",
+            stateDescription = "$title, ${requirement.lowercase()}, $status${
+                action?.let { ", aksi $it" }.orEmpty()
+            }",
             isReady = ready
         )
     }

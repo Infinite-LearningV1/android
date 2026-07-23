@@ -43,6 +43,7 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
     private var isRefreshing = false
     private var inFlightAction: AttendancePermissionReadinessEffect? = null
     private var navigationPending = false
+    private var effectCollectorActive = false
     private var activeFeedback: AttendancePermissionFeedback? = null
 
     init {
@@ -54,6 +55,8 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
 
     fun onEvent(event: AttendancePermissionReadinessEvent) {
         when (event) {
+            AttendancePermissionReadinessEvent.EffectCollectorStarted -> onEffectCollectorStarted()
+            AttendancePermissionReadinessEvent.EffectCollectorStopped -> effectCollectorActive = false
             AttendancePermissionReadinessEvent.ScreenResumed,
             AttendancePermissionReadinessEvent.ReturnedFromSettings,
             AttendancePermissionReadinessEvent.RetryRefresh -> {
@@ -110,6 +113,35 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
         if (inFlightAction != null && !isActionApplicable(inFlightAction!!, effective)) clearNativeAction()
         if (!effective.canEnterAttendance) navigationPending = false
         render()
+        maybeNavigateToWorkMode(effective)
+    }
+
+    private fun onEffectCollectorStarted() {
+        effectCollectorActive = true
+        val readiness = effectiveReadiness() ?: return
+        val requiredInspectionFailed = readiness.inspectionIssues.any { it.blocksManualAttendance }
+        if (navigationPending && readiness.canEnterAttendance && !requiredInspectionFailed) {
+            emit(AttendancePermissionReadinessEffect.NavigateToWorkMode)
+        } else {
+            maybeNavigateToWorkMode(readiness)
+        }
+    }
+
+    private fun maybeNavigateToWorkMode(readiness: AttendancePermissionReadiness) {
+        val requiredInspectionFailed = readiness.inspectionIssues.any { it.blocksManualAttendance }
+        if (
+            effectCollectorActive &&
+            readiness.canEnterAttendance &&
+            !requiredInspectionFailed &&
+            !navigationPending &&
+            inFlightAction == null
+        ) {
+            navigationPending = true
+            emit(
+                AttendancePermissionReadinessEffect.NavigateToWorkMode,
+                trackInFlight = true
+            )
+        }
     }
 
     private fun onPrimaryActionClicked() {

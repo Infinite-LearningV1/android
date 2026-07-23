@@ -38,6 +38,7 @@ import com.example.infinite_track.domain.model.attendance.permission.AttendanceA
 import com.example.infinite_track.domain.model.attendance.permission.AttendancePermissionRequestOutcome
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarHost
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarVisuals
+import kotlinx.coroutines.flow.onSubscription
 
 @Composable
 fun AttendancePermissionReadinessRoute(
@@ -149,7 +150,12 @@ fun AttendancePermissionReadinessRoute(
     }
 
     LaunchedEffect(viewModel) {
-        viewModel.effects.collect { effect ->
+        try {
+            viewModel.effects
+                .onSubscription {
+                    viewModel.onEvent(AttendancePermissionReadinessEvent.EffectCollectorStarted)
+                }
+                .collect { effect ->
             when (effect) {
                 AttendancePermissionReadinessEffect.RequestPreciseLocation -> {
                     requestedPermissions += Manifest.permission.ACCESS_FINE_LOCATION
@@ -272,7 +278,10 @@ fun AttendancePermissionReadinessRoute(
                         )
                     }
                 }
+                }
             }
+        } finally {
+            viewModel.onEvent(AttendancePermissionReadinessEvent.EffectCollectorStopped)
         }
     }
 
