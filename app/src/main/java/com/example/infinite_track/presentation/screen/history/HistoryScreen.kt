@@ -2,6 +2,7 @@ package com.example.infinite_track.presentation.screen.history
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -22,6 +25,8 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceModeDistributionCard
@@ -29,12 +34,13 @@ import com.example.infinite_track.presentation.design.components.data.InfiniteAt
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceReportActionsCard
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceReportNoticeCard
 import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceReportSummaryCard
-import com.example.infinite_track.presentation.design.components.data.InfiniteAttendanceTimelineSection
 import com.example.infinite_track.presentation.design.components.data.InfiniteGlassReportCard
+import com.example.infinite_track.presentation.design.components.data.InfiniteSectionHeader
 import com.example.infinite_track.presentation.design.components.state.InfiniteEmptyState
 import com.example.infinite_track.presentation.design.components.state.InfiniteErrorState
 import com.example.infinite_track.presentation.design.components.state.InfiniteLoadingState
 import com.example.infinite_track.utils.UiState
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 private enum class ReportAction {
     Preview,
@@ -49,6 +55,19 @@ fun HistoryScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lazyListState = rememberLazyListState()
+    val motionEnabled = remember(context) {
+        Settings.Global.getFloat(
+            context.contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f
+        ) > 0f
+    }
+    val recordIndexById = remember(uiState.records) {
+        uiState.records.mapIndexed { index, record -> record.id to index }.toMap()
+    }
+    var historyViewport by remember(recordIndexById) {
+        mutableStateOf(HistoryViewportSnapshot())
+    }
     val pendingReportAction = remember { mutableStateOf<ReportAction?>(null) }
     val refreshDragDistance = remember { mutableStateOf(0f) }
     val pullToRefreshConnection = remember(lazyListState, uiState.isLoading, uiState.isRefreshing) {
@@ -68,14 +87,51 @@ fun HistoryScreen(
             }
         }
     }
-    val shouldLoadMore = remember {
+    LaunchedEffect(lazyListState, recordIndexById, uiState.records.size) {
+        snapshotFlow {
+            val layout = lazyListState.layoutInfo
+            val viewportStart = layout.viewportStartOffset.toFloat()
+            val viewportEnd = layout.viewportEndOffset.toFloat()
+            val viewportCenter = (viewportStart + viewportEnd) / 2f
+            val viewportHeight = (viewportEnd - viewportStart).coerceAtLeast(0f)
+            val visible = layout.visibleItemsInfo.mapNotNull { info ->
+                val recordId = historyRecordIdFromKey(info.key) ?: return@mapNotNull null
+                val recordIndex = recordIndexById[recordId] ?: return@mapNotNull null
+                val center = info.offset + info.size / 2f
+                Triple(historyItemKey(recordId), recordIndex, center)
+            }
+            val visibleMathItems = visible.map { (_, index, center) ->
+                VisibleHistoryItem(recordIndex = index, center = center)
+            }
+            HistoryViewportSnapshot(
+                focusByKey = visible.associate { (key, _, center) ->
+                    key to calculateHistoryFocusFraction(center, viewportCenter, viewportHeight)
+                },
+                timelineProgress = calculateHistoryTimelineProgress(
+                    visibleItems = visibleMathItems,
+                    totalRecordCount = uiState.records.size,
+                    viewportCenter = viewportCenter
+                ),
+                lastVisibleRecordIndex = visibleMathItems.maxOfOrNull { it.recordIndex }
+            )
+        }
+            .distinctUntilChanged()
+            .collect { historyViewport = it }
+    }
+    val shouldLoadMore = remember(
+        historyViewport.lastVisibleRecordIndex,
+        uiState.records.size,
+        uiState.canLoadMore,
+        uiState.isLoadingMore,
+        uiState.isLoading
+    ) {
         derivedStateOf {
-            val lastVisibleItem = lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()
-            lastVisibleItem != null &&
-                lastVisibleItem.index >= uiState.records.size - 3 &&
-                uiState.canLoadMore &&
-                !uiState.isLoadingMore &&
-                !uiState.isLoading
+            shouldLoadMoreHistory(
+                lastVisibleRecordIndex = historyViewport.lastVisibleRecordIndex,
+                recordCount = uiState.records.size,
+                canLoadMore = uiState.canLoadMore,
+                loading = uiState.isLoadingMore || uiState.isLoading
+            )
         }
     }
 
@@ -213,15 +269,28 @@ fun HistoryScreen(
                         }
                     }
 
-                    item {
-                        InfiniteAttendanceTimelineSection(
-                            attendanceState = UiState.Success(uiState.records),
-                            onSeeAllClick = {},
+                    item(key = "history-timeline-header", contentType = "history-header") {
+                        InfiniteSectionHeader(
                             title = "Attendance Timeline",
-                            maxItems = uiState.records.size.coerceAtLeast(1),
-                            showModeLabel = false,
-                            showExternalHeader = false,
-                            showSeeAllAction = false
+                            subtitle = "Scroll untuk memusatkan detail kehadiran",
+                            leadingIcon = Icons.Outlined.CalendarMonth
+                        )
+                    }
+                    if (uiState.records.isEmpty()) {
+                        item(key = "history-timeline-empty", contentType = "history-empty") {
+                            InfiniteGlassReportCard {
+                                InfiniteEmptyState(
+                                    title = "No attendance records",
+                                    message = "No attendance records found for this period."
+                                )
+                            }
+                        }
+                    } else {
+                        attendanceHistoryTimelineItems(
+                            records = uiState.records,
+                            focusByKey = historyViewport.focusByKey,
+                            timelineProgress = historyViewport.timelineProgress,
+                            motionEnabled = motionEnabled
                         )
                     }
 
