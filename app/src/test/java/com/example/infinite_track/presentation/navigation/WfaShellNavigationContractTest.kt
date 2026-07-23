@@ -59,7 +59,6 @@ class WfaShellNavigationContractTest {
 
     @Test
     fun `bottom bar stays hidden on attendance and location flow routes`() {
-        assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.AttendancePermissionReadiness.route))
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.Attendance.route))
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.LocationSearch.route))
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.WfaBooking.route))

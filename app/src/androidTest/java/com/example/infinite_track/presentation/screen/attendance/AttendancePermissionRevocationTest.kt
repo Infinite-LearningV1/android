@@ -29,7 +29,7 @@ class AttendancePermissionRevocationTest {
     }
 
     @Test
-    fun productionPermissionGateDoesNotStartUpdatesAndReturnsToReadiness() {
+    fun productionPermissionGateDoesNotStartUpdatesAndOpensPermissionPanel() {
         var navigations = 0
         var locationUpdateStarts = 0
         composeRule.setContent {
@@ -38,7 +38,7 @@ class AttendancePermissionRevocationTest {
                     hasPreciseLocationPermission = false,
                     isAttendanceContentReady = true,
                     onStartLocationUpdates = { locationUpdateStarts++ },
-                    onNavigatePermissionReadiness = { navigations++ }
+                    onOpenPermissionPanel = { navigations++ }
                 ) {
                     AttendanceMap(hasPreciseLocationPermission = false)
                 }
@@ -49,7 +49,7 @@ class AttendancePermissionRevocationTest {
         composeRule.onNodeWithTag("attendanceMapContent").assertDoesNotExist()
         composeRule.onNodeWithText("Berikan Izin").assertDoesNotExist()
         composeRule.runOnIdle { assertEquals(0, locationUpdateStarts) }
-        composeRule.onNodeWithText("Kembali ke kesiapan").performClick()
+        composeRule.onNodeWithText("Kelola akses").performClick()
         composeRule.runOnIdle { assertEquals(1, navigations) }
     }
 }

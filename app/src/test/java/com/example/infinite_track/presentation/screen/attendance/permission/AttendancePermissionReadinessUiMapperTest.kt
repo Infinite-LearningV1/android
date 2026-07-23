@@ -55,7 +55,7 @@ class AttendancePermissionReadinessUiMapperTest {
         )
 
         assertTrue(state.canContinue)
-        assertEquals("Lanjut ke Mode Kerja", state.primaryActionLabel)
+        assertEquals("Selesai", state.primaryActionLabel)
         assertTrue(state.primaryActionEnabled)
         assertEquals("Opsional", state.optionalItems.first().requirementLabel)
         assertEquals(InfiniteSemantic.Warning, state.optionalItems.first().semantic)

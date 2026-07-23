@@ -33,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -72,6 +73,9 @@ import com.example.infinite_track.presentation.design.components.status.Infinite
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
+import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionPanelHost
+import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessEvent
+import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessViewModel
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import com.example.infinite_track.utils.UiState
 import com.mapbox.geojson.Point
@@ -86,7 +90,7 @@ import com.mapbox.maps.plugin.animation.flyTo
 fun AttendanceScreen(
     navController: NavController,
     viewModel: AttendanceViewModel = hiltViewModel(),
-    navigatePermissionReadiness: () -> Unit = {}
+    permissionViewModel: AttendancePermissionReadinessViewModel = hiltViewModel()
 ) {
     var mapViewInstance by remember { mutableStateOf<MapView?>(null) }
     val context = LocalContext.current
@@ -107,7 +111,29 @@ fun AttendanceScreen(
 
     // Observasi state dari ViewModel yang sudah disederhanakan
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val permissionUiState by permissionViewModel.uiState.collectAsStateWithLifecycle()
+    var showPermissionPanel by rememberSaveable { mutableStateOf(false) }
+    var initialPermissionCheckHandled by rememberSaveable { mutableStateOf(false) }
     val locationPermissionHelper = LocalLocationPermissionHelper.current
+
+    LaunchedEffect(
+        permissionUiState.isLoading,
+        permissionUiState.canContinue,
+        initialPermissionCheckHandled
+    ) {
+        if (
+            shouldAutoOpenPermissionPanel(
+                isLoading = permissionUiState.isLoading,
+                canContinue = permissionUiState.canContinue,
+                initialCheckHandled = initialPermissionCheckHandled
+            )
+        ) {
+            initialPermissionCheckHandled = true
+            showPermissionPanel = true
+        } else if (!permissionUiState.isLoading && !initialPermissionCheckHandled) {
+            initialPermissionCheckHandled = true
+        }
+    }
 
     // Handle hasil pencarian lokasi dari LocationSearchScreen
     val selectedLocation = navController.currentBackStackEntry
@@ -412,7 +438,10 @@ fun AttendanceScreen(
                     hasPreciseLocationPermission = hasPreciseLocationPermission,
                     isAttendanceContentReady = true,
                     onStartLocationUpdates = viewModel::startLocationUpdates,
-                    onNavigatePermissionReadiness = navigatePermissionReadiness,
+                    onOpenPermissionPanel = {
+                        permissionViewModel.onEvent(AttendancePermissionReadinessEvent.ScreenResumed)
+                        showPermissionPanel = true
+                    },
                     modifier = Modifier.fillMaxSize()
                 ) {
                     // Fullscreen Map dengan data dari ViewModel - Updated with WFO, WFH, and WFA locations
@@ -451,7 +480,11 @@ fun AttendanceScreen(
                             .statusBarsPadding()
                             .padding(16.dp),
                         onBackClicked = { navController.navigateUp() },
-                        onFocusLocationClicked = { viewModel.onFocusLocationClicked() }
+                        onFocusLocationClicked = { viewModel.onFocusLocationClicked() },
+                        onPermissionClicked = {
+                            permissionViewModel.onEvent(AttendancePermissionReadinessEvent.ScreenResumed)
+                            showPermissionPanel = true
+                        }
                     )
 
                     // Pick on Map Crosshair - shows static pin in center when Pick on Map mode is active
@@ -562,6 +595,12 @@ fun AttendanceScreen(
             }
         )
     }
+
+    AttendancePermissionPanelHost(
+        visible = showPermissionPanel,
+        onDismissRequest = { showPermissionPanel = false },
+        viewModel = permissionViewModel
+    )
 }
 
 private fun AttendanceTransientFeedbackDuration.toMaterialDuration(): SnackbarDuration = when (this) {
@@ -585,7 +624,8 @@ fun AttendanceScreenPreview() {
                     .statusBarsPadding()
                     .padding(horizontal = 20.dp),
                 onBackClicked = { },
-                onFocusLocationClicked = { }
+                onFocusLocationClicked = { },
+                onPermissionClicked = { }
             )
         }
     }
@@ -593,15 +633,15 @@ fun AttendanceScreenPreview() {
 
 @Composable
 internal fun AttendancePermissionRevocationRecovery(
-    onNavigatePermissionReadiness: () -> Unit,
+    onOpenPermissionPanel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     InfiniteInlineAlert(
         title = "Lokasi presisi tidak tersedia",
-        message = "Akses lokasi berubah saat Attendance dibuka. Pulihkan akses dari layar kesiapan sebelum melanjutkan.",
+        message = "Akses lokasi berubah saat Attendance dibuka. Pulihkan dari panel akses untuk melanjutkan.",
         semantic = InfiniteSemantic.Warning,
-        actionLabel = "Kembali ke kesiapan",
-        onAction = onNavigatePermissionReadiness,
+        actionLabel = "Kelola akses",
+        onAction = onOpenPermissionPanel,
         modifier = modifier
     )
 }
@@ -611,7 +651,7 @@ internal fun AttendanceLocationPermissionGate(
     hasPreciseLocationPermission: Boolean,
     isAttendanceContentReady: Boolean,
     onStartLocationUpdates: () -> Unit,
-    onNavigatePermissionReadiness: () -> Unit,
+    onOpenPermissionPanel: () -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
@@ -627,7 +667,7 @@ internal fun AttendanceLocationPermissionGate(
         content()
         if (!hasPreciseLocationPermission) {
             AttendancePermissionRevocationRecovery(
-                onNavigatePermissionReadiness = onNavigatePermissionReadiness,
+                onOpenPermissionPanel = onOpenPermissionPanel,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
@@ -643,3 +683,9 @@ private fun Context.hasPreciseLocationPermission(): Boolean =
         this,
         Manifest.permission.ACCESS_FINE_LOCATION
     ) == PackageManager.PERMISSION_GRANTED
+
+internal fun shouldAutoOpenPermissionPanel(
+    isLoading: Boolean,
+    canContinue: Boolean,
+    initialCheckHandled: Boolean
+): Boolean = !isLoading && !canContinue && !initialCheckHandled

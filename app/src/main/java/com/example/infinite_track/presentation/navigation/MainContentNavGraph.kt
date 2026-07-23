@@ -5,16 +5,13 @@ import androidx.compose.runtime.remember
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
-import androidx.navigation.NavOptions
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
-import androidx.navigation.navOptions
 import com.example.infinite_track.data.soucre.dummy.dummyTimeOff
 import com.example.infinite_track.presentation.screen.attendance.AttendanceScreen
 import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingScreen
-import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessRoute
 import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingViewModel
 import com.example.infinite_track.presentation.screen.attendance.face.FaceScannerScreen
 import com.example.infinite_track.presentation.screen.attendance.search.LocationSearchScreen
@@ -38,13 +35,6 @@ import com.example.infinite_track.presentation.screen.profile.details.pay_slip.P
 import com.example.infinite_track.presentation.screen.wfa.WfaHistoryScreen
 import com.example.infinite_track.utils.safeNavigate
 
-internal fun attendanceReadyNavOptions(): NavOptions = navOptions {
-    popUpTo(Screen.AttendancePermissionReadiness.route) {
-        inclusive = true
-    }
-    launchSingleTop = true
-}
-
 @ExperimentalGetImage
 fun NavGraphBuilder.mainContentNavGraph(
     navController: NavHostController,
@@ -56,7 +46,7 @@ fun NavGraphBuilder.mainContentNavGraph(
 
         HomeScreen(
             viewModel = homeViewModel,
-            navigateAttendance = { navController.safeNavigate(Screen.AttendancePermissionReadiness.route) },
+            navigateAttendance = { navController.safeNavigate(Screen.Attendance.route) },
             navigateTimeOffRequest = { navController.safeNavigate(Screen.TimeOffRequest.route) },
             navigateListMyAttendance = { navController.safeNavigate(Screen.History.route) },
             navigateServiceComingSoon = { navController.safeNavigate(Screen.CompanyServiceComingSoon.route) }
@@ -166,27 +156,9 @@ fun NavGraphBuilder.mainContentNavGraph(
         }
     }
 
-    // Attendance permission readiness gate
-    composable(Screen.AttendancePermissionReadiness.route) {
-        AttendancePermissionReadinessRoute(
-            onBackClick = { navController.popBackStack() },
-            onContinueToWorkMode = {
-                navController.navigate(
-                    Screen.Attendance.route,
-                    attendanceReadyNavOptions()
-                )
-            }
-        )
-    }
-
     // Attendance Screen
     composable(Screen.Attendance.route) {
-        AttendanceScreen(
-            navController = navController,
-            navigatePermissionReadiness = {
-                navController.safeNavigate(Screen.AttendancePermissionReadiness.route)
-            }
-        )
+        AttendanceScreen(navController = navController)
     }
 
     // Location Search Screen - untuk pencarian lokasi attendance

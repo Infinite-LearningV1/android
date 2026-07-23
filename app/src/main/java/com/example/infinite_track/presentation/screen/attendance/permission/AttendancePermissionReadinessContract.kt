@@ -45,8 +45,6 @@ data class PermissionGuidanceUiModel(
 )
 
 sealed interface AttendancePermissionReadinessEvent {
-    data object EffectCollectorStarted : AttendancePermissionReadinessEvent
-    data object EffectCollectorStopped : AttendancePermissionReadinessEvent
     data object ScreenResumed : AttendancePermissionReadinessEvent
     data object PrimaryActionClicked : AttendancePermissionReadinessEvent
     data class PermissionItemClicked(val access: AttendanceAccess) : AttendancePermissionReadinessEvent
@@ -64,7 +62,6 @@ sealed interface AttendancePermissionReadinessEvent {
         val feedbackId: String,
         val action: AttendancePermissionFeedbackAction
     ) : AttendancePermissionReadinessEvent
-    data object NavigationHandled : AttendancePermissionReadinessEvent
 }
 
 sealed interface AttendancePermissionReadinessEffect {
@@ -76,7 +73,7 @@ sealed interface AttendancePermissionReadinessEffect {
         val access: AttendanceAccess
     ) : AttendancePermissionReadinessEffect
     data object OpenDeviceLocationSettings : AttendancePermissionReadinessEffect
-    data object NavigateToWorkMode : AttendancePermissionReadinessEffect
+    data object ClosePermissionPanel : AttendancePermissionReadinessEffect
     data class ShowSnackbar(
         val feedback: AttendancePermissionFeedback
     ) : AttendancePermissionReadinessEffect

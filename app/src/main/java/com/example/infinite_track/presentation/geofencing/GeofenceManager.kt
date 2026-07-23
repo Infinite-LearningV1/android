@@ -75,7 +75,7 @@ class GeofenceManager @Inject constructor(
 
     /**
      * Check if permissions for geofence registration are granted.
-     * Basic/manual attendance readiness is owned by AttendancePermissionReadinessScreen.
+     * Basic/manual attendance readiness is owned by the embedded permission panel.
      */
     fun hasAllRequiredPermissions(): Boolean {
         return currentPermissionDecision().canRegisterAutomaticMonitoring

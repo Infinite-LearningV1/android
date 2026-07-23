@@ -90,8 +90,8 @@ class AttendancePermissionReadinessUiMapper @Inject constructor() {
         canContinue: Boolean
     ): String = when (nextAction) {
         AttendancePermissionNextAction.RetryRefresh -> "Coba lagi"
-        AttendancePermissionNextAction.ContinueToWorkMode -> "Lanjut ke Mode Kerja"
-        else -> if (canContinue) "Lanjut ke Mode Kerja" else "Lanjutkan Setup"
+        AttendancePermissionNextAction.ContinueToWorkMode -> "Selesai"
+        else -> if (canContinue) "Selesai" else "Lanjutkan Setup"
     }
 
     private fun titleFor(access: AttendanceAccess) = when (access) {
