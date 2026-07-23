@@ -50,40 +50,66 @@ runtime switch.
 
 ## Phase 1 — Key Security, Baseline, and Geographic Primitives
 
-### Task 1: Move Google key configuration out of tracked source
+### Task 1: Establish the official Google platform and key baseline
 
 **Files:**
 
+- Modify: `gradle/libs.versions.toml`
+- Modify: `build.gradle.kts`
 - Modify: `app/src/main/AndroidManifest.xml`
 - Modify: `app/build.gradle.kts`
+- Modify: `.github/workflows/android-branch-verification.yml`
+- Modify: `.github/workflows/android-master-firebase-distribution.yml`
 - Verify: `.gitignore`
-- Create: `docs/linear-sync/INF-140-google-maps-key-setup.md`
+- Create: `local.defaults.properties`
+- Maintain: `docs/linear-sync/INF-140-google-maps-platform-baseline.md`
 
 **Steps:**
 
 1. Confirm without printing it that the Manifest contains a literal Google key.
-2. Read `GOOGLE_MAPS_API_KEY` from ignored `local.properties`.
-3. Use the environment variable with the same name as the CI fallback.
-4. Inject `manifestPlaceholders["GOOGLE_MAPS_API_KEY"]`.
-5. Inject `BuildConfig.GOOGLE_MAPS_API_KEY` for Places initialization.
-6. Replace the Manifest literal with `${GOOGLE_MAPS_API_KEY}`.
-7. Keep `local.properties` ignored and never stage it.
-8. Add non-secret developer/CI setup documentation.
-9. Fail release/runtime initialization clearly when the key is blank without
-   echoing its value.
-10. Rotate the previously tracked key in Google Cloud Console.
-11. Restrict the replacement key by Android application ID, signing SHA
-    fingerprints, required APIs, and quota.
+2. Add Secrets Gradle Plugin 2.0.1 through the version catalog and apply it to
+   the app module.
+3. Add `MAPS_API_KEY=DEFAULT_API_KEY` to the tracked defaults file and configure
+   `defaultPropertiesFileName = "local.defaults.properties"`.
+4. Put the developer key under `MAPS_API_KEY` in ignored `local.properties`.
+5. Replace the Manifest literal with `${MAPS_API_KEY}` and keep only
+   `com.google.android.geo.API_KEY`.
+6. Consume `BuildConfig.MAPS_API_KEY` for later Places initialization; do not add
+   another manual Google-key `Properties` reader.
+7. Update both GitHub Actions workflows to append `MAPS_API_KEY` from an
+   encrypted secret to their ephemeral `local.properties`, then retain cleanup.
+8. Prefer separate development and release credentials behind the same
+   property name.
+9. Fail release assembly clearly when the default remains, without echoing the
+   configured value.
+10. Keep `local.properties` ignored and never stage it.
+11. Enable billing, Maps SDK for Android, and Places API (New).
+12. Restrict each replacement credential by Android application ID, applicable
+    signing SHA fingerprints, and only the required APIs.
+13. Record debug, CI/release, and Play App Signing fingerprint coverage without
+    recording the values.
+14. Configure usage, quota, billing-budget, and unexpected-credential alerts
+    for a monitored project owner.
+15. Rotate the previously tracked key after the replacement is verified.
+16. Upgrade and lock the official Google dependency baseline:
+    Maps Compose 6.12.0, Play Services Maps 20.0.0, and Places 5.1.1.
+17. Use fixed versions and inspect dependency convergence before feature work.
 
 **Gate:**
 
 ```powershell
 git grep -n "com.google.android.geo.API_KEY" -- app/src/main/AndroidManifest.xml
 git status --ignored -s local.properties
+.\gradlew.bat --no-daemon app:dependencyInsight `
+  --dependency play-services-maps --configuration debugRuntimeClasspath
+.\gradlew.bat --no-daemon app:dependencyInsight `
+  --dependency places --configuration debugRuntimeClasspath
+.\gradlew.bat --no-daemon app:compileDebugKotlin
 ```
 
-Manual review must confirm a placeholder, not a literal. Key rotation is not
-rolled back if source changes are reverted.
+Manual review must confirm a placeholder, not a literal; workflow output and
+Gradle diagnostics must not reveal a secret. Key rotation is not rolled back if
+source changes are reverted.
 
 **Commit:**
 
@@ -225,15 +251,25 @@ FetchPlaceRequest(placeId)
 
 Steps:
 
-1. Initialize `Places` once outside Compose with
-   `BuildConfig.GOOGLE_MAPS_API_KEY`.
-2. Use one `AutocompleteSessionToken` per active search session.
-3. Renew the token after selection, cancellation, or completed search.
-4. Keep place IDs opaque.
-5. Resolve details explicitly before coordinates enter preview state.
-6. Test duplicate names with distinct place IDs.
-7. Map API statuses to typed failures.
-8. Propagate coroutine cancellation into Google Tasks.
+1. Initialize Places API (New) once at the application boundary with
+   `BuildConfig.MAPS_API_KEY` and provide one application-scoped `PlacesClient`
+   through Hilt.
+2. Treat missing/default configuration as a typed failure and never log the key.
+3. Use one `AutocompleteSessionToken` per active search session.
+4. Reuse that token for predictions and the selected Place Details request.
+5. Renew the token after selection, cancellation, abandonment, or terminal
+   recovery.
+6. Keep place IDs opaque.
+7. Request only `ID`, `DISPLAY_NAME`, `FORMATTED_ADDRESS`, and `LOCATION`.
+8. Set Indonesia country/region context.
+9. Prefer location bias around a fresh current location or authoritative target;
+   search still works without proximity.
+10. Debounce input and cancel superseded Google Tasks.
+11. Resolve details explicitly before coordinates enter preview state.
+12. Test duplicate names with distinct place IDs.
+13. Map authentication, quota/rate, network, empty, and unavailable outcomes to
+    typed failures.
+14. Propagate coroutine cancellation into Google Tasks.
 
 ### Task 8: Implement typed address resolution
 
@@ -350,16 +386,28 @@ utils/MapUtils.kt
 Implementation:
 
 1. Render through `GoogleMap` and `rememberCameraPositionState`.
-2. Render project markers with Google `Marker`.
+2. Render project markers with Google `Marker` and
+   `rememberUpdatedMarkerState`.
 3. Render target radii with Google `Circle`.
 4. Convert `GeoCoordinate ↔ LatLng` only inside the adapter package.
 5. Translate camera effects with `CameraUpdateFactory` and
    `cameraPositionState.animate`.
 6. Emit camera-idle center as `GeoCoordinate`.
-7. Configure gestures, compass, location layer, and controls.
-8. Never launch permissions from the map composable.
-9. Use stable marker keys and updated callback state.
-10. Preserve the precise-location fallback.
+7. Keep `CameraPositionState`, `MapProperties`, and `MapUiSettings` local to the
+   adapter and remembered with stable inputs.
+8. Enable scroll/zoom gestures; disable tilt/rotate, zoom controls, map toolbar,
+   traffic, and indoor layers.
+9. Keep Google My Location layer/button disabled. Render the project current
+   location from `CurrentLocationRepository`.
+10. Apply dynamic content padding for app bar, system bars, floating controls,
+    and bottom sheet so Google attribution is not covered.
+11. Add a localized semantic map description and keep focus/selection actions
+    available as normal Compose controls.
+12. Never launch permissions from the map composable.
+13. Use stable marker IDs and updated callback state.
+14. Preserve the precise-location fallback.
+15. Use standard markers/circles for initial parity; do not add a Map ID,
+    advanced markers, or cloud styling in this phase.
 
 ### Task 13: Replace persistent camera commands
 
@@ -551,23 +599,30 @@ Create:
 Required matrix:
 
 1. Maps SDK initializes using injected configuration.
-2. Google base map renders.
-3. Precise current location succeeds with accuracy/freshness.
-4. Location unavailable/failure recovery works.
-5. Current-location marker is correct.
-6. Authoritative marker and radius are correct.
-7. WFA recommendation remains preview-only.
-8. Current-location focus works.
-9. Target focus works.
-10. Recommendation bounds fit works.
-11. Pick-on-map camera idle returns the correct coordinate.
-12. Google Places search works with proximity.
-13. Google Places search works without proximity.
-14. Suggestion/detail resolution preserves place identity.
-15. Reverse geocode resolved and coordinate-only behavior is correct.
-16. Geofence registration/restoration remains compatible.
-17. Attendance request uses only the authoritative target.
-18. No Mapbox code executes.
+2. Missing/default and invalid/restricted key failures are safe and do not
+   disclose the configured value.
+3. Google base map renders on a Play-enabled emulator.
+4. Google base map renders on at least one physical device.
+5. Precise current location succeeds with accuracy/freshness.
+6. Location unavailable/failure recovery works.
+7. Current-location marker is correct without the Google My Location layer.
+8. Authoritative marker and radius are correct.
+9. WFA recommendation remains preview-only.
+10. Current-location focus works.
+11. Target focus works.
+12. Recommendation bounds fit works.
+13. Pick-on-map camera idle returns the correct coordinate.
+14. App bar, system bar, floating-control, and bottom-sheet padding is correct.
+15. Google logo/copyright attribution remains visible.
+16. TalkBack announces the map and essential actions work without map gestures.
+17. Google Places search works with proximity.
+18. Google Places search works without proximity.
+19. Suggestion/detail resolution preserves place identity.
+20. A completed/cancelled search receives a fresh session token.
+21. Reverse geocode resolved and coordinate-only behavior is correct.
+22. Geofence registration/restoration remains compatible.
+23. Attendance request uses only the authoritative target.
+24. No Mapbox code executes.
 
 For every row record device/API, commit SHA, setup, expected, observed,
 pass/fail, and evidence path.
@@ -581,7 +636,14 @@ Verify:
 
 - no API key literal exists in tracked source/docs/tests/logs;
 - `local.properties` is ignored and untracked;
+- Secrets Gradle Plugin owns Google key exposure to Manifest/BuildConfig;
+- CI creates and removes ephemeral configuration without printing the key;
 - Google key restrictions/rotation are recorded without the key value;
+- billing, enabled APIs, quota, usage, and budget alerts are recorded;
+- debug, CI/release, and Play App Signing fingerprint coverage is recorded
+  without fingerprint values;
+- App Check is either observe-only with a rollout record or explicitly deferred;
+  enforcement cannot precede verified-traffic readiness;
 - Google is the only runtime map/place provider;
 - no runtime provider selector exists;
 - Mapbox imports, services, dependencies, DTOs, token wiring, and Manifest
@@ -620,8 +682,12 @@ Record INF-140 Google migration evidence
 
 ## Final Acceptance Gate
 
-- [ ] Google key is injected from ignored local/CI configuration.
+- [ ] Official fixed Google dependency versions are aligned and verified.
+- [ ] Google key is injected through Secrets Gradle Plugin from ignored
+      local/ephemeral CI configuration.
 - [ ] Previously tracked keys are rotated and Android/API-restricted.
+- [ ] Billing, Maps SDK for Android, Places API (New), quota, usage, and budget
+      monitoring are configured.
 - [ ] `GeoCoordinate` is the shared coordinate primitive.
 - [ ] Domain and ViewModels contain no map-provider SDK types.
 - [ ] No final coordinate contract uses `Pair<Double, Double>`.
@@ -630,6 +696,7 @@ Record INF-140 Google migration evidence
 - [ ] Google Places SDK is the active discovery/details provider.
 - [ ] Address resolution is typed and does not fake coordinate addresses.
 - [ ] Google Maps Compose is the only active renderer.
+- [ ] Map padding preserves attribution and TalkBack/non-gesture access passes.
 - [ ] Camera work is a semantic one-time effect.
 - [ ] Marker roles distinguish preview from authority.
 - [ ] Marker clicks cannot replace `SelectedTargetLocation`.
@@ -638,6 +705,7 @@ Record INF-140 Google migration evidence
 - [ ] Google runtime parity passes.
 - [ ] Mapbox code, service, DTOs, dependencies, token, and metadata are removed.
 - [ ] No permanent multi-provider/runtime-selector architecture remains.
+- [ ] App Check observe/enforcement status and rollout evidence are recorded.
 - [ ] Unit, build, lint, instrumentation, runtime evidence, and ADR exist.
 
 Do not move INF-140 to Done or unblock INF-238 until every non-runtime item

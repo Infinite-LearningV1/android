@@ -236,11 +236,28 @@ The project already declares Google Maps Compose, Play Services Maps, Google
 Places, and Mapbox dependencies. The current `develop` source contains no active
 `GoogleMap`, `LatLng`, or `CameraPositionState` production implementation.
 
+The declared Google dependencies are substantially behind the official
+2026-07-23 baseline:
+
+| Dependency | Current | Official baseline |
+|---|---:|---:|
+| Maps Compose | 2.11.0 | 6.12.0 |
+| Play Services Maps | 18.1.0 | 20.0.0 |
+| Places SDK for Android | 2.6.0 | 5.1.1 |
+| Secrets Gradle Plugin | absent | 2.0.1 |
+
+The project `compileSdk` 34 and `minSdk` 26 satisfy the published SDK minimums.
+Versions are upgraded as a locked set behind dependency-resolution, compile, and
+runtime gates; they are not changed independently or specified with `+`.
+
 The tracked Manifest contains a literal Google Maps API key. The exact value is
 treated as sensitive and must never be copied into source, docs, logs, tests, or
 tool output. Moving it to `local.properties` does not remove it from Git
 history, so the existing key must also be rotated and restricted in Google
 Cloud Console.
+
+The full official-guidance translation and Cloud Console checklist live in
+`docs/linear-sync/INF-140-google-maps-platform-baseline.md`.
 
 ## Locked Architecture
 
@@ -262,8 +279,8 @@ Rules:
 3. Retrofit/Mapbox DTOs remain inside provider data sources and mappers.
 4. Compose Screen renders immutable project-owned state and emits typed events.
 5. ViewModel specifies what the map should do, not how Mapbox performs it.
-6. The map adapter owns `MapView`, style loading, annotations, SDK camera calls,
-   SDK listeners, and their cleanup.
+6. The map adapter owns provider Compose state, markers/overlays, SDK camera
+   calls, SDK listeners, and their cleanup.
 7. Discovery and preview state never mutate the authoritative target implicitly.
 8. Backend identity and coordinates remain authoritative; address text is
    supporting content.
@@ -472,6 +489,18 @@ Rules:
 6. API status/exception details map to typed failures; raw provider messages do
    not enter UI state.
 7. No Places widget launches itself from a composable.
+8. Use Places API (New) and initialize it once with
+   `Places.initializeWithNewPlacesApiEnabled` at the application boundary.
+9. Reuse the search token for prediction calls and the selected Place Details
+   request; never reuse a completed token.
+10. Request only `ID`, `DISPLAY_NAME`, `FORMATTED_ADDRESS`, and `LOCATION` from
+    Place Details.
+11. Use Indonesia as country/region context and prefer location bias around a
+    fresh current location or authoritative target. Do not hard-restrict the
+    search area without a product requirement.
+12. Debounce input, cancel superseded Google Tasks, and preserve coroutine
+    cancellation.
+13. Search cancellation or no selection returns to the previous valid state.
 
 ## Capability 3 — Address Resolution
 
@@ -625,10 +654,35 @@ AttendanceViewModel emits MapCameraEffect
 → GoogleAttendanceMap maps it to CameraUpdateFactory / CameraPositionState
 ```
 
-The adapter owns SDK lifecycle, style readiness, annotation managers, camera
-listeners, delayed callbacks, and cleanup. Compose effect keys use stable
-project-owned values. SDK callbacks are updated without restarting long-lived
-effects unnecessarily.
+Maps Compose owns the underlying map lifecycle. The adapter owns
+`CameraPositionState`, `MapProperties`, `MapUiSettings`, marker state, SDK
+listeners, delayed callbacks, and provider cleanup. It uses
+`rememberCameraPositionState` and `rememberUpdatedMarkerState`; Compose effect
+keys use stable project-owned values. SDK callbacks are updated without
+restarting long-lived effects unnecessarily.
+
+The Google My Location layer and built-in My Location button remain disabled.
+Infinite Track renders its project-owned current-location marker from
+`CurrentLocationRepository`, so the renderer never becomes a second permission
+or device-location owner.
+
+Initial Google map settings are explicit:
+
+- scroll and zoom gestures enabled;
+- tilt and rotate gestures disabled;
+- built-in zoom, My Location, and map-toolbar controls disabled;
+- normal map type;
+- traffic and indoor layers disabled.
+
+Dynamic content padding accounts for the app bar, system bars, floating
+controls, and bottom sheet. It must keep the Google logo and copyright notices
+visible. The map has a localized accessibility description, and every essential
+map action remains reachable through a normal Compose control.
+
+Initial parity uses standard markers and circles. A Map ID, advanced markers,
+and cloud-based styling are deferred until after functional parity. If advanced
+markers are later approved, the adapter checks runtime capability and keeps a
+standard-marker fallback.
 
 ## Capability 5 — Authoritative Attendance Target
 
@@ -756,10 +810,13 @@ The implementation uses five bounded phases.
 
 ### Phase 1 — Security/configuration, characterization, and primitives
 
-- Replace the tracked Manifest key literal with a Gradle placeholder.
-- Read `GOOGLE_MAPS_API_KEY` from ignored `local.properties`, with a CI
-  environment fallback.
-- Rotate and Android-restrict the previously tracked key.
+- Add Secrets Gradle Plugin and replace the tracked Manifest key literal with
+  `${MAPS_API_KEY}`.
+- Read `MAPS_API_KEY` from ignored local configuration and ephemeral CI
+  configuration.
+- Align the fixed Google SDK dependency set behind compile/runtime gates.
+- Enable required Cloud APIs, billing, restrictions, quotas, and monitoring.
+- Rotate the previously tracked key after the replacement is verified.
 - Record the exact provider leak inventory.
 - Add characterization tests for current target selection, search mapping,
   reverse-geocode fallbacks, map effects, and geofence persistence.
@@ -922,9 +979,12 @@ Runtime instrumentation/device verification covers:
 
 ```text
 Google Maps SDK initialization
+missing/default key failure without secret disclosure
+Android application/signing restriction authentication
 current precise location success
 location unavailable/failure recovery
 Google base map rendering
+Play-enabled emulator and physical-device rendering
 authoritative target marker
 WFA recommendation markers
 preview marker selection
@@ -932,8 +992,11 @@ camera focus current location
 camera focus target
 fit recommendation bounds
 pick-on-map camera idle
+app bar/bottom-sheet padding and visible Google attribution
+TalkBack map description and non-gesture action access
 place search with and without proximity
 place detail selection
+Places session completion and token replacement
 reverse-geocode resolved and coordinate-only
 geofence registration/restoration compatibility
 Attendance check-in/out target request
@@ -954,33 +1017,61 @@ Compile-only evidence cannot mark runtime-sensitive acceptance items Done.
 
 ### API key injection
 
-Tracked source contains only:
+Use the official Secrets Gradle Plugin. Tracked Manifest source contains only:
 
 ```xml
-android:value="${GOOGLE_MAPS_API_KEY}"
+android:value="${MAPS_API_KEY}"
 ```
 
 Local developer configuration:
 
 ```properties
-GOOGLE_MAPS_API_KEY=<local secret>
+MAPS_API_KEY=<local Android-restricted key>
 ```
 
-Gradle reads `local.properties` and optionally the CI environment variable of
-the same name, then injects:
+The plugin reads ignored `local.properties` and exposes the same property to:
 
 ```text
-manifestPlaceholders["GOOGLE_MAPS_API_KEY"]
-BuildConfig.GOOGLE_MAPS_API_KEY
+Manifest placeholder ${MAPS_API_KEY}
+BuildConfig.MAPS_API_KEY
 ```
 
 The Manifest placeholder initializes Maps SDK. The BuildConfig value initializes
 Places once at the application/data boundary, never inside a composable.
 
+Tracked defaults contain only `MAPS_API_KEY=DEFAULT_API_KEY`. CI writes the
+real value from its encrypted secret into the ephemeral `local.properties` that
+the workflows already create, and cleanup removes it. Release assembly fails
+clearly if the default remains, without printing the configured value.
+
+Prefer separate development and release credentials behind the same property
+name. Restrict each credential to the Infinite Track application ID and its
+applicable debug, CI/release, or Play App Signing certificate fingerprint.
+Restrict enabled APIs to Maps SDK for Android and Places API (New).
+
 An Android API key is still extractable from an APK. Security comes from Google
 Cloud restrictions for the application ID plus signing-certificate SHA
 fingerprints, enabled-API restrictions, quotas, and rotation—not from treating
 the packaged value as an unrecoverable secret.
+
+### Google Cloud and operational configuration
+
+Before runtime cutover:
+
+1. Billing is enabled.
+2. Maps SDK for Android and Places API (New) are enabled.
+3. The replacement credential is restricted before distribution.
+4. Usage, quota, billing-budget, and unexpected-credential alerts are assigned
+   to a monitored owner.
+5. The previously tracked credential is rotated after the replacement is
+   verified.
+
+App Check is a post-migration Places hardening phase. It uses Play Integrity,
+requires Places SDK 4.1 or newer, and is enabled in observe-only mode first.
+Its Firebase registration records the Android package and SHA-256 fingerprint.
+Enforcement begins only after metrics show legitimate released traffic is
+predominantly verified. Local emulator and CI use Firebase's debug provider
+path; App Check never replaces key restrictions.
 
 ## ADR and Documentation
 
@@ -1041,8 +1132,18 @@ Mapbox code and dependencies may be removed only when:
       capabilities before Mapbox removal.
 - [ ] Google Maps Compose is the active and verified renderer.
 - [ ] Google Places SDK is the active and verified discovery/details provider.
-- [ ] Google Maps key is injected from ignored local/CI configuration.
-- [ ] Previously tracked Google keys are rotated and Android-restricted.
+- [ ] Official fixed Google dependency versions are aligned and dependency
+      resolution is recorded.
+- [ ] Google Maps key is injected through the Secrets Gradle Plugin from ignored
+      local/ephemeral CI configuration.
+- [ ] Previously tracked Google keys are rotated, Android-restricted, and
+      API-restricted.
+- [ ] Maps SDK for Android, Places API (New), billing, quota, usage, and budget
+      monitoring are configured.
+- [ ] Map attribution remains visible and TalkBack/non-gesture access is
+      verified.
+- [ ] App Check observe/enforcement status is explicitly recorded; enforcement
+      is not enabled before verified-traffic readiness.
 - [ ] Mapbox code, dependencies, service, DTOs, token wiring, and Manifest
       metadata are removed after the runtime gate.
 - [ ] Mapper, repository, camera, target projection, cancellation, and
