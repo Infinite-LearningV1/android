@@ -1,12 +1,11 @@
 package com.example.infinite_track.presentation.design.tokens
 
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
 import com.example.infinite_track.presentation.core.body1
 import com.example.infinite_track.presentation.core.body2
-import com.example.infinite_track.presentation.theme.Violet_50
-import com.example.infinite_track.presentation.theme.sfCompact_font
+import com.example.infinite_track.presentation.core.body2_5
+import com.example.infinite_track.presentation.core.headline3
+import com.example.infinite_track.presentation.core.headline4
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -26,44 +25,18 @@ class InfiniteFeedbackTokensTest {
     }
 
     @Test
-    fun `feedback typography uses registered medium and bold styles with approved line heights`() {
+    fun `feedback typography reuses the registered project type scale`() {
         val typography = InfiniteFeedbackTypography
 
-        assertEquals(body1.fontFamily, typography.inlineTitle.fontFamily)
-        assertEquals(body2.fontFamily, typography.inlineBody.fontFamily)
-        assertEquals(14.sp, typography.inlineTitle.fontSize)
-        assertEquals(18.sp, typography.inlineTitle.lineHeight)
-        assertEquals(12.sp, typography.inlineBody.fontSize)
-        assertEquals(16.sp, typography.inlineBody.lineHeight)
-
-        listOf(
-            typography.inlineTitle,
-            typography.inlineBody,
-            typography.snackbarMessage,
-            typography.snackbarTitle,
-            typography.supportingBody,
-            typography.pillLabel,
-            typography.actionLabel,
-            typography.dialogTitle,
-            typography.dialogBody
-        ).forEach { style ->
-            assertEquals(sfCompact_font, style.fontFamily)
-            check(style.fontWeight == FontWeight.Medium || style.fontWeight == FontWeight.Bold)
-        }
-        assertEquals(14.sp, typography.snackbarMessage.fontSize)
-        assertEquals(20.sp, typography.snackbarMessage.lineHeight)
-        assertEquals(16.sp, typography.snackbarTitle.fontSize)
-        assertEquals(20.sp, typography.snackbarTitle.lineHeight)
-        assertEquals(14.sp, typography.supportingBody.fontSize)
-        assertEquals(20.sp, typography.supportingBody.lineHeight)
-        assertEquals(11.sp, typography.pillLabel.fontSize)
-        assertEquals(14.sp, typography.pillLabel.lineHeight)
-        assertEquals(12.sp, typography.actionLabel.fontSize)
-        assertEquals(16.sp, typography.actionLabel.lineHeight)
-        assertEquals(20.sp, typography.dialogTitle.fontSize)
-        assertEquals(24.sp, typography.dialogTitle.lineHeight)
-        assertEquals(14.sp, typography.dialogBody.fontSize)
-        assertEquals(20.sp, typography.dialogBody.lineHeight)
+        assertEquals(body1, typography.inlineTitle)
+        assertEquals(body2, typography.inlineBody)
+        assertEquals(body1, typography.snackbarMessage)
+        assertEquals(headline4, typography.snackbarTitle)
+        assertEquals(body2, typography.supportingBody)
+        assertEquals(body2_5, typography.pillLabel)
+        assertEquals(body2, typography.actionLabel)
+        assertEquals(headline3, typography.dialogTitle)
+        assertEquals(body1, typography.dialogBody)
     }
 
     @Test
@@ -71,7 +44,7 @@ class InfiniteFeedbackTokensTest {
         InfiniteSemantic.entries.forEach { semantic ->
             val palette = infiniteFeedbackPalette(semantic)
 
-            assertEquals(Violet_50.copy(alpha = 0.5f), palette.surface)
+            assertEquals(InfiniteColors.AttendanceReportGlassSurface, palette.surface)
             assertTrue(
                 "${semantic.name} content must meet 4.5 to 1 over the solid feedback surface",
                 contrastRatio(palette.content, palette.surface.compositedOver(Color.White)) >= 4.5

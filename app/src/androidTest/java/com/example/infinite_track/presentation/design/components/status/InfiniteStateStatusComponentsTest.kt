@@ -109,7 +109,7 @@ class InfiniteStateStatusComponentsTest {
         assertTrue(!statusDialogUsesIllustration(null))
         val semantic = InfiniteSemantic.Success
         val default = resolveInfiniteStatusPillPalette(semantic, false, null, InfiniteStatusVariant.Active)
-        assertEquals(infiniteFeedbackPalette(semantic).stateContainer, default.container)
+        assertEquals(infiniteFeedbackPalette(semantic).surface, default.container)
         val override = Color.Magenta
         assertEquals(override, resolveInfiniteStatusPillPalette(semantic, false, override, InfiniteStatusVariant.Active).content)
         assertEquals(InfiniteStatusVariant.Active.toAttendanceBadgeColor(), resolveInfiniteStatusPillPalette(semantic, true, null, InfiniteStatusVariant.Active).content)
