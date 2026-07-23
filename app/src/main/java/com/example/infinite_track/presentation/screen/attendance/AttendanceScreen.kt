@@ -57,8 +57,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.infinite_track.domain.model.attendance.WorkMode
-import com.example.infinite_track.domain.model.location.DistanceMeters
-import com.example.infinite_track.domain.model.location.GeoCoordinate
+import com.example.infinite_track.domain.model.attendance.Location
+import com.example.infinite_track.domain.model.attendance.SelectedTargetLocation
+import com.example.infinite_track.domain.model.attendance.TargetLocationResolution
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.presentation.components.button.attendance.AttendanceBottomSheetContent
 import com.example.infinite_track.presentation.components.empty.ErrorAnimation
@@ -77,11 +78,10 @@ import com.example.infinite_track.presentation.map.adapter.AttendanceMap
 import com.example.infinite_track.presentation.map.mapper.AttendanceMapUiMapper
 import com.example.infinite_track.presentation.map.model.AttendanceMapEvent
 import com.example.infinite_track.presentation.map.model.MapCameraEffect
-import com.example.infinite_track.presentation.map.model.MapCircleUiModel
 import com.example.infinite_track.presentation.map.model.MapMarkerRole
-import com.example.infinite_track.presentation.map.model.MapMarkerUiModel
-import com.example.infinite_track.presentation.map.model.MapUiState
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
+import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
+import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryState
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionPanelHost
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessEvent
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessViewModel
@@ -271,6 +271,14 @@ fun AttendanceScreen(
         }
 
         is UiState.Success -> {
+            val preparation = uiState.preparation
+            val targetLocationInfo = preparation.toBottomSheetTargetLocationInfo()
+            val discovery = preparation.wfaDiscovery as? WfaDiscoveryState.Content
+            val selectedWfaMarker = discovery?.recommendations?.firstOrNull {
+                it.stableKey == discovery.selectedKey
+            }
+            val hasWfaPreview = discovery?.selectedKey != null || discovery?.searchPreview != null
+
             // Tampilkan konten utama dengan BottomSheet
             BottomSheetScaffold(
                 scaffoldState = scaffoldState,
@@ -352,10 +360,10 @@ fun AttendanceScreen(
 
                             AttendanceBottomSheetContent(
                                 modifier = Modifier.padding(top = 0.dp),
-                                targetLocationInfo = uiState.selectedTargetLocation,
+                                targetLocationInfo = targetLocationInfo,
                                 currentLocationAddress = uiState.currentUserAddress.ifEmpty { "Mengambil lokasi saat ini..." },
-                                selectedWorkMode = uiState.selectedWorkMode,
-                                isBookingEnabled = uiState.selectedWorkMode == WorkMode.WFA && uiState.selectedTargetLocation?.location != null,
+                                selectedWorkMode = preparation.selectedMode,
+                                isBookingEnabled = preparation.selectedMode == WorkMode.WFA && hasWfaPreview,
                                 isCheckInEnabled = uiState.isButtonEnabled,
                                 checkInButtonText = uiState.buttonText,
                                 actionState = uiState.actionState,
@@ -380,8 +388,10 @@ fun AttendanceScreen(
                     },
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Transitional pure projection. Task 5 removes this when screen state owns preparation.
-                    val mapUiState = uiState.toLegacyMapUiState(hasPreciseLocationPermission)
+                    val mapUiState = AttendanceMapUiMapper.map(
+                        uiState.preparation,
+                        hasPreciseLocationPermission
+                    )
 
                     AttendanceMap(
                         state = mapUiState,
@@ -400,10 +410,16 @@ fun AttendanceScreen(
                                 is AttendanceMapEvent.MarkerClicked -> {
                                     when (event.marker.role) {
                                         MapMarkerRole.CURRENT_LOCATION -> Unit
-                                        MapMarkerRole.AUTHORITATIVE_TARGET -> uiState.selectedTargetLocation
-                                            ?.location
+                                        MapMarkerRole.AUTHORITATIVE_TARGET ->
+                                            (uiState.preparation.targetResolution
+                                                as? TargetLocationResolution.Resolved)
+                                            ?.target
                                             ?.let(viewModel::onMarkerClicked)
-                                        MapMarkerRole.WFA_RECOMMENDATION -> uiState.wfaRecommendations
+                                        MapMarkerRole.WFA_RECOMMENDATION ->
+                                            (uiState.preparation.wfaDiscovery
+                                                as? WfaDiscoveryState.Content)
+                                            ?.recommendations
+                                            .orEmpty()
                                             .firstOrNull {
                                                 AttendanceMapUiMapper.recommendationMarkerId(it) == event.marker.id
                                             }
@@ -457,7 +473,7 @@ fun AttendanceScreen(
                     }
 
                     // Display WFA marker details when clicked
-                    uiState.selectedWfaMarkerInfo?.let { selectedWfaMarker ->
+                    selectedWfaMarker?.let {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -465,14 +481,14 @@ fun AttendanceScreen(
                             contentAlignment = Alignment.TopCenter
                         ) {
                             MarkerViewWfa(
-                                recommendation = selectedWfaMarker,
+                                recommendation = it,
                                 onClick = { viewModel.onDismissWfaMarkerInfo() }
                             )
                         }
                     }
 
                     // Loading overlay for WFA recommendations
-                    if (uiState.isLoadingWfaRecommendations) {
+                    if (preparation.wfaDiscovery is WfaDiscoveryState.Loading) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -542,95 +558,28 @@ fun AttendanceScreen(
     )
 }
 
-private fun AttendanceTransientFeedbackDuration.toMaterialDuration(): SnackbarDuration = when (this) {
-    AttendanceTransientFeedbackDuration.SHORT -> SnackbarDuration.Short
-    AttendanceTransientFeedbackDuration.LONG -> SnackbarDuration.Long
-}
-
-private fun AttendanceScreenState.toLegacyMapUiState(
-    hasPreciseLocationPermission: Boolean
-): MapUiState {
-    val targetSelection = selectedTargetLocation
-    val selectedTarget = targetSelection?.location
-    val markers = buildList {
-        val currentCoordinate = currentCoordinateOrNull()
-        if (currentCoordinate != null) {
-            add(
-                MapMarkerUiModel(
-                    id = "current-location",
-                    role = MapMarkerRole.CURRENT_LOCATION,
-                    coordinate = currentCoordinate,
-                    title = "Lokasi saat ini",
-                    snippet = currentUserAddress.takeIf(String::isNotBlank)
-                )
-            )
-        }
-
-        if (selectedTarget != null) {
-            add(
-                MapMarkerUiModel(
-                    id = "legacy-target:${selectedTarget.locationId}",
-                    role = MapMarkerRole.AUTHORITATIVE_TARGET,
-                    coordinate = selectedTarget.coordinate,
-                    title = targetSelection.displayName,
-                    snippet = targetSelection.description,
-                    isSelected = true
-                )
-            )
-        }
-
-        if (isWfaModeActive) {
-            wfaRecommendations.forEach { recommendation ->
-                add(
-                    MapMarkerUiModel(
-                        id = AttendanceMapUiMapper.recommendationMarkerId(recommendation),
-                        role = MapMarkerRole.WFA_RECOMMENDATION,
-                        coordinate = recommendation.coordinate,
-                        title = recommendation.name,
-                        snippet = recommendation.address,
-                        isSelected = selectedWfaLocation?.stableKey == recommendation.stableKey
-                    )
-                )
-            }
-            pickedLocation?.let { preview ->
-                runCatching { GeoCoordinate(preview.latitude, preview.longitude) }
-                    .getOrNull()
-                    ?.let { coordinate ->
-                        add(
-                            MapMarkerUiModel(
-                                id = "search-preview",
-                                role = MapMarkerRole.SEARCH_PREVIEW,
-                                coordinate = coordinate,
-                                title = preview.placeName,
-                                snippet = preview.address,
-                                isSelected = true
-                            )
-                        )
-                    }
-            }
-        }
-    }
-    val circles = selectedTarget?.let { target ->
-        listOf(
-            MapCircleUiModel(
-                id = "legacy-target-radius:${target.locationId}",
-                center = target.coordinate,
-                radius = DistanceMeters(target.radius.toDouble())
-            )
-        )
-    }.orEmpty()
-
-    return MapUiState(
-        markers = markers,
-        circles = circles,
-        hasPreciseLocationPermission = hasPreciseLocationPermission
+internal fun AttendancePreparationState.toBottomSheetTargetLocationInfo(): SelectedTargetLocation? {
+    val target = (targetResolution as? TargetLocationResolution.Resolved)?.target ?: return null
+    return SelectedTargetLocation(
+        mode = selectedMode,
+        location = Location(
+            locationId = target.approvedWfaContext?.bookingId
+                ?: target.targetId.value.substringAfter(':').toIntOrNull()
+                ?: 0,
+            coordinate = target.coordinate,
+            radius = target.radius.value.toInt(),
+            description = target.displayName,
+            category = target.mode.shortLabel
+        ),
+        displayName = target.displayName,
+        description = target.mode.shortLabel,
+        isAvailable = true
     )
 }
 
-private fun AttendanceScreenState.currentCoordinateOrNull(): GeoCoordinate? {
-    val latitude = currentUserLatitude ?: return null
-    val longitude = currentUserLongitude ?: return null
-    return runCatching { GeoCoordinate(latitude, longitude) }.getOrNull()
+private fun AttendanceTransientFeedbackDuration.toMaterialDuration(): SnackbarDuration = when (this) {
+    AttendanceTransientFeedbackDuration.SHORT -> SnackbarDuration.Short
+    AttendanceTransientFeedbackDuration.LONG -> SnackbarDuration.Long
 }
 
 @Preview(showBackground = true)

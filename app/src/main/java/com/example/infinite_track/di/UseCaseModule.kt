@@ -30,8 +30,8 @@ import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
 import com.example.infinite_track.domain.use_case.auth.ValidateForegroundSessionUseCase
 import com.example.infinite_track.domain.use_case.auth.VerifyFaceUseCase
 import com.example.infinite_track.domain.use_case.booking.GetBookingHistoryUseCase
-import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingIdUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingUseCase
+import com.example.infinite_track.domain.use_case.booking.ResolveTodayWfaBookingStateUseCase
 import com.example.infinite_track.domain.use_case.booking.SubmitWfaBookingUseCase
 import com.example.infinite_track.domain.use_case.contact.GetContactsUseCase
 import com.example.infinite_track.domain.use_case.history.ExportAttendanceReportPdfUseCase
@@ -208,10 +208,10 @@ object UseCaseModule {
     }
 
     @Provides
-    fun provideResolveTodayApprovedWfaBookingIdUseCase(
+    fun provideResolveTodayWfaBookingStateUseCase(
         bookingRepository: BookingRepository
-    ): ResolveTodayApprovedWfaBookingIdUseCase {
-        return ResolveTodayApprovedWfaBookingIdUseCase(bookingRepository)
+    ): ResolveTodayWfaBookingStateUseCase {
+        return ResolveTodayWfaBookingStateUseCase(bookingRepository)
     }
 
     @Provides

@@ -4,24 +4,31 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
-import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
+import com.example.infinite_track.domain.model.attendance.AttendancePreparationEligibility
+import com.example.infinite_track.domain.model.attendance.AuthoritativeTargetLocation
 import com.example.infinite_track.domain.model.attendance.Location
+import com.example.infinite_track.domain.model.attendance.TargetLocationResolution
+import com.example.infinite_track.domain.model.attendance.TargetRangeStatus
+import com.example.infinite_track.domain.model.attendance.TargetRangeUnknownReason
+import com.example.infinite_track.domain.model.attendance.TargetResolutionFailure
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.model.attendance.WorkMode
-import com.example.infinite_track.domain.model.booking.BookingHistoryItem
+import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.location.DistanceMeters
 import com.example.infinite_track.domain.model.location.AddressResolutionResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
+import com.example.infinite_track.domain.model.wfa.WfaBookingForDate
 import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
 import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
-import com.example.infinite_track.domain.use_case.attendance.EvaluateWorkModeEligibilityUseCase
+import com.example.infinite_track.domain.use_case.attendance.EvaluateAttendancePreparationUseCase
+import com.example.infinite_track.domain.use_case.attendance.EvaluateTargetRangeUseCase
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
-import com.example.infinite_track.domain.use_case.attendance.ResolveSelectedTargetLocationUseCase
+import com.example.infinite_track.domain.use_case.attendance.ResolveAuthoritativeTargetLocationUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
-import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingIdUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingUseCase
+import com.example.infinite_track.domain.use_case.booking.ResolveTodayWfaBookingStateUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentLocationUseCase
 import com.example.infinite_track.domain.model.location.CurrentLocationResult
@@ -31,10 +38,15 @@ import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.example.infinite_track.presentation.geofencing.ReminderGeofenceCandidate
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.map.model.MapCameraEffect
+import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationReducer
+import com.example.infinite_track.presentation.screen.attendance.preparation.LatestSelectionGuard
+import com.example.infinite_track.presentation.screen.attendance.preparation.SelectionRequestToken
+import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryState
 import com.example.infinite_track.utils.LocationPermissionHelper
 import com.example.infinite_track.utils.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -72,10 +84,11 @@ class AttendanceViewModel @Inject constructor(
     private val attendancePreference: AttendancePreference,
     private val geofenceManager: GeofenceManager,
     private val getLoggedInUserUseCase: GetLoggedInUserUseCase,
-    private val resolveTodayApprovedWfaBookingIdUseCase: ResolveTodayApprovedWfaBookingIdUseCase,
     private val resolveTodayApprovedWfaBookingUseCase: ResolveTodayApprovedWfaBookingUseCase,
-    private val resolveSelectedTargetLocationUseCase: ResolveSelectedTargetLocationUseCase,
-    private val evaluateWorkModeEligibilityUseCase: EvaluateWorkModeEligibilityUseCase,
+    private val resolveTodayWfaBookingStateUseCase: ResolveTodayWfaBookingStateUseCase,
+    private val resolveAuthoritativeTargetLocationUseCase: ResolveAuthoritativeTargetLocationUseCase,
+    private val evaluateTargetRangeUseCase: EvaluateTargetRangeUseCase,
+    private val evaluateAttendancePreparationUseCase: EvaluateAttendancePreparationUseCase,
     // Add UseCase dependencies for attendance operations
     private val checkInUseCase: CheckInUseCase,
     private val checkOutUseCase: CheckOutUseCase
@@ -102,6 +115,12 @@ class AttendanceViewModel @Inject constructor(
 
     // Job for UI-focused location updates (display purposes only)
     private var displayLocationJob: Job? = null
+    private var modeResolutionJob: Job? = null
+    private var recommendationJob: Job? = null
+    private val latestSelectionGuard = LatestSelectionGuard()
+    private var latestSelectionRequest: SelectionRequestToken =
+        latestSelectionGuard.next(WorkMode.WFO)
+    private var latestProfile: UserModel? = null
 
     companion object {
         private const val TAG = "AttendanceViewModel"
@@ -176,24 +195,9 @@ class AttendanceViewModel @Inject constructor(
                 )
 
                 val selectedMode = WorkMode.fromRaw(todayStatus.activeMode) ?: WorkMode.WFO
-                val approvedWfaLocation = if (
-                    selectedMode == WorkMode.WFA && todayStatus.todayDate.isNotBlank()
-                ) {
-                    resolveTodayApprovedWfaBookingUseCase(todayStatus.todayDate)
-                        .getOrNull()
-                        ?.toAttendanceLocation()
-                } else {
-                    null
-                }
 
                 val nextState = _uiState.value.copy(
                     todayStatus = todayStatus,
-                    targetLocation = todayStatus.activeLocation,
-                    wfoLocation = todayStatus.activeLocation, // WFO location from today status
-                    targetLocationMarker = todayStatus.activeLocation,
-                    selectedWorkMode = selectedMode,
-                    isWfaModeActive = selectedMode == WorkMode.WFA,
-                    approvedWfaLocation = approvedWfaLocation,
                     uiState = UiState.Success(Unit)
                 )
                 _uiState.value = nextState.withResolvedActionStatePreservingInFlightSubmit()
@@ -270,27 +274,11 @@ class AttendanceViewModel @Inject constructor(
         try {
             getLoggedInUserUseCase().collect { user ->
                 Log.d(TAG, "User data fetched successfully")
+                latestProfile = user
 
-                // Extract WFH location from user profile if available
-                val wfhLocation = if (user?.latitude != null && user.longitude != null) {
-                    Location(
-                        locationId = user.id, // Use user ID as location ID
-                        latitude = user.latitude,
-                        longitude = user.longitude,
-                        radius = user.radius ?: 100, // Default 100m radius if not specified
-                        description = user.locationDescription ?: "Work From Home Location",
-                        category = user.locationCategoryName ?: "Home"
-                    )
-                } else {
-                    null // No home location data available
-                }
+                val wfhLocation = user.toWfhAttendanceLocation()
 
-                _uiState.value = _uiState.value.copy(
-                    wfhLocation = wfhLocation
-                )
-                refreshResolvedActionState()
-
-                if (_uiState.value.selectedWorkMode == WorkMode.WFH) {
+                if (_uiState.value.preparation.selectedMode == WorkMode.WFH) {
                     resolveAndApplyTargetForMode(WorkMode.WFH)
                 }
 
@@ -322,7 +310,10 @@ class AttendanceViewModel @Inject constructor(
                 return@launch
             }
 
-            val candidates = buildReminderCandidates(todayStatus, state.wfhLocation)
+            val candidates = buildReminderCandidates(
+                todayStatus,
+                latestProfile.toWfhAttendanceLocation()
+            )
             Log.d(
                 TAG,
                 "Reminder candidates built: " + candidates.joinToString { "${it.id}:${it.modeKey}:${it.source}" }
@@ -414,30 +405,51 @@ class AttendanceViewModel @Inject constructor(
      * Does not affect validation logic
      */
     private suspend fun updateDisplayLocation() {
+        val selectionRequest = latestSelectionRequest
         try {
             // Update current address for display - menggunakan Geocoding API yang sudah diperbaiki
             when (val addressResult = getCurrentAddressUseCase()) {
                 is AddressResolutionResult.Resolved -> {
+                    if (!latestSelectionGuard.isCurrent(
+                            selectionRequest,
+                            _uiState.value.preparation.selectedMode
+                        )
+                    ) return
                     _uiState.value = _uiState.value.copy(
                         currentUserAddress = addressResult.address.formattedAddress
                     )
                 }
                 is AddressResolutionResult.CoordinateOnly -> {
+                    if (!latestSelectionGuard.isCurrent(
+                            selectionRequest,
+                            _uiState.value.preparation.selectedMode
+                        )
+                    ) return
                     _uiState.value = _uiState.value.copy(
                         currentUserAddress = addressResult.coordinate.toDisplayText()
                     )
                 }
                 is AddressResolutionResult.Failed -> {
+                    if (!latestSelectionGuard.isCurrent(
+                            selectionRequest,
+                            _uiState.value.preparation.selectedMode
+                        )
+                    ) return
                     _uiState.value = _uiState.value.copy(currentUserAddress = "Mengambil alamat...")
                 }
             }
 
             when (val current = getCurrentLocationUseCase()) {
                 is CurrentLocationResult.Success -> {
-                    _uiState.value = _uiState.value.copy(
-                        currentUserLatitude = current.location.coordinate.latitude,
-                        currentUserLongitude = current.location.coordinate.longitude
-                    )
+                    if (latestSelectionGuard.isCurrent(
+                            selectionRequest,
+                            _uiState.value.preparation.selectedMode
+                        )
+                    ) {
+                        _uiState.value = _uiState.value
+                            .withCurrentLocation(current)
+                            .withResolvedActionStatePreservingInFlightSubmit()
+                    }
                 }
                 is CurrentLocationResult.Failure -> {
                     Log.w(TAG, "Failed to get display coordinates: $current")
@@ -448,25 +460,39 @@ class AttendanceViewModel @Inject constructor(
         }
     }
 
+    private fun AttendanceScreenState.withCurrentLocation(
+        current: CurrentLocationResult
+    ): AttendanceScreenState {
+        val resolved = preparation.targetResolution as? TargetLocationResolution.Resolved
+        val range = resolved?.let { target ->
+            evaluateTargetRangeUseCase(
+                target = target.target,
+                current = current,
+                nowEpochMillis = System.currentTimeMillis()
+            )
+        }
+        val eligibility = if (resolved != null && range != null) {
+            evaluateAttendancePreparationUseCase(resolved, range)
+        } else {
+            preparation.eligibility
+        }
+        return copy(
+            preparation = preparation.copy(
+                currentLocation = current,
+                rangeStatus = range,
+                eligibility = eligibility
+            )
+        )
+    }
+
     /**
      * Handle work mode selection without mutating active monitoring geofences.
      */
     fun onWorkModeSelected(mode: WorkMode) {
         Log.d(TAG, "Work mode selected: ${mode.shortLabel}")
 
-        _uiState.value = _uiState.value.copy(
-            selectedWorkMode = mode,
-            isWfaModeActive = mode == WorkMode.WFA
-        )
-        refreshResolvedActionState()
-
         if (mode == WorkMode.WFA) {
-            _uiState.value = _uiState.value.copy(
-                selectedWfaLocation = null,
-                pickedLocation = null
-            )
             onEnterPickOnMapMode()
-            fetchWfaRecommendations()
         } else {
             onExitPickOnMapMode()
         }
@@ -474,45 +500,125 @@ class AttendanceViewModel @Inject constructor(
         resolveAndApplyTargetForMode(mode)
     }
 
-    private fun resolveAndApplyTargetForMode(mode: WorkMode = _uiState.value.selectedWorkMode) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
-                isEvaluatingWorkMode = true,
-                isButtonEnabled = false
-            )
+    private fun resolveAndApplyTargetForMode(
+        mode: WorkMode = _uiState.value.preparation.selectedMode
+    ) {
+        modeResolutionJob?.cancel()
+        recommendationJob?.cancel()
 
-            val state = _uiState.value
-            val target = resolveSelectedTargetLocationUseCase(
-                mode = mode,
-                wfoLocation = state.wfoLocation,
-                wfhLocation = state.wfhLocation,
-                approvedWfaLocation = state.approvedWfaLocation
-            )
+        val request = latestSelectionGuard.next(mode)
+        latestSelectionRequest = request
+        val resolvingPreparation = _uiState.value.preparation.copy(
+            selectedMode = mode,
+            targetResolution = TargetLocationResolution.Resolving(mode),
+            rangeStatus = null,
+            wfaDiscovery = if (mode == WorkMode.WFA) {
+                WfaDiscoveryState.Loading
+            } else {
+                WfaDiscoveryState.Hidden
+            },
+            eligibility = AttendancePreparationEligibility.Resolving
+        )
+        _uiState.value = _uiState.value.copy(
+            preparation = resolvingPreparation
+        ).withResolvedActionStatePreservingInFlightSubmit()
 
-            val eligibility = evaluateWorkModeEligibilityUseCase(
-                mode = mode,
-                selectedTargetLocation = target,
-                todayDate = state.todayStatus?.todayDate
-            )
+        modeResolutionJob = viewModelScope.launch {
+            try {
+                val profile = if (mode == WorkMode.WFH) {
+                    latestProfile ?: getLoggedInUserUseCase().firstOrNull()
+                } else {
+                    latestProfile
+                }
+                val current = getCurrentLocationUseCase()
+                val booking = if (mode == WorkMode.WFA) {
+                    val scheduleDate = _uiState.value.todayStatus?.todayDate
+                    if (scheduleDate.isNullOrBlank()) {
+                        WfaBookingForDate.NotRequested
+                    } else {
+                        resolveTodayWfaBookingStateUseCase(scheduleDate)
+                    }
+                } else {
+                    WfaBookingForDate.NotRequested
+                }
+                val resolution = resolveAuthoritativeTargetLocationUseCase(
+                    mode = mode,
+                    todayStatus = _uiState.value.todayStatus,
+                    profile = profile,
+                    wfaBooking = booking
+                )
+                val range = (resolution as? TargetLocationResolution.Resolved)?.let { resolved ->
+                    evaluateTargetRangeUseCase(
+                        target = resolved.target,
+                        current = current,
+                        nowEpochMillis = System.currentTimeMillis()
+                    )
+                }
+                val eligibility = evaluateAttendancePreparationUseCase(
+                    resolution = resolution,
+                    rangeStatus = range ?: TargetRangeStatus.Unknown(
+                        TargetRangeUnknownReason.CURRENT_LOCATION_UNAVAILABLE
+                    )
+                )
 
-            val nextState = _uiState.value.copy(
-                selectedTargetLocation = target,
-                targetLocation = target.location,
-                targetLocationMarker = target.location,
-                workModeEligibility = eligibility,
-                isEvaluatingWorkMode = false
-            )
-            _uiState.value = nextState.withResolvedActionStatePreservingInFlightSubmit()
+                if (!latestSelectionGuard.isCurrent(request, mode)) return@launch
+                val nextPreparation = _uiState.value.preparation.copy(
+                    selectedMode = mode,
+                    targetResolution = resolution,
+                    currentLocation = current,
+                    rangeStatus = range,
+                    eligibility = eligibility
+                )
+                _uiState.value = _uiState.value.copy(
+                    preparation = nextPreparation
+                ).withResolvedActionStatePreservingInFlightSubmit()
 
-            target.location?.let { animateMapToTarget(it) }
+                if (!latestSelectionGuard.isCurrent(request, mode)) return@launch
+                (resolution as? TargetLocationResolution.Resolved)?.target?.let { target ->
+                    animateMapToTarget(target)
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Log.e(TAG, "Failed to resolve attendance preparation for ${mode.shortLabel}", error)
+                if (!latestSelectionGuard.isCurrent(request, mode)) return@launch
+                val resolution = TargetLocationResolution.Failed(
+                    mode = mode,
+                    failure = mode.resolutionFailure()
+                )
+                val eligibility = evaluateAttendancePreparationUseCase(
+                    resolution,
+                    TargetRangeStatus.Unknown(TargetRangeUnknownReason.CURRENT_LOCATION_UNAVAILABLE)
+                )
+                _uiState.value = _uiState.value.copy(
+                    preparation = _uiState.value.preparation.copy(
+                        targetResolution = resolution,
+                        rangeStatus = null,
+                        eligibility = eligibility
+                    )
+                ).withResolvedActionStatePreservingInFlightSubmit()
+            }
+        }
+
+        if (mode == WorkMode.WFA) {
+            fetchWfaRecommendations(request)
         }
     }
 
-    private fun animateMapToTarget(location: Location, zoomLevel: Double = 15.0) {
+    private fun WorkMode.resolutionFailure(): TargetResolutionFailure = when (this) {
+        WorkMode.WFO -> TargetResolutionFailure.STATUS_REFRESH_FAILED
+        WorkMode.WFH -> TargetResolutionFailure.PROFILE_REFRESH_FAILED
+        WorkMode.WFA -> TargetResolutionFailure.BOOKING_REFRESH_FAILED
+    }
+
+    private fun animateMapToTarget(
+        target: AuthoritativeTargetLocation,
+        zoomLevel: Double = 15.0
+    ) {
         _mapCameraEffects.tryEmit(
             MapCameraEffect.Focus(
                 id = nextMapCameraEffectId++,
-                coordinate = location.coordinate,
+                coordinate = target.coordinate,
                 zoom = zoomLevel.toFloat()
             )
         )
@@ -522,18 +628,19 @@ class AttendanceViewModel @Inject constructor(
      * Fetch WFA recommendations based on current user location
      * Menggunakan GPS real-time, bukan lokasi WFH yang tersimpan
      */
-    private fun fetchWfaRecommendations() {
-        viewModelScope.launch {
+    private fun fetchWfaRecommendations(request: SelectionRequestToken) {
+        recommendationJob = viewModelScope.launch {
             try {
-                _uiState.value = _uiState.value.copy(isLoadingWfaRecommendations = true)
                 val coordinate = when (val current = getCurrentLocationUseCase()) {
                     is CurrentLocationResult.Success -> current.location.coordinate
                     is CurrentLocationResult.Failure -> cachedCurrentCoordinateOrNull()
                 }
                 if (coordinate == null) {
+                    if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return@launch
                     _uiState.value = _uiState.value.copy(
-                        wfaRecommendations = emptyList(),
-                        isLoadingWfaRecommendations = false
+                        preparation = _uiState.value.preparation.copy(
+                            wfaDiscovery = WfaDiscoveryState.Failure(retryable = true)
+                        )
                     )
                     return@launch
                 }
@@ -542,8 +649,24 @@ class AttendanceViewModel @Inject constructor(
                     coordinate.latitude,
                     coordinate.longitude
                 ).onSuccess { recommendations ->
-                    _uiState.value = _uiState.value.copy(wfaRecommendations = recommendations)
+                    if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return@onSuccess
+                    val currentDiscovery = _uiState.value.preparation.wfaDiscovery
+                        as? WfaDiscoveryState.Content
+                    val discovery = if (recommendations.isEmpty() && currentDiscovery?.searchPreview == null) {
+                        WfaDiscoveryState.Empty
+                    } else {
+                        WfaDiscoveryState.Content(
+                            recommendations = recommendations,
+                            selectedKey = currentDiscovery?.selectedKey
+                                ?.takeIf { selected -> recommendations.any { it.stableKey == selected } },
+                            searchPreview = currentDiscovery?.searchPreview
+                        )
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        preparation = _uiState.value.preparation.copy(wfaDiscovery = discovery)
+                    )
                     if (recommendations.isNotEmpty()) {
+                        if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return@onSuccess
                         _mapCameraEffects.tryEmit(
                             MapCameraEffect.Fit(
                                 id = nextMapCameraEffectId++,
@@ -553,14 +676,22 @@ class AttendanceViewModel @Inject constructor(
                     }
                 }.onFailure { exception ->
                     Log.e(TAG, "Failed to fetch WFA recommendations", exception)
-                    _uiState.value = _uiState.value.copy(wfaRecommendations = emptyList())
+                    if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return@onFailure
+                    _uiState.value = _uiState.value.copy(
+                        preparation = _uiState.value.preparation.copy(
+                            wfaDiscovery = WfaDiscoveryState.Failure(retryable = true)
+                        )
+                    )
                 }
-                _uiState.value = _uiState.value.copy(isLoadingWfaRecommendations = false)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Unexpected error in fetchWfaRecommendations", e)
+                if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return@launch
                 _uiState.value = _uiState.value.copy(
-                    wfaRecommendations = emptyList(),
-                    isLoadingWfaRecommendations = false
+                    preparation = _uiState.value.preparation.copy(
+                        wfaDiscovery = WfaDiscoveryState.Failure(retryable = true)
+                    )
                 )
             }
         }
@@ -571,9 +702,13 @@ class AttendanceViewModel @Inject constructor(
      */
     fun onWfaMarkerClicked(recommendation: WfaRecommendation) {
         Log.d(TAG, "WFA Marker clicked: ${recommendation.name}")
+        val request = latestSelectionRequest
+        if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return
         _uiState.value = _uiState.value.copy(
-            selectedWfaLocation = recommendation,
-            selectedWfaMarkerInfo = recommendation // Show marker details
+            preparation = AttendancePreparationReducer.selectRecommendation(
+                _uiState.value.preparation,
+                recommendation
+            )
         )
         refreshResolvedActionState()
     }
@@ -583,7 +718,13 @@ class AttendanceViewModel @Inject constructor(
      */
     fun onDismissWfaMarkerInfo() {
         Log.d(TAG, "WFA marker info dialog dismissed")
-        _uiState.value = _uiState.value.copy(selectedWfaMarkerInfo = null)
+        val discovery = _uiState.value.preparation.wfaDiscovery as? WfaDiscoveryState.Content
+            ?: return
+        _uiState.value = _uiState.value.copy(
+            preparation = _uiState.value.preparation.copy(
+                wfaDiscovery = discovery.copy(selectedKey = null)
+            )
+        )
     }
 
     /**
@@ -592,8 +733,7 @@ class AttendanceViewModel @Inject constructor(
     fun onDismissMarkerInfo() {
         Log.d(TAG, "Marker info dialog dismissed")
         _uiState.value = _uiState.value.copy(
-            selectedMarkerInfo = null,
-            selectedWfaMarkerInfo = null // Also dismiss WFA marker info
+            selectedMarkerInfo = null
         )
     }
 
@@ -601,26 +741,30 @@ class AttendanceViewModel @Inject constructor(
      * Handle booking button click
      */
     fun onBookingClicked() {
-        if (_uiState.value.isWfaModeActive) {
-            _uiState.value.selectedWfaLocation?.let { wfaLocation ->
-                Log.d(TAG, "Booking WFA location: ${wfaLocation.name}")
-                // Navigate to WFA booking screen with location data (latitude and longitude only)
-                val route = Screen.WfaBooking.createRoute(
-                    latitude = wfaLocation.latitude,
-                    longitude = wfaLocation.longitude
-                    // address is no longer sent - WfaBookingViewModel will fetch it
-                )
-                viewModelScope.launch {
-                    _uiState.value = _uiState.value.copy(
-                        navigationTarget = NavigationTarget.WfaBooking(route)
-                    )
-                }
-            } ?: run {
-                Log.w(TAG, "Booking clicked in WFA mode but no location selected.")
-            }
-        } else {
-            Log.d(TAG, "Booking clicked for mode: ${_uiState.value.selectedWorkMode.shortLabel}")
+        val preparation = _uiState.value.preparation
+        if (preparation.selectedMode != WorkMode.WFA) {
+            Log.d(TAG, "Booking clicked outside WFA mode")
+            return
         }
+        val discovery = preparation.wfaDiscovery as? WfaDiscoveryState.Content
+        val selectedRecommendation = discovery?.recommendations?.firstOrNull {
+            it.stableKey == discovery.selectedKey
+        }
+        val coordinate = selectedRecommendation?.coordinate
+            ?: discovery?.searchPreview?.let { preview ->
+                runCatching { GeoCoordinate(preview.latitude, preview.longitude) }.getOrNull()
+            }
+        if (coordinate == null) {
+            Log.w(TAG, "Booking clicked in WFA mode but no preview is selected.")
+            return
+        }
+        val route = Screen.WfaBooking.createRoute(
+            latitude = coordinate.latitude,
+            longitude = coordinate.longitude
+        )
+        _uiState.value = _uiState.value.copy(
+            navigationTarget = NavigationTarget.WfaBooking(route)
+        )
     }
 
     /**
@@ -641,38 +785,10 @@ class AttendanceViewModel @Inject constructor(
 
         Log.d(TAG, "Attendance button clicked - $intent")
 
-        viewModelScope.launch {
-            if (intent == AttendanceActionIntent.CHECK_IN && _uiState.value.isWfaModeActive) {
-                val scheduleDateIso = _uiState.value.todayStatus?.todayDate
-                if (scheduleDateIso.isNullOrBlank()) {
-                    _uiState.value = _uiState.value.withActionState(
-                        AttendanceActionState.Blocked(
-                            reason = AttendanceBlockReason.WFA_BOOKING_REQUIRED,
-                            title = "Booking WFA belum disetujui",
-                            message = "Tanggal attendance hari ini tidak tersedia untuk memvalidasi booking WFA."
-                        )
-                    )
-                    return@launch
-                }
-
-                resolveTodayApprovedWfaBookingIdUseCase(scheduleDateIso)
-                    .onFailure {
-                        _uiState.value = _uiState.value.withActionState(
-                            AttendanceActionState.Blocked(
-                                reason = AttendanceBlockReason.WFA_BOOKING_REQUIRED,
-                                title = "Booking WFA belum disetujui",
-                                message = "Booking WFA yang disetujui diperlukan sebelum absen dari lokasi WFA."
-                            )
-                        )
-                    }
-                    .getOrNull() ?: return@launch
-            }
-
-            val verifyingState = AttendanceActionState.VerifyingFace(intent)
-            _uiState.value = _uiState.value.copy(
-                navigationTarget = NavigationTarget.FaceScanner(intent)
-            ).withActionState(verifyingState)
-        }
+        val verifyingState = AttendanceActionState.VerifyingFace(intent)
+        _uiState.value = _uiState.value.copy(
+            navigationTarget = NavigationTarget.FaceScanner(intent)
+        ).withActionState(verifyingState)
     }
 
     /**
@@ -775,42 +891,19 @@ class AttendanceViewModel @Inject constructor(
                     return@launch
                 }
 
-                val selectedMode = _uiState.value.selectedWorkMode
-                val target = _uiState.value.selectedTargetLocation ?: resolveSelectedTargetLocationUseCase(
-                    mode = selectedMode,
-                    wfoLocation = _uiState.value.wfoLocation,
-                    wfhLocation = _uiState.value.wfhLocation,
-                    approvedWfaLocation = _uiState.value.approvedWfaLocation
-                )
-                val targetLocation = target.location
+                val preparation = _uiState.value.preparation
+                val selectedMode = preparation.selectedMode
+                val resolvedTarget = (preparation.targetResolution as? TargetLocationResolution.Resolved)
+                    ?.target
+                val eligibility = preparation.eligibility
 
-                if (targetLocation == null) {
-                    val message = target.unavailableReason
-                        ?: "Target location not available for ${selectedMode.shortLabel}. Please try again."
+                if (resolvedTarget == null || eligibility !is AttendancePreparationEligibility.Ready) {
                     _uiState.value = _uiState.value.withActionState(
-                        AttendanceActionState.Blocked(
-                            reason = AttendanceBlockReason.TARGET_LOCATION_UNAVAILABLE,
-                            title = "Target location tidak tersedia",
-                            message = message
-                        )
+                        AttendanceActionResolver.resolve(_uiState.value)
                     )
                     return@launch
                 }
-
-                val eligibility = _uiState.value.workModeEligibility ?: evaluateWorkModeEligibilityUseCase(
-                    mode = selectedMode,
-                    selectedTargetLocation = target,
-                    todayDate = _uiState.value.todayStatus?.todayDate
-                )
-
-                if (!eligibility.canContinueToFaceVerification) {
-                    _uiState.value = _uiState.value.withActionState(
-                        AttendanceActionResolver.resolve(
-                            _uiState.value.copy(workModeEligibility = eligibility)
-                        )
-                    )
-                    return@launch
-                }
+                val targetLocation = resolvedTarget.toAttendanceLocation()
 
                 // Get user info once for this mutation; long-running collection can replay submit.
                 val user = getLoggedInUserUseCase().firstOrNull()
@@ -828,46 +921,10 @@ class AttendanceViewModel @Inject constructor(
                     return@launch
                 }
 
-                val bookingId = if (selectedMode == WorkMode.WFA) {
-                    eligibility.approvedWfaBookingId ?: run {
-                        val scheduleDateIso = _uiState.value.todayStatus?.todayDate
-                        if (scheduleDateIso.isNullOrBlank()) {
-                            val message = publishTransientFeedback(
-                                AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
-                            ).message
-                            _uiState.value = _uiState.value.withActionState(
-                                AttendanceActionState.RetryableFailure(
-                                    intent = intent,
-                                    title = "Booking WFA belum disetujui",
-                                    message = message
-                                )
-                            )
-                            return@launch
-                        }
-
-                        resolveTodayApprovedWfaBookingIdUseCase(scheduleDateIso)
-                            .getOrElse {
-                                val message = publishTransientFeedback(
-                                    AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
-                                ).message
-                                _uiState.value = _uiState.value.withActionState(
-                                    AttendanceActionState.RetryableFailure(
-                                        intent = intent,
-                                        title = "Booking WFA belum disetujui",
-                                        message = message
-                                    )
-                                )
-                                return@launch
-                            }
-                    }
-                } else {
-                    null
-                }
-
                 val attendanceRequest = try {
                     AttendanceCheckInRequestFactory.create(
                         workMode = selectedMode,
-                        bookingId = bookingId
+                        authoritativeTarget = resolvedTarget
                     )
                 } catch (_: IllegalArgumentException) {
                     val message = publishTransientFeedback(
@@ -1007,9 +1064,11 @@ class AttendanceViewModel @Inject constructor(
     /**
      * Handle map marker click
      */
-    fun onMarkerClicked(location: Location) {
-        Log.d(TAG, "Marker clicked for location: ${location.description}")
-        _uiState.value = _uiState.value.copy(selectedMarkerInfo = location)
+    fun onMarkerClicked(target: AuthoritativeTargetLocation) {
+        Log.d(TAG, "Marker clicked for location: ${target.displayName}")
+        _uiState.value = _uiState.value.copy(
+            selectedMarkerInfo = target.toAttendanceLocation()
+        )
     }
 
     /**
@@ -1018,15 +1077,25 @@ class AttendanceViewModel @Inject constructor(
      * Always gets fresh location data when clicked
      */
     fun onFocusLocationClicked() {
+        val selectionRequest = latestSelectionRequest
         viewModelScope.launch {
             try {
                 when (val current = getCurrentLocationUseCase()) {
                     is CurrentLocationResult.Success -> {
+                        if (!latestSelectionGuard.isCurrent(
+                                selectionRequest,
+                                _uiState.value.preparation.selectedMode
+                            )
+                        ) return@launch
                         val coordinate = current.location.coordinate
-                        _uiState.value = _uiState.value.copy(
-                            currentUserLatitude = coordinate.latitude,
-                            currentUserLongitude = coordinate.longitude
-                        )
+                        _uiState.value = _uiState.value
+                            .withCurrentLocation(current)
+                            .withResolvedActionStatePreservingInFlightSubmit()
+                        if (!latestSelectionGuard.isCurrent(
+                                selectionRequest,
+                                _uiState.value.preparation.selectedMode
+                            )
+                        ) return@launch
                         _mapCameraEffects.tryEmit(
                             MapCameraEffect.Focus(
                                 id = nextMapCameraEffectId++,
@@ -1036,22 +1105,34 @@ class AttendanceViewModel @Inject constructor(
                         )
                     }
                     is CurrentLocationResult.Failure -> {
+                        if (!latestSelectionGuard.isCurrent(
+                                selectionRequest,
+                                _uiState.value.preparation.selectedMode
+                            )
+                        ) return@launch
                         Log.e(TAG, "Failed to get current GPS location: $current")
                         publishTransientFeedback(AttendanceTransientFeedbackKind.LOCATION_ERROR)
                     }
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "=== UNEXPECTED ERROR ===")
                 Log.e(TAG, "Error in onFocusLocationClicked", e)
+                if (!latestSelectionGuard.isCurrent(
+                        selectionRequest,
+                        _uiState.value.preparation.selectedMode
+                    )
+                ) return@launch
                 publishTransientFeedback(AttendanceTransientFeedbackKind.LOCATION_ERROR)
             }
         }
     }
 
     private fun cachedCurrentCoordinateOrNull(): GeoCoordinate? {
-        val latitude = _uiState.value.currentUserLatitude ?: return null
-        val longitude = _uiState.value.currentUserLongitude ?: return null
-        return runCatching { GeoCoordinate(latitude, longitude) }.getOrNull()
+        val current = _uiState.value.preparation.currentLocation
+            as? CurrentLocationResult.Success
+        return current?.location?.coordinate
     }
 
     /**
@@ -1059,14 +1140,13 @@ class AttendanceViewModel @Inject constructor(
      */
     fun onMapReady() {
         Log.d(TAG, "Map is ready, focusing to selected target location")
-        viewModelScope.launch {
-            val location = _uiState.value.selectedTargetLocation?.location ?: _uiState.value.wfoLocation
-            location?.let { target ->
-                animateMapToTarget(target)
-                Log.d(TAG, "Initial camera focus sent to selected target location")
-            } ?: run {
-                Log.w(TAG, "Target location not available for initial focus")
-            }
+        val target = (_uiState.value.preparation.targetResolution as? TargetLocationResolution.Resolved)
+            ?.target
+        if (target != null) {
+            animateMapToTarget(target)
+            Log.d(TAG, "Initial camera focus sent to selected target location")
+        } else {
+            Log.w(TAG, "Target location not available for initial focus")
         }
     }
 
@@ -1083,23 +1163,14 @@ class AttendanceViewModel @Inject constructor(
      * Handle selected location from LocationSearchScreen
      */
     fun onLocationSelected(location: LocationResult) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
-                selectedWfaLocation = WfaRecommendation(
-                    name = location.placeName,
-                    address = location.address,
-                    latitude = location.latitude,
-                    longitude = location.longitude,
-                    score = 0.0, // Default score for manually selected location
-                    label = "Manual Selection", // Default label for manually selected location
-                    category = "Custom", // Default category for manually selected location
-                    distance = 0.0 // Distance will be calculated based on current location
-                ),
-                selectedWorkMode = WorkMode.WFA,
-                isWfaModeActive = true
+        val request = latestSelectionRequest
+        if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return
+        _uiState.value = _uiState.value.copy(
+            preparation = AttendancePreparationReducer.selectSearchPreview(
+                _uiState.value.preparation,
+                location
             )
-            refreshResolvedActionState()
-        }
+        )
     }
 
     /**
@@ -1107,8 +1178,7 @@ class AttendanceViewModel @Inject constructor(
      */
     fun onEnterPickOnMapMode() {
         _uiState.value = _uiState.value.copy(
-            isPickOnMapModeActive = true,
-            pickedLocation = null // Reset any previously picked location
+            isPickOnMapModeActive = true
         )
     }
 
@@ -1118,8 +1188,7 @@ class AttendanceViewModel @Inject constructor(
     fun onExitPickOnMapMode() {
         Log.d(TAG, "Exiting Pick on Map mode")
         _uiState.value = _uiState.value.copy(
-            isPickOnMapModeActive = false,
-            pickedLocation = null
+            isPickOnMapModeActive = false
         )
     }
 
@@ -1130,6 +1199,8 @@ class AttendanceViewModel @Inject constructor(
     fun onMapIdle(centerPoint: GeoCoordinate) {
         // Only perform reverse geocoding if Pick on Map mode is active
         if (!_uiState.value.isPickOnMapModeActive) return
+        val request = latestSelectionRequest
+        if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return
 
         viewModelScope.launch {
             try {
@@ -1141,23 +1212,26 @@ class AttendanceViewModel @Inject constructor(
                 // Perform reverse geocoding for the center point
                 when (val result = reverseGeocodeUseCase(centerPoint)) {
                     is AddressResolutionResult.Resolved -> applyPickedLocation(
+                        request = request,
                         coordinate = centerPoint,
                         placeName = result.address.name ?: "Lokasi dipilih",
                         address = result.address.formattedAddress
                     )
                     is AddressResolutionResult.CoordinateOnly -> applyPickedLocation(
+                        request = request,
                         coordinate = result.coordinate,
                         placeName = "Lokasi dipilih",
                         address = result.coordinate.toDisplayText()
                     )
                     is AddressResolutionResult.Failed -> {
+                        if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return@launch
                         _uiState.value = _uiState.value.copy(
-                            pickedLocation = null,
-                            selectedWfaLocation = null,
                             error = "Gagal mendapatkan detail lokasi. Periksa koneksi Anda."
                         )
                     }
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Unexpected error in onMapIdle", e)
             }
@@ -1165,10 +1239,12 @@ class AttendanceViewModel @Inject constructor(
     }
 
     private fun applyPickedLocation(
+        request: SelectionRequestToken,
         coordinate: GeoCoordinate,
         placeName: String,
         address: String
     ) {
+        if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return
         val locationResult = LocationResult(
             placeName = placeName,
             address = address,
@@ -1176,29 +1252,34 @@ class AttendanceViewModel @Inject constructor(
             longitude = coordinate.longitude
         )
         _uiState.value = _uiState.value.copy(
-            pickedLocation = locationResult,
-            selectedWfaLocation = WfaRecommendation(
-                name = placeName,
-                address = address,
-                coordinate = coordinate,
-                score = 0.0,
-                label = "Picked on Map",
-                category = "Manual Selection",
-                distance = 0.0
+            preparation = AttendancePreparationReducer.selectSearchPreview(
+                _uiState.value.preparation,
+                locationResult
             )
         )
     }
 
-    private fun BookingHistoryItem.toAttendanceLocation(): Location? {
-        val latitude = latitude ?: return null
-        val longitude = longitude ?: return null
-        val coordinate = runCatching { GeoCoordinate(latitude, longitude) }.getOrNull() ?: return null
+    private fun AuthoritativeTargetLocation.toAttendanceLocation(): Location = Location(
+        locationId = approvedWfaContext?.bookingId
+            ?: targetId.value.substringAfter(':').toIntOrNull()
+            ?: 0,
+        coordinate = coordinate,
+        radius = radius.value.toInt(),
+        description = displayName,
+        category = mode.shortLabel
+    )
+
+    private fun UserModel?.toWfhAttendanceLocation(): Location? {
+        val user = this ?: return null
+        val latitude = user.latitude ?: return null
+        val longitude = user.longitude ?: return null
         return Location(
-            locationId = locationId ?: bookingId,
-            coordinate = coordinate,
-            radius = radiusMeters?.toInt() ?: 100,
-            description = locationDescription,
-            category = "WFA"
+            locationId = user.id,
+            latitude = latitude,
+            longitude = longitude,
+            radius = user.radius ?: 100,
+            description = user.locationDescription ?: "Work From Home Location",
+            category = user.locationCategoryName ?: "Home"
         )
     }
 
@@ -1236,6 +1317,8 @@ class AttendanceViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         displayLocationJob?.cancel()
+        modeResolutionJob?.cancel()
+        recommendationJob?.cancel()
 
         // Removed onCleared geofence removal to keep geofence active until explicit checkout
     }
