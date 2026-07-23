@@ -286,12 +286,14 @@ fun AttendancePermissionReadinessRoute(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        AttendancePermissionReadinessScreen(
-            uiState = uiState,
-            onEvent = viewModel::onEvent,
-            onBackClick = { latestOnBackClick() },
-            modifier = Modifier.fillMaxSize()
-        )
+        if (shouldRenderPermissionReadiness(uiState)) {
+            AttendancePermissionReadinessScreen(
+                uiState = uiState,
+                onEvent = viewModel::onEvent,
+                onBackClick = { latestOnBackClick() },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
         InfiniteSnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier
@@ -302,6 +304,10 @@ fun AttendancePermissionReadinessRoute(
         )
     }
 }
+
+internal fun shouldRenderPermissionReadiness(
+    uiState: AttendancePermissionReadinessUiState
+): Boolean = !uiState.isLoading && !uiState.canContinue
 
 private fun permissionOutcome(
     activity: Activity?,

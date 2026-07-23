@@ -201,14 +201,14 @@ private fun TimelineCardHeader(
     }
 }
 
-internal fun connectorPositionFor(index: Int, totalCount: Int): TimelineConnectorPosition = when {
+private fun connectorPositionFor(index: Int, totalCount: Int): TimelineConnectorPosition = when {
     totalCount <= 1 -> TimelineConnectorPosition.None
     index == 0 -> TimelineConnectorPosition.First
     index == totalCount - 1 -> TimelineConnectorPosition.Last
     else -> TimelineConnectorPosition.Middle
 }
 
-internal fun AttendanceReportStatusKind.toTimelineVariant(): InfiniteStatusVariant = when (this) {
+private fun AttendanceReportStatusKind.toTimelineVariant(): InfiniteStatusVariant = when (this) {
     AttendanceReportStatusKind.ActiveSession -> InfiniteStatusVariant.Active
     AttendanceReportStatusKind.OnTime -> InfiniteStatusVariant.OnTime
     AttendanceReportStatusKind.Late -> InfiniteStatusVariant.Late

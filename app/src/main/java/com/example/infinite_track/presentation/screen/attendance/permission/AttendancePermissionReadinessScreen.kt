@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,14 +22,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,7 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -52,10 +49,10 @@ import com.example.infinite_track.presentation.design.components.button.Infinite
 import com.example.infinite_track.presentation.design.components.data.InfiniteSectionHeader
 import com.example.infinite_track.presentation.design.components.navigation.InfiniteTopBar
 import com.example.infinite_track.presentation.design.components.state.InfiniteLoadingState
+import com.example.infinite_track.presentation.design.tokens.InfiniteColors
+import com.example.infinite_track.presentation.design.tokens.InfiniteFeedbackTypography
 import com.example.infinite_track.presentation.design.tokens.InfiniteMotion
-import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
-import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
 @Composable
@@ -114,8 +111,7 @@ private fun PermissionReadinessContent(
     onEvent: (AttendancePermissionReadinessEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val currentIndex = uiState.requiredItems.indexOfFirst { !it.isReady }
-    val optionalToggleColors = infiniteSemanticColors(InfiniteSemantic.Neutral)
+    val currentRequiredIndex = uiState.requiredItems.indexOfFirst { !it.isReady }
 
     Column(
         modifier = modifier,
@@ -138,18 +134,11 @@ private fun PermissionReadinessContent(
             leadingIcon = Icons.Default.Shield
         )
 
-        Column {
+        Column(verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.sm)) {
             uiState.requiredItems.forEachIndexed { index, item ->
-                PermissionTimelinePill(
+                PermissionAccessCard(
                     item = item,
-                    stepNumber = index + 1,
-                    isCurrentAction = index == currentIndex,
-                    showTopConnector = index > 0,
-                    showBottomConnector = index < uiState.requiredItems.lastIndex,
-                    topConnectorComplete = index > 0 &&
-                        uiState.requiredItems[index - 1].isReady,
-                    bottomConnectorComplete = item.isReady,
-                    onClick = if (index == currentIndex && item.actionLabel != null) {
+                    onActionClick = if (index == currentRequiredIndex && item.actionLabel != null) {
                         {
                             onEvent(
                                 AttendancePermissionReadinessEvent.PermissionItemClicked(
@@ -170,7 +159,7 @@ private fun PermissionReadinessContent(
                 .sizeIn(minHeight = 48.dp)
                 .testTag("permission-optional-toggle")
                 .semantics(mergeDescendants = true) {
-                    contentDescription = "Pengingat opsional"
+                    contentDescription = "Peringatan opsional"
                     stateDescription = if (optionalExpanded) "Diperluas" else "Diciutkan"
                     role = Role.Button
                 }
@@ -178,30 +167,55 @@ private fun PermissionReadinessContent(
                     onOptionalExpandedChange(!optionalExpanded)
                 },
             shape = RoundedCornerShape(16.dp),
-            color = optionalToggleColors.container,
-            border = BorderStroke(1.dp, optionalToggleColors.border)
+            color = InfiniteColors.Surface,
+            border = BorderStroke(
+                1.dp,
+                InfiniteColors.Neutral.copy(alpha = 0.18f)
+                    .compositeOver(InfiniteColors.Surface)
+            ),
+            shadowElevation = 1.dp
         ) {
-            InfiniteSectionHeader(
-                title = "Pengingat opsional",
-                subtitle = "Boleh dilewati, absensi manual tetap bisa lanjut",
-                leadingIcon = Icons.Default.Notifications,
-                trailingText = if (optionalExpanded) "Sembunyikan" else "Tampilkan",
-                modifier = Modifier.padding(InfiniteSpacing.Default.md)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(InfiniteSpacing.Default.lg),
+                horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.md),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)
+                ) {
+                    Text(
+                        text = "Peringatan opsional",
+                        style = InfiniteFeedbackTypography.snackbarTitle,
+                        color = InfiniteColors.Text
+                    )
+                    Text(
+                        text = "Boleh dilewati, absensi manual tetap bisa lanjut",
+                        style = InfiniteFeedbackTypography.supportingBody,
+                        color = InfiniteColors.Text.copy(alpha = 0.72f)
+                    )
+                }
+                Text(
+                    text = if (optionalExpanded) "Sembunyikan" else "Tampilkan",
+                    style = InfiniteFeedbackTypography.actionLabel,
+                    color = InfiniteColors.Primary
+                )
+            }
         }
 
         AnimatedVisibility(
             visible = optionalExpanded,
-            enter = fadeIn(InfiniteMotion.enterTween()) +
-                expandVertically(InfiniteMotion.enterTween()),
-            exit = fadeOut(InfiniteMotion.exitTween()) +
-                shrinkVertically(InfiniteMotion.exitTween())
+            enter = fadeIn(InfiniteMotion.normalTween()) +
+                expandVertically(InfiniteMotion.normalTween()),
+            exit = fadeOut(InfiniteMotion.normalTween()) +
+                shrinkVertically(InfiniteMotion.normalTween())
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.sm)) {
                 uiState.optionalItems.forEach { item ->
-                    PermissionMissionRow(
+                    PermissionAccessCard(
                         item = item,
-                        icon = item.iconKey.toImageVector(),
                         onActionClick = item.actionLabel?.let {
                             {
                                 onEvent(
@@ -243,14 +257,6 @@ private fun PermissionReadinessContent(
 
         Spacer(modifier = Modifier.height(112.dp))
     }
-}
-
-private fun PermissionIconKey.toImageVector(): ImageVector = when (this) {
-    PermissionIconKey.LOCATION -> Icons.Default.LocationOn
-    PermissionIconKey.CAMERA -> Icons.Default.PhotoCamera
-    PermissionIconKey.DEVICE_LOCATION -> Icons.Default.Settings
-    PermissionIconKey.NOTIFICATION -> Icons.Default.Notifications
-    PermissionIconKey.BACKGROUND_LOCATION -> Icons.Default.Tune
 }
 
 @Preview(showBackground = true)

@@ -7,7 +7,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -40,7 +39,7 @@ class AttendancePermissionReadinessScreenTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun permissionTimelinePillExposesCompletedNodeAndCurrentAction() {
+    fun permissionAccessCardExposesStateAndAction() {
         val item = permissionItem(
             AttendanceAccess.CAMERA,
             status = "Perlu diatur",
@@ -49,35 +48,26 @@ class AttendancePermissionReadinessScreenTest {
         )
         composeRule.setContent {
             Infinite_TrackTheme {
-                PermissionTimelinePill(
+                PermissionAccessCard(
                     item = item,
-                    stepNumber = 2,
-                    isCurrentAction = true,
-                    showTopConnector = true,
-                    showBottomConnector = true,
-                    topConnectorComplete = true,
-                    bottomConnectorComplete = false,
-                    onClick = {}
+                    onActionClick = {}
                 )
             }
         }
 
-        composeRule.onNodeWithTag("permission-step-camera")
+        composeRule.onNodeWithTag("permission-access-card-camera")
             .assertContentDescriptionEquals("Kamera")
             .assert(
                 SemanticsMatcher.expectValue(
                     SemanticsProperties.StateDescription,
-                    "Wajib, Perlu diatur, Aksi Minta izin"
+                    "Wajib, Perlu diatur"
                 )
             )
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .assertHasClickAction()
         composeRule.onNodeWithTag(
-            "permission-step-node-camera",
+            "permission-access-action-camera",
             useUnmergedTree = true
-        ).assert(
-            SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription)
-        )
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -90,7 +80,7 @@ class AttendancePermissionReadinessScreenTest {
     }
 
     @Test
-    fun requiredTimelineShowsChecksAndOnlyCurrentStepIsClickable() {
+    fun requiredCardsExposeStateAndOnlyCurrentStepIsActionable() {
         val events = mutableListOf<AttendancePermissionReadinessEvent>()
         render(
             partialState(
@@ -120,15 +110,18 @@ class AttendancePermissionReadinessScreenTest {
             onEvent = events::add
         )
 
-        composeRule.onNodeWithTag("permission-step-precise_location")
+        composeRule.onNodeWithTag("permission-access-card-precise_location")
             .assert(
                 SemanticsMatcher.expectValue(
                     SemanticsProperties.StateDescription,
                     "Wajib, Siap"
                 )
             )
-        composeRule.onNodeWithTag("permission-step-camera").assertHasClickAction().performClick()
-        composeRule.onNodeWithTag("permission-step-device_location").assertHasNoClickAction()
+        composeRule.onNodeWithTag("permission-access-card-camera")
+            .assertHasClickAction()
+            .performClick()
+        composeRule.onNodeWithTag("permission-access-card-device_location")
+            .assertHasNoClickAction()
         assertEquals(
             listOf(
                 AttendancePermissionReadinessEvent.PermissionItemClicked(
@@ -149,20 +142,14 @@ class AttendancePermissionReadinessScreenTest {
         )
         composeRule.setContent {
             Infinite_TrackTheme {
-                PermissionTimelinePill(
+                PermissionAccessCard(
                     item = item,
-                    stepNumber = 3,
-                    isCurrentAction = false,
-                    showTopConnector = true,
-                    showBottomConnector = false,
-                    topConnectorComplete = false,
-                    bottomConnectorComplete = false,
-                    onClick = null
+                    onActionClick = null
                 )
             }
         }
 
-        composeRule.onNodeWithTag("permission-step-device_location")
+        composeRule.onNodeWithTag("permission-access-card-device_location")
             .assertContentDescriptionEquals("Lokasi perangkat aktif")
             .assert(
                 SemanticsMatcher.expectValue(
@@ -170,60 +157,12 @@ class AttendancePermissionReadinessScreenTest {
                     "Wajib, Perlu diatur"
                 )
             )
-            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Role))
             .assertHasNoClickAction()
         composeRule.onNodeWithTag(
-            "permission-step-status-device_location",
-            useUnmergedTree = true
-        ).assertIsDisplayed()
-        composeRule.onNodeWithTag(
-            "permission-step-action-device_location",
+            "permission-access-action-device_location",
             useUnmergedTree = true
         )
             .assertDoesNotExist()
-    }
-
-    @Test
-    fun permissionNodeContainsNumberAtFontScaleTwo() {
-        val item = permissionItem(
-            AttendanceAccess.CAMERA,
-            status = "Perlu diatur",
-            action = "Minta izin",
-            semantic = InfiniteSemantic.Primary
-        )
-        composeRule.setContent {
-            CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
-                Infinite_TrackTheme {
-                    Box(Modifier.width(320.dp)) {
-                        PermissionTimelinePill(
-                            item = item,
-                            stepNumber = 2,
-                            isCurrentAction = true,
-                            showTopConnector = true,
-                            showBottomConnector = true,
-                            topConnectorComplete = true,
-                            bottomConnectorComplete = false,
-                            onClick = {}
-                        )
-                    }
-                }
-            }
-        }
-
-        val node = composeRule.onNodeWithTag(
-            "permission-step-node-camera",
-            useUnmergedTree = true
-        ).getUnclippedBoundsInRoot()
-        val label = composeRule.onNodeWithTag(
-            "permission-step-node-label-camera",
-            useUnmergedTree = true
-        ).getUnclippedBoundsInRoot()
-        assertTrue(
-            label.left >= node.left &&
-                label.top >= node.top &&
-                label.right <= node.right &&
-                label.bottom <= node.bottom
-        )
     }
 
     @Test
@@ -257,7 +196,7 @@ class AttendancePermissionReadinessScreenTest {
     }
 
     @Test
-    fun width320AndFontScaleTwoKeepActivePillActionAndPrimaryButtonUsable() {
+    fun width320AndFontScaleTwoKeepActiveCardActionAndPrimaryButtonUsable() {
         composeRule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 Infinite_TrackTheme {
@@ -277,22 +216,22 @@ class AttendancePermissionReadinessScreenTest {
             }
         }
 
-        val activePillAction = composeRule.onNodeWithTag(
-            "permission-step-action-precise_location",
+        val activeCardAction = composeRule.onNodeWithTag(
+            "permission-access-action-precise_location",
             useUnmergedTree = true
         )
             .performScrollTo()
             .assertHeightIsAtLeast(48.dp)
             .assertIsDisplayed()
         val hostBounds = composeRule.onNodeWithTag("screenHost").getUnclippedBoundsInRoot()
-        val pillActionBounds = activePillAction.getUnclippedBoundsInRoot()
+        val cardActionBounds = activeCardAction.getUnclippedBoundsInRoot()
         assertTrue(
-            pillActionBounds.left >= hostBounds.left &&
-                pillActionBounds.right <= hostBounds.right
+            cardActionBounds.left >= hostBounds.left &&
+                cardActionBounds.right <= hostBounds.right
         )
         assertTrue(
-            pillActionBounds.top >= hostBounds.top &&
-                pillActionBounds.bottom <= hostBounds.bottom
+            cardActionBounds.top >= hostBounds.top &&
+                cardActionBounds.bottom <= hostBounds.bottom
         )
 
         val primaryButton = composeRule.onNodeWithText("Lanjutkan Setup")
