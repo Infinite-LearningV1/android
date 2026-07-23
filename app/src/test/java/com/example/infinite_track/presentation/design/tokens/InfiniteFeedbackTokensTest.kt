@@ -16,9 +16,8 @@ class InfiniteFeedbackTokensTest {
         InfiniteSemantic.entries.forEach { semantic ->
             val palette = infiniteFeedbackPalette(semantic)
 
-            assertNotEquals(palette.surfaceStart, palette.surfaceEnd)
+            assertNotEquals(palette.surface, palette.stateContainer)
             assertNotEquals(palette.content, palette.border)
-            assertNotEquals(palette.accent, palette.glow)
             assertNotEquals(palette.shadow, palette.topHighlight)
         }
     }
@@ -60,12 +59,10 @@ class InfiniteFeedbackTokensTest {
         InfiniteSemantic.entries.forEach { semantic ->
             val palette = infiniteFeedbackPalette(semantic)
 
-            listOf(palette.surfaceStart, palette.surfaceEnd).forEach { surface ->
-                assertTrue(
-                    "${semantic.name} content must meet 4.5 to 1 over glass surface",
-                    contrastRatio(palette.content, surface.compositedOver(Color.White)) >= 4.5
-                )
-            }
+            assertTrue(
+                "${semantic.name} content must meet 4.5 to 1 over the solid feedback surface",
+                contrastRatio(palette.content, palette.surface.compositedOver(Color.White)) >= 4.5
+            )
         }
     }
 

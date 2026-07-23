@@ -51,7 +51,7 @@ internal data class InfiniteStatusPillPalette(val container: Color, val content:
 internal fun resolveInfiniteStatusPillPalette(semantic: InfiniteSemantic, shared: Boolean, override: Color?, variant: InfiniteStatusVariant): InfiniteStatusPillPalette {
     val palette = infiniteFeedbackPalette(semantic); val sharedColor = override ?: variant.toAttendanceBadgeColor()
     return if (shared || override != null) InfiniteStatusPillPalette(sharedColor.copy(alpha = .13f), sharedColor, sharedColor.copy(alpha = .35f), sharedColor)
-    else InfiniteStatusPillPalette(palette.surfaceEnd, palette.content, palette.border, palette.accent)
+    else InfiniteStatusPillPalette(palette.stateContainer, palette.content, palette.border, palette.accent)
 }
 
 @Composable

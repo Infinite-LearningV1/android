@@ -17,6 +17,7 @@ import com.example.infinite_track.presentation.components.button.InfiniteTrackBu
 import com.example.infinite_track.presentation.components.status.InfiniteTrackInlineAlert
 import com.example.infinite_track.presentation.components.status.StatusStates
 import com.example.infinite_track.presentation.core.headline4
+import com.example.infinite_track.presentation.design.components.status.InfiniteInlineAlertDuration
 import com.example.infinite_track.presentation.screen.attendance.AttendanceActionState
 import com.example.infinite_track.presentation.screen.attendance.AttendanceBlockReason
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
@@ -132,7 +133,8 @@ private fun AttendanceActionInlineAlert(
             InfiniteTrackInlineAlert(
                 status = StatusStates.Info,
                 title = "Verifikasi wajah",
-                message = "Membuka scanner wajah untuk melanjutkan absensi."
+                message = "Membuka scanner wajah untuk melanjutkan absensi.",
+                duration = InfiniteInlineAlertDuration.Persistent
             )
         }
 
@@ -140,7 +142,8 @@ private fun AttendanceActionInlineAlert(
             InfiniteTrackInlineAlert(
                 status = StatusStates.Info,
                 title = "Mengirim absensi",
-                message = actionState.message
+                message = actionState.message,
+                duration = InfiniteInlineAlertDuration.Persistent
             )
         }
 

@@ -1,8 +1,14 @@
 package com.example.infinite_track.presentation.design.components.status
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,10 +29,18 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
@@ -35,37 +49,132 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.infinite_track.presentation.design.tokens.InfiniteFeedbackTypography
+import com.example.infinite_track.presentation.design.tokens.InfiniteMotion
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
 import com.example.infinite_track.presentation.design.tokens.infiniteFeedbackPalette
 import com.example.infinite_track.presentation.theme.White
+import kotlinx.coroutines.delay
 
-@Composable
-fun InfiniteInlineAlert(title: String, message: String, semantic: InfiniteSemantic, modifier: Modifier = Modifier, onDismiss: (() -> Unit)? = null) {
-    InfiniteInlineAlertContent(title, message, semantic, null, null, modifier, onDismiss)
+enum class InfiniteInlineAlertDuration(internal val timeoutMillis: Int?) {
+    Short(4_000),
+    Long(8_000),
+    Persistent(null)
+}
+
+fun InfiniteSemantic.defaultInlineAlertDuration(
+    hasAction: Boolean = false
+): InfiniteInlineAlertDuration {
+    if (hasAction) return InfiniteInlineAlertDuration.Persistent
+    return when (this) {
+        InfiniteSemantic.Success,
+        InfiniteSemantic.Info -> InfiniteInlineAlertDuration.Short
+        InfiniteSemantic.Primary,
+        InfiniteSemantic.Secondary,
+        InfiniteSemantic.Warning,
+        InfiniteSemantic.Error,
+        InfiniteSemantic.Neutral -> InfiniteInlineAlertDuration.Persistent
+    }
 }
 
 @Composable
-fun InfiniteInlineAlert(title: String, message: String, semantic: InfiniteSemantic, actionLabel: String, onAction: () -> Unit, modifier: Modifier = Modifier, onDismiss: (() -> Unit)? = null) {
-    InfiniteInlineAlertContent(title, message, semantic, actionLabel, onAction, modifier, onDismiss)
+fun InfiniteInlineAlert(
+    title: String,
+    message: String,
+    semantic: InfiniteSemantic,
+    modifier: Modifier = Modifier,
+    onDismiss: (() -> Unit)? = null,
+    duration: InfiniteInlineAlertDuration = semantic.defaultInlineAlertDuration()
+) {
+    InfiniteInlineAlertContent(title, message, semantic, null, null, modifier, onDismiss, duration)
 }
 
 @Composable
-private fun InfiniteInlineAlertContent(title: String, message: String, semantic: InfiniteSemantic, actionLabel: String?, onAction: (() -> Unit)?, modifier: Modifier, onDismiss: (() -> Unit)?) {
+fun InfiniteInlineAlert(
+    title: String,
+    message: String,
+    semantic: InfiniteSemantic,
+    actionLabel: String,
+    onAction: () -> Unit,
+    modifier: Modifier = Modifier,
+    onDismiss: (() -> Unit)? = null,
+    duration: InfiniteInlineAlertDuration = semantic.defaultInlineAlertDuration(hasAction = true)
+) {
+    InfiniteInlineAlertContent(title, message, semantic, actionLabel, onAction, modifier, onDismiss, duration)
+}
+
+@Composable
+private fun InfiniteInlineAlertContent(
+    title: String,
+    message: String,
+    semantic: InfiniteSemantic,
+    actionLabel: String?,
+    onAction: (() -> Unit)?,
+    modifier: Modifier,
+    onDismiss: (() -> Unit)?,
+    duration: InfiniteInlineAlertDuration
+) {
     val palette = infiniteFeedbackPalette(semantic)
-    InfiniteFeedbackGlassSurface(
-        semantic = semantic,
-        modifier = modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = "$title. $message" }
-    ) {
-        Row(Modifier.padding(InfiniteSpacing.Default.lg), horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.sm), verticalAlignment = Alignment.Top) {
-            Icon(semanticIcon(semantic), null, tint = palette.accent, modifier = Modifier.size(22.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, color = palette.content, style = InfiniteFeedbackTypography.snackbarTitle)
-                Text(message, color = palette.supportingContent, style = InfiniteFeedbackTypography.supportingBody)
-                if (actionLabel != null && onAction != null) TextButton(actionLabel, onAction)
+    var visible by remember(title, message, semantic, duration) { mutableStateOf(true) }
+    var dismissalRequested by remember(title, message, semantic, duration) { mutableStateOf(false) }
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+
+    LaunchedEffect(title, message, semantic, duration) {
+        duration.timeoutMillis?.let { timeout ->
+            delay(timeout.toLong())
+            if (!dismissalRequested) {
+                dismissalRequested = true
+                visible = false
+                delay(InfiniteMotion.ExitDurationMillis.toLong())
+                currentOnDismiss?.invoke()
             }
-            if (onDismiss != null) IconButton(onDismiss, Modifier.sizeIn(48.dp, 48.dp)) {
-                Icon(Icons.Default.Close, "Dismiss alert", tint = palette.content)
+        }
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        modifier = modifier,
+        enter = fadeIn(InfiniteMotion.enterTween()) +
+            expandVertically(InfiniteMotion.enterTween(), expandFrom = Alignment.Top),
+        exit = fadeOut(InfiniteMotion.exitTween()) +
+            shrinkVertically(InfiniteMotion.exitTween(), shrinkTowards = Alignment.Top)
+    ) {
+        InfiniteFeedbackGlassSurface(
+            semantic = semantic,
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics(mergeDescendants = true) { contentDescription = "$title. $message" }
+        ) {
+            Row(
+                Modifier.padding(InfiniteSpacing.Default.lg),
+                horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.md),
+                verticalAlignment = Alignment.Top
+            ) {
+                FeedbackIcon(semantic = semantic, size = 44.dp, iconSize = 24.dp)
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .padding(top = 2.dp),
+                    verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)
+                ) {
+                    Text(title, color = palette.content, style = InfiniteFeedbackTypography.snackbarTitle)
+                    Text(message, color = palette.supportingContent, style = InfiniteFeedbackTypography.supportingBody)
+                    if (actionLabel != null && onAction != null) TextButton(actionLabel, onAction)
+                }
+                if (onDismiss != null || duration != InfiniteInlineAlertDuration.Persistent) {
+                    IconButton(
+                        onClick = {
+                            if (!dismissalRequested) {
+                                dismissalRequested = true
+                                visible = false
+                                currentOnDismiss?.invoke()
+                            }
+                        },
+                        modifier = Modifier.sizeIn(48.dp, 48.dp)
+                    ) {
+                        Icon(Icons.Default.Close, "Dismiss alert", tint = palette.supportingContent)
+                    }
+                }
             }
         }
     }
@@ -87,7 +196,7 @@ internal fun InfiniteStatusDialogContent(title: String, message: String, semanti
     val palette = infiniteFeedbackPalette(semantic)
     Dialog(onDismissRequest = onDismiss) { InfiniteFeedbackGlassSurface(semantic, modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            if (imageRes != null) Image(painterResource(imageRes), null, Modifier.size(112.dp)) else Icon(semanticIcon(semantic), null, tint = palette.accent, modifier = Modifier.size(64.dp))
+            if (imageRes != null) Image(painterResource(imageRes), null, Modifier.size(112.dp)) else FeedbackIcon(semantic)
             Spacer(Modifier.height(18.dp)); Text(title, style = InfiniteFeedbackTypography.dialogTitle, color = palette.content, textAlign = TextAlign.Center)
             Spacer(Modifier.height(10.dp)); Text(message, style = InfiniteFeedbackTypography.dialogBody, color = palette.supportingContent, textAlign = TextAlign.Center)
             Spacer(Modifier.height(24.dp)); Button(onConfirm, Modifier.fillMaxWidth().sizeIn(minHeight = 48.dp), colors = ButtonDefaults.buttonColors(containerColor = infiniteFeedbackPalette(InfiniteSemantic.Primary).accent, contentColor = White)) { Text(confirmText, style = InfiniteFeedbackTypography.actionLabel) }
@@ -111,7 +220,7 @@ internal fun InfiniteConfirmDialogBody(title: String, message: String, semantic:
     val palette = infiniteFeedbackPalette(semantic)
     InfiniteFeedbackGlassSurface(semantic, modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(semanticIcon(semantic), null, tint = palette.accent, modifier = Modifier.size(58.dp)); Spacer(Modifier.height(18.dp))
+            FeedbackIcon(semantic); Spacer(Modifier.height(18.dp))
             Text(title, style = InfiniteFeedbackTypography.dialogTitle, color = palette.content, textAlign = TextAlign.Center); Spacer(Modifier.height(10.dp))
             Text(message, style = InfiniteFeedbackTypography.dialogBody, color = palette.supportingContent, textAlign = TextAlign.Center); Spacer(Modifier.height(24.dp))
             BoxWithConstraints {
@@ -129,6 +238,30 @@ private fun DialogButtons(cancelText: String, confirmText: String, onDismiss: ()
     val modifier = if (weighted) Modifier.sizeIn(minHeight = 48.dp) else Modifier.fillMaxWidth().sizeIn(minHeight = 48.dp)
     OutlinedButton(onDismiss, modifier) { Text(cancelText, style = InfiniteFeedbackTypography.actionLabel) }
     Button(onConfirm, modifier, colors = ButtonDefaults.buttonColors(containerColor = if (destructive) InfiniteSemantic.Error.let { infiniteFeedbackPalette(it).accent } else infiniteFeedbackPalette(InfiniteSemantic.Primary).accent, contentColor = White)) { Text(confirmText, style = InfiniteFeedbackTypography.actionLabel) }
+}
+
+@Composable
+private fun FeedbackIcon(
+    semantic: InfiniteSemantic,
+    size: androidx.compose.ui.unit.Dp = 64.dp,
+    iconSize: androidx.compose.ui.unit.Dp = 32.dp
+) {
+    val palette = infiniteFeedbackPalette(semantic)
+    Surface(
+        modifier = Modifier.size(size),
+        shape = CircleShape,
+        color = palette.stateContainer,
+        contentColor = palette.accent
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = semanticIcon(semantic),
+                contentDescription = null,
+                modifier = Modifier.size(iconSize),
+                tint = palette.accent
+            )
+        }
+    }
 }
 
 internal fun semanticIcon(semantic: InfiniteSemantic) = when (semantic) {

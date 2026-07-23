@@ -53,6 +53,33 @@ class InfiniteStateStatusComponentsTest {
         assertTrue(retried && dismissed)
     }
 
+    @Test fun transientSuccessAlertUsesTimedDismissWhileActionableStatesRemainPersistent() {
+        var dismissed = false
+        composeRule.mainClock.autoAdvance = false
+        composeRule.setContent {
+            Infinite_TrackTheme {
+                InfiniteInlineAlert(
+                    title = "Attendance saved",
+                    message = "Check-in recorded.",
+                    semantic = InfiniteSemantic.Success,
+                    onDismiss = { dismissed = true }
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Attendance saved").assertIsDisplayed()
+        composeRule.mainClock.advanceTimeBy(4_250)
+        composeRule.onNodeWithText("Attendance saved").assertDoesNotExist()
+        composeRule.runOnIdle { assertTrue(dismissed) }
+
+        assertEquals(InfiniteInlineAlertDuration.Short, InfiniteSemantic.Info.defaultInlineAlertDuration())
+        assertEquals(InfiniteInlineAlertDuration.Persistent, InfiniteSemantic.Warning.defaultInlineAlertDuration())
+        assertEquals(
+            InfiniteInlineAlertDuration.Persistent,
+            InfiniteSemantic.Success.defaultInlineAlertDuration(hasAction = true)
+        )
+    }
+
     @Test fun everySemanticHasDistinctAccessibleFeedbackAndIconContract() {
         InfiniteSemantic.entries.forEach { semantic ->
             composeRule.setContent { Infinite_TrackTheme { InfiniteInlineAlert(semantic.name, "Message", semantic) } }
@@ -66,7 +93,7 @@ class InfiniteStateStatusComponentsTest {
         assertTrue(!statusDialogUsesIllustration(null))
         val semantic = InfiniteSemantic.Success
         val default = resolveInfiniteStatusPillPalette(semantic, false, null, InfiniteStatusVariant.Active)
-        assertEquals(infiniteFeedbackPalette(semantic).surfaceEnd, default.container)
+        assertEquals(infiniteFeedbackPalette(semantic).stateContainer, default.container)
         val override = Color.Magenta
         assertEquals(override, resolveInfiniteStatusPillPalette(semantic, false, override, InfiniteStatusVariant.Active).content)
         assertEquals(InfiniteStatusVariant.Active.toAttendanceBadgeColor(), resolveInfiniteStatusPillPalette(semantic, true, null, InfiniteStatusVariant.Active).content)
