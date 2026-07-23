@@ -81,6 +81,64 @@ class AttendanceSelectionTransitionTest {
         assertNull(next.navigationTarget)
     }
 
+    @Test
+    fun `selection preserves FaceScanner navigation and verifying action coherence`() {
+        val verifying = AttendanceActionState.VerifyingFace(AttendanceActionIntent.CHECK_OUT)
+        val faceScanner = NavigationTarget.FaceScanner(AttendanceActionIntent.CHECK_OUT)
+        val queuedState = AttendanceScreenState(
+            preparation = readyPreparation(approvedWfaTarget),
+            actionState = verifying,
+            navigationTarget = faceScanner
+        )
+        val wfoPreparing = AttendancePreparationState(
+            selectedMode = WorkMode.WFO,
+            targetResolution = TargetLocationResolution.Resolving(WorkMode.WFO),
+            wfaDiscovery = WfaDiscoveryState.Hidden,
+            eligibility = AttendancePreparationEligibility.Resolving
+        )
+
+        val next = AttendanceSelectionTransition.beginSelection(
+            state = queuedState,
+            preparation = wfoPreparing
+        )
+
+        assertEquals(faceScanner, next.navigationTarget)
+        assertEquals(verifying, next.actionState)
+    }
+
+    @Test
+    fun `stale WFA selection cannot emit booking navigation`() {
+        val navigation = AttendanceSelectionTransition.wfaBookingNavigationTarget(
+            preparation = readyPreparation(approvedWfaTarget),
+            selectionIsCurrent = false,
+            route = WFA_ROUTE
+        )
+
+        assertNull(navigation)
+    }
+
+    @Test
+    fun `current non-WFA selection cannot emit booking navigation`() {
+        val navigation = AttendanceSelectionTransition.wfaBookingNavigationTarget(
+            preparation = readyPreparation(officeTarget),
+            selectionIsCurrent = true,
+            route = WFA_ROUTE
+        )
+
+        assertNull(navigation)
+    }
+
+    @Test
+    fun `current WFA selection emits booking navigation`() {
+        val navigation = AttendanceSelectionTransition.wfaBookingNavigationTarget(
+            preparation = readyPreparation(approvedWfaTarget),
+            selectionIsCurrent = true,
+            route = WFA_ROUTE
+        )
+
+        assertEquals(NavigationTarget.WfaBooking(WFA_ROUTE), navigation)
+    }
+
     private fun readyPreparation(
         target: AuthoritativeTargetLocation
     ): AttendancePreparationState {
@@ -125,4 +183,8 @@ class AttendanceSelectionTransitionTest {
         radius = DistanceMeters(100.0),
         displayName = name
     )
+
+    private companion object {
+        const val WFA_ROUTE = "wfa_booking?latitude=-0.9&longitude=119.88"
+    }
 }

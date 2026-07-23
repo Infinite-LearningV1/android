@@ -734,6 +734,7 @@ class AttendanceViewModel @Inject constructor(
      * Handle booking button click
      */
     fun onBookingClicked() {
+        val request = latestSelectionRequest
         val preparation = _uiState.value.preparation
         if (preparation.selectedMode != WorkMode.WFA) {
             Log.d(TAG, "Booking clicked outside WFA mode")
@@ -755,8 +756,13 @@ class AttendanceViewModel @Inject constructor(
             latitude = coordinate.latitude,
             longitude = coordinate.longitude
         )
+        val navigationTarget = AttendanceSelectionTransition.wfaBookingNavigationTarget(
+            preparation = _uiState.value.preparation,
+            selectionIsCurrent = latestSelectionGuard.isCurrent(request, WorkMode.WFA),
+            route = route
+        ) ?: return
         _uiState.value = _uiState.value.copy(
-            navigationTarget = NavigationTarget.WfaBooking(route)
+            navigationTarget = navigationTarget
         )
     }
 

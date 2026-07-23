@@ -24,6 +24,16 @@ internal object AttendanceSelectionTransition {
         preparation: AttendancePreparationState
     ): AttendanceScreenState = state.copy(
         preparation = preparation,
-        navigationTarget = null
+        navigationTarget = state.navigationTarget
+            .takeUnless { it is NavigationTarget.WfaBooking }
     )
+
+    fun wfaBookingNavigationTarget(
+        preparation: AttendancePreparationState,
+        selectionIsCurrent: Boolean,
+        route: String
+    ): NavigationTarget.WfaBooking? {
+        if (!selectionIsCurrent || preparation.selectedMode != WorkMode.WFA) return null
+        return NavigationTarget.WfaBooking(route)
+    }
 }
