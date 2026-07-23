@@ -1,6 +1,7 @@
 package com.example.infinite_track.domain.model.attendance
 
 import com.example.infinite_track.domain.model.auth.AuthRuntimePolicy
+import com.example.infinite_track.domain.model.location.GeoCoordinate
 
 /**
  * Domain model representing the current day's attendance status
@@ -50,11 +51,32 @@ data class CheckinWindow(
 data class Location(
     val locationId: Int,
     val description: String,
-    val latitude: Double,
-    val longitude: Double,
+    val coordinate: GeoCoordinate,
     val radius: Int,
     val category: String
-)
+) {
+    constructor(
+        locationId: Int,
+        description: String,
+        latitude: Double,
+        longitude: Double,
+        radius: Int,
+        category: String
+    ) : this(
+        locationId = locationId,
+        description = description,
+        coordinate = GeoCoordinate(latitude, longitude),
+        radius = radius,
+        category = category
+    )
+
+    /** Temporary scalar accessors for transport and SDK boundaries during migration. */
+    val latitude: Double
+        get() = coordinate.latitude
+
+    val longitude: Double
+        get() = coordinate.longitude
+}
 
 
 /**

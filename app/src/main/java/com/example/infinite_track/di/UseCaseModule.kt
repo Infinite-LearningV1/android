@@ -4,8 +4,8 @@ import com.example.infinite_track.data.face.FaceProcessor
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
 import com.example.infinite_track.data.soucre.local.preferences.TodayStatusPreference
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
-import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.data.soucre.local.room.UserDao
+import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.repository.AttendanceHistoryRepository
 import com.example.infinite_track.domain.repository.AttendanceReportPdfRepository
 import com.example.infinite_track.domain.repository.AttendanceRepository
@@ -14,7 +14,8 @@ import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
 import com.example.infinite_track.domain.repository.BookingRepository
 import com.example.infinite_track.domain.repository.ContactRepository
 import com.example.infinite_track.domain.repository.LocalizationRepository
-import com.example.infinite_track.domain.repository.LocationRepository
+import com.example.infinite_track.domain.repository.location.AddressResolver
+import com.example.infinite_track.domain.repository.location.CurrentLocationRepository
 import com.example.infinite_track.domain.repository.ProfileRepository
 import com.example.infinite_track.domain.repository.WfaRepository
 import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
@@ -38,12 +39,10 @@ import com.example.infinite_track.domain.use_case.history.GetAttendanceHistoryUs
 import com.example.infinite_track.domain.use_case.language.GetSelectedLanguageUseCase
 import com.example.infinite_track.domain.use_case.language.SetSelectedLanguageUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
-import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinatesUseCase
-import com.example.infinite_track.domain.use_case.location.SearchLocationUseCase
+import com.example.infinite_track.domain.use_case.location.GetCurrentLocationUseCase
 import com.example.infinite_track.domain.use_case.profile.UpdateProfileUseCase
 import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
-import com.google.android.gms.location.FusedLocationProviderClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -165,20 +164,18 @@ object UseCaseModule {
         return ExportAttendanceReportPdfUseCase(attendanceReportPdfRepository)
     }
 
-    // Provide the Get Current Address Use Case
     @Provides
-    fun provideGetCurrentAddressUseCase(locationRepository: LocationRepository): GetCurrentAddressUseCase {
-        return GetCurrentAddressUseCase(locationRepository)
+    fun provideGetCurrentAddressUseCase(
+        getCurrentLocationUseCase: GetCurrentLocationUseCase,
+        addressResolver: AddressResolver
+    ): GetCurrentAddressUseCase {
+        return GetCurrentAddressUseCase(getCurrentLocationUseCase, addressResolver)
     }
 
-    // Provide the Get Current Coordinates Use Case
     @Provides
-    fun provideGetCurrentCoordinatesUseCase(
-        fusedLocationProviderClient: FusedLocationProviderClient,
-        userDao: UserDao
-    ): GetCurrentCoordinatesUseCase {
-        return GetCurrentCoordinatesUseCase(fusedLocationProviderClient, userDao)
-    }
+    fun provideGetCurrentLocationUseCase(
+        repository: CurrentLocationRepository
+    ): GetCurrentLocationUseCase = GetCurrentLocationUseCase(repository)
 
     // Provide the Get Today Status Use Case
     @Provides
@@ -192,12 +189,6 @@ object UseCaseModule {
         wfaRepository: WfaRepository
     ): GetWfaRecommendationsUseCase {
         return GetWfaRecommendationsUseCase(wfaRepository)
-    }
-
-    // Provide the Search Location Use Case
-    @Provides
-    fun provideSearchLocationUseCase(locationRepository: LocationRepository): SearchLocationUseCase {
-        return SearchLocationUseCase(locationRepository)
     }
 
     // Provide the Get Booking History Use Case
@@ -234,21 +225,21 @@ object UseCaseModule {
     @Provides
     fun provideCheckInUseCase(
         attendanceRepository: AttendanceRepository,
-        getCurrentCoordinatesUseCase: GetCurrentCoordinatesUseCase,
+        getCurrentLocationUseCase: GetCurrentLocationUseCase,
         geofenceManager: GeofenceManager,
         attendancePreference: AttendancePreference
     ): CheckInUseCase {
-        return CheckInUseCase(attendanceRepository, getCurrentCoordinatesUseCase, geofenceManager, attendancePreference)
+        return CheckInUseCase(attendanceRepository, getCurrentLocationUseCase, geofenceManager, attendancePreference)
     }
 
     // Provide the Check Out Use Case
     @Provides
     fun provideCheckOutUseCase(
         attendanceRepository: AttendanceRepository,
-        getCurrentCoordinatesUseCase: GetCurrentCoordinatesUseCase,
+        getCurrentLocationUseCase: GetCurrentLocationUseCase,
         geofenceManager: GeofenceManager,
         attendancePreference: AttendancePreference
     ): CheckOutUseCase {
-        return CheckOutUseCase(attendanceRepository, getCurrentCoordinatesUseCase, geofenceManager, attendancePreference)
+        return CheckOutUseCase(attendanceRepository, getCurrentLocationUseCase, geofenceManager, attendancePreference)
     }
 }

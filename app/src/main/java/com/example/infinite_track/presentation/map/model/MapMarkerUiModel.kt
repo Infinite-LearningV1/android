@@ -1,0 +1,19 @@
+package com.example.infinite_track.presentation.map.model
+
+import com.example.infinite_track.domain.model.location.GeoCoordinate
+
+data class MapMarkerUiModel(
+    val id: String,
+    val role: MapMarkerRole,
+    val coordinate: GeoCoordinate,
+    val title: String,
+    val snippet: String?,
+    val isSelected: Boolean = false
+)
+
+enum class MapMarkerRole {
+    CURRENT_USER,
+    WFO,
+    WFH,
+    WFA_RECOMMENDATION
+}

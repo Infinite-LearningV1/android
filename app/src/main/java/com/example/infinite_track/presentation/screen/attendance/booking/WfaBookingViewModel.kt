@@ -4,6 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
+import com.example.infinite_track.domain.model.location.AddressResolutionResult
+import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.use_case.booking.SubmitWfaBookingUseCase
 import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -73,18 +75,24 @@ class WfaBookingViewModel @Inject constructor(
 
     private suspend fun loadAddressFromCoordinates() {
         try {
-            reverseGeocodeUseCase(
-                latitude = latitude,
-                longitude = longitude
-            ).onSuccess { locationResult ->
-                _uiState.value = _uiState.value.copy(
-                    address = locationResult.address
-                )
-            }.onFailure { exception ->
-                _uiState.value = _uiState.value.copy(
-                    address = "Lat: $latitude, Lng: $longitude",
-                    error = "Gagal mendapatkan alamat: ${exception.message}"
-                )
+            val coordinate = GeoCoordinate(latitude, longitude)
+            when (val result = reverseGeocodeUseCase(coordinate)) {
+                is AddressResolutionResult.Resolved -> {
+                    _uiState.value = _uiState.value.copy(
+                        address = result.address.formattedAddress
+                    )
+                }
+                is AddressResolutionResult.CoordinateOnly -> {
+                    _uiState.value = _uiState.value.copy(
+                        address = result.coordinate.toDisplayText()
+                    )
+                }
+                is AddressResolutionResult.Failed -> {
+                    _uiState.value = _uiState.value.copy(
+                        address = coordinate.toDisplayText(),
+                        error = "Gagal mendapatkan alamat lokasi."
+                    )
+                }
             }
         } catch (e: Exception) {
             _uiState.value = _uiState.value.copy(
@@ -93,6 +101,9 @@ class WfaBookingViewModel @Inject constructor(
             )
         }
     }
+
+    private fun GeoCoordinate.toDisplayText(): String =
+        "Lat: %.6f, Lng: %.6f".format(Locale.US, latitude, longitude)
 
     fun onRadiusChanged(radius: Int) {
         _uiState.value = _uiState.value.copy(radius = radius)

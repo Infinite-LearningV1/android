@@ -31,7 +31,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.presentation.core.body2
 import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.theme.Blue_100
@@ -43,7 +42,8 @@ import com.example.infinite_track.presentation.theme.White
 
 @Composable
 fun LocationItem(
-    location: LocationResult,
+    title: String,
+    subtitle: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -113,20 +113,22 @@ fun LocationItem(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = location.placeName,
+                    text = title,
                     style = headline4,
                     color = Text,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Text(
-                    text = location.address,
-                    style = body2,
-                    color = Violet_400,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                if (!subtitle.isNullOrBlank()) {
+                    Text(
+                        text = subtitle,
+                        style = body2,
+                        color = Violet_400,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
     }
@@ -137,12 +139,8 @@ fun LocationItem(
 private fun LocationItemPreview() {
     Infinite_TrackTheme {
         LocationItem(
-            location = LocationResult(
-                placeName = "Gedung Cyber",
-                address = "Jl. HR. Rasuna Said No.13, Kuningan, Karet Kuningan, Kecamatan Setiabudi, Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta 12940",
-                latitude = -6.223,
-                longitude = 106.827
-            ),
+            title = "Gedung Cyber",
+            subtitle = "Jl. HR. Rasuna Said No.13, Jakarta Selatan",
             onClick = {}
         )
     }

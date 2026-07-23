@@ -4,7 +4,8 @@ import com.example.infinite_track.data.soucre.local.preferences.AttendancePrefer
 import com.example.infinite_track.domain.model.attendance.ActiveAttendanceSession
 import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
 import com.example.infinite_track.domain.repository.AttendanceRepository
-import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinatesUseCase
+import com.example.infinite_track.domain.model.location.CurrentLocationResult
+import com.example.infinite_track.domain.use_case.location.GetCurrentLocationUseCase
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import javax.inject.Inject
 
@@ -15,7 +16,7 @@ import javax.inject.Inject
  */
 class CheckInUseCase @Inject constructor(
     private val attendanceRepository: AttendanceRepository,
-    private val getCurrentCoordinatesUseCase: GetCurrentCoordinatesUseCase,
+    private val getCurrentLocationUseCase: GetCurrentLocationUseCase,
     private val geofenceManager: GeofenceManager,
     private val attendancePreference: AttendancePreference
 ) {
@@ -31,21 +32,18 @@ class CheckInUseCase @Inject constructor(
     ): Result<ActiveAttendanceSession> {
         return try {
             // Step 1: Get current real-time GPS coordinates
-            val coordinatesResult = getCurrentCoordinatesUseCase(useRealTimeGPS = true)
-
-            if (coordinatesResult.isFailure) {
+            val currentLocation = getCurrentLocationUseCase()
+            if (currentLocation !is CurrentLocationResult.Success) {
                 return Result.failure(
-                    coordinatesResult.exceptionOrNull()
-                        ?: Exception("Failed to get current GPS location. Please enable location services.")
+                    IllegalStateException("Failed to get current GPS location. Please enable location services.")
                 )
             }
-
-            val currentCoordinates = coordinatesResult.getOrNull()!!
+            val currentCoordinate = currentLocation.location.coordinate
 
             // Step 2: Update request with real-time coordinates
             val updatedRequest = request.copy(
-                latitude = currentCoordinates.first,   // latitude from GPS
-                longitude = currentCoordinates.second  // longitude from GPS
+                latitude = currentCoordinate.latitude,
+                longitude = currentCoordinate.longitude
             )
 
             // Step 3: Call repository to perform check-in with updated coordinates

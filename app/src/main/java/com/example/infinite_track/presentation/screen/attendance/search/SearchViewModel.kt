@@ -1,199 +1,174 @@
 package com.example.infinite_track.presentation.screen.attendance.search
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.infinite_track.domain.model.location.CurrentLocationResult
+import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.location.LocationResult
-import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinatesUseCase
-import com.example.infinite_track.domain.use_case.location.SearchLocationUseCase
+import com.example.infinite_track.domain.model.location.PlaceDetailsResult
+import com.example.infinite_track.domain.model.location.PlaceDiscoveryFailure
+import com.example.infinite_track.domain.model.location.PlaceSearchResult
+import com.example.infinite_track.domain.model.location.PlaceSuggestion
+import com.example.infinite_track.domain.use_case.location.GetCurrentLocationUseCase
+import com.example.infinite_track.domain.use_case.location.ResolvePlaceDetailsUseCase
+import com.example.infinite_track.domain.use_case.location.SearchPlacesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * ViewModel untuk pencarian lokasi dengan debouncing
- * Mengelola state pencarian dan komunikasi dengan domain layer
- */
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val searchLocationUseCase: SearchLocationUseCase,
-    private val getCurrentCoordinatesUseCase: GetCurrentCoordinatesUseCase
+    private val searchPlaces: SearchPlacesUseCase,
+    private val resolvePlaceDetails: ResolvePlaceDetailsUseCase,
+    private val getCurrentLocation: GetCurrentLocationUseCase
 ) : ViewModel() {
 
-    companion object {
-        private const val TAG = "SearchViewModel"
-        private const val DEBOUNCE_DELAY = 500L // 500ms debouncing
-        private const val MIN_QUERY_LENGTH = 2 // Minimal 2 karakter untuk search
-    }
-
-    // Search query state
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    // Search UI state
     private val _searchState = MutableStateFlow<SearchUiState>(SearchUiState.Idle)
     val searchState: StateFlow<SearchUiState> = _searchState.asStateFlow()
 
-    // Current user coordinates for proximity search
-    private var userLatitude: Double? = null
-    private var userLongitude: Double? = null
+    private val _selectionEvents = MutableSharedFlow<LocationResult>(extraBufferCapacity = 1)
+    val selectionEvents: SharedFlow<LocationResult> = _selectionEvents.asSharedFlow()
 
+    private var proximity: GeoCoordinate? = null
     private var searchJob: Job? = null
+    private var resolveJob: Job? = null
 
     init {
-        setupSearchFlow()
-        getCurrentLocation()
+        observeQuery()
+        loadOptionalProximity()
     }
 
-    /**
-     * Setup search flow dengan debouncing
-     */
-    private fun setupSearchFlow() {
-        _searchQuery
-            .debounce(DEBOUNCE_DELAY)
-            .distinctUntilChanged()
-            .filter { query ->
-                if (query.isBlank()) {
-                    _searchState.value = SearchUiState.Idle
-                    false
-                } else if (query.length < MIN_QUERY_LENGTH) {
-                    _searchState.value = SearchUiState.Idle
-                    false
-                } else {
-                    true
-                }
-            }
-            .onEach { query ->
-                performSearch(query)
-            }
-            .launchIn(viewModelScope)
-    }
-
-    /**
-     * Update search query
-     */
     fun updateSearchQuery(query: String) {
-        Log.d(TAG, "Search query updated: $query")
         _searchQuery.value = query
     }
 
-    /**
-     * Get current user location for proximity search
-     * Menggunakan GPS real-time untuk proximity search yang akurat
-     */
-    private fun getCurrentLocation() {
-        viewModelScope.launch {
-            try {
-                // PENTING: Gunakan GPS real-time untuk proximity search
-                getCurrentCoordinatesUseCase(useRealTimeGPS = true).onSuccess { coordinates ->
-                    val (latitude, longitude) = coordinates
-                    userLatitude = latitude
-                    userLongitude = longitude
-                    Log.d(TAG, "User GPS real-time location updated for search proximity: $latitude, $longitude")
-                }.onFailure { exception ->
-                    Log.w(TAG, "Failed to get GPS real-time location, trying cached location", exception)
-                    // Fallback ke cached location
-                    getCurrentCoordinatesUseCase(useRealTimeGPS = false).onSuccess { coordinates ->
-                        val (latitude, longitude) = coordinates
-                        userLatitude = latitude
-                        userLongitude = longitude
-                        Log.d(TAG, "Using cached location for search proximity: $latitude, $longitude")
-                    }.onFailure { fallbackException ->
-                        Log.w(TAG, "Failed to get any location for proximity search", fallbackException)
-                        // Continue without proximity search
-                    }
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Unexpected error getting user location", e)
-            }
+    fun onSuggestionSelected(suggestion: PlaceSuggestion) {
+        val suggestions = when (val state = _searchState.value) {
+            is SearchUiState.Success -> state.suggestions
+            is SearchUiState.Resolving -> state.suggestions
+            else -> return
         }
-    }
 
-    /**
-     * Perform search with current query
-     */
-    private fun performSearch(query: String) {
-        // Cancel previous search
-        searchJob?.cancel()
-
-        searchJob = viewModelScope.launch {
-            try {
-                Log.d(TAG, "Starting search for: $query")
-                _searchState.value = SearchUiState.Loading
-
-                // Perform search with proximity if available
-                searchLocationUseCase(
-                    query = query,
-                    userLatitude = userLatitude,
-                    userLongitude = userLongitude
-                ).onSuccess { locations ->
-                    Log.d(TAG, "Search completed: ${locations.size} results found")
-
-                    _searchState.value = if (locations.isEmpty()) {
-                        SearchUiState.Empty
-                    } else {
-                        SearchUiState.Success(locations)
-                    }
-                }.onFailure { exception ->
-                    Log.e(TAG, "Search failed", exception)
-                    _searchState.value = SearchUiState.Error(
-                        exception.message ?: "Pencarian gagal. Silakan coba lagi."
+        resolveJob?.cancel()
+        resolveJob = viewModelScope.launch {
+            _searchState.value = SearchUiState.Resolving(suggestions, suggestion.placeId)
+            when (val result = resolvePlaceDetails(suggestion.placeId)) {
+                is PlaceDetailsResult.Success -> {
+                    val details = result.details
+                    _selectionEvents.emit(
+                        LocationResult(
+                            placeName = details.displayName,
+                            address = details.formattedAddress.orEmpty(),
+                            latitude = details.coordinate.latitude,
+                            longitude = details.coordinate.longitude
+                        )
                     )
                 }
 
-            } catch (e: Exception) {
-                Log.e(TAG, "Unexpected error in search", e)
-                _searchState.value = SearchUiState.Error(
-                    "Terjadi kesalahan tidak terduga. Silakan coba lagi."
-                )
+                is PlaceDetailsResult.Failure -> {
+                    _searchState.value = SearchUiState.Error(result.reason.toUserMessage())
+                }
             }
         }
     }
 
-    /**
-     * Clear search results and query
-     */
     fun clearSearch() {
-        Log.d(TAG, "Clearing search")
         searchJob?.cancel()
+        resolveJob?.cancel()
+        searchPlaces.abandonSession()
         _searchQuery.value = ""
         _searchState.value = SearchUiState.Idle
     }
 
-    /**
-     * Retry last search
-     */
     fun retrySearch() {
-        val currentQuery = _searchQuery.value
-        if (currentQuery.isNotBlank() && currentQuery.length >= MIN_QUERY_LENGTH) {
-            Log.d(TAG, "Retrying search for: $currentQuery")
-            performSearch(currentQuery)
+        val query = _searchQuery.value.trim()
+        if (query.length >= MIN_QUERY_LENGTH) performSearch(query)
+    }
+
+    private fun observeQuery() {
+        _searchQuery
+            .debounce(DEBOUNCE_DELAY)
+            .distinctUntilChanged()
+            .onEach { rawQuery ->
+                val query = rawQuery.trim()
+                if (query.length < MIN_QUERY_LENGTH) {
+                    searchJob?.cancel()
+                    _searchState.value = SearchUiState.Idle
+                } else {
+                    performSearch(query)
+                }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun loadOptionalProximity() {
+        viewModelScope.launch {
+            proximity = when (val result = getCurrentLocation()) {
+                is CurrentLocationResult.Success -> result.location.coordinate
+                is CurrentLocationResult.Failure -> null
+            }
         }
     }
 
-    /**
-     * Handle location selection
-     */
-    fun onLocationSelected(location: LocationResult) {
-        Log.d(TAG, "Location selected: ${location.placeName}")
-        // This will be handled by the parent ViewModel or UI
-        // The selected location can be passed back via callback or navigation
+    private fun performSearch(query: String) {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            _searchState.value = SearchUiState.Loading
+            try {
+                when (val result = searchPlaces(query, proximity)) {
+                    is PlaceSearchResult.Success -> {
+                        _searchState.value = if (result.suggestions.isEmpty()) {
+                            SearchUiState.Empty
+                        } else {
+                            SearchUiState.Success(result.suggestions)
+                        }
+                    }
+
+                    is PlaceSearchResult.Failure -> {
+                        _searchState.value = SearchUiState.Error(result.reason.toUserMessage())
+                    }
+                }
+            } catch (error: CancellationException) {
+                throw error
+            }
+        }
+    }
+
+    private fun PlaceDiscoveryFailure.toUserMessage(): String = when (this) {
+        PlaceDiscoveryFailure.CONFIGURATION -> "Pencarian lokasi belum dikonfigurasi."
+        PlaceDiscoveryFailure.AUTHENTICATION -> "Akses pencarian lokasi ditolak."
+        PlaceDiscoveryFailure.QUOTA -> "Batas pencarian lokasi sedang tercapai. Coba lagi nanti."
+        PlaceDiscoveryFailure.NETWORK -> "Jaringan bermasalah. Periksa koneksi lalu coba lagi."
+        PlaceDiscoveryFailure.INVALID_REQUEST -> "Kata kunci atau lokasi tidak valid."
+        PlaceDiscoveryFailure.UNAVAILABLE -> "Pencarian lokasi sedang tidak tersedia."
     }
 
     override fun onCleared() {
-        super.onCleared()
         searchJob?.cancel()
-        Log.d(TAG, "SearchViewModel cleared")
+        resolveJob?.cancel()
+        searchPlaces.abandonSession()
+        super.onCleared()
+    }
+
+    private companion object {
+        const val DEBOUNCE_DELAY = 500L
+        const val MIN_QUERY_LENGTH = 2
     }
 }

@@ -2,7 +2,6 @@ package com.example.infinite_track.domain.use_case.attendance
 
 import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.WorkMode
-import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -20,7 +19,7 @@ class ResolveSelectedTargetLocationUseCaseTest {
             mode = WorkMode.WFO,
             wfoLocation = wfoLocation,
             wfhLocation = null,
-            selectedWfaLocation = null
+            approvedWfaLocation = null
         )
 
         assertEquals(WorkMode.WFO, target.mode)
@@ -35,7 +34,7 @@ class ResolveSelectedTargetLocationUseCaseTest {
             mode = WorkMode.WFH,
             wfoLocation = location(),
             wfhLocation = null,
-            selectedWfaLocation = null
+            approvedWfaLocation = null
         )
 
         assertEquals(WorkMode.WFH, target.mode)
@@ -47,31 +46,40 @@ class ResolveSelectedTargetLocationUseCaseTest {
     }
 
     @Test
-    fun invoke_convertsSelectedWfaRecommendationIntoAttendanceLocation() {
-        val recommendation = WfaRecommendation(
-            name = "Cafe Produktif",
-            address = "Jl. Merdeka",
-            latitude = -0.9,
-            longitude = 119.8,
-            score = 0.8,
-            label = "Good",
-            category = "Cafe",
-            distance = 1.2
+    fun invoke_usesApprovedWfaLocationAsAttendanceAuthority() {
+        val approvedLocation = location(
+            description = "Cafe Produktif",
+            category = "WFA"
         )
 
         val target = useCase(
             mode = WorkMode.WFA,
             wfoLocation = null,
             wfhLocation = null,
-            selectedWfaLocation = recommendation
+            approvedWfaLocation = approvedLocation
         )
 
         assertEquals(WorkMode.WFA, target.mode)
         assertEquals("Cafe Produktif", target.displayName)
-        assertEquals("Jl. Merdeka", target.description)
-        assertEquals(-0.9, target.location?.latitude ?: 0.0, 0.0)
-        assertEquals(119.8, target.location?.longitude ?: 0.0, 0.0)
+        assertEquals("WFA", target.description)
+        assertEquals(approvedLocation, target.location)
         assertTrue(target.isAvailable)
+    }
+
+    @Test
+    fun invoke_blocksWfaWhenApprovedBookingLocationIsMissing() {
+        val target = useCase(
+            mode = WorkMode.WFA,
+            wfoLocation = null,
+            wfhLocation = null,
+            approvedWfaLocation = null
+        )
+
+        assertFalse(target.isAvailable)
+        assertEquals(
+            "Booking WFA yang disetujui untuk hari ini belum tersedia.",
+            target.unavailableReason
+        )
     }
 
     private fun location(

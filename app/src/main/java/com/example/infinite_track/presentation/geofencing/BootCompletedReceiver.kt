@@ -39,10 +39,8 @@ class BootCompletedReceiver : BroadcastReceiver() {
                 val sessionStateKey = attendancePreference.getAttendanceSessionStateKey().firstOrNull()
                 val params = attendancePreference.getLastGeofenceParams().firstOrNull()
                 if (activeAttendanceId != null && sessionStateKey == "active" && params != null) {
-                    val (requestId, latLng, radius) = params
-                    val (lat, lng) = latLng
-                    Log.d("BootCompletedReceiver", "Re-registering active monitoring geofence after boot: $requestId")
-                    geofenceManager.addGeofence(requestId, lat, lng, radius.toFloat())
+                    Log.d("BootCompletedReceiver", "Re-registering active monitoring geofence after boot: ${params.id}")
+                    geofenceManager.addGeofence(params.id, params.coordinate, params.radius)
                 } else {
                     Log.d(
                         "BootCompletedReceiver",
@@ -54,7 +52,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
                     val reminders = attendancePreference.getReminderGeofences().firstOrNull().orEmpty()
                     reminders.forEach { r ->
                         Log.d("BootCompletedReceiver", "Re-registering reminder geofence after boot: ${r.id}")
-                        geofenceManager.addReminderGeofence(r.id, r.latitude, r.longitude, r.radiusMeters)
+                        geofenceManager.addReminderGeofence(r.id, r.coordinate, r.radius)
                     }
                 }
             } catch (e: Exception) {

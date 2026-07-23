@@ -1,25 +1,16 @@
 package com.example.infinite_track.domain.use_case.location
 
-import com.example.infinite_track.domain.model.location.LocationResult
-import com.example.infinite_track.domain.repository.LocationRepository
+import com.example.infinite_track.domain.model.location.AddressResolutionResult
+import com.example.infinite_track.domain.model.location.GeoCoordinate
+import com.example.infinite_track.domain.repository.location.AddressResolver
 import javax.inject.Inject
 
 /**
  * Use case for reverse geocoding - converting coordinates to address
  */
 class ReverseGeocodeUseCase @Inject constructor(
-    private val locationRepository: LocationRepository
+    private val addressResolver: AddressResolver
 ) {
-    /**
-     * Execute reverse geocoding for given coordinates
-     * @param latitude Latitude coordinate
-     * @param longitude Longitude coordinate
-     * @return Result containing LocationResult with address information or error
-     */
-    suspend operator fun invoke(
-        latitude: Double,
-        longitude: Double
-    ): Result<LocationResult> {
-        return locationRepository.reverseGeocode(latitude, longitude)
-    }
+    suspend operator fun invoke(coordinate: GeoCoordinate): AddressResolutionResult =
+        addressResolver.resolve(coordinate)
 }

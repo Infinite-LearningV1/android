@@ -163,14 +163,7 @@ fun NavGraphBuilder.mainContentNavGraph(
 
     // Location Search Screen - untuk pencarian lokasi attendance
     composable(Screen.LocationSearch.route) {
-        LocationSearchScreen(
-            navController = navController,
-            onLocationSelected = {
-                // Handle location selection - bisa dikembangkan untuk menyimpan lokasi terpilih
-                // Untuk sementara, kembali ke AttendanceScreen
-                navController.navigateUp()
-            }
-        )
+        LocationSearchScreen(navController = navController)
     }
 
     // Time Off Related Screens

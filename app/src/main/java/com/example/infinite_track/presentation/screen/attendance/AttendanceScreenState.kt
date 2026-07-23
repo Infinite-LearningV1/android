@@ -24,6 +24,7 @@ data class AttendanceScreenState(
     val wfaRecommendations: List<WfaRecommendation> = emptyList(),
     val selectedWfaLocation: WfaRecommendation? = null,
     val selectedWfaMarkerInfo: WfaRecommendation? = null,
+    val approvedWfaLocation: Location? = null,
     val isWfaModeActive: Boolean = false,
     val isLoadingWfaRecommendations: Boolean = false,
     val currentUserAddress: String = "",
@@ -43,7 +44,6 @@ data class AttendanceScreenState(
     val isButtonEnabled: Boolean = false,
     val isCheckInMode: Boolean = true,
     val navigationTarget: NavigationTarget? = null,
-    val mapAnimationTarget: MapAnimationTarget? = null,
     val showPermissionDialog: Boolean = false,
     val permissionResult: LocationPermissionHelper.PermissionResult? = null,
     val permissionMessage: String = ""

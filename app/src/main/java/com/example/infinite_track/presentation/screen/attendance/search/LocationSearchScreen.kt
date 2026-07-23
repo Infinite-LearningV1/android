@@ -16,6 +16,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.example.infinite_track.domain.model.location.LocationResult
+import com.example.infinite_track.domain.model.location.PlaceSuggestion
 import com.example.infinite_track.presentation.components.button.ButtonBack
 import com.example.infinite_track.presentation.components.empty.EmptyListAnimation
 import com.example.infinite_track.presentation.components.empty.ErrorAnimation
@@ -48,11 +49,19 @@ import com.example.infinite_track.presentation.theme.Violet_400
 @Composable
 fun LocationSearchScreen(
     navController: NavController,
-    onLocationSelected: (LocationResult) -> Unit,
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val searchState by viewModel.searchState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(viewModel, navController) {
+        viewModel.selectionEvents.collect { location ->
+            navController.previousBackStackEntry
+                ?.savedStateHandle
+                ?.set("selected_location", location)
+            navController.popBackStack()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -99,15 +108,12 @@ fun LocationSearchScreen(
 
                     is SearchUiState.Success -> {
                         SearchResults(
-                            locations = currentSearchState.locations,
-                            onLocationClick = { location ->
-                                navController.previousBackStackEntry
-                                    ?.savedStateHandle
-                                    ?.set("selected_location", location)
-                                navController.popBackStack()
-                            }
+                            suggestions = currentSearchState.suggestions,
+                            onSuggestionClick = viewModel::onSuggestionSelected
                         )
                     }
+
+                    is SearchUiState.Resolving -> LoadingContent()
 
                     is SearchUiState.Empty -> {
                         EmptySearchResults()
@@ -127,18 +133,22 @@ fun LocationSearchScreen(
 
 @Composable
 private fun SearchResults(
-    locations: List<LocationResult>,
-    onLocationClick: (LocationResult) -> Unit,
+    suggestions: List<PlaceSuggestion>,
+    onSuggestionClick: (PlaceSuggestion) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(locations) { location ->
+        items(
+            items = suggestions,
+            key = PlaceSuggestion::placeId
+        ) { suggestion ->
             LocationItem(
-                location = location,
-                onClick = { onLocationClick(location) }
+                title = suggestion.primaryText,
+                subtitle = suggestion.secondaryText,
+                onClick = { onSuggestionClick(suggestion) }
             )
         }
     }

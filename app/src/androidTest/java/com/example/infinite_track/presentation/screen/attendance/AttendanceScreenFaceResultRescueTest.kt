@@ -23,13 +23,18 @@ import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.model.booking.BookingHistoryPage
-import com.example.infinite_track.domain.model.location.LocationResult
+import com.example.infinite_track.domain.model.location.CurrentLocation
+import com.example.infinite_track.domain.model.location.CurrentLocationResult
+import com.example.infinite_track.domain.model.location.AddressResolutionResult
+import com.example.infinite_track.domain.model.location.GeoCoordinate
+import com.example.infinite_track.domain.model.location.ResolvedAddress
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.BookingRepository
-import com.example.infinite_track.domain.repository.LocationRepository
+import com.example.infinite_track.domain.repository.location.AddressResolver
+import com.example.infinite_track.domain.repository.location.CurrentLocationRepository
 import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.repository.WfaRepository
 import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
@@ -41,13 +46,12 @@ import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingIdUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
-import com.example.infinite_track.domain.use_case.location.GetCurrentCoordinatesUseCase
+import com.example.infinite_track.domain.use_case.location.GetCurrentLocationUseCase
 import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
 import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
-import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
@@ -319,19 +323,19 @@ class AttendanceScreenFaceResultRescueTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val attendancePreference = AttendancePreference(context)
         val geofenceManager = GeofenceManager(context, attendancePreference)
-        val locationRepository = FakeLocationRepository()
+        val addressResolver = FakeAddressResolver()
         val bookingRepository = FakeBookingRepository()
-        val getCurrentCoordinatesUseCase = GetCurrentCoordinatesUseCase(
-            fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context),
-            userDao = FakeUserDao()
-        )
+        val getCurrentLocationUseCase = GetCurrentLocationUseCase(FakeCurrentLocationRepository())
 
         return AttendanceViewModel(
             getTodayStatusUseCase = GetTodayStatusUseCase(attendanceRepository),
-            getCurrentAddressUseCase = GetCurrentAddressUseCase(locationRepository),
-            getCurrentCoordinatesUseCase = getCurrentCoordinatesUseCase,
+            getCurrentAddressUseCase = GetCurrentAddressUseCase(
+                getCurrentLocationUseCase,
+                addressResolver
+            ),
+            getCurrentLocationUseCase = getCurrentLocationUseCase,
             getWfaRecommendationsUseCase = GetWfaRecommendationsUseCase(FakeWfaRepository()),
-            reverseGeocodeUseCase = ReverseGeocodeUseCase(locationRepository),
+            reverseGeocodeUseCase = ReverseGeocodeUseCase(addressResolver),
             attendancePreference = attendancePreference,
             geofenceManager = geofenceManager,
             getLoggedInUserUseCase = GetLoggedInUserUseCase(FakeAuthRepository()),
@@ -347,13 +351,13 @@ class AttendanceScreenFaceResultRescueTest {
             ),
             checkInUseCase = CheckInUseCase(
                 attendanceRepository = attendanceRepository,
-                getCurrentCoordinatesUseCase = getCurrentCoordinatesUseCase,
+                getCurrentLocationUseCase = getCurrentLocationUseCase,
                 geofenceManager = geofenceManager,
                 attendancePreference = attendancePreference
             ),
             checkOutUseCase = CheckOutUseCase(
                 attendanceRepository = attendanceRepository,
-                getCurrentCoordinatesUseCase = getCurrentCoordinatesUseCase,
+                getCurrentLocationUseCase = getCurrentLocationUseCase,
                 geofenceManager = geofenceManager,
                 attendancePreference = attendancePreference
             )
@@ -451,24 +455,29 @@ class AttendanceScreenFaceResultRescueTest {
         ): Result<Unit> = Result.success(Unit)
     }
 
-    private class FakeLocationRepository : LocationRepository {
-        override suspend fun getCurrentAddress(): Result<String> = Result.success("Test address")
-
-        override suspend fun getCurrentCoordinates(): Result<Pair<Double, Double>> {
-            return Result.success(-6.2 to 106.8)
+    private class FakeAddressResolver : AddressResolver {
+        override suspend fun resolve(coordinate: GeoCoordinate): AddressResolutionResult {
+            return AddressResolutionResult.Resolved(
+                ResolvedAddress(
+                    coordinate = coordinate,
+                    name = "Test location",
+                    formattedAddress = "Test address"
+                )
+            )
         }
+    }
 
-        override suspend fun searchLocation(
-            query: String,
-            userLatitude: Double?,
-            userLongitude: Double?
-        ): Result<List<LocationResult>> = Result.success(emptyList())
-
-        override suspend fun reverseGeocode(
-            latitude: Double,
-            longitude: Double
-        ): Result<LocationResult> {
-            throw UnsupportedOperationException("Reverse geocoding is outside this regression")
+    private class FakeCurrentLocationRepository : CurrentLocationRepository {
+        override suspend fun getCurrentLocation(): CurrentLocationResult {
+            return CurrentLocationResult.Success(
+                CurrentLocation(
+                    coordinate = GeoCoordinate(-6.2, 106.8),
+                    accuracy = null,
+                    capturedAtEpochMillis = 0L,
+                    provider = "test",
+                    isMock = true
+                )
+            )
         }
     }
 
