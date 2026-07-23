@@ -72,6 +72,29 @@ class InfiniteStateStatusComponentsTest {
         }
     }
 
+    @Test fun persistentAlertLeavingCompositionDoesNotInvokeDismissCallback() {
+        var showAlert by mutableStateOf(true)
+        var dismissCount = 0
+        composeRule.setContent {
+            Infinite_TrackTheme {
+                if (showAlert) {
+                    InfiniteInlineAlert(
+                        title = "Connection",
+                        message = "Try again",
+                        semantic = InfiniteSemantic.Error,
+                        actionLabel = "Retry",
+                        onAction = {},
+                        onDismiss = { dismissCount += 1 }
+                    )
+                }
+            }
+        }
+
+        composeRule.onNodeWithText("Retry").assertIsDisplayed()
+        composeRule.runOnIdle { showAlert = false }
+        composeRule.runOnIdle { assertEquals(0, dismissCount) }
+    }
+
     @Test fun transientWarningShowsTimerAndDismissThenTimesOutExactlyOnce() {
         var dismissCount = 0
         composeRule.mainClock.autoAdvance = false
@@ -100,6 +123,80 @@ class InfiniteStateStatusComponentsTest {
 
     @Test fun dismissingTransientAlertByXInvokesCallbackOnlyOnce() {
         var dismissCount = 0
+        var showAlert by mutableStateOf(true)
+        composeRule.mainClock.autoAdvance = false
+        composeRule.setContent {
+            Infinite_TrackTheme {
+                if (showAlert) {
+                    InfiniteInlineAlert(
+                        title = "Attendance saved",
+                        message = "Check-in recorded.",
+                        semantic = InfiniteSemantic.Success,
+                        onDismiss = { dismissCount += 1 }
+                    )
+                }
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Dismiss alert").performClick()
+        composeRule.runOnIdle { showAlert = false }
+        composeRule.mainClock.advanceTimeBy(5_000)
+        composeRule.runOnIdle { assertEquals(1, dismissCount) }
+    }
+
+    @Test fun replacingTransientAlertDismissesOutgoingThenTimesIncomingExactlyOnce() {
+        var activeTitle by mutableStateOf<String?>("First warning")
+        var outgoingDismissCount = 0
+        var incomingDismissCount = 0
+        composeRule.mainClock.autoAdvance = false
+        composeRule.setContent {
+            CompositionLocalProvider(LocalAccessibilityManager provides null) {
+                Infinite_TrackTheme {
+                    activeTitle?.let { title ->
+                        InfiniteInlineAlert(
+                            title = title,
+                            message = "Move closer to the office.",
+                            semantic = InfiniteSemantic.Warning,
+                            onDismiss = if (title == "First warning") {
+                                { outgoingDismissCount += 1 }
+                            } else {
+                                { incomingDismissCount += 1 }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        composeRule.mainClock.advanceTimeBy(7_000)
+        composeRule.runOnIdle { activeTitle = "Replacement warning" }
+        composeRule.runOnIdle {
+            assertEquals(1, outgoingDismissCount)
+            assertEquals(0, incomingDismissCount)
+        }
+        composeRule.mainClock.advanceTimeBy(1_500)
+        composeRule.onNodeWithText("Replacement warning").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(1, outgoingDismissCount)
+            assertEquals(0, incomingDismissCount)
+        }
+        composeRule.mainClock.advanceTimeBy(6_750)
+        composeRule.onNodeWithText("Replacement warning").assertDoesNotExist()
+        composeRule.runOnIdle {
+            assertEquals(1, outgoingDismissCount)
+            assertEquals(1, incomingDismissCount)
+            activeTitle = null
+        }
+        composeRule.runOnIdle {
+            assertEquals(1, outgoingDismissCount)
+            assertEquals(1, incomingDismissCount)
+        }
+    }
+
+    @Test fun transientDismissUsesLatestCallbackWithoutRestartingTimer() {
+        var callbackVersion by mutableStateOf(1)
+        var firstCallbackCount = 0
+        var latestCallbackCount = 0
         composeRule.mainClock.autoAdvance = false
         composeRule.setContent {
             Infinite_TrackTheme {
@@ -107,41 +204,23 @@ class InfiniteStateStatusComponentsTest {
                     title = "Attendance saved",
                     message = "Check-in recorded.",
                     semantic = InfiniteSemantic.Success,
-                    onDismiss = { dismissCount += 1 }
+                    onDismiss = if (callbackVersion == 1) {
+                        { firstCallbackCount += 1 }
+                    } else {
+                        { latestCallbackCount += 1 }
+                    }
                 )
             }
         }
 
+        composeRule.mainClock.advanceTimeBy(1_000)
+        composeRule.runOnIdle { callbackVersion = 2 }
+        composeRule.mainClock.advanceTimeBy(1_000)
         composeRule.onNodeWithContentDescription("Dismiss alert").performClick()
-        composeRule.mainClock.advanceTimeBy(5_000)
-        composeRule.runOnIdle { assertEquals(1, dismissCount) }
-    }
-
-    @Test fun replacingTransientAlertRestartsTimerWithoutDoubleDismiss() {
-        var title by mutableStateOf("First warning")
-        var dismissCount = 0
-        composeRule.mainClock.autoAdvance = false
-        composeRule.setContent {
-            CompositionLocalProvider(LocalAccessibilityManager provides null) {
-                Infinite_TrackTheme {
-                    InfiniteInlineAlert(
-                        title = title,
-                        message = "Move closer to the office.",
-                        semantic = InfiniteSemantic.Warning,
-                        onDismiss = { dismissCount += 1 }
-                    )
-                }
-            }
+        composeRule.runOnIdle {
+            assertEquals(0, firstCallbackCount)
+            assertEquals(1, latestCallbackCount)
         }
-
-        composeRule.mainClock.advanceTimeBy(7_000)
-        composeRule.runOnIdle { title = "Replacement warning" }
-        composeRule.mainClock.advanceTimeBy(1_500)
-        composeRule.onNodeWithText("Replacement warning").assertIsDisplayed()
-        composeRule.runOnIdle { assertEquals(0, dismissCount) }
-        composeRule.mainClock.advanceTimeBy(6_750)
-        composeRule.onNodeWithText("Replacement warning").assertDoesNotExist()
-        composeRule.runOnIdle { assertEquals(1, dismissCount) }
     }
 
     @Test fun accessibilityRecommendedTimeoutGovernsTimerAndDismissal() {
@@ -168,6 +247,30 @@ class InfiniteStateStatusComponentsTest {
         composeRule.mainClock.advanceTimeBy(4_000)
         composeRule.onNodeWithText("Accessible warning").assertDoesNotExist()
         composeRule.runOnIdle { assertEquals(1, dismissCount) }
+    }
+
+    @Test fun transientWithoutExternalCallbackStillReportsDismissControlToAccessibility() {
+        val accessibilityManager = FixedTimeoutAccessibilityManager(12_000)
+        composeRule.mainClock.autoAdvance = false
+        composeRule.setContent {
+            CompositionLocalProvider(LocalAccessibilityManager provides accessibilityManager) {
+                Infinite_TrackTheme {
+                    InfiniteInlineAlert(
+                        title = "Attendance saved",
+                        message = "Check-in recorded.",
+                        semantic = InfiniteSemantic.Success
+                    )
+                }
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Dismiss alert").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(4_000L, accessibilityManager.originalTimeoutMillis)
+            assertTrue(accessibilityManager.containsIcons)
+            assertTrue(accessibilityManager.containsText)
+            assertTrue(accessibilityManager.containsControls)
+        }
     }
 
     @Test fun everySemanticHasDistinctAccessibleFeedbackAndIconContract() {
@@ -285,11 +388,22 @@ class InfiniteStateStatusComponentsTest {
     private class FixedTimeoutAccessibilityManager(
         private val timeoutMillis: Long
     ) : AccessibilityManager {
+        var originalTimeoutMillis: Long? = null
+        var containsIcons: Boolean = false
+        var containsText: Boolean = false
+        var containsControls: Boolean = false
+
         override fun calculateRecommendedTimeoutMillis(
             originalTimeoutMillis: Long,
             containsIcons: Boolean,
             containsText: Boolean,
             containsControls: Boolean
-        ): Long = timeoutMillis
+        ): Long {
+            this.originalTimeoutMillis = originalTimeoutMillis
+            this.containsIcons = containsIcons
+            this.containsText = containsText
+            this.containsControls = containsControls
+            return timeoutMillis
+        }
     }
 }

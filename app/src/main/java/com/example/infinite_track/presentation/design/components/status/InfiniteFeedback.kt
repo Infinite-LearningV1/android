@@ -39,8 +39,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -51,6 +53,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.AccessibilityManager
 import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -76,6 +79,33 @@ enum class InfiniteInlineAlertDuration(internal val timeoutMillis: Int?) {
     Short(4_000),
     Long(8_000),
     Persistent(null)
+}
+
+internal class InlineAlertDismissalOwner(
+    private val onDismiss: () -> Unit
+) {
+    private var dismissed = false
+
+    fun dismiss(): Boolean {
+        if (dismissed) return false
+        dismissed = true
+        onDismiss()
+        return true
+    }
+}
+
+internal fun recommendedInlineAlertTimeoutMillis(
+    duration: InfiniteInlineAlertDuration,
+    accessibilityManager: AccessibilityManager?
+): Long? = duration.timeoutMillis?.let { timeoutMillis ->
+    accessibilityManager
+        ?.calculateRecommendedTimeoutMillis(
+            originalTimeoutMillis = timeoutMillis.toLong(),
+            containsIcons = true,
+            containsText = true,
+            containsControls = true
+        )
+        ?: timeoutMillis.toLong()
 }
 
 fun InfiniteSemantic.defaultInlineAlertDuration(
@@ -131,105 +161,98 @@ private fun InfiniteInlineAlertContent(
     duration: InfiniteInlineAlertDuration
 ) {
     val palette = infiniteFeedbackPalette(semantic)
-    val baseTimeoutMillis = duration.timeoutMillis
-    val actualTimeoutMillis = baseTimeoutMillis?.let { timeoutMillis ->
-        LocalAccessibilityManager.current
-            ?.calculateRecommendedTimeoutMillis(
-                originalTimeoutMillis = timeoutMillis.toLong(),
-                containsIcons = true,
-                containsText = true,
-                containsControls = onDismiss != null
-            )
-            ?: timeoutMillis.toLong()
-    }
-    var visible by remember(title, message, semantic, actionLabel, duration) {
-        mutableStateOf(true)
-    }
-    var dismissalRequested by remember(title, message, semantic, actionLabel, duration) {
-        mutableStateOf(false)
-    }
-    val timerProgress = remember(
-        title,
-        message,
-        semantic,
-        actionLabel,
-        duration,
-        actualTimeoutMillis
-    ) { Animatable(1f) }
-    val currentOnDismiss by rememberUpdatedState(onDismiss)
+    val actualTimeoutMillis = recommendedInlineAlertTimeoutMillis(
+        duration = duration,
+        accessibilityManager = LocalAccessibilityManager.current
+    )
 
-    LaunchedEffect(title, message, semantic, actionLabel, duration, actualTimeoutMillis) {
-        timerProgress.snapTo(1f)
-        actualTimeoutMillis?.let { timeoutMillis ->
-            timerProgress.animateTo(
-                targetValue = 0f,
-                animationSpec = tween(
-                    durationMillis = timeoutMillis.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt(),
-                    easing = LinearEasing
-                )
-            )
-            if (!dismissalRequested) {
-                dismissalRequested = true
-                visible = false
-                currentOnDismiss?.invoke()
+    key(title, message, semantic, actionLabel, duration) {
+        var visible by remember { mutableStateOf(true) }
+        val currentOnDismiss = rememberUpdatedState(onDismiss)
+        val dismissalOwner = remember {
+            InlineAlertDismissalOwner {
+                currentOnDismiss.value?.invoke()
             }
         }
-    }
+        val timerProgress = remember(actualTimeoutMillis) { Animatable(1f) }
 
-    AnimatedVisibility(
-        visible = visible,
-        modifier = modifier,
-        enter = fadeIn(InfiniteMotion.enterTween()) +
-            expandVertically(InfiniteMotion.enterTween(), expandFrom = Alignment.Top),
-        exit = fadeOut(InfiniteMotion.exitTween()) +
-            shrinkVertically(InfiniteMotion.exitTween(), shrinkTowards = Alignment.Top)
-    ) {
-        InfiniteFeedbackGlassSurface(
-            semantic = semantic,
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics(mergeDescendants = true) { contentDescription = "$title. $message" }
-        ) {
-            Row(
-                Modifier.padding(
-                    horizontal = InfiniteSpacing.Default.md,
-                    vertical = InfiniteSpacing.Default.sm
-                ),
-                horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.sm),
-                verticalAlignment = Alignment.Top
-            ) {
-                FeedbackIcon(semantic = semantic, size = 36.dp, iconSize = 20.dp)
-                Column(
-                    Modifier
-                        .weight(1f)
-                        .padding(top = 1.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Text(title, color = palette.content, style = InfiniteFeedbackTypography.inlineTitle)
-                    Text(message, color = palette.supportingContent, style = InfiniteFeedbackTypography.inlineBody)
-                    if (actionLabel != null && onAction != null) TextButton(actionLabel, onAction)
-                }
-                if (actualTimeoutMillis != null) {
-                    IconButton(
-                        onClick = {
-                            if (!dismissalRequested) {
-                                dismissalRequested = true
-                                visible = false
-                                currentOnDismiss?.invoke()
-                            }
-                        },
-                        modifier = Modifier.sizeIn(48.dp, 48.dp)
-                    ) {
-                        Icon(Icons.Default.Close, "Dismiss alert", tint = palette.supportingContent)
-                    }
+        if (actualTimeoutMillis != null) {
+            DisposableEffect(dismissalOwner) {
+                onDispose {
+                    dismissalOwner.dismiss()
                 }
             }
-            if (actualTimeoutMillis != null) {
-                InlineAlertTimer(
-                    progress = { timerProgress.value },
-                    trackColor = palette.stateContainer,
-                    progressColor = palette.accent
+        }
+
+        LaunchedEffect(actualTimeoutMillis) {
+            timerProgress.snapTo(1f)
+            actualTimeoutMillis?.let { timeoutMillis ->
+                timerProgress.animateTo(
+                    targetValue = 0f,
+                    animationSpec = tween(
+                        durationMillis = timeoutMillis.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt(),
+                        easing = LinearEasing
+                    )
                 )
+                if (dismissalOwner.dismiss()) {
+                    visible = false
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = visible,
+            modifier = modifier,
+            enter = fadeIn(InfiniteMotion.enterTween()) +
+                expandVertically(InfiniteMotion.enterTween(), expandFrom = Alignment.Top),
+            exit = fadeOut(InfiniteMotion.exitTween()) +
+                shrinkVertically(InfiniteMotion.exitTween(), shrinkTowards = Alignment.Top)
+        ) {
+            InfiniteFeedbackGlassSurface(
+                semantic = semantic,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics(mergeDescendants = true) { contentDescription = "$title. $message" }
+            ) {
+                Row(
+                    Modifier.padding(
+                        horizontal = InfiniteSpacing.Default.md,
+                        vertical = InfiniteSpacing.Default.sm
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.sm),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    FeedbackIcon(semantic = semantic, size = 36.dp, iconSize = 20.dp)
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .padding(top = 1.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(title, color = palette.content, style = InfiniteFeedbackTypography.inlineTitle)
+                        Text(message, color = palette.supportingContent, style = InfiniteFeedbackTypography.inlineBody)
+                        if (actionLabel != null && onAction != null) TextButton(actionLabel, onAction)
+                    }
+                    if (actualTimeoutMillis != null) {
+                        IconButton(
+                            onClick = {
+                                if (dismissalOwner.dismiss()) {
+                                    visible = false
+                                }
+                            },
+                            modifier = Modifier.sizeIn(48.dp, 48.dp)
+                        ) {
+                            Icon(Icons.Default.Close, "Dismiss alert", tint = palette.supportingContent)
+                        }
+                    }
+                }
+                if (actualTimeoutMillis != null) {
+                    InlineAlertTimer(
+                        progress = { timerProgress.value },
+                        trackColor = palette.stateContainer,
+                        progressColor = palette.accent
+                    )
+                }
             }
         }
     }
