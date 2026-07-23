@@ -5,6 +5,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.core.body2
+import com.example.infinite_track.presentation.theme.Violet_50
 import com.example.infinite_track.presentation.theme.White
 import com.example.infinite_track.presentation.theme.sfCompact_font
 
@@ -21,6 +24,13 @@ data class InfiniteFeedbackPalette(
 )
 
 object InfiniteFeedbackTypography {
+    val inlineTitle = body1.copy(
+        fontWeight = FontWeight.Bold,
+        lineHeight = 18.sp
+    )
+    val inlineBody = body2.copy(
+        lineHeight = 16.sp
+    )
     val snackbarMessage = TextStyle(
         fontFamily = sfCompact_font,
         fontWeight = FontWeight.Medium,
@@ -68,14 +78,14 @@ object InfiniteFeedbackTypography {
 fun infiniteFeedbackPalette(semantic: InfiniteSemantic): InfiniteFeedbackPalette {
     val semanticColors = semanticColors(semantic)
     return InfiniteFeedbackPalette(
-        surface = White.copy(alpha = 0.94f),
+        surface = Violet_50.copy(alpha = 0.5f),
         stateContainer = semanticColors.container,
         content = semanticColors.content,
         supportingContent = semanticColors.content.copy(alpha = 0.76f),
-        border = semanticColors.border.copy(alpha = 0.72f),
+        border = semanticColors.border.copy(alpha = 0.52f),
         accent = semanticColors.accent,
-        shadow = InfiniteColors.Text.copy(alpha = 0.10f),
-        topHighlight = White.copy(alpha = 0.88f)
+        shadow = InfiniteColors.Text.copy(alpha = 0.08f),
+        topHighlight = White.copy(alpha = 0.56f)
     )
 }
 

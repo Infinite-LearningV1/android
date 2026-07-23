@@ -3,6 +3,9 @@ package com.example.infinite_track.presentation.design.tokens
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
+import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.core.body2
+import com.example.infinite_track.presentation.theme.Violet_50
 import com.example.infinite_track.presentation.theme.sfCompact_font
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -26,7 +29,16 @@ class InfiniteFeedbackTokensTest {
     fun `feedback typography uses registered medium and bold styles with approved line heights`() {
         val typography = InfiniteFeedbackTypography
 
+        assertEquals(body1.fontFamily, typography.inlineTitle.fontFamily)
+        assertEquals(body2.fontFamily, typography.inlineBody.fontFamily)
+        assertEquals(14.sp, typography.inlineTitle.fontSize)
+        assertEquals(18.sp, typography.inlineTitle.lineHeight)
+        assertEquals(12.sp, typography.inlineBody.fontSize)
+        assertEquals(16.sp, typography.inlineBody.lineHeight)
+
         listOf(
+            typography.inlineTitle,
+            typography.inlineBody,
             typography.snackbarMessage,
             typography.snackbarTitle,
             typography.supportingBody,
@@ -59,6 +71,7 @@ class InfiniteFeedbackTokensTest {
         InfiniteSemantic.entries.forEach { semantic ->
             val palette = infiniteFeedbackPalette(semantic)
 
+            assertEquals(Violet_50.copy(alpha = 0.5f), palette.surface)
             assertTrue(
                 "${semantic.name} content must meet 4.5 to 1 over the solid feedback surface",
                 contrastRatio(palette.content, palette.surface.compositedOver(Color.White)) >= 4.5
