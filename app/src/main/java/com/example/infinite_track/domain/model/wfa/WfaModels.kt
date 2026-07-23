@@ -1,19 +1,22 @@
 package com.example.infinite_track.domain.model.wfa
 
 import com.example.infinite_track.domain.model.location.GeoCoordinate
+import com.example.infinite_track.domain.model.location.DistanceMeters
+import java.util.Locale
 
 /**
  * Domain models for WFA (Work From Anywhere) recommendations
  * These are clean models used by the UI layer
  */
 data class WfaRecommendation(
+    val stableKey: String,
     val name: String,
     val address: String,
     val coordinate: GeoCoordinate,
-    val score: Double,
-    val label: String,
     val category: String,
-    val distance: Double
+    val suitabilityScore: Double,
+    val suitabilityLabel: String,
+    val distanceMeters: DistanceMeters
 ) {
     constructor(
         name: String,
@@ -34,11 +37,46 @@ data class WfaRecommendation(
         distance = distance
     )
 
+    constructor(
+        name: String,
+        address: String,
+        coordinate: GeoCoordinate,
+        score: Double,
+        label: String,
+        category: String,
+        distance: Double
+    ) : this(
+        stableKey = stableKeyFor(name, coordinate.latitude, coordinate.longitude),
+        name = name,
+        address = address,
+        coordinate = coordinate,
+        category = category,
+        suitabilityScore = score,
+        suitabilityLabel = label,
+        distanceMeters = DistanceMeters(distance * METERS_PER_KILOMETER)
+    )
+
     val latitude: Double
         get() = coordinate.latitude
 
     val longitude: Double
         get() = coordinate.longitude
+
+    val score: Double
+        get() = suitabilityScore
+
+    val label: String
+        get() = suitabilityLabel
+
+    val distance: Double
+        get() = distanceMeters.value / METERS_PER_KILOMETER
+
+    companion object {
+        fun stableKeyFor(name: String, latitude: Double, longitude: Double): String =
+            "${name.trim().lowercase(Locale.ROOT)}@${String.format(Locale.US, "%.6f,%.6f", latitude, longitude)}"
+
+        private const val METERS_PER_KILOMETER = 1_000.0
+    }
 }
 
 /**

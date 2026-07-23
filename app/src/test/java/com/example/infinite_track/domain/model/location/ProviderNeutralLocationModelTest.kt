@@ -25,13 +25,14 @@ class ProviderNeutralLocationModelTest {
     @Test
     fun `wfa recommendation owns provider neutral coordinate`() {
         val recommendation = WfaRecommendation(
+            stableKey = "cafe@-0.900000,119.880000",
             name = "Cafe",
             address = "Palu",
             coordinate = GeoCoordinate(-0.90, 119.88),
-            score = 0.9,
-            label = "Good",
             category = "Cafe",
-            distance = 1.0
+            suitabilityScore = 0.9,
+            suitabilityLabel = "Good",
+            distanceMeters = DistanceMeters(1_000.0)
         )
 
         assertEquals(GeoCoordinate(-0.90, 119.88), recommendation.coordinate)

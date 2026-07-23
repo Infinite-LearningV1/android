@@ -1,6 +1,7 @@
 package com.example.infinite_track.data.mapper.wfa
 
 import com.example.infinite_track.data.soucre.network.response.RecommendationItem
+import com.example.infinite_track.domain.model.location.DistanceMeters
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 
 /**
@@ -9,14 +10,14 @@ import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 
 fun RecommendationItem.toDomain(): WfaRecommendation {
     return WfaRecommendation(
+        stableKey = WfaRecommendation.stableKeyFor(this.name, this.latitude, this.longitude),
         name = this.name,
         address = this.address,
-        latitude = this.latitude,
-        longitude = this.longitude,
-        score = this.suitabilityScore,
-        label = this.suitabilityLabel,
         category = this.category,
-        distance = this.distanceFromCenter / 1000.0
+        coordinate = com.example.infinite_track.domain.model.location.GeoCoordinate(this.latitude, this.longitude),
+        suitabilityScore = this.suitabilityScore,
+        suitabilityLabel = this.suitabilityLabel,
+        distanceMeters = DistanceMeters(this.distanceFromCenter)
     )
 }
 
