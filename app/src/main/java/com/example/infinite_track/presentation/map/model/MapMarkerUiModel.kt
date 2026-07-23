@@ -12,8 +12,8 @@ data class MapMarkerUiModel(
 )
 
 enum class MapMarkerRole {
-    CURRENT_USER,
-    WFO,
-    WFH,
-    WFA_RECOMMENDATION
+    CURRENT_LOCATION,
+    AUTHORITATIVE_TARGET,
+    WFA_RECOMMENDATION,
+    SEARCH_PREVIEW
 }

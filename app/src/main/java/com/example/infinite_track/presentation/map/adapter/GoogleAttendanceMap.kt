@@ -180,9 +180,9 @@ internal fun GoogleAttendanceMap(
                 BitmapDescriptorFactory.defaultMarker(
                     when {
                         marker.isSelected -> BitmapDescriptorFactory.HUE_AZURE
-                        marker.role == MapMarkerRole.CURRENT_USER -> BitmapDescriptorFactory.HUE_CYAN
+                        marker.role == MapMarkerRole.CURRENT_LOCATION -> BitmapDescriptorFactory.HUE_CYAN
                         marker.role == MapMarkerRole.WFA_RECOMMENDATION -> BitmapDescriptorFactory.HUE_VIOLET
-                        marker.role == MapMarkerRole.WFH -> BitmapDescriptorFactory.HUE_GREEN
+                        marker.role == MapMarkerRole.SEARCH_PREVIEW -> BitmapDescriptorFactory.HUE_ORANGE
                         else -> BitmapDescriptorFactory.HUE_RED
                     }
                 )
