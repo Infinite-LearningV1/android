@@ -66,6 +66,25 @@ class AttendanceMapUiMapperTest {
         assertTrue(first.markers.single().isSelected)
     }
 
+    @Test
+    fun `recommendation marker id uses normalized stable key`() {
+        val recommendation = WfaRecommendation(
+            stableKey = "cafe@-0.900000,119.880000",
+            name = " Cafe ",
+            address = "Palu",
+            coordinate = GeoCoordinate(-0.9, 119.88),
+            category = "Cafe",
+            suitabilityScore = 0.91,
+            suitabilityLabel = "Sangat sesuai",
+            distanceMeters = com.example.infinite_track.domain.model.location.DistanceMeters(1250.0)
+        )
+
+        assertEquals(
+            "wfa:cafe@-0.900000,119.880000",
+            AttendanceMapUiMapper.recommendationMarkerId(recommendation)
+        )
+    }
+
     private fun location(
         id: Int,
         name: String,

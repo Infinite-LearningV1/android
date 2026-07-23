@@ -72,7 +72,7 @@ object AttendanceMapUiMapper {
     }
 
     fun recommendationMarkerId(recommendation: WfaRecommendation): String {
-        return "wfa:${recommendation.name}:${recommendation.latitude}:${recommendation.longitude}"
+        return "wfa:${recommendation.stableKey}"
     }
 
     fun locationMarkerId(role: MapMarkerRole, location: Location): String {
