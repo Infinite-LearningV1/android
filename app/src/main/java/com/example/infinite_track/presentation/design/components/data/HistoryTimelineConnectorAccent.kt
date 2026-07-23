@@ -2,6 +2,8 @@ package com.example.infinite_track.presentation.design.components.data
 
 import androidx.compose.runtime.Immutable
 
+private fun canonicalZero(value: Float): Float = if (value == 0f) 0f else value
+
 @Immutable
 data class HistoryTimelineConnectorAccent(
     val topFraction: Float,
@@ -26,7 +28,7 @@ internal fun resolveHistoryFocusTransform(
     return HistoryFocusTransform(
         alpha = 0.70f + 0.30f * focus,
         scale = 0.965f + 0.035f * focus,
-        translationYDp = if (focus == 0f) 0f else -3f * focus,
-        elevationDp = 3f * focus
+        translationYDp = canonicalZero(-3f * focus),
+        elevationDp = canonicalZero(3f * focus)
     )
 }

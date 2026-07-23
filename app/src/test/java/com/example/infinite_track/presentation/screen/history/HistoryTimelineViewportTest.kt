@@ -1,6 +1,7 @@
 package com.example.infinite_track.presentation.screen.history
 
 import com.example.infinite_track.presentation.design.components.data.HistoryFocusTransform
+import com.example.infinite_track.presentation.design.components.data.HistoryTimelineConnectorAccent
 import com.example.infinite_track.presentation.design.components.data.resolveHistoryFocusTransform
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -63,6 +64,14 @@ class HistoryTimelineViewportTest {
     }
 
     @Test
+    fun `negative zero focus resolves to canonical zero transform fields`() {
+        assertEquals(
+            HistoryFocusTransform(alpha = 0.70f, scale = 0.965f, translationYDp = 0f, elevationDp = 0f),
+            resolveHistoryFocusTransform(focusFraction = -0f, motionEnabled = true)
+        )
+    }
+
+    @Test
     fun `load more uses last visible record index not outer lazy index`() {
         assertTrue(shouldLoadMoreHistory(7, 10, canLoadMore = true, loading = false))
         assertFalse(shouldLoadMoreHistory(5, 10, canLoadMore = true, loading = false))
@@ -91,5 +100,13 @@ class HistoryTimelineViewportTest {
         assertEquals(1f, accents[2].topFraction, 0f)
         assertEquals(0f, accents[2].bottomFraction, 0f)
         assertTrue(accents.all { it.nodeComplete })
+    }
+
+    @Test
+    fun `negative zero progress resolves canonical connector fractions`() {
+        assertEquals(
+            HistoryTimelineConnectorAccent(0f, true, 0f),
+            resolveHistoryConnectorAccent(0, 3, -0f)
+        )
     }
 }

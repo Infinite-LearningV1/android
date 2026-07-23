@@ -7,6 +7,8 @@ import kotlin.math.min
 internal const val HistoryKeyPrefix = "history-"
 private const val HistoryFocusRangeFraction = 0.58f
 
+private fun canonicalZero(value: Float): Float = if (value == 0f) 0f else value
+
 internal data class VisibleHistoryItem(
     val recordIndex: Int,
     val center: Float
@@ -32,7 +34,9 @@ internal fun calculateHistoryFocusFraction(
 ): Float {
     val range = viewportHeight * HistoryFocusRangeFraction
     if (range <= 0f) return if (itemCenter == viewportCenter) 1f else 0f
-    return (1f - min(abs(itemCenter - viewportCenter) / range, 1f)).coerceIn(0f, 1f)
+    return canonicalZero(
+        (1f - min(abs(itemCenter - viewportCenter) / range, 1f)).coerceIn(0f, 1f)
+    )
 }
 
 internal fun calculateHistoryTimelineProgress(
@@ -54,7 +58,9 @@ internal fun calculateHistoryTimelineProgress(
             lower.recordIndex + (upper.recordIndex - lower.recordIndex) * fraction
         }
     }
-    return (fractionalIndex / (totalRecordCount - 1).toFloat()).coerceIn(0f, 1f)
+    return canonicalZero(
+        (fractionalIndex / (totalRecordCount - 1).toFloat()).coerceIn(0f, 1f)
+    )
 }
 
 internal fun shouldLoadMoreHistory(
@@ -80,7 +86,7 @@ internal fun resolveHistoryConnectorAccent(
         return HistoryTimelineConnectorAccent(0f, true, 0f)
     }
 
-    val progress = timelineProgress.coerceIn(0f, 1f)
+    val progress = canonicalZero(timelineProgress.coerceIn(0f, 1f))
     val lastIndex = recordCount - 1
     fun nodePosition(index: Int): Float = index / lastIndex.toFloat()
     fun segmentProgress(startIndex: Int, endIndex: Int): Float {
@@ -103,8 +109,8 @@ internal fun resolveHistoryConnectorAccent(
     }
 
     return HistoryTimelineConnectorAccent(
-        topFraction = top,
+        topFraction = canonicalZero(top),
         nodeComplete = progress >= nodePosition(recordIndex),
-        bottomFraction = bottom
+        bottomFraction = canonicalZero(bottom)
     )
 }
