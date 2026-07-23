@@ -38,7 +38,8 @@ data class InfiniteSnackbarVisuals(
     val semantic: InfiniteSemantic,
     override val actionLabel: String? = null,
     override val withDismissAction: Boolean = false,
-    override val duration: SnackbarDuration = semantic.defaultSnackbarDuration()
+    override val duration: SnackbarDuration = semantic.defaultSnackbarDuration(),
+    val title: String? = null
 ) : SnackbarVisuals
 
 fun InfiniteSemantic.defaultSnackbarDuration(): SnackbarDuration = when (this) {
@@ -80,7 +81,17 @@ fun InfiniteSnackbar(
             horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.sm),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)
+            ) {
+                visuals?.title?.let { title ->
+                    Text(
+                        text = title,
+                        color = palette.content,
+                        style = InfiniteFeedbackTypography.snackbarTitle
+                    )
+                }
                 Text(
                     text = data.visuals.message,
                     color = palette.content,

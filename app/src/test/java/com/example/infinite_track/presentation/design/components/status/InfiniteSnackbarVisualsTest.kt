@@ -37,4 +37,23 @@ class InfiniteSnackbarVisualsTest {
 
         assertEquals(SnackbarDuration.Indefinite, visuals.duration)
     }
+
+    @Test
+    fun `snackbar title is optional and preserved when supplied`() {
+        assertEquals(
+            null,
+            InfiniteSnackbarVisuals(
+                message = "Saved",
+                semantic = InfiniteSemantic.Success
+            ).title
+        )
+        assertEquals(
+            "Attendance saved",
+            InfiniteSnackbarVisuals(
+                message = "Check-in recorded.",
+                semantic = InfiniteSemantic.Success,
+                title = "Attendance saved"
+            ).title
+        )
+    }
 }

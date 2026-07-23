@@ -7,7 +7,9 @@ import org.junit.Test
 class InfiniteInlineAlertPolicyTest {
 
     @Test
-    fun `success and info without actions use short timed feedback`() {
+    fun `transient semantic durations are four and eight seconds`() {
+        assertEquals(4_000, InfiniteInlineAlertDuration.Short.timeoutMillis)
+        assertEquals(8_000, InfiniteInlineAlertDuration.Long.timeoutMillis)
         assertEquals(
             InfiniteInlineAlertDuration.Short,
             InfiniteSemantic.Success.defaultInlineAlertDuration()
@@ -16,21 +18,17 @@ class InfiniteInlineAlertPolicyTest {
             InfiniteInlineAlertDuration.Short,
             InfiniteSemantic.Info.defaultInlineAlertDuration()
         )
-    }
-
-    @Test
-    fun `actionable warning error and processing overrides remain persistent`() {
         assertEquals(
-            InfiniteInlineAlertDuration.Persistent,
+            InfiniteInlineAlertDuration.Long,
             InfiniteSemantic.Warning.defaultInlineAlertDuration()
         )
         assertEquals(
-            InfiniteInlineAlertDuration.Persistent,
+            InfiniteInlineAlertDuration.Long,
             InfiniteSemantic.Error.defaultInlineAlertDuration()
         )
         assertEquals(
             InfiniteInlineAlertDuration.Persistent,
-            InfiniteSemantic.Success.defaultInlineAlertDuration(hasAction = true)
+            InfiniteSemantic.Warning.defaultInlineAlertDuration(hasAction = true)
         )
     }
 }

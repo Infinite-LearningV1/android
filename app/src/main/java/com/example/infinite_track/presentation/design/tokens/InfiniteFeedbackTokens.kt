@@ -2,11 +2,11 @@ package com.example.infinite_track.presentation.design.tokens
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import com.example.infinite_track.presentation.core.body1
 import com.example.infinite_track.presentation.core.body2
 import com.example.infinite_track.presentation.core.body2_5
 import com.example.infinite_track.presentation.core.headline3
-import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.theme.White
 
 @Immutable
@@ -22,10 +22,10 @@ data class InfiniteFeedbackPalette(
 )
 
 object InfiniteFeedbackTypography {
-    val inlineTitle = body1
+    val inlineTitle = body1.copy(fontWeight = FontWeight.Bold)
     val inlineBody = body2
     val snackbarMessage = body1
-    val snackbarTitle = headline4
+    val snackbarTitle = body1.copy(fontWeight = FontWeight.Bold)
     val supportingBody = body2
     val pillLabel = body2_5
     val actionLabel = body2
