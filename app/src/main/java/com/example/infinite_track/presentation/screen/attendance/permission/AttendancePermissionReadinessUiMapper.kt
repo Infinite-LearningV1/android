@@ -56,7 +56,9 @@ class AttendancePermissionReadinessUiMapper @Inject constructor() {
             iconKey = iconFor(entry.access),
             semantic = copy.semantic,
             stateDescription = "${titleFor(entry.access)}, ${if (entry.access.requirement == AttendanceAccessRequirement.REQUIRED) "wajib" else "opsional"}, ${copy.statusLabel}${actionLabelFor(entry)?.let { ", aksi $it" }.orEmpty()}",
-            isReady = entry.status == AttendanceAccessStatus.READY || entry.status == AttendanceAccessStatus.NOT_REQUIRED_ON_DEVICE
+            isReady = entry.status == AttendanceAccessStatus.READY || entry.status == AttendanceAccessStatus.NOT_REQUIRED_ON_DEVICE,
+            usesToggle = entry.access.requirement == AttendanceAccessRequirement.OPTIONAL &&
+                entry.status != AttendanceAccessStatus.NOT_REQUIRED_ON_DEVICE
         )
     }
 
@@ -79,7 +81,8 @@ class AttendancePermissionReadinessUiMapper @Inject constructor() {
         AttendanceAccessRecovery.OPEN_APPLICATION_SETTINGS,
         AttendanceAccessRecovery.OPEN_DEVICE_LOCATION_SETTINGS -> "Buka pengaturan"
         AttendanceAccessRecovery.NONE -> when (entry.status) {
-            AttendanceAccessStatus.READY,
+            AttendanceAccessStatus.READY ->
+                if (entry.access.requirement == AttendanceAccessRequirement.OPTIONAL) "Kelola" else null
             AttendanceAccessStatus.NOT_REQUIRED_ON_DEVICE -> null
             else -> "Coba lagi"
         }

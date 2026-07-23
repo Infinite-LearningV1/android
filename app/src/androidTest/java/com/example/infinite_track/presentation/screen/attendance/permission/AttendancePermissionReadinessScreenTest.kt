@@ -15,6 +15,8 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -181,6 +183,40 @@ class AttendancePermissionReadinessScreenTest {
     }
 
     @Test
+    fun optionalSwitchCanRequestEnable() {
+        val events = mutableListOf<AttendancePermissionReadinessEvent>()
+        render(partialState(), onEvent = events::add)
+
+        composeRule.onNodeWithTag("permission-optional-toggle").performClick()
+        composeRule.onNodeWithTag(
+            "permission-access-toggle-notification",
+            useUnmergedTree = true
+        )
+            .assertIsOff()
+            .performClick()
+        assertEquals(
+            listOf(
+                AttendancePermissionReadinessEvent.PermissionItemClicked(
+                    AttendanceAccess.NOTIFICATION
+                )
+            ),
+            events
+        )
+
+    }
+
+    @Test
+    fun optionalSwitchReflectsReadyState() {
+        render(readyState(optionalReady = true))
+
+        composeRule.onNodeWithTag("permission-optional-toggle").performClick()
+        composeRule.onNodeWithTag(
+            "permission-access-toggle-notification",
+            useUnmergedTree = true
+        ).assertIsOn()
+    }
+
+    @Test
     fun readyPanelShowsReadySummary() {
         render(readyState(optionalReady = false))
 
@@ -311,14 +347,14 @@ class AttendancePermissionReadinessScreenTest {
                 permissionItem(
                     AttendanceAccess.NOTIFICATION,
                     if (optionalReady) "Siap" else "Terbatas",
-                    if (optionalReady) null else "Aktifkan",
+                    if (optionalReady) "Kelola" else "Aktifkan",
                     if (optionalReady) InfiniteSemantic.Success else InfiniteSemantic.Warning,
                     optionalReady
                 ),
                 permissionItem(
                     AttendanceAccess.BACKGROUND_LOCATION,
                     if (optionalReady) "Siap" else "Terbatas",
-                    if (optionalReady) null else "Atur akses",
+                    if (optionalReady) "Kelola" else "Atur akses",
                     if (optionalReady) InfiniteSemantic.Success else InfiniteSemantic.Warning,
                     optionalReady
                 )
@@ -397,7 +433,8 @@ class AttendancePermissionReadinessScreenTest {
             stateDescription = "$title, ${requirement.lowercase()}, $status${
                 action?.let { ", aksi $it" }.orEmpty()
             }",
-            isReady = ready
+            isReady = ready,
+            usesToggle = requirement == "Opsional"
         )
     }
 }

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.domain.model.attendance.permission.AttendanceAccess
 import com.example.infinite_track.domain.model.attendance.permission.AttendanceAccessStatus
+import com.example.infinite_track.domain.model.attendance.permission.AttendanceAccessRequirement
 import com.example.infinite_track.domain.model.attendance.permission.AttendancePermissionNextAction
 import com.example.infinite_track.domain.model.attendance.permission.AttendancePermissionReadiness
 import com.example.infinite_track.domain.model.attendance.permission.AttendancePermissionRequestOutcome
@@ -120,7 +121,20 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
 
     private fun onItemClicked(access: AttendanceAccess) {
         val readiness = effectiveReadiness() ?: return
-        emitAction(resolveNextAction.forAccess(readiness, access))
+        val entry = readiness.entryOf(access)
+        if (
+            access.requirement == AttendanceAccessRequirement.OPTIONAL &&
+            entry?.status == AttendanceAccessStatus.READY
+        ) {
+            if (inFlightAction == null) {
+                emit(
+                    AttendancePermissionReadinessEffect.OpenApplicationSettings(access),
+                    trackInFlight = true
+                )
+            }
+        } else {
+            emitAction(resolveNextAction.forAccess(readiness, access))
+        }
     }
 
     private fun emitAction(action: AttendancePermissionNextAction) {
@@ -194,7 +208,12 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
         AttendancePermissionReadinessEffect.RequestBackgroundLocation ->
             resolveNextAction.forAccess(readiness, AttendanceAccess.BACKGROUND_LOCATION) == AttendancePermissionNextAction.RequestPermission(AttendanceAccess.BACKGROUND_LOCATION)
         is AttendancePermissionReadinessEffect.OpenApplicationSettings ->
-            resolveNextAction.forAccess(readiness, effect.access) == AttendancePermissionNextAction.OpenApplicationSettings(effect.access)
+            (
+                effect.access.requirement == AttendanceAccessRequirement.OPTIONAL &&
+                    readiness.entryOf(effect.access)?.status == AttendanceAccessStatus.READY
+                ) ||
+                resolveNextAction.forAccess(readiness, effect.access) ==
+                AttendancePermissionNextAction.OpenApplicationSettings(effect.access)
         AttendancePermissionReadinessEffect.OpenDeviceLocationSettings ->
             resolveNextAction.forAccess(readiness, AttendanceAccess.DEVICE_LOCATION) == AttendancePermissionNextAction.OpenDeviceLocationSettings
         AttendancePermissionReadinessEffect.ClosePermissionPanel ->
