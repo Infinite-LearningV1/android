@@ -63,6 +63,7 @@ import com.example.infinite_track.domain.model.attendance.TargetLocationId
 import com.example.infinite_track.domain.model.attendance.TargetLocationResolution
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.presentation.components.button.attendance.AttendanceBottomSheetContent
+import com.example.infinite_track.presentation.components.button.attendance.AttendancePreparationEvent
 import com.example.infinite_track.presentation.components.empty.ErrorAnimation
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
 import com.example.infinite_track.presentation.components.maps.MarkerView
@@ -82,6 +83,8 @@ import com.example.infinite_track.presentation.map.model.MapCameraEffect
 import com.example.infinite_track.presentation.map.model.MapMarkerRole
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
+import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationPrimaryAction
+import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationUiMapper
 import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryState
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionPanelHost
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessEvent
@@ -278,7 +281,7 @@ fun AttendanceScreen(
 
         is UiState.Success -> {
             val preparation = uiState.preparation
-            val targetLocationInfo = preparation.toBottomSheetTargetLocationInfo()
+            val preparationUiModel = AttendancePreparationUiMapper.map(preparation)
             val discovery = preparation.wfaDiscovery as? WfaDiscoveryState.Content
             val selectedWfaMarker = discovery?.recommendations?.firstOrNull {
                 it.stableKey == discovery.selectedKey
@@ -287,7 +290,6 @@ fun AttendanceScreen(
                 preparation = preparation,
                 selectedTargetId = selectedTargetMarkerId
             )
-            val hasWfaPreview = discovery?.selectedKey != null || discovery?.searchPreview != null
 
             // Tampilkan konten utama dengan BottomSheet
             BottomSheetScaffold(
@@ -369,20 +371,42 @@ fun AttendanceScreen(
                             }
 
                             AttendanceBottomSheetContent(
-                                modifier = Modifier.padding(top = 0.dp),
-                                targetLocationInfo = targetLocationInfo,
-                                currentLocationAddress = uiState.currentUserAddress.ifEmpty { "Mengambil lokasi saat ini..." },
-                                selectedWorkMode = preparation.selectedMode,
-                                isBookingEnabled = preparation.selectedMode == WorkMode.WFA && hasWfaPreview,
-                                isCheckInEnabled = uiState.isButtonEnabled,
-                                checkInButtonText = uiState.buttonText,
-                                actionState = uiState.actionState,
-                                onSearchLocationClick = {
-                                    navController.navigate("location_search")
+                                model = preparationUiModel,
+                                onEvent = { event ->
+                                    when (event) {
+                                        is AttendancePreparationEvent.ModeSelected ->
+                                            viewModel.onWorkModeSelected(event.mode)
+                                        is AttendancePreparationEvent.RecommendationSelected ->
+                                            discovery
+                                                ?.recommendations
+                                                ?.firstOrNull { it.stableKey == event.stableKey }
+                                                ?.let(viewModel::onWfaMarkerClicked)
+                                        AttendancePreparationEvent.SearchWfaLocation ->
+                                            navController.navigate(Screen.LocationSearch.route)
+                                        is AttendancePreparationEvent.PrimaryActionClicked -> {
+                                            when (event.action) {
+                                                AttendancePreparationPrimaryAction.WAIT -> Unit
+                                                AttendancePreparationPrimaryAction.CONTINUE_TO_FACE_VERIFICATION ->
+                                                    viewModel.onAttendanceButtonClicked()
+                                                AttendancePreparationPrimaryAction.REFRESH_STATUS,
+                                                AttendancePreparationPrimaryAction.REFRESH_PROFILE,
+                                                AttendancePreparationPrimaryAction.RETRY_WFA_DISCOVERY ->
+                                                    viewModel.onWorkModeSelected(preparation.selectedMode)
+                                                AttendancePreparationPrimaryAction.REFRESH_LOCATION ->
+                                                    viewModel.onFocusLocationClicked()
+                                                AttendancePreparationPrimaryAction.FOCUS_TARGET ->
+                                                    viewModel.onMapReady()
+                                                AttendancePreparationPrimaryAction.OPEN_WFA_BOOKING ->
+                                                    viewModel.onBookingClicked()
+                                                AttendancePreparationPrimaryAction.OPEN_WFA_REQUESTS ->
+                                                    navController.navigate(Screen.Wfa.route)
+                                                AttendancePreparationPrimaryAction.CONTACT_ADMIN ->
+                                                    navController.navigate(Screen.ContactUs.route)
+                                            }
+                                        }
+                                    }
                                 },
-                                onModeSelected = { mode -> viewModel.onWorkModeSelected(mode) },
-                                onBookingClick = { viewModel.onBookingClicked() },
-                                onCheckInClick = { viewModel.onAttendanceButtonClicked() }
+                                modifier = Modifier.padding(top = 0.dp)
                             )
                         }
                     }

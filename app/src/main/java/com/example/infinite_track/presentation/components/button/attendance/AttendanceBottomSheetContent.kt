@@ -2,228 +2,233 @@ package com.example.infinite_track.presentation.components.button.attendance
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import com.example.infinite_track.domain.model.attendance.Location
-import com.example.infinite_track.domain.model.attendance.SelectedTargetLocation
 import com.example.infinite_track.domain.model.attendance.WorkMode
-import com.example.infinite_track.presentation.components.button.InfiniteTrackButton
-import com.example.infinite_track.presentation.components.status.InfiniteTrackInlineAlert
-import com.example.infinite_track.presentation.components.status.StatusStates
-import com.example.infinite_track.presentation.core.headline4
-import com.example.infinite_track.presentation.design.components.status.InfiniteInlineAlertDuration
-import com.example.infinite_track.presentation.screen.attendance.AttendanceActionState
-import com.example.infinite_track.presentation.screen.attendance.AttendanceBlockReason
+import com.example.infinite_track.presentation.design.components.button.InfiniteButton
+import com.example.infinite_track.presentation.design.components.button.InfiniteButtonState
+import com.example.infinite_track.presentation.design.components.button.InfiniteIconButton
+import com.example.infinite_track.presentation.design.components.surface.InfiniteCard
+import com.example.infinite_track.presentation.design.tokens.InfiniteColors
+import com.example.infinite_track.presentation.design.tokens.InfiniteIcons
+import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
+import com.example.infinite_track.presentation.design.tokens.InfiniteSize
+import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
+import com.example.infinite_track.presentation.design.tokens.InfiniteSurfaceVariant
+import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationPrimaryAction
+import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationSecondaryAction
+import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationUiModel
+import com.example.infinite_track.presentation.screen.attendance.preparation.TargetLocationSummaryUiModel
+import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryUiModel
+import com.example.infinite_track.presentation.screen.attendance.preparation.WorkModeOptionUiModel
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
-import com.example.infinite_track.presentation.theme.Purple_500
 
-/**
- * Komponen utama untuk konten BottomSheet attendance yang merakit semua komponen kecil.
- *
- * @param modifier Modifier untuk styling komponen
- * @param targetLocationInfo Informasi lokasi target yang sudah di-resolve dari mode terpilih.
- * @param currentLocationAddress Alamat lokasi saat ini.
- * @param selectedWorkMode Mode kerja yang dipilih.
- * @param isBookingEnabled Apakah tombol booking dapat diklik
- * @param isCheckInEnabled Apakah tombol check-in dapat diklik
- * @param checkInButtonText Teks pada tombol check-in
- * @param actionState State aksi attendance eksplisit untuk inline guidance Layer 3
- * @param outOfRangeWarningText Teks peringatan ketika di luar jangkauan
- * @param onSearchLocationClick Callback ketika tombol search location diklik (hanya untuk WFA)
- * @param onModeSelected Callback ketika mode kerja dipilih
- * @param onBookingClick Callback ketika tombol booking diklik
- * @param onCheckInClick Callback ketika tombol check-in diklik
- */
+sealed interface AttendancePreparationEvent {
+    data class ModeSelected(val mode: WorkMode) : AttendancePreparationEvent
+    data class RecommendationSelected(val stableKey: String) : AttendancePreparationEvent
+    data object SearchWfaLocation : AttendancePreparationEvent
+    data class PrimaryActionClicked(
+        val action: AttendancePreparationPrimaryAction
+    ) : AttendancePreparationEvent
+}
+
 @Composable
 fun AttendanceBottomSheetContent(
-    modifier: Modifier = Modifier,
-    targetLocationInfo: SelectedTargetLocation?,
-    currentLocationAddress: String,
-    selectedWorkMode: WorkMode,
-    isBookingEnabled: Boolean,
-    isCheckInEnabled: Boolean,
-    checkInButtonText: String,
-    actionState: AttendanceActionState? = null,
-    outOfRangeWarningText: String = "Pilih mode kerja dan lokasi target",
-    onSearchLocationClick: () -> Unit = {}, // Untuk navigasi ke LocationSearchScreen
-    onModeSelected: (WorkMode) -> Unit,
-    onBookingClick: () -> Unit,
-    onCheckInClick: () -> Unit
+    model: AttendancePreparationUiModel,
+    onEvent: (AttendancePreparationEvent) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    // Transparent content - no background
-    Column(
+    WorkModePreparationContent(
+        model = model,
+        onEvent = onEvent,
         modifier = modifier
-            .fillMaxWidth()
-            .wrapContentHeight()
-            .padding(start = 20.dp, end = 20.dp, bottom = 20.dp), // Remove top padding
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        // Search Location Button - Only show when Work From Anywhere is selected
-        if (selectedWorkMode == WorkMode.WFA) {
-            InfiniteTrackButton(
-                label = "Cari Lokasi",
-                onClick = onSearchLocationClick,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        // Location Information Section dengan subtitle
-        LocationInfoSection(
-            targetLocationInfo = targetLocationInfo,
-            currentLocationAddress = currentLocationAddress
-        )
-
-        // Out of Range Warning and Work Mode Selector - Always visible
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = outOfRangeWarningText,
-                style = headline4,
-                color = Purple_500
-            )
-
-            WorkModeSelector(
-                selectedMode = selectedWorkMode,
-                onModeSelected = onModeSelected
-            )
-        }
-
-        actionState?.let { state ->
-            AttendanceActionInlineAlert(actionState = state)
-        }
-
-        // Action Buttons
-        AttendanceActionButtons(
-            isBookingEnabled = isBookingEnabled,
-            isCheckInEnabled = isCheckInEnabled,
-            checkInButtonText = checkInButtonText,
-            onBookingClick = onBookingClick,
-            onCheckInClick = onCheckInClick,
-            showBookingAction = selectedWorkMode == WorkMode.WFA
-        )
-    }
-}
-
-@Composable
-private fun AttendanceActionInlineAlert(
-    actionState: AttendanceActionState
-) {
-    when (actionState) {
-        is AttendanceActionState.Blocked -> {
-            val status = when (actionState.reason) {
-                AttendanceBlockReason.SERVER_RESTRICTION,
-                AttendanceBlockReason.UNKNOWN -> StatusStates.Error
-                else -> StatusStates.Warning
-            }
-            InfiniteTrackInlineAlert(
-                status = status,
-                title = actionState.title,
-                message = actionState.message
-            )
-        }
-
-        is AttendanceActionState.VerifyingFace -> {
-            InfiniteTrackInlineAlert(
-                status = StatusStates.Info,
-                title = "Verifikasi wajah",
-                message = "Membuka scanner wajah untuk melanjutkan absensi.",
-                duration = InfiniteInlineAlertDuration.Persistent
-            )
-        }
-
-        is AttendanceActionState.Submitting -> {
-            InfiniteTrackInlineAlert(
-                status = StatusStates.Info,
-                title = "Mengirim absensi",
-                message = actionState.message,
-                duration = InfiniteInlineAlertDuration.Persistent
-            )
-        }
-
-        is AttendanceActionState.RetryableFailure -> {
-            InfiniteTrackInlineAlert(
-                status = StatusStates.Error,
-                title = actionState.title,
-                message = actionState.message
-            )
-        }
-
-        AttendanceActionState.Completed -> {
-            InfiniteTrackInlineAlert(
-                status = StatusStates.Info,
-                title = "Absensi selesai",
-                message = "Anda sudah absen hari ini."
-            )
-        }
-
-        AttendanceActionState.Loading,
-        is AttendanceActionState.Ready,
-        is AttendanceActionState.Success -> Unit
-    }
-}
-
-private fun previewTargetLocation(mode: WorkMode): SelectedTargetLocation {
-    return SelectedTargetLocation(
-        mode = mode,
-        location = Location(
-            locationId = mode.categoryId,
-            description = "Jl. Sudirman No. 123, Jakarta Pusat, DKI Jakarta",
-            latitude = 0.0,
-            longitude = 0.0,
-            radius = 100,
-            category = mode.shortLabel
-        ),
-        displayName = "Jl. Sudirman No. 123, Jakarta Pusat, DKI Jakarta",
-        description = mode.shortLabel,
-        isAvailable = true
     )
 }
 
-@Preview(showBackground = true)
 @Composable
-private fun AttendanceBottomSheetContentPreview() {
-    Infinite_TrackTheme {
-        Column {
-            // Preview when in range
-            AttendanceBottomSheetContent(
-                targetLocationInfo = previewTargetLocation(WorkMode.WFH),
-                currentLocationAddress = "Jl. Thamrin No. 456, Jakarta Pusat, DKI Jakarta",
-                selectedWorkMode = WorkMode.WFH,
-                isBookingEnabled = true,
-                isCheckInEnabled = true,
-                checkInButtonText = "Check In",
-                onModeSelected = {},
-                onBookingClick = {},
-                onCheckInClick = {}
+fun WorkModePreparationContent(
+    model: AttendancePreparationUiModel,
+    onEvent: (AttendancePreparationEvent) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(
+                start = InfiniteSpacing.Default.lg,
+                end = InfiniteSpacing.Default.lg,
+                bottom = InfiniteSpacing.Default.xl
+            ),
+        verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.lg)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)) {
+            Text(
+                text = "Pilih Mode Kerja",
+                modifier = Modifier.semantics { heading() },
+                style = MaterialTheme.typography.headlineSmall,
+                color = InfiniteColors.Text
+            )
+            Text(
+                text = "Pilih cara Anda bekerja hari ini sebelum check-in.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = InfiniteColors.AttendanceReportBodyText
+            )
+        }
+
+        WorkModeSelector(
+            options = model.modeOptions,
+            onModeSelected = { mode ->
+                onEvent(AttendancePreparationEvent.ModeSelected(mode))
+            }
+        )
+
+        model.targetSummary?.let { summary ->
+            TargetLocationSummary(model = summary)
+        }
+
+        if (
+            model.secondaryAction == AttendancePreparationSecondaryAction.SEARCH_WFA_LOCATION &&
+            model.secondaryActionLabel != null
+        ) {
+            WfaSearchAction(
+                label = model.secondaryActionLabel,
+                onClick = { onEvent(AttendancePreparationEvent.SearchWfaLocation) }
+            )
+        }
+
+        WfaRecommendationSection(
+            model = model.wfaDiscovery,
+            onRecommendationSelected = { stableKey ->
+                onEvent(AttendancePreparationEvent.RecommendationSelected(stableKey))
+            }
+        )
+
+        InfiniteCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { liveRegion = LiveRegionMode.Polite },
+            variant = InfiniteSurfaceVariant.Outlined,
+            semantic = InfiniteSemantic.Neutral,
+            showShadow = false
+        ) {
+            Text(
+                text = model.statusMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = InfiniteColors.Text
+            )
+        }
+
+        InfiniteButton(
+            text = model.primaryActionLabel,
+            onClick = {
+                onEvent(AttendancePreparationEvent.PrimaryActionClicked(model.primaryAction))
+            },
+            modifier = Modifier.testTag("attendancePrimaryAction"),
+            size = InfiniteSize.Large,
+            state = if (model.isPrimaryActionEnabled) {
+                InfiniteButtonState.Enabled
+            } else {
+                InfiniteButtonState.Disabled
+            },
+            fullWidth = true,
+            trailingIcon = InfiniteIcons.ChevronRight
+        )
+    }
+}
+
+@Composable
+private fun WfaSearchAction(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    InfiniteCard(
+        modifier = modifier.fillMaxWidth(),
+        variant = InfiniteSurfaceVariant.Outlined,
+        semantic = InfiniteSemantic.Secondary,
+        showShadow = false
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.sm),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = InfiniteColors.Text
+                )
+                Text(
+                    text = "Cari atau pilih lokasi untuk draf pengajuan WFA.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InfiniteColors.AttendanceReportBodyText
+                )
+            }
+            InfiniteIconButton(
+                icon = InfiniteIcons.Search,
+                contentDescription = label,
+                onClick = onClick,
+                size = InfiniteSize.Large
             )
         }
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, widthDp = 320)
 @Composable
-private fun AttendanceBottomSheetContentOutOfRangePreview() {
+private fun WorkModePreparationContentPreview() {
     Infinite_TrackTheme {
-        Column {
-            // Preview when out of range
-            AttendanceBottomSheetContent(
-                targetLocationInfo = previewTargetLocation(WorkMode.WFA),
-                currentLocationAddress = "Jl. Kemang No. 789, Jakarta Selatan, DKI Jakarta",
-                selectedWorkMode = WorkMode.WFA,
-                isBookingEnabled = false,
-                isCheckInEnabled = true,
-                checkInButtonText = "Check In (WFA)",
-                onModeSelected = {},
-                onBookingClick = {},
-                onCheckInClick = {}
-            )
-        }
+        WorkModePreparationContent(
+            model = AttendancePreparationUiModel(
+                modeOptions = WorkMode.values().map { mode ->
+                    WorkModeOptionUiModel(
+                        mode = mode,
+                        title = mode.displayLabel,
+                        supportingText = when (mode) {
+                            WorkMode.WFO -> "Lokasi kantor yang ditetapkan"
+                            WorkMode.WFH -> "Lokasi rumah yang ditetapkan admin"
+                            WorkMode.WFA -> "Memerlukan booking yang disetujui"
+                        },
+                        isSelected = mode == WorkMode.WFA
+                    )
+                },
+                targetSummary = TargetLocationSummaryUiModel(
+                    displayName = "WFA Disetujui",
+                    sourceLabel = "Booking WFA disetujui",
+                    radiusText = "Radius 100 m",
+                    distanceText = "Jarak 25 m",
+                    rangeText = "Di dalam jangkauan"
+                ),
+                statusMessage = "Lokasi target siap digunakan untuk kehadiran.",
+                wfaDiscovery = WfaDiscoveryUiModel.Empty(
+                    "Belum ada rekomendasi lokasi WFA."
+                ),
+                primaryAction = AttendancePreparationPrimaryAction.CONTINUE_TO_FACE_VERIFICATION,
+                primaryActionLabel = "Lanjut ke Verifikasi Wajah",
+                isPrimaryActionEnabled = true,
+                secondaryAction = AttendancePreparationSecondaryAction.SEARCH_WFA_LOCATION,
+                secondaryActionLabel = "Cari lokasi WFA"
+            ),
+            onEvent = {}
+        )
     }
 }
