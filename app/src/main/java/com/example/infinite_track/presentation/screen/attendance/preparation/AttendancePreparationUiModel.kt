@@ -46,13 +46,17 @@ data class WfaRecommendationUiModel(
     val stableKey: String,
     val name: String,
     val supportingText: String,
-    val suitabilityText: String,
-    val isSelected: Boolean
+    val suitabilityText: String
 )
+
+fun WfaDiscoveryUiModel.Content.isRecommendationSelected(
+    recommendation: WfaRecommendationUiModel
+): Boolean = recommendation.stableKey == selectedKey
 
 enum class AttendancePreparationPrimaryAction {
     WAIT,
     CONTINUE_TO_FACE_VERIFICATION,
+    SUBMIT_ATTENDANCE,
     REFRESH_STATUS,
     REFRESH_PROFILE,
     REFRESH_LOCATION,

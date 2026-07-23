@@ -147,7 +147,7 @@ class WorkModeTargetLocationScreenTest {
         render(
             wfaReadyUiModel(
                 discovery = WfaDiscoveryUiModel.Content(
-                    rows = listOf(selectedRecommendation.copy(isSelected = false)),
+                    rows = listOf(selectedRecommendation),
                     selectedKey = null,
                     searchPreviewName = null
                 )
@@ -312,6 +312,5 @@ class WorkModeTargetLocationScreenTest {
         name = "Cafe Palu",
         supportingText = "Cafe • 1,25 km",
         suitabilityText = "Skor WFA 91 • Sangat sesuai",
-        isSelected = true
     )
 }

@@ -139,7 +139,7 @@ class AttendancePreparationUiMapperTest {
 
         val content = mapped.wfaDiscovery as WfaDiscoveryUiModel.Content
         assertEquals(recommendation.stableKey, content.rows.single().stableKey)
-        assertTrue(content.rows.single().isSelected)
+        assertTrue(content.isRecommendationSelected(content.rows.single()))
         assertTrue(content.rows.single().supportingText.contains("1,25 km"))
         assertFalse(content.rows.single().suitabilityText.contains("rating", ignoreCase = true))
     }

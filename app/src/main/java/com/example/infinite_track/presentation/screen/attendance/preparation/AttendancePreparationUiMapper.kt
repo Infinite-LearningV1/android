@@ -177,19 +177,18 @@ object AttendancePreparationUiMapper {
             retryable = retryable
         )
         is WfaDiscoveryState.Content -> WfaDiscoveryUiModel.Content(
-            rows = recommendations.map { recommendation -> recommendation.toUiModel(selectedKey) },
+            rows = recommendations.map { recommendation -> recommendation.toUiModel() },
             selectedKey = selectedKey,
             searchPreviewName = searchPreview?.placeName
         )
     }
 
-    private fun WfaRecommendation.toUiModel(selectedKey: String?): WfaRecommendationUiModel =
+    private fun WfaRecommendation.toUiModel(): WfaRecommendationUiModel =
         WfaRecommendationUiModel(
             stableKey = stableKey,
             name = name,
             supportingText = "$category • ${formatDistance(distanceMeters)}",
             suitabilityText = "Skor WFA ${(suitabilityScore * 100).roundToInt()} • $suitabilityLabel",
-            isSelected = stableKey == selectedKey
         )
 
     private fun formatDistance(distance: DistanceMeters): String {

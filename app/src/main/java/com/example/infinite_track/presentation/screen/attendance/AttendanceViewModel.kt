@@ -27,6 +27,7 @@ import com.example.infinite_track.domain.use_case.attendance.EvaluateTargetRange
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
 import com.example.infinite_track.domain.use_case.attendance.ResolveAuthoritativeTargetLocationUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
+import com.example.infinite_track.domain.use_case.auth.RefreshAttendanceProfileUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayWfaBookingStateUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
@@ -84,6 +85,7 @@ class AttendanceViewModel @Inject constructor(
     private val attendancePreference: AttendancePreference,
     private val geofenceManager: GeofenceManager,
     private val getLoggedInUserUseCase: GetLoggedInUserUseCase,
+    private val refreshAttendanceProfileUseCase: RefreshAttendanceProfileUseCase,
     private val resolveTodayApprovedWfaBookingUseCase: ResolveTodayApprovedWfaBookingUseCase,
     private val resolveTodayWfaBookingStateUseCase: ResolveTodayWfaBookingStateUseCase,
     private val resolveAuthoritativeTargetLocationUseCase: ResolveAuthoritativeTargetLocationUseCase,
@@ -121,6 +123,18 @@ class AttendanceViewModel @Inject constructor(
     private var latestSelectionRequest: SelectionRequestToken =
         latestSelectionGuard.next(WorkMode.WFO)
     private var latestProfile: UserModel? = null
+    private val preparationRefreshCoordinator = AttendancePreparationRefreshCoordinator(
+        fetchStatus = ::fetchTodayStatus,
+        requestProfileRefresh = { refreshAttendanceProfileUseCase() },
+        applyProfile = { user -> latestProfile = user },
+        resolveWfh = {
+            if (_uiState.value.preparation.selectedMode == WorkMode.WFH) {
+                resolveAndApplyTargetForMode(WorkMode.WFH)
+            }
+            refreshReminderGeofencesIfNeeded()
+        },
+        preserveProfileRecovery = ::preserveProfileRefreshRecovery
+    )
 
     companion object {
         private const val TAG = "AttendanceViewModel"
@@ -491,6 +505,43 @@ class AttendanceViewModel @Inject constructor(
     fun onWorkModeSelected(mode: WorkMode) {
         Log.d(TAG, "Work mode selected: ${mode.shortLabel}")
         resolveAndApplyTargetForMode(mode)
+    }
+
+    fun onAttendanceStatusRefreshRequested() {
+        viewModelScope.launch {
+            preparationRefreshCoordinator.refreshStatus()
+        }
+    }
+
+    fun onAttendanceProfileRefreshRequested() {
+        viewModelScope.launch {
+            preparationRefreshCoordinator.refreshProfile()
+        }
+    }
+
+    fun onWfaDiscoveryRetryRequested() {
+        resolveAndApplyTargetForMode(WorkMode.WFA)
+    }
+
+    private fun preserveProfileRefreshRecovery() {
+        if (_uiState.value.preparation.selectedMode != WorkMode.WFH) return
+        val resolution = TargetLocationResolution.Failed(
+            mode = WorkMode.WFH,
+            failure = TargetResolutionFailure.PROFILE_REFRESH_FAILED
+        )
+        val eligibility = evaluateAttendancePreparationUseCase(
+            resolution = resolution,
+            rangeStatus = TargetRangeStatus.Unknown(
+                TargetRangeUnknownReason.CURRENT_LOCATION_UNAVAILABLE
+            )
+        )
+        _uiState.value = _uiState.value.copy(
+            preparation = _uiState.value.preparation.copy(
+                targetResolution = resolution,
+                rangeStatus = null,
+                eligibility = eligibility
+            )
+        ).withResolvedActionStatePreservingInFlightSubmit()
     }
 
     private fun resolveAndApplyTargetForMode(

@@ -25,6 +25,7 @@ import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
 import com.example.infinite_track.domain.use_case.auth.ClearAuthenticatedRuntimeUseCase
 import com.example.infinite_track.domain.use_case.auth.GenerateAndSaveEmbeddingUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
+import com.example.infinite_track.domain.use_case.auth.RefreshAttendanceProfileUseCase
 import com.example.infinite_track.domain.use_case.auth.LoginUseCase
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
 import com.example.infinite_track.domain.use_case.auth.ValidateForegroundSessionUseCase
@@ -131,6 +132,11 @@ object UseCaseModule {
     fun provideGetLoggedInUserUseCase(authRepository: AuthRepository): GetLoggedInUserUseCase {
         return GetLoggedInUserUseCase(authRepository)
     }
+
+    @Provides
+    fun provideRefreshAttendanceProfileUseCase(
+        authRepository: AuthRepository
+    ): RefreshAttendanceProfileUseCase = RefreshAttendanceProfileUseCase(authRepository)
 
     // Provide the Language Use Cases
     @Provides

@@ -29,6 +29,7 @@ import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
 import com.example.infinite_track.presentation.design.tokens.InfiniteSurfaceVariant
 import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryUiModel
 import com.example.infinite_track.presentation.screen.attendance.preparation.WfaRecommendationUiModel
+import com.example.infinite_track.presentation.screen.attendance.preparation.isRecommendationSelected
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
 @Composable
@@ -88,7 +89,7 @@ private fun WfaRecommendationContent(
                 key(recommendation.stableKey) {
                     WfaRecommendationOption(
                         model = recommendation,
-                        selected = recommendation.isSelected,
+                        selected = model.isRecommendationSelected(recommendation),
                         onSelect = {
                             onRecommendationSelected(recommendation.stableKey)
                         }
@@ -189,7 +190,6 @@ private fun WfaRecommendationSectionPreview() {
                         name = "Cafe Palu",
                         supportingText = "Cafe • 1,25 km",
                         suitabilityText = "Skor WFA 91 • Sangat sesuai",
-                        isSelected = true
                     )
                 ),
                 selectedKey = "cafe-palu",

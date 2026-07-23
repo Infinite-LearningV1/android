@@ -85,6 +85,7 @@ import com.example.infinite_track.presentation.screen.attendance.components.Atte
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationPrimaryAction
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationUiMapper
+import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePrimaryActionUiCombiner
 import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryState
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionPanelHost
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessEvent
@@ -281,7 +282,10 @@ fun AttendanceScreen(
 
         is UiState.Success -> {
             val preparation = uiState.preparation
-            val preparationUiModel = AttendancePreparationUiMapper.map(preparation)
+            val preparationUiModel = AttendancePrimaryActionUiCombiner.combine(
+                preparation = AttendancePreparationUiMapper.map(preparation),
+                actionState = uiState.actionState
+            )
             val discovery = preparation.wfaDiscovery as? WfaDiscoveryState.Content
             val selectedWfaMarker = discovery?.recommendations?.firstOrNull {
                 it.stableKey == discovery.selectedKey
@@ -386,12 +390,15 @@ fun AttendanceScreen(
                                         is AttendancePreparationEvent.PrimaryActionClicked -> {
                                             when (event.action) {
                                                 AttendancePreparationPrimaryAction.WAIT -> Unit
-                                                AttendancePreparationPrimaryAction.CONTINUE_TO_FACE_VERIFICATION ->
+                                                AttendancePreparationPrimaryAction.CONTINUE_TO_FACE_VERIFICATION,
+                                                AttendancePreparationPrimaryAction.SUBMIT_ATTENDANCE ->
                                                     viewModel.onAttendanceButtonClicked()
-                                                AttendancePreparationPrimaryAction.REFRESH_STATUS,
-                                                AttendancePreparationPrimaryAction.REFRESH_PROFILE,
+                                                AttendancePreparationPrimaryAction.REFRESH_STATUS ->
+                                                    viewModel.onAttendanceStatusRefreshRequested()
+                                                AttendancePreparationPrimaryAction.REFRESH_PROFILE ->
+                                                    viewModel.onAttendanceProfileRefreshRequested()
                                                 AttendancePreparationPrimaryAction.RETRY_WFA_DISCOVERY ->
-                                                    viewModel.onWorkModeSelected(preparation.selectedMode)
+                                                    viewModel.onWfaDiscoveryRetryRequested()
                                                 AttendancePreparationPrimaryAction.REFRESH_LOCATION ->
                                                     viewModel.onFocusLocationClicked()
                                                 AttendancePreparationPrimaryAction.FOCUS_TARGET ->

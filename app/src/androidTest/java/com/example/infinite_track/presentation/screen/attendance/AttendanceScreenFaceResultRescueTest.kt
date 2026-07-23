@@ -47,6 +47,7 @@ import com.example.infinite_track.domain.use_case.attendance.EvaluateTargetRange
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
 import com.example.infinite_track.domain.use_case.attendance.ResolveAuthoritativeTargetLocationUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
+import com.example.infinite_track.domain.use_case.auth.RefreshAttendanceProfileUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayWfaBookingStateUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
@@ -396,6 +397,9 @@ class AttendanceScreenFaceResultRescueTest {
             attendancePreference = attendancePreference,
             geofenceManager = geofenceManager,
             getLoggedInUserUseCase = GetLoggedInUserUseCase(FakeAuthRepository()),
+            refreshAttendanceProfileUseCase = RefreshAttendanceProfileUseCase(
+                FakeAuthRepository()
+            ),
             resolveTodayApprovedWfaBookingUseCase = ResolveTodayApprovedWfaBookingUseCase(
                 bookingRepository
             ),

@@ -145,7 +145,6 @@ private fun WfaRecommendationOptionPreview() {
                 name = "Cafe Palu",
                 supportingText = "Cafe • 1,25 km",
                 suitabilityText = "Skor WFA 91 • Sangat sesuai",
-                isSelected = true
             ),
             selected = true,
             onSelect = {}
