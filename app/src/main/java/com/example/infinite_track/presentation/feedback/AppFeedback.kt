@@ -1,7 +1,8 @@
 package com.example.infinite_track.presentation.feedback
 
+import androidx.annotation.StringRes
 import androidx.compose.material3.SnackbarDuration
-import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarVisuals
+import com.example.infinite_track.R
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import dagger.Binds
 import dagger.Module
@@ -36,24 +37,31 @@ class AppFeedbackController @Inject constructor() : AppFeedbackEmitter {
     }
 }
 
-fun AppFeedbackEvent.toSnackbarVisuals(): InfiniteSnackbarVisuals = when (this) {
-    AppFeedbackEvent.LOGIN_SUCCESS -> InfiniteSnackbarVisuals(
-        title = "Login successful",
-        message = "Welcome back to Infinite Track.",
+data class AppFeedbackResourceModel(
+    @StringRes val titleRes: Int,
+    @StringRes val messageRes: Int,
+    val semantic: InfiniteSemantic,
+    val duration: SnackbarDuration
+)
+
+fun AppFeedbackEvent.toResourceModel(): AppFeedbackResourceModel = when (this) {
+    AppFeedbackEvent.LOGIN_SUCCESS -> AppFeedbackResourceModel(
+        titleRes = R.string.app_feedback_login_success_title,
+        messageRes = R.string.app_feedback_login_success_message,
         semantic = InfiniteSemantic.Success,
         duration = SnackbarDuration.Short
     )
 
-    AppFeedbackEvent.LOGOUT_SUCCESS -> InfiniteSnackbarVisuals(
-        title = "Logout successful",
-        message = "You have been logged out safely.",
+    AppFeedbackEvent.LOGOUT_SUCCESS -> AppFeedbackResourceModel(
+        titleRes = R.string.app_feedback_logout_success_title,
+        messageRes = R.string.app_feedback_logout_success_message,
         semantic = InfiniteSemantic.Success,
         duration = SnackbarDuration.Short
     )
 
-    AppFeedbackEvent.LOGOUT_REMOTE_WARNING -> InfiniteSnackbarVisuals(
-        title = "Logged out on this device",
-        message = "The remote session could not be ended, but local data was cleared.",
+    AppFeedbackEvent.LOGOUT_REMOTE_WARNING -> AppFeedbackResourceModel(
+        titleRes = R.string.app_feedback_logout_remote_warning_title,
+        messageRes = R.string.app_feedback_logout_remote_warning_message,
         semantic = InfiniteSemantic.Warning,
         duration = SnackbarDuration.Long
     )

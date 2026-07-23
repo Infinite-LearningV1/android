@@ -103,6 +103,12 @@
     <string name="sign_in_prompt">Sign In to Your Account Now and Start Exploring!</string>
     <string name="hello_again">Hello Again!</string>
     <string name="log_in">Sign In</string>
+    <string name="app_feedback_login_success_title">Login successful</string>
+    <string name="app_feedback_login_success_message">Welcome back to Infinite Track.</string>
+    <string name="app_feedback_logout_success_title">Logout successful</string>
+    <string name="app_feedback_logout_success_message">You have been logged out safely.</string>
+    <string name="app_feedback_logout_remote_warning_title">Logged out on this device</string>
+    <string name="app_feedback_logout_remote_warning_message">The remote session could not be ended, but local data was cleared.</string>
 
 
     <!--  My Leave  -->

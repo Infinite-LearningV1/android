@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_feedback_login_success_title">Login berhasil</string>
+    <string name="app_feedback_login_success_message">Selamat datang kembali di Infinite Track.</string>
+    <string name="app_feedback_logout_success_title">Berhasil keluar dari perangkat ini</string>
+    <string name="app_feedback_logout_success_message">Anda telah keluar dengan aman.</string>
+    <string name="app_feedback_logout_remote_warning_title">Berhasil keluar dari perangkat ini</string>
+    <string name="app_feedback_logout_remote_warning_message">Sesi jarak jauh tidak dapat diakhiri, tetapi data lokal telah dihapus.</string>
+</resources>
