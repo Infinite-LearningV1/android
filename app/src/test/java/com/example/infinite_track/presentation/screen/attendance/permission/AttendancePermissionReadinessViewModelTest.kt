@@ -75,6 +75,26 @@ class AttendancePermissionReadinessViewModelTest {
     }
 
     @Test
+    fun `ready optional toggle opens application settings for disabling`() = runTest {
+        val viewModel = viewModel(FakeRepository(allRequiredReady()))
+        advanceUntilIdle()
+        val effect = async(UnconfinedTestDispatcher(testScheduler)) { viewModel.effects.first() }
+
+        viewModel.onEvent(
+            AttendancePermissionReadinessEvent.PermissionItemClicked(
+                AttendanceAccess.NOTIFICATION
+            )
+        )
+
+        assertEquals(
+            AttendancePermissionReadinessEffect.OpenApplicationSettings(
+                AttendanceAccess.NOTIFICATION
+            ),
+            effect.await()
+        )
+    }
+
+    @Test
     fun `optional request guard survives an unrelated observation change and clears on callback`() = runTest {
         val repository = FakeRepository(
             readiness(

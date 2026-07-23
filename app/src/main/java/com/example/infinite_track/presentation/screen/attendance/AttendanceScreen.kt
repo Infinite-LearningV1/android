@@ -476,9 +476,7 @@ fun AttendanceScreen(
 
                     // Top bar with location focus button - fixed parameters
                     AttendanceTopBar(
-                        modifier = Modifier
-                            .statusBarsPadding()
-                            .padding(16.dp),
+                        modifier = Modifier.statusBarsPadding(),
                         onBackClicked = { navController.navigateUp() },
                         onFocusLocationClicked = { viewModel.onFocusLocationClicked() },
                         onPermissionClicked = {
@@ -621,8 +619,7 @@ fun AttendanceScreenPreview() {
             AttendanceTopBar(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(horizontal = 20.dp),
+                    .statusBarsPadding(),
                 onBackClicked = { },
                 onFocusLocationClicked = { },
                 onPermissionClicked = { }

@@ -38,6 +38,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.testTag
@@ -52,8 +53,12 @@ import com.example.infinite_track.presentation.design.components.button.Infinite
 import com.example.infinite_track.presentation.design.components.button.InfiniteButtonState
 import com.example.infinite_track.presentation.design.components.button.InfiniteButtonVariant
 import com.example.infinite_track.presentation.design.components.state.InfiniteLoadingState
+import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.core.body2
+import com.example.infinite_track.presentation.core.body2_5
+import com.example.infinite_track.presentation.core.headline3
+import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
-import com.example.infinite_track.presentation.design.tokens.InfiniteFeedbackTypography
 import com.example.infinite_track.presentation.design.tokens.InfiniteMotion
 import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
@@ -279,7 +284,7 @@ private fun PermissionPanelHero(
             }
             Text(
                 text = if (canContinue) "Akses attendance siap" else "Izin akses diperlukan",
-                style = InfiniteFeedbackTypography.dialogTitle,
+                style = headline3,
                 color = InfiniteColors.Text
             )
             Text(
@@ -288,7 +293,7 @@ private fun PermissionPanelHero(
                 } else {
                     "Lengkapi akses wajib sebelum menjalankan presensi dan verifikasi wajah."
                 },
-                style = InfiniteFeedbackTypography.dialogBody,
+                style = body1,
                 color = InfiniteColors.Text.copy(alpha = 0.70f)
             )
             Row(
@@ -298,12 +303,12 @@ private fun PermissionPanelHero(
             ) {
                 Text(
                     text = "$readyCount/$totalCount akses wajib siap",
-                    style = InfiniteFeedbackTypography.actionLabel,
+                    style = body2,
                     color = InfiniteColors.Primary
                 )
                 Text(
                     text = "${(progress * 100).toInt()}%",
-                    style = InfiniteFeedbackTypography.pillLabel,
+                    style = body2_5,
                     color = InfiniteColors.Text.copy(alpha = 0.64f)
                 )
             }
@@ -311,7 +316,8 @@ private fun PermissionPanelHero(
                 progress = { progress.coerceIn(0f, 1f) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(8.dp),
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(999.dp)),
                 color = if (canContinue) InfiniteColors.Success else InfiniteColors.Primary,
                 trackColor = InfiniteColors.Neutral.copy(alpha = 0.14f)
             )
@@ -327,12 +333,12 @@ private fun PermissionSectionLabel(
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
             text = title,
-            style = InfiniteFeedbackTypography.snackbarTitle,
+            style = headline4,
             color = InfiniteColors.Text
         )
         Text(
             text = subtitle,
-            style = InfiniteFeedbackTypography.supportingBody,
+            style = body2,
             color = InfiniteColors.Text.copy(alpha = 0.64f)
         )
     }
@@ -375,12 +381,12 @@ private fun OptionalPermissionHeader(
             ) {
                 Text(
                     text = "Akses opsional",
-                    style = InfiniteFeedbackTypography.snackbarTitle,
+                    style = headline4,
                     color = InfiniteColors.Text
                 )
                 Text(
-                    text = "$readyCount/$totalCount aktif · tidak menghambat absensi manual",
-                    style = InfiniteFeedbackTypography.pillLabel,
+                    text = "$readyCount/$totalCount aktif · ubah kapan saja melalui pengaturan perangkat",
+                    style = body2,
                     color = InfiniteColors.Text.copy(alpha = 0.64f)
                 )
             }

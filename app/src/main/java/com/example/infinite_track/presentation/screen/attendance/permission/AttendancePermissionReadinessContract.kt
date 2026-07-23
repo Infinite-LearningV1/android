@@ -24,7 +24,8 @@ data class PermissionItemUiModel(
     val iconKey: PermissionIconKey,
     val semantic: InfiniteSemantic,
     val stateDescription: String,
-    val isReady: Boolean
+    val isReady: Boolean,
+    val usesToggle: Boolean = false
 )
 
 data class AttendancePermissionFeedback(

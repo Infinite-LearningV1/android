@@ -62,6 +62,20 @@ class AttendancePermissionReadinessUiMapperTest {
     }
 
     @Test
+    fun `maps ready optional access as a manageable toggle`() {
+        val state = mapper.map(
+            readiness = readiness(),
+            nextAction = AttendancePermissionNextAction.ContinueToWorkMode
+        )
+
+        state.optionalItems.forEach { item ->
+            assertTrue(item.isReady)
+            assertTrue(item.usesToggle)
+            assertEquals("Kelola", item.actionLabel)
+        }
+    }
+
+    @Test
     fun `maps approximate only location with precise recovery copy`() {
         val state = mapper.map(
             readiness = readiness(
@@ -113,6 +127,7 @@ class AttendancePermissionReadinessUiMapperTest {
         assertEquals("Buka pengaturan", state.requiredItems[2].actionLabel)
         assertEquals("Tidak diperlukan di perangkat ini", state.optionalItems[0].statusLabel)
         assertNull(state.optionalItems[0].actionLabel)
+        assertFalse(state.optionalItems[0].usesToggle)
         assertEquals(PermissionIconKey.NOTIFICATION, state.optionalItems[0].iconKey)
     }
 
