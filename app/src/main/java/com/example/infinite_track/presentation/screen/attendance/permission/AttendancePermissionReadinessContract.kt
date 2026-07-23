@@ -45,6 +45,8 @@ data class PermissionGuidanceUiModel(
 )
 
 sealed interface AttendancePermissionReadinessEvent {
+    data object EffectCollectorStarted : AttendancePermissionReadinessEvent
+    data object EffectCollectorStopped : AttendancePermissionReadinessEvent
     data object ScreenResumed : AttendancePermissionReadinessEvent
     data object PrimaryActionClicked : AttendancePermissionReadinessEvent
     data class PermissionItemClicked(val access: AttendanceAccess) : AttendancePermissionReadinessEvent
