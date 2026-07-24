@@ -115,6 +115,9 @@ internal fun LocationSearchContent(
                 onChange = onQueryChange,
                 onClear = onClear,
                 clearContentDescription = stringResource(R.string.wfa_search_clear_content_description),
+                fieldContentDescription = stringResource(
+                    R.string.wfa_search_field_content_description
+                ),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -143,7 +146,7 @@ internal fun LocationSearchContent(
                     )
                     is SearchUiState.Error -> InfiniteErrorState(
                         title = stringResource(R.string.wfa_search_error_title),
-                        message = state.message,
+                        message = stringResource(state.messageRes),
                         actionLabel = stringResource(R.string.wfa_search_retry),
                         onAction = onRetry
                     )

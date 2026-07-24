@@ -26,6 +26,32 @@ Verified on 2026-07-24.
 - `app:lintDebug`: PASS (`BUILD SUCCESSFUL`)
 - `app:assembleDebug`: PASS (`BUILD SUCCESSFUL`)
 
+### Final whole-branch review fixes
+
+The final review follow-up started from `c7c86af` and added focused regression
+coverage before implementation:
+
+- Two sequential search previews now produce different renderer identities from
+  their resolved place identity. A coordinate-bit identity is used only when a
+  resolved place ID is unavailable; no locale-sensitive string or hash is used.
+- The Google Maps marker subtree, `rememberMarkerState`, and info-window effect
+  use that renderer identity. A later preview therefore replaces the marker
+  position and title and reopens the compact callout.
+- Search provider failures map to localized presentation resource IDs instead
+  of Indonesian strings owned by `SearchViewModel`.
+- Distance formatting uses the active Compose configuration locale.
+- The search field receives a localized accessibility description and its
+  leading search icon is decorative.
+- `LocationSearchContentTest` resolves localized labels from Android resources
+  instead of assuming an Indonesian test locale.
+
+Fresh final-review gate:
+
+- focused marker renderer regression: PASS;
+- focused search ViewModel and distance-format tests: PASS;
+- `app:testDebugUnitTest app:compileDebugAndroidTestKotlin app:lintDebug app:compileDebugKotlin`:
+  PASS (`BUILD SUCCESSFUL`).
+
 The first lint run identified ten WFA search strings that were missing from
 `values-in`. The branch now uses English default resources and Indonesian
 localized resources; a fresh lint run passed. Gradle continues to report its
@@ -49,6 +75,12 @@ existing Gradle 9 deprecation notice.
   `NoSuchMethodException: android.hardware.input.InputManager.getInstance`.
   This is test-harness/API-image incompatibility evidence, not a product
   assertion failure.
+- The final-review `LocationSearchContentTest` rerun encountered the same
+  pre-assertion `InputManager.getInstance` incompatibility for all four cases.
+  A fresh targeted ViewModel instrumentation retry then crashed the test process
+  before discovery (`0 tests`). Deterministic unit, Android-test compilation,
+  lint, and Kotlin compilation gates remain green; no new runtime-pass claim is
+  made from these retries.
 
 ## Runtime
 

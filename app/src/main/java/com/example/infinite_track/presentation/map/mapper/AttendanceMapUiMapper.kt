@@ -4,6 +4,7 @@ import com.example.infinite_track.domain.model.attendance.TargetLocationResoluti
 import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.location.CurrentLocationResult
 import com.example.infinite_track.domain.model.location.GeoCoordinate
+import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.presentation.map.model.MapCircleUiModel
 import com.example.infinite_track.presentation.map.model.MapMarkerRole
@@ -67,7 +68,7 @@ object AttendanceMapUiMapper {
                     ?.let { coordinate ->
                         add(
                             MapMarkerUiModel(
-                                id = SEARCH_PREVIEW_MARKER_ID,
+                                id = searchPreviewMarkerId(preview),
                                 role = MapMarkerRole.SEARCH_PREVIEW,
                                 category = MapMarkerCategory.WFA,
                                 coordinate = coordinate,
@@ -103,6 +104,21 @@ object AttendanceMapUiMapper {
     fun recommendationMarkerId(recommendation: WfaRecommendation): String =
         "wfa:${recommendation.stableKey}"
 
+    fun searchPreviewMarkerId(preview: LocationResult): String {
+        val placeIdentity = preview.placeId?.trim()?.takeIf(String::isNotEmpty)
+        if (placeIdentity != null) {
+            return "$SEARCH_PREVIEW_MARKER_PREFIX:place:$placeIdentity"
+        }
+
+        return buildString {
+            append(SEARCH_PREVIEW_MARKER_PREFIX)
+            append(":coordinate:")
+            append(preview.latitude.toBits().toString(16))
+            append(':')
+            append(preview.longitude.toBits().toString(16))
+        }
+    }
+
     private fun CurrentLocationResult?.successfulCoordinateOrNull(): GeoCoordinate? =
         (this as? CurrentLocationResult.Success)
             ?.location
@@ -115,5 +131,5 @@ object AttendanceMapUiMapper {
     }
 
     private const val CURRENT_LOCATION_MARKER_ID = "current-location"
-    private const val SEARCH_PREVIEW_MARKER_ID = "search-preview"
+    private const val SEARCH_PREVIEW_MARKER_PREFIX = "search-preview"
 }

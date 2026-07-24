@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -30,6 +31,7 @@ import com.example.infinite_track.presentation.map.model.MapCameraEffect
 import com.example.infinite_track.presentation.map.components.CompactMapCallout
 import com.example.infinite_track.presentation.map.components.color
 import com.example.infinite_track.presentation.map.model.MapMarkerCategory
+import com.example.infinite_track.presentation.map.model.MapMarkerUiModel
 import com.example.infinite_track.presentation.map.model.MapUiState
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
@@ -192,36 +194,41 @@ internal fun GoogleAttendanceMap(
         }
 
         state.markers.forEach { marker ->
-            val markerState = rememberMarkerState(
-                key = marker.id,
-                position = marker.coordinate.toLatLng()
-            )
-            LaunchedEffect(marker.isSelected, markerState) {
-                if (marker.isSelected) {
-                    markerState.showInfoWindow()
-                } else {
-                    markerState.hideInfoWindow()
-                }
-            }
-            MarkerInfoWindow(
-                state = markerState,
-                title = marker.title,
-                snippet = marker.snippet,
-                icon = rememberMarkerDescriptor(marker.category),
-                zIndex = if (marker.isSelected) 2f else 1f,
-                onClick = {
-                    currentOnEvent(AttendanceMapEvent.MarkerClicked(marker))
-                    true
-                }
-            ) {
-                CompactMapCallout(
-                    title = marker.title,
-                    category = marker.category
+            key(marker.renderIdentity) {
+                val markerState = rememberMarkerState(
+                    key = marker.renderIdentity,
+                    position = marker.coordinate.toLatLng()
                 )
+                LaunchedEffect(marker.renderIdentity, marker.isSelected, markerState) {
+                    if (marker.isSelected) {
+                        markerState.showInfoWindow()
+                    } else {
+                        markerState.hideInfoWindow()
+                    }
+                }
+                MarkerInfoWindow(
+                    state = markerState,
+                    title = marker.title,
+                    snippet = marker.snippet,
+                    icon = rememberMarkerDescriptor(marker.category),
+                    zIndex = if (marker.isSelected) 2f else 1f,
+                    onClick = {
+                        currentOnEvent(AttendanceMapEvent.MarkerClicked(marker))
+                        true
+                    }
+                ) {
+                    CompactMapCallout(
+                        title = marker.title,
+                        category = marker.category
+                    )
+                }
             }
         }
     }
 }
+
+internal val MapMarkerUiModel.renderIdentity: String
+    get() = "${role.name}:$id"
 
 @Composable
 private fun rememberMarkerDescriptor(category: MapMarkerCategory): BitmapDescriptor {

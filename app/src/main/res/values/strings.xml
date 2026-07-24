@@ -286,5 +286,12 @@
     <string name="wfa_search_error_title">Location search failed</string>
     <string name="wfa_search_retry">Try again</string>
     <string name="wfa_search_clear_content_description">Clear search</string>
+    <string name="wfa_search_field_content_description">WFA location search</string>
+    <string name="wfa_search_error_configuration">Location search is not configured yet.</string>
+    <string name="wfa_search_error_authentication">Location search access was denied.</string>
+    <string name="wfa_search_error_quota">The location search limit has been reached. Try again later.</string>
+    <string name="wfa_search_error_network">There is a network problem. Check your connection and try again.</string>
+    <string name="wfa_search_error_invalid_request">The keyword or location is invalid.</string>
+    <string name="wfa_search_error_unavailable">Location search is currently unavailable.</string>
 
 </resources>

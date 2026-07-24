@@ -13,5 +13,6 @@ data class LocationResult(
     val placeName: String,
     val address: String,
     val latitude: Double,
-    val longitude: Double
+    val longitude: Double,
+    val placeId: String? = null
 ) : Parcelable

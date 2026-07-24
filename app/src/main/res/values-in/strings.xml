@@ -94,4 +94,11 @@
     <string name="wfa_search_error_title">Pencarian lokasi gagal</string>
     <string name="wfa_search_retry">Coba lagi</string>
     <string name="wfa_search_clear_content_description">Hapus pencarian</string>
+    <string name="wfa_search_field_content_description">Pencarian lokasi WFA</string>
+    <string name="wfa_search_error_configuration">Pencarian lokasi belum dikonfigurasi.</string>
+    <string name="wfa_search_error_authentication">Akses pencarian lokasi ditolak.</string>
+    <string name="wfa_search_error_quota">Batas pencarian lokasi sedang tercapai. Coba lagi nanti.</string>
+    <string name="wfa_search_error_network">Jaringan bermasalah. Periksa koneksi lalu coba lagi.</string>
+    <string name="wfa_search_error_invalid_request">Kata kunci atau lokasi tidak valid.</string>
+    <string name="wfa_search_error_unavailable">Pencarian lokasi sedang tidak tersedia.</string>
 </resources>

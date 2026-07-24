@@ -2,6 +2,7 @@ package com.example.infinite_track.presentation.screen.attendance.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.location.CurrentLocationResult
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.location.LocationResult
@@ -84,13 +85,16 @@ class SearchViewModel @Inject constructor(
                             placeName = details.displayName,
                             address = details.formattedAddress.orEmpty(),
                             latitude = details.coordinate.latitude,
-                            longitude = details.coordinate.longitude
+                            longitude = details.coordinate.longitude,
+                            placeId = details.placeId
                         )
                     )
                 }
 
                 is PlaceDetailsResult.Failure -> {
-                    _searchState.value = SearchUiState.Error(result.reason.toUserMessage())
+                    _searchState.value = SearchUiState.Error(
+                        result.reason.toSearchErrorMessageResource()
+                    )
                 }
             }
         }
@@ -154,18 +158,9 @@ class SearchViewModel @Inject constructor(
             }
 
             is PlaceSearchResult.Failure -> {
-                SearchUiState.Error(result.reason.toUserMessage())
+                SearchUiState.Error(result.reason.toSearchErrorMessageResource())
             }
         }
-
-    private fun PlaceDiscoveryFailure.toUserMessage(): String = when (this) {
-        PlaceDiscoveryFailure.CONFIGURATION -> "Pencarian lokasi belum dikonfigurasi."
-        PlaceDiscoveryFailure.AUTHENTICATION -> "Akses pencarian lokasi ditolak."
-        PlaceDiscoveryFailure.QUOTA -> "Batas pencarian lokasi sedang tercapai. Coba lagi nanti."
-        PlaceDiscoveryFailure.NETWORK -> "Jaringan bermasalah. Periksa koneksi lalu coba lagi."
-        PlaceDiscoveryFailure.INVALID_REQUEST -> "Kata kunci atau lokasi tidak valid."
-        PlaceDiscoveryFailure.UNAVAILABLE -> "Pencarian lokasi sedang tidak tersedia."
-    }
 
     override fun onCleared() {
         retryJob?.cancel()
@@ -178,4 +173,13 @@ class SearchViewModel @Inject constructor(
         const val DEBOUNCE_DELAY = 400L
         const val MIN_QUERY_LENGTH = 2
     }
+}
+
+internal fun PlaceDiscoveryFailure.toSearchErrorMessageResource(): Int = when (this) {
+    PlaceDiscoveryFailure.CONFIGURATION -> R.string.wfa_search_error_configuration
+    PlaceDiscoveryFailure.AUTHENTICATION -> R.string.wfa_search_error_authentication
+    PlaceDiscoveryFailure.QUOTA -> R.string.wfa_search_error_quota
+    PlaceDiscoveryFailure.NETWORK -> R.string.wfa_search_error_network
+    PlaceDiscoveryFailure.INVALID_REQUEST -> R.string.wfa_search_error_invalid_request
+    PlaceDiscoveryFailure.UNAVAILABLE -> R.string.wfa_search_error_unavailable
 }

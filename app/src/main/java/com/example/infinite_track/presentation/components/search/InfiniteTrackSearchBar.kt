@@ -18,6 +18,8 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -35,6 +37,7 @@ fun InfiniteTrackSearchBar(
     onChange: (String) -> Unit = {},
     onClear: () -> Unit,
     clearContentDescription: String = "Clear search",
+    fieldContentDescription: String? = null,
     onClick: (() -> Unit)? = null, // Tambahan parameter untuk handle click
 ) {
     OutlinedTextField(
@@ -44,6 +47,11 @@ fun InfiniteTrackSearchBar(
             .fillMaxWidth()
             .clip(RoundedCornerShape(15.dp))
             .background(Violet_50.copy(alpha = 0.5f))
+            .let { mod ->
+                fieldContentDescription?.let { description ->
+                    mod.semantics { contentDescription = description }
+                } ?: mod
+            }
             .let { mod ->
                 // Jika onClick tersedia, tambahkan clickable modifier
                 if (onClick != null) {
@@ -57,7 +65,7 @@ fun InfiniteTrackSearchBar(
             Icon(
                 imageVector = Icons.Default.Search,
                 tint = Purple_500,
-                contentDescription = "Search Event"
+                contentDescription = null
             )
         },
         trailingIcon = if (value.isNotEmpty()) {

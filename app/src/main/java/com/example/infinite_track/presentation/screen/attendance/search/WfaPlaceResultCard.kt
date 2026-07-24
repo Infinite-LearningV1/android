@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -28,6 +29,8 @@ import com.example.infinite_track.presentation.design.tokens.InfiniteIcons
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
 import com.example.infinite_track.presentation.design.tokens.InfiniteSurfaceVariant
+import java.math.RoundingMode
+import java.text.NumberFormat
 import java.util.Locale
 
 @Composable
@@ -37,6 +40,8 @@ internal fun WfaPlaceResultCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val activeLocale = LocalConfiguration.current.locales[0]
+
     InfiniteCard(
         modifier = modifier
             .fillMaxWidth()
@@ -90,7 +95,7 @@ internal fun WfaPlaceResultCard(
                 }
                 suggestion.distance?.let { distance ->
                     Text(
-                        text = formatDistanceMeters(distance.value),
+                        text = formatDistanceMeters(distance.value, activeLocale),
                         style = MaterialTheme.typography.labelSmall,
                         color = InfiniteColors.Secondary
                     )
@@ -108,9 +113,17 @@ internal fun WfaPlaceResultCard(
     }
 }
 
-internal fun formatDistanceMeters(value: Double): String =
-    if (value < 1_000.0) {
-        "${value.toInt()} m"
-    } else {
-        String.format(Locale("id", "ID"), "%.1f km", value / 1_000.0)
+internal fun formatDistanceMeters(value: Double, locale: Locale): String {
+    val formatter = NumberFormat.getNumberInstance(locale).apply {
+        roundingMode = RoundingMode.HALF_UP
     }
+    return if (value < 1_000.0) {
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 0
+        "${formatter.format(value)} m"
+    } else {
+        formatter.minimumFractionDigits = 1
+        formatter.maximumFractionDigits = 1
+        "${formatter.format(value / 1_000.0)} km"
+    }
+}

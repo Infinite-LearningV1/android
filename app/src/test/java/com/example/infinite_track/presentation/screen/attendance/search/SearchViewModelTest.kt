@@ -1,5 +1,6 @@
 package com.example.infinite_track.presentation.screen.attendance.search
 
+import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.location.CurrentLocationResult
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.location.LocationResult
@@ -47,6 +48,34 @@ class SearchViewModelTest {
             assertEquals(emptyList<String>(), repository.queries)
             assertEquals(SearchUiState.Idle, viewModel.searchState.value)
         }
+
+    @Test
+    fun `provider failures map to localized presentation resources`() {
+        assertEquals(
+            R.string.wfa_search_error_configuration,
+            PlaceDiscoveryFailure.CONFIGURATION.toSearchErrorMessageResource()
+        )
+        assertEquals(
+            R.string.wfa_search_error_authentication,
+            PlaceDiscoveryFailure.AUTHENTICATION.toSearchErrorMessageResource()
+        )
+        assertEquals(
+            R.string.wfa_search_error_quota,
+            PlaceDiscoveryFailure.QUOTA.toSearchErrorMessageResource()
+        )
+        assertEquals(
+            R.string.wfa_search_error_network,
+            PlaceDiscoveryFailure.NETWORK.toSearchErrorMessageResource()
+        )
+        assertEquals(
+            R.string.wfa_search_error_invalid_request,
+            PlaceDiscoveryFailure.INVALID_REQUEST.toSearchErrorMessageResource()
+        )
+        assertEquals(
+            R.string.wfa_search_error_unavailable,
+            PlaceDiscoveryFailure.UNAVAILABLE.toSearchErrorMessageResource()
+        )
+    }
 
     @Test
     fun `valid query waits four hundred milliseconds`() =
@@ -202,7 +231,8 @@ class SearchViewModelTest {
                     placeName = "Kopi Palu",
                     address = "Palu",
                     latitude = -0.899,
-                    longitude = 119.87
+                    longitude = 119.87,
+                    placeId = suggestion.placeId
                 ),
                 selected.await()
             )
