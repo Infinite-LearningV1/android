@@ -13,7 +13,6 @@ import com.example.infinite_track.domain.model.location.DistanceMeters
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import java.text.NumberFormat
 import java.util.Locale
-import kotlin.math.roundToInt
 
 object AttendancePreparationUiMapper {
     fun map(preparation: AttendancePreparationState): AttendancePreparationUiModel {
@@ -183,13 +182,15 @@ object AttendancePreparationUiMapper {
         )
     }
 
-    private fun WfaRecommendation.toUiModel(): WfaRecommendationUiModel =
-        WfaRecommendationUiModel(
+    private fun WfaRecommendation.toUiModel(): WfaRecommendationUiModel {
+        val suitability = WfaSuitabilityPresentationMapper.map(suitabilityScore)
+        return WfaRecommendationUiModel(
             stableKey = stableKey,
             name = name,
             supportingText = "$category • ${formatDistance(distanceMeters)}",
-            suitabilityText = "Skor WFA ${(suitabilityScore * 100).roundToInt()} • $suitabilityLabel",
+            suitabilityText = "Skor WFA ${suitability.percentage} • $suitabilityLabel",
         )
+    }
 
     private fun formatDistance(distance: DistanceMeters): String {
         val formatter = NumberFormat.getNumberInstance(INDONESIAN_LOCALE).apply {
