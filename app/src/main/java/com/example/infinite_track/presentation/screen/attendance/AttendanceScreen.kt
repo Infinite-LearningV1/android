@@ -144,12 +144,6 @@ fun AttendanceScreen(
         }
     }
 
-    LaunchedEffect(uiState.geofenceRuntime) {
-        if (uiState.geofenceRuntime.requiresPermissionReadinessRecovery()) {
-            showPermissionPanel = true
-        }
-    }
-
     LaunchedEffect(uiState.preparation.selectedMode) {
         selectedTargetMarkerId = null
     }
