@@ -18,6 +18,8 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -113,6 +115,36 @@ class SearchViewModelTest {
         }
 
     @Test
+    fun `normalized identical edit keeps unfinished retry owned`() =
+        runTest(dispatcherRule.dispatcher) {
+            val retry = CompletableDeferred<PlaceSearchResult>()
+            val repository = RecordingPlaceRepository(
+                queuedResults = ArrayDeque(
+                    listOf(
+                        PlaceSearchResult.Failure(PlaceDiscoveryFailure.NETWORK),
+                        retry
+                    )
+                )
+            )
+            val viewModel = viewModel(repository)
+
+            viewModel.updateSearchQuery("kopi")
+            advanceTimeBy(400)
+            runCurrent()
+            viewModel.retrySearch()
+            runCurrent()
+            assertEquals(SearchUiState.Loading, viewModel.searchState.value)
+
+            viewModel.updateSearchQuery("kopi ")
+            retry.complete(successFor("kopi"))
+            runCurrent()
+
+            assertEquals("kopi ", viewModel.searchQuery.value)
+            val success = viewModel.searchState.value as SearchUiState.Success
+            assertEquals("kopi", success.suggestions.single().primaryText)
+        }
+
+    @Test
     fun `clear cancels retry abandons session and returns to idle`() =
         runTest(dispatcherRule.dispatcher) {
             val retry = CompletableDeferred<PlaceSearchResult>()
@@ -176,6 +208,43 @@ class SearchViewModelTest {
             )
         }
 
+    @Test
+    fun `query edit cancels unfinished selection resolution without stale event`() =
+        runTest(dispatcherRule.dispatcher) {
+            val deferredResolution = CompletableDeferred<PlaceDetailsResult>()
+            val repository = RecordingPlaceRepository(
+                deferredResolution = deferredResolution
+            )
+            val viewModel = viewModel(repository)
+            val selections = mutableListOf<LocationResult>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.selectionEvents.toList(selections)
+            }
+
+            viewModel.updateSearchQuery("kopi")
+            advanceTimeBy(400)
+            runCurrent()
+            val suggestion =
+                (viewModel.searchState.value as SearchUiState.Success).suggestions.single()
+            viewModel.onSuggestionSelected(suggestion)
+            runCurrent()
+
+            viewModel.updateSearchQuery("kantor")
+            deferredResolution.complete(
+                PlaceDetailsResult.Success(
+                    PlaceDetails(
+                        placeId = suggestion.placeId,
+                        displayName = suggestion.primaryText,
+                        formattedAddress = suggestion.secondaryText,
+                        coordinate = GeoCoordinate(-0.899, 119.87)
+                    )
+                )
+            )
+            runCurrent()
+
+            assertEquals(emptyList<LocationResult>(), selections)
+        }
+
     private fun viewModel(repository: RecordingPlaceRepository) = SearchViewModel(
         searchPlaces = SearchPlacesUseCase(repository),
         resolvePlaceDetails = ResolvePlaceDetailsUseCase(repository),
@@ -190,7 +259,8 @@ class SearchViewModelTest {
     private class RecordingPlaceRepository(
         private val firstResult: CompletableDeferred<PlaceSearchResult>? = null,
         private val queuedResults: ArrayDeque<Any> = ArrayDeque(),
-        private val resolvedDetails: PlaceDetails? = null
+        private val resolvedDetails: PlaceDetails? = null,
+        private val deferredResolution: CompletableDeferred<PlaceDetailsResult>? = null
     ) : PlaceDiscoveryRepository {
         val queries = mutableListOf<String>()
         var resolvedSuggestion: PlaceSuggestion? = null
@@ -217,6 +287,7 @@ class SearchViewModelTest {
 
         override suspend fun resolve(suggestion: PlaceSuggestion): PlaceDetailsResult {
             resolvedSuggestion = suggestion
+            deferredResolution?.let { return it.await() }
             return resolvedDetails?.let(PlaceDetailsResult::Success)
                 ?: PlaceDetailsResult.Failure(PlaceDiscoveryFailure.UNAVAILABLE)
         }

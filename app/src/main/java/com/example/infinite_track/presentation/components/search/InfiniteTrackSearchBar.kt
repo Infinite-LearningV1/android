@@ -33,7 +33,7 @@ fun InfiniteTrackSearchBar(
     value: String = "",
     placeholder: String = "Search...",
     onChange: (String) -> Unit = {},
-    onClear: () -> Unit = {},
+    onClear: () -> Unit,
     onClick: (() -> Unit)? = null, // Tambahan parameter untuk handle click
 ) {
     OutlinedTextField(
@@ -101,7 +101,8 @@ private fun SearchPreview() {
             InfiniteTrackSearchBar(
                 value = "",
                 placeholder = "Search for events...",
-                onChange = {}
+                onChange = {},
+                onClear = {}
             )
         }
     }

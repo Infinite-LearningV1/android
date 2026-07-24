@@ -58,7 +58,11 @@ class SearchViewModel @Inject constructor(
     }
 
     fun updateSearchQuery(query: String) {
-        retryJob?.cancel()
+        val normalizedQueryChanged = _searchQuery.value.trim() != query.trim()
+        if (normalizedQueryChanged) {
+            retryJob?.cancel()
+            resolveJob?.cancel()
+        }
         _searchQuery.value = query
     }
 

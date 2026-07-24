@@ -91,6 +91,7 @@ fun LocationSearchScreen(
                     value = searchQuery,
                     placeholder = "Cari lokasi...",
                     onChange = viewModel::updateSearchQuery,
+                    onClear = viewModel::clearSearch,
                     modifier = Modifier.fillMaxWidth()
                 )
 
