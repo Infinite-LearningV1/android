@@ -47,30 +47,33 @@ class PlaceDiscoveryUseCaseTest {
     @Test
     fun `resolve rejects blank place id`() = runBlocking {
         val repository = FakePlaceDiscoveryRepository()
+        val invalid = suggestion("", "Invalid")
 
-        val result = ResolvePlaceDetailsUseCase(repository)(" ") as PlaceDetailsResult.Failure
+        val result = ResolvePlaceDetailsUseCase(repository)(invalid)
+            as PlaceDetailsResult.Failure
 
         assertEquals(PlaceDiscoveryFailure.INVALID_REQUEST, result.reason)
-        assertEquals(null, repository.lastResolvedId)
+        assertEquals(null, repository.lastResolvedSuggestion)
     }
 
     @Test
-    fun `resolve forwards opaque place id and coordinate`() = runBlocking {
+    fun `resolve forwards autocomplete evidence and coordinate`() = runBlocking {
+        val selected = suggestion("opaque-id", "Kopi Kita")
         val details = PlaceDetails(
             placeId = "opaque-id",
-            displayName = "Kopi Kita",
-            formattedAddress = "Palu",
+            displayName = selected.primaryText,
+            formattedAddress = selected.secondaryText,
             coordinate = GeoCoordinate(-0.90, 119.88)
         )
         val repository = FakePlaceDiscoveryRepository(
             detailsResult = PlaceDetailsResult.Success(details)
         )
 
-        val result = ResolvePlaceDetailsUseCase(repository)("opaque-id")
+        val result = ResolvePlaceDetailsUseCase(repository)(selected)
             as PlaceDetailsResult.Success
 
         assertEquals(details, result.details)
-        assertEquals("opaque-id", repository.lastResolvedId)
+        assertEquals(selected, repository.lastResolvedSuggestion)
     }
 
     private fun suggestion(id: String, name: String) = PlaceSuggestion(
@@ -88,7 +91,7 @@ class PlaceDiscoveryUseCaseTest {
     ) : PlaceDiscoveryRepository {
         var lastQuery: String? = null
         var lastProximity: GeoCoordinate? = null
-        var lastResolvedId: String? = null
+        var lastResolvedSuggestion: PlaceSuggestion? = null
 
         override suspend fun search(
             query: String,
@@ -99,8 +102,8 @@ class PlaceDiscoveryUseCaseTest {
             return searchResult
         }
 
-        override suspend fun resolve(placeId: String): PlaceDetailsResult {
-            lastResolvedId = placeId
+        override suspend fun resolve(suggestion: PlaceSuggestion): PlaceDetailsResult {
+            lastResolvedSuggestion = suggestion
             return detailsResult
         }
 

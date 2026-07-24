@@ -18,13 +18,13 @@ class GooglePlacesMapper @Inject constructor() {
         )
     }
 
-    fun toDetails(place: Place): PlaceDetails? {
+    fun toDetails(place: Place, suggestion: PlaceSuggestion): PlaceDetails? {
         val id = place.id?.takeIf(String::isNotBlank) ?: return null
         val coordinate = place.latLng ?: return null
         return PlaceDetails(
             placeId = id,
-            displayName = place.name?.takeIf(String::isNotBlank) ?: place.address.orEmpty(),
-            formattedAddress = place.address,
+            displayName = suggestion.primaryText,
+            formattedAddress = place.address ?: suggestion.secondaryText,
             coordinate = GeoCoordinate(coordinate.latitude, coordinate.longitude)
         )
     }

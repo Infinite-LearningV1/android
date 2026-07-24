@@ -69,7 +69,7 @@ class SearchViewModel @Inject constructor(
         resolveJob?.cancel()
         resolveJob = viewModelScope.launch {
             _searchState.value = SearchUiState.Resolving(suggestions, suggestion.placeId)
-            when (val result = resolvePlaceDetails(suggestion.placeId)) {
+            when (val result = resolvePlaceDetails(suggestion)) {
                 is PlaceDetailsResult.Success -> {
                     val details = result.details
                     _selectionEvents.emit(
