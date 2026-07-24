@@ -22,6 +22,11 @@ import com.example.infinite_track.data.location.current.PlayServicesCurrentLocat
 import com.example.infinite_track.data.location.discovery.GooglePlacesDiscoveryRepository
 import com.example.infinite_track.data.repository.profile.ProfileRepositoryImpl
 import com.example.infinite_track.data.repository.wfa.WfaRepositoryImpl
+import com.example.infinite_track.data.platform.geofence.AndroidGeofenceRuntimeRepository
+import com.example.infinite_track.data.platform.geofence.GeofencingPlatformClient
+import com.example.infinite_track.data.platform.geofence.PlayServicesGeofencingPlatformClient
+import com.example.infinite_track.data.platform.geofence.store.GeofenceRuntimeStore
+import com.example.infinite_track.data.platform.geofence.store.PreferencesGeofenceRuntimeStore
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
 import com.example.infinite_track.data.soucre.local.preferences.LocalizationPreference
 import com.example.infinite_track.data.soucre.local.preferences.TodayStatusPreference
@@ -43,6 +48,7 @@ import com.example.infinite_track.domain.repository.location.CurrentLocationRepo
 import com.example.infinite_track.domain.repository.location.PlaceDiscoveryRepository
 import com.example.infinite_track.domain.repository.ProfileRepository
 import com.example.infinite_track.domain.repository.WfaRepository
+import com.example.infinite_track.domain.repository.GeofenceRuntimeRepository
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.google.gson.Gson
 import dagger.Module
@@ -55,6 +61,24 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object RepositoryModule {
+
+    @Provides
+    @Singleton
+    fun provideGeofenceRuntimeStore(
+        store: PreferencesGeofenceRuntimeStore
+    ): GeofenceRuntimeStore = store
+
+    @Provides
+    @Singleton
+    fun provideGeofencingPlatformClient(
+        client: PlayServicesGeofencingPlatformClient
+    ): GeofencingPlatformClient = client
+
+    @Provides
+    @Singleton
+    fun provideGeofenceRuntimeRepository(
+        repository: AndroidGeofenceRuntimeRepository
+    ): GeofenceRuntimeRepository = repository
 
     @Provides
     @Singleton
