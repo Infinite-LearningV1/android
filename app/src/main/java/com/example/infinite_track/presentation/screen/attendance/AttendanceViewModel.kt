@@ -257,12 +257,7 @@ class AttendanceViewModel @Inject constructor(
     private fun AttendanceScreenState.withActionState(
         actionState: AttendanceActionState
     ): AttendanceScreenState {
-        return copy(
-            actionState = actionState,
-            buttonText = actionState.ctaLabel,
-            isButtonEnabled = actionState.isCtaEnabled,
-            isCheckInMode = actionState.legacyIsCheckInMode
-        )
+        return copy(actionState = actionState)
     }
 
     private fun AttendanceScreenState.withResolvedActionStatePreservingInFlightSubmit(): AttendanceScreenState {
@@ -828,7 +823,7 @@ class AttendanceViewModel @Inject constructor(
             else -> null
         }
 
-        if (intent == null || !_uiState.value.isButtonEnabled) {
+        if (intent == null || !_uiState.value.actionState.isCtaEnabled) {
             Log.d(TAG, "Attendance button clicked but action is not ready: $currentActionState")
             return
         }
@@ -854,7 +849,7 @@ class AttendanceViewModel @Inject constructor(
         }
 
         val intent = (_uiState.value.actionState as? AttendanceActionState.VerifyingFace)?.intent
-            ?: _uiState.value.takeIf { it.isButtonEnabled }?.let { state ->
+            ?: _uiState.value.takeIf { it.actionState.isCtaEnabled }?.let { state ->
                 (state.actionState as? AttendanceActionState.Ready)?.intent
                     ?: (state.actionState as? AttendanceActionState.RetryableFailure)?.intent
             }

@@ -65,16 +65,6 @@ class AttendancePreparationReducerTest {
         assertPreparationEvidenceUnchanged(state, next)
     }
 
-    @Test
-    fun `resolved target projects bottom sheet location from preparation`() {
-        val projected = stateWithApprovedTarget().toBottomSheetTargetLocationInfo()
-
-        assertEquals(WorkMode.WFA, projected?.mode)
-        assertEquals("WFA disetujui", projected?.displayName)
-        assertEquals(approvedTarget.coordinate, projected?.location?.coordinate)
-        assertEquals(approvedTarget.approvedWfaContext?.bookingId, projected?.location?.locationId)
-    }
-
     private fun AttendancePreparationState.withDiscovery(
         selectedKey: String?,
         searchPreview: LocationResult?

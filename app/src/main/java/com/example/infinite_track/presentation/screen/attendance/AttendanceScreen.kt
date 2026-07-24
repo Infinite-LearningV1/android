@@ -57,8 +57,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.infinite_track.domain.model.attendance.WorkMode
-import com.example.infinite_track.domain.model.attendance.Location
-import com.example.infinite_track.domain.model.attendance.SelectedTargetLocation
 import com.example.infinite_track.domain.model.attendance.TargetLocationId
 import com.example.infinite_track.domain.model.attendance.TargetLocationResolution
 import com.example.infinite_track.domain.model.location.LocationResult
@@ -596,25 +594,6 @@ fun AttendanceScreen(
         visible = showPermissionPanel,
         onDismissRequest = { showPermissionPanel = false },
         viewModel = permissionViewModel
-    )
-}
-
-internal fun AttendancePreparationState.toBottomSheetTargetLocationInfo(): SelectedTargetLocation? {
-    val target = (targetResolution as? TargetLocationResolution.Resolved)?.target ?: return null
-    return SelectedTargetLocation(
-        mode = selectedMode,
-        location = Location(
-            locationId = target.approvedWfaContext?.bookingId
-                ?: target.targetId.value.substringAfter(':').toIntOrNull()
-                ?: 0,
-            coordinate = target.coordinate,
-            radius = target.radius.value.toInt(),
-            description = target.displayName,
-            category = target.mode.shortLabel
-        ),
-        displayName = target.displayName,
-        description = target.mode.shortLabel,
-        isAvailable = true
     )
 }
 
