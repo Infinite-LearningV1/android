@@ -31,6 +31,8 @@
     <string name="face_result_not_matched_message">Wajah tidak cocok dengan data tersimpan. Silakan coba lagi.</string>
     <string name="face_result_technical_title">Verifikasi gagal</string>
     <string name="face_result_technical_message">Terjadi kendala teknis saat verifikasi. Silakan coba lagi.</string>
+    <string name="face_result_timeout_title">Waktu habis</string>
+    <string name="face_result_timeout_message">Waktu verifikasi wajah habis. Silakan coba lagi.</string>
     //Home
     <string name="see_more">See More</string>
     <string name="today_s_news">Today\'s News</string>

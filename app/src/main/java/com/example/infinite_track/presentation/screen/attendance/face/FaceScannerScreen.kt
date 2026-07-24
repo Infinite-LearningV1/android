@@ -318,15 +318,31 @@ private fun CameraContent(
             action = action
         )
 
-        // Layer 4: Instruction Section with dynamic content
-        InstructionSection(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp, start = 16.dp, end = 16.dp),
-            uiState = uiState,
-            onRetryClick = onRetryClick,
-            onCloseClick = onCloseClick
-        )
+        // Layer 4: Instruction / terminal result section
+        val isTerminalFailure = uiState.livenessState == LivenessState.FAILURE ||
+            uiState.livenessState == LivenessState.TIMEOUT
+        if (isTerminalFailure) {
+            FaceResultSurface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp, start = 16.dp, end = 16.dp),
+                livenessState = uiState.livenessState,
+                failureReason = uiState.failureReason,
+                capturedFacePreview = uiState.capturedFacePreview,
+                onRetry = onRetryClick,
+                onContinue = onCloseClick,
+                onCancel = onCloseClick
+            )
+        } else {
+            InstructionSection(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp, start = 16.dp, end = 16.dp),
+                uiState = uiState,
+                onRetryClick = onRetryClick,
+                onCloseClick = onCloseClick
+            )
+        }
 
         // Layer 5: Loading Overlay for processing state
         if (uiState.isProcessing) {

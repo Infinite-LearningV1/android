@@ -27,6 +27,13 @@ object FaceResultCopy {
         retryable = false
     )
 
+    fun timeout() = FaceResultCopyModel(
+        titleRes = R.string.face_result_timeout_title,
+        messageRes = R.string.face_result_timeout_message,
+        role = FaceResultRole.WARNING,
+        retryable = true
+    )
+
     fun forFailure(reason: FaceVerificationFailureReason): FaceResultCopyModel = when (reason) {
         FaceVerificationFailureReason.NO_FACE -> FaceResultCopyModel(
             titleRes = R.string.face_result_no_face_title,
