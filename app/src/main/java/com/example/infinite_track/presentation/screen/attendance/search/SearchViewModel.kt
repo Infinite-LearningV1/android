@@ -2,6 +2,7 @@ package com.example.infinite_track.presentation.screen.attendance.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.location.CurrentLocationResult
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.location.LocationResult
@@ -13,23 +14,25 @@ import com.example.infinite_track.domain.use_case.location.GetCurrentLocationUse
 import com.example.infinite_track.domain.use_case.location.ResolvePlaceDetailsUseCase
 import com.example.infinite_track.domain.use_case.location.SearchPlacesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-@OptIn(FlowPreview::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val searchPlaces: SearchPlacesUseCase,
@@ -47,7 +50,7 @@ class SearchViewModel @Inject constructor(
     val selectionEvents: SharedFlow<LocationResult> = _selectionEvents.asSharedFlow()
 
     private var proximity: GeoCoordinate? = null
-    private var searchJob: Job? = null
+    private var retryJob: Job? = null
     private var resolveJob: Job? = null
 
     init {
@@ -56,6 +59,11 @@ class SearchViewModel @Inject constructor(
     }
 
     fun updateSearchQuery(query: String) {
+        val normalizedQueryChanged = _searchQuery.value.trim() != query.trim()
+        if (normalizedQueryChanged) {
+            retryJob?.cancel()
+            resolveJob?.cancel()
+        }
         _searchQuery.value = query
     }
 
@@ -69,7 +77,7 @@ class SearchViewModel @Inject constructor(
         resolveJob?.cancel()
         resolveJob = viewModelScope.launch {
             _searchState.value = SearchUiState.Resolving(suggestions, suggestion.placeId)
-            when (val result = resolvePlaceDetails(suggestion.placeId)) {
+            when (val result = resolvePlaceDetails(suggestion)) {
                 is PlaceDetailsResult.Success -> {
                     val details = result.details
                     _selectionEvents.emit(
@@ -77,20 +85,23 @@ class SearchViewModel @Inject constructor(
                             placeName = details.displayName,
                             address = details.formattedAddress.orEmpty(),
                             latitude = details.coordinate.latitude,
-                            longitude = details.coordinate.longitude
+                            longitude = details.coordinate.longitude,
+                            placeId = details.placeId
                         )
                     )
                 }
 
                 is PlaceDetailsResult.Failure -> {
-                    _searchState.value = SearchUiState.Error(result.reason.toUserMessage())
+                    _searchState.value = SearchUiState.Error(
+                        result.reason.toSearchErrorMessageResource()
+                    )
                 }
             }
         }
     }
 
     fun clearSearch() {
-        searchJob?.cancel()
+        retryJob?.cancel()
         resolveJob?.cancel()
         searchPlaces.abandonSession()
         _searchQuery.value = ""
@@ -99,22 +110,31 @@ class SearchViewModel @Inject constructor(
 
     fun retrySearch() {
         val query = _searchQuery.value.trim()
-        if (query.length >= MIN_QUERY_LENGTH) performSearch(query)
+        if (query.length < MIN_QUERY_LENGTH) return
+
+        retryJob?.cancel()
+        retryJob = viewModelScope.launch {
+            _searchState.value = SearchUiState.Loading
+            _searchState.value = searchStateFor(query)
+        }
     }
 
     private fun observeQuery() {
         _searchQuery
-            .debounce(DEBOUNCE_DELAY)
+            .map(String::trim)
             .distinctUntilChanged()
-            .onEach { rawQuery ->
-                val query = rawQuery.trim()
-                if (query.length < MIN_QUERY_LENGTH) {
-                    searchJob?.cancel()
-                    _searchState.value = SearchUiState.Idle
-                } else {
-                    performSearch(query)
+            .flatMapLatest { query ->
+                flow {
+                    if (query.length < MIN_QUERY_LENGTH) {
+                        emit(SearchUiState.Idle)
+                    } else {
+                        delay(DEBOUNCE_DELAY)
+                        emit(SearchUiState.Loading)
+                        emit(searchStateFor(query))
+                    }
                 }
             }
+            .onEach { _searchState.value = it }
             .launchIn(viewModelScope)
     }
 
@@ -127,48 +147,39 @@ class SearchViewModel @Inject constructor(
         }
     }
 
-    private fun performSearch(query: String) {
-        searchJob?.cancel()
-        searchJob = viewModelScope.launch {
-            _searchState.value = SearchUiState.Loading
-            try {
-                when (val result = searchPlaces(query, proximity)) {
-                    is PlaceSearchResult.Success -> {
-                        _searchState.value = if (result.suggestions.isEmpty()) {
-                            SearchUiState.Empty
-                        } else {
-                            SearchUiState.Success(result.suggestions)
-                        }
-                    }
-
-                    is PlaceSearchResult.Failure -> {
-                        _searchState.value = SearchUiState.Error(result.reason.toUserMessage())
-                    }
+    private suspend fun searchStateFor(query: String): SearchUiState =
+        when (val result = searchPlaces(query, proximity)) {
+            is PlaceSearchResult.Success -> {
+                if (result.suggestions.isEmpty()) {
+                    SearchUiState.Empty
+                } else {
+                    SearchUiState.Success(result.suggestions)
                 }
-            } catch (error: CancellationException) {
-                throw error
+            }
+
+            is PlaceSearchResult.Failure -> {
+                SearchUiState.Error(result.reason.toSearchErrorMessageResource())
             }
         }
-    }
-
-    private fun PlaceDiscoveryFailure.toUserMessage(): String = when (this) {
-        PlaceDiscoveryFailure.CONFIGURATION -> "Pencarian lokasi belum dikonfigurasi."
-        PlaceDiscoveryFailure.AUTHENTICATION -> "Akses pencarian lokasi ditolak."
-        PlaceDiscoveryFailure.QUOTA -> "Batas pencarian lokasi sedang tercapai. Coba lagi nanti."
-        PlaceDiscoveryFailure.NETWORK -> "Jaringan bermasalah. Periksa koneksi lalu coba lagi."
-        PlaceDiscoveryFailure.INVALID_REQUEST -> "Kata kunci atau lokasi tidak valid."
-        PlaceDiscoveryFailure.UNAVAILABLE -> "Pencarian lokasi sedang tidak tersedia."
-    }
 
     override fun onCleared() {
-        searchJob?.cancel()
+        retryJob?.cancel()
         resolveJob?.cancel()
         searchPlaces.abandonSession()
         super.onCleared()
     }
 
     private companion object {
-        const val DEBOUNCE_DELAY = 500L
+        const val DEBOUNCE_DELAY = 400L
         const val MIN_QUERY_LENGTH = 2
     }
+}
+
+internal fun PlaceDiscoveryFailure.toSearchErrorMessageResource(): Int = when (this) {
+    PlaceDiscoveryFailure.CONFIGURATION -> R.string.wfa_search_error_configuration
+    PlaceDiscoveryFailure.AUTHENTICATION -> R.string.wfa_search_error_authentication
+    PlaceDiscoveryFailure.QUOTA -> R.string.wfa_search_error_quota
+    PlaceDiscoveryFailure.NETWORK -> R.string.wfa_search_error_network
+    PlaceDiscoveryFailure.INVALID_REQUEST -> R.string.wfa_search_error_invalid_request
+    PlaceDiscoveryFailure.UNAVAILABLE -> R.string.wfa_search_error_unavailable
 }

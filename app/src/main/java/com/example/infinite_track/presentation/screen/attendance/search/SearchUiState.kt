@@ -1,5 +1,6 @@
 package com.example.infinite_track.presentation.screen.attendance.search
 
+import androidx.annotation.StringRes
 import com.example.infinite_track.domain.model.location.PlaceSuggestion
 
 /**
@@ -15,5 +16,5 @@ sealed class SearchUiState {
         val selectedPlaceId: String
     ) : SearchUiState()
     object Empty : SearchUiState()
-    data class Error(val message: String) : SearchUiState()
+    data class Error(@StringRes val messageRes: Int) : SearchUiState()
 }

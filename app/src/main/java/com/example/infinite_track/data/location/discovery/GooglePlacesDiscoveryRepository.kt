@@ -4,6 +4,7 @@ import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.location.PlaceDetailsResult
 import com.example.infinite_track.domain.model.location.PlaceDiscoveryFailure
 import com.example.infinite_track.domain.model.location.PlaceSearchResult
+import com.example.infinite_track.domain.model.location.PlaceSuggestion
 import com.example.infinite_track.domain.repository.location.PlaceDiscoveryRepository
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
@@ -32,9 +33,10 @@ class GooglePlacesDiscoveryRepository @Inject constructor(
         }
     }
 
-    override suspend fun resolve(placeId: String): PlaceDetailsResult {
+    override suspend fun resolve(suggestion: PlaceSuggestion): PlaceDetailsResult {
         return try {
-            val details = mapper.toDetails(dataSource.fetchPlace(placeId, sessions.current()))
+            val place = dataSource.fetchPlace(suggestion.placeId, sessions.current())
+            val details = mapper.toDetails(place, suggestion)
                 ?: return PlaceDetailsResult.Failure(PlaceDiscoveryFailure.UNAVAILABLE)
             PlaceDetailsResult.Success(details)
         } catch (error: CancellationException) {

@@ -58,6 +58,24 @@ class WorkModeTargetLocationScreenTest {
     }
 
     @Test
+    fun wfaRecommendationsStayOffPreparationSheet() {
+        render(
+            wfaReadyUiModel(
+                discovery = WfaDiscoveryUiModel.Content(
+                    rows = listOf(
+                        selectedRecommendation.copy(name = "Kopi Rekomendasi")
+                    ),
+                    selectedKey = null,
+                    searchPreviewName = null
+                )
+            )
+        )
+
+        composeRule.onNodeWithText("Cari lokasi WFA").assertIsDisplayed()
+        composeRule.onNodeWithText("Kopi Rekomendasi").assertDoesNotExist()
+    }
+
+    @Test
     fun WFHHasAdminCopyAndNoSearchOrEditAction() {
         render(wfhReadyUiModel())
 
@@ -67,28 +85,36 @@ class WorkModeTargetLocationScreenTest {
     }
 
     @Test
-    fun wfaLoadingEmptyAndFailureStatesExposeTruthfulCopy() {
+    fun WFOHasNoWfaSearchAction() {
+        render(wfoReadyUiModel())
+
+        composeRule.onNodeWithText("Cari lokasi WFA").assertDoesNotExist()
+    }
+
+    @Test
+    fun wfaLoadingStateStaysOffPreparationSheet() {
         render(
             wfaReadyUiModel(
                 discovery = WfaDiscoveryUiModel.Loading
             )
         )
-        composeRule.onNodeWithText("Memuat rekomendasi lokasi WFA...").assertIsDisplayed()
+        composeRule.onNodeWithText("Memuat rekomendasi lokasi WFA...").assertDoesNotExist()
+        composeRule.onNodeWithText("Cari lokasi WFA").assertIsDisplayed()
     }
 
     @Test
-    fun wfaEmptyStateUsesModelCopy() {
+    fun wfaEmptyStateStaysOffPreparationSheet() {
         render(
             wfaReadyUiModel(
                 discovery = WfaDiscoveryUiModel.Empty("Belum ada rekomendasi lokasi WFA.")
             )
         )
 
-        composeRule.onNodeWithText("Belum ada rekomendasi lokasi WFA.").assertIsDisplayed()
+        composeRule.onNodeWithText("Belum ada rekomendasi lokasi WFA.").assertDoesNotExist()
     }
 
     @Test
-    fun wfaFailureStateUsesModelCopy() {
+    fun wfaFailureDetailsStayOffPreparationSheetButPrimaryRecoveryRemains() {
         render(
             wfaReadyUiModel(
                 discovery = WfaDiscoveryUiModel.Failure(
@@ -100,12 +126,12 @@ class WorkModeTargetLocationScreenTest {
             )
         )
 
-        composeRule.onNodeWithText("Rekomendasi lokasi WFA gagal dimuat.").assertIsDisplayed()
+        composeRule.onNodeWithText("Rekomendasi lokasi WFA gagal dimuat.").assertDoesNotExist()
         composeRule.onNodeWithText("Coba lagi").assertIsDisplayed()
     }
 
     @Test
-    fun wfaContentShowsBackendFieldsAndSelectedSemanticsWithoutRatingOrPhoto() {
+    fun wfaContentDoesNotRenderRecommendationMetadataInPreparationSheet() {
         render(
             wfaReadyUiModel(
                 discovery = WfaDiscoveryUiModel.Content(
@@ -116,13 +142,10 @@ class WorkModeTargetLocationScreenTest {
             )
         )
 
-        composeRule.onNodeWithText("Rekomendasi lokasi WFA").assertIsDisplayed()
-        composeRule.onNodeWithText("Cafe Palu").assertIsDisplayed()
-        composeRule.onNodeWithText("Cafe • 1,25 km").assertIsDisplayed()
-        composeRule.onNodeWithText("Skor WFA 91 • Sangat sesuai").assertIsDisplayed()
-        composeRule.onNode(
-            hasText("Cafe Palu") and hasStateDescription("Dipilih")
-        ).assertIsDisplayed()
+        composeRule.onNodeWithText("Rekomendasi lokasi WFA").assertDoesNotExist()
+        composeRule.onNodeWithText("Cafe Palu").assertDoesNotExist()
+        composeRule.onNodeWithText("Cafe • 1,25 km").assertDoesNotExist()
+        composeRule.onNodeWithText("Skor WFA 91 • Sangat sesuai").assertDoesNotExist()
         composeRule.onNodeWithText("rating", substring = true, ignoreCase = true)
             .assertDoesNotExist()
         composeRule.onNodeWithText("foto", substring = true, ignoreCase = true)
@@ -142,7 +165,7 @@ class WorkModeTargetLocationScreenTest {
     }
 
     @Test
-    fun preparationContentEmitsModeRecommendationSearchAndPrimaryEvents() {
+    fun preparationContentEmitsModeSearchAndPrimaryEvents() {
         val events = mutableListOf<AttendancePreparationEvent>()
         render(
             wfaReadyUiModel(
@@ -158,16 +181,12 @@ class WorkModeTargetLocationScreenTest {
         composeRule.onNode(
             hasText("Work From Home") and hasClickAction()
         ).performClick()
-        composeRule.onNode(
-            hasText("Cafe Palu") and hasClickAction()
-        ).performClick()
         composeRule.onNodeWithContentDescription("Cari lokasi WFA").performClick()
         composeRule.onNodeWithTag("attendancePrimaryAction").performScrollTo().performClick()
 
         assertEquals(
             listOf(
                 AttendancePreparationEvent.ModeSelected(WorkMode.WFH),
-                AttendancePreparationEvent.RecommendationSelected(selectedRecommendation.stableKey),
                 AttendancePreparationEvent.SearchWfaLocation,
                 AttendancePreparationEvent.PrimaryActionClicked(
                     AttendancePreparationPrimaryAction.CONTINUE_TO_FACE_VERIFICATION
@@ -262,6 +281,20 @@ class WorkModeTargetLocationScreenTest {
         target = TargetLocationSummaryUiModel(
             displayName = "Rumah terdaftar",
             sourceLabel = "Profil yang ditetapkan admin",
+            radiusText = "Radius 100 m",
+            distanceText = "Jarak 12 m",
+            rangeText = "Di dalam jangkauan"
+        ),
+        discovery = WfaDiscoveryUiModel.Hidden,
+        secondaryAction = null,
+        secondaryActionLabel = null
+    )
+
+    private fun wfoReadyUiModel() = preparationUiModel(
+        selectedMode = WorkMode.WFO,
+        target = TargetLocationSummaryUiModel(
+            displayName = "Kantor Palu",
+            sourceLabel = "Kantor yang ditetapkan",
             radiusText = "Radius 100 m",
             distanceText = "Jarak 12 m",
             rangeText = "Di dalam jangkauan"

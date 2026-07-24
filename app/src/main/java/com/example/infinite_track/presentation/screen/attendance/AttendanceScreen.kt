@@ -5,20 +5,20 @@ import android.content.Context
 import android.content.pm.PackageManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -38,9 +38,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -70,17 +67,16 @@ import com.example.infinite_track.presentation.components.maps.MarkerView
 import com.example.infinite_track.presentation.components.dialog.LocationPermissionDialog
 import com.example.infinite_track.utils.LocalLocationPermissionHelper
 import com.example.infinite_track.utils.LocationPermissionHelper
-import com.example.infinite_track.presentation.components.maps.MarkerViewWfa
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarHost
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarVisuals
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarTimeout
 import com.example.infinite_track.presentation.design.components.status.InfiniteInlineAlert
+import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.map.adapter.AttendanceMap
 import com.example.infinite_track.presentation.map.mapper.AttendanceMapUiMapper
 import com.example.infinite_track.presentation.map.model.AttendanceMapEvent
-import com.example.infinite_track.presentation.map.model.MapCameraEffect
 import com.example.infinite_track.presentation.map.model.MapMarkerRole
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
@@ -129,8 +125,8 @@ fun AttendanceScreen(
 
     // Observasi state dari ViewModel yang sudah disederhanakan
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val cameraEffect by viewModel.mapCameraEffect.collectAsStateWithLifecycle()
     val permissionUiState by permissionViewModel.uiState.collectAsStateWithLifecycle()
-    var cameraEffect by remember { mutableStateOf<MapCameraEffect?>(null) }
     var selectedTargetMarkerId by remember { mutableStateOf<TargetLocationId?>(null) }
     var showPermissionPanel by rememberSaveable { mutableStateOf(false) }
     var initialPermissionCheckHandled by rememberSaveable { mutableStateOf(false) }
@@ -197,12 +193,6 @@ fun AttendanceScreen(
                     popUpTo(Screen.Home.route) { inclusive = false }
                 }
             }
-        }
-    }
-
-    LaunchedEffect(viewModel) {
-        viewModel.mapCameraEffects.collect { effect ->
-            cameraEffect = effect
         }
     }
 
@@ -295,10 +285,6 @@ fun AttendanceScreen(
                 ),
                 actionState = uiState.actionState
             )
-            val discovery = preparation.wfaDiscovery as? WfaDiscoveryState.Content
-            val selectedWfaMarker = discovery?.recommendations?.firstOrNull {
-                it.stableKey == discovery.selectedKey
-            }
             val selectedTargetMarker = AttendanceSelectionTransition.resolvedTargetForInteraction(
                 preparation = preparation,
                 selectedTargetId = selectedTargetMarkerId
@@ -310,124 +296,66 @@ fun AttendanceScreen(
                 snackbarHost = {
                     InfiniteSnackbarHost(hostState = scaffoldState.snackbarHostState)
                 },
-                containerColor = Color.Black.copy(alpha = 0.1f),
-                contentColor = Color.Transparent,
-                sheetContainerColor = Color.Transparent,
-                sheetContentColor = Color.Unspecified,
+                containerColor = InfiniteColors.Transparent,
+                contentColor = InfiniteColors.Text,
+                sheetContainerColor = InfiniteColors.AttendanceReportGlassSurface,
+                sheetContentColor = InfiniteColors.Text,
                 sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                sheetTonalElevation = 8.dp,
                 sheetPeekHeight = 120.dp,
-                sheetDragHandle = null,
+                sheetDragHandle = {
+                    BottomSheetDefaults.DragHandle(
+                        color = InfiniteColors.AttendanceReportBodyText.copy(alpha = 0.42f)
+                    )
+                },
                 sheetContent = {
-                    // Enhanced Liquid Glass Background Container
-                    Box(
+                    AttendanceBottomSheetContent(
+                        model = preparationUiModel,
+                        onEvent = { event ->
+                            when (event) {
+                                is AttendancePreparationEvent.ModeSelected ->
+                                    viewModel.onWorkModeSelected(event.mode)
+                                AttendancePreparationEvent.SearchWfaLocation ->
+                                    navController.navigate(Screen.LocationSearch.route)
+                                AttendancePreparationEvent.PickWfaLocationOnMap ->
+                                    viewModel.onMapPickRequested()
+                                is AttendancePreparationEvent.PrimaryActionClicked -> {
+                                    when (event.action) {
+                                        AttendancePreparationPrimaryAction.WAIT -> Unit
+                                        AttendancePreparationPrimaryAction.CONTINUE_TO_FACE_VERIFICATION,
+                                        AttendancePreparationPrimaryAction.SUBMIT_ATTENDANCE ->
+                                            viewModel.onAttendanceButtonClicked()
+                                        AttendancePreparationPrimaryAction.REFRESH_STATUS ->
+                                            viewModel.onAttendanceStatusRefreshRequested()
+                                        AttendancePreparationPrimaryAction.REFRESH_PROFILE ->
+                                            viewModel.onAttendanceProfileRefreshRequested()
+                                        AttendancePreparationPrimaryAction.RETRY_WFA_DISCOVERY ->
+                                            viewModel.onWfaDiscoveryRetryRequested()
+                                        AttendancePreparationPrimaryAction.REFRESH_LOCATION ->
+                                            viewModel.onFocusLocationClicked()
+                                        AttendancePreparationPrimaryAction.FOCUS_TARGET ->
+                                            viewModel.onMapReady()
+                                        AttendancePreparationPrimaryAction.OPEN_WFA_BOOKING ->
+                                            viewModel.onBookingClicked()
+                                        AttendancePreparationPrimaryAction.OPEN_WFA_REQUESTS ->
+                                            navController.navigate(Screen.Wfa.route)
+                                        AttendancePreparationPrimaryAction.CONTACT_ADMIN ->
+                                            navController.navigate(Screen.ContactUs.route)
+                                    }
+                                }
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                            .background(
-                                brush = Brush.linearGradient(
-                                    colors = listOf(
-                                        Color.White.copy(alpha = 0.98f),
-                                        Color.White.copy(alpha = 0.95f),
-                                        Color(0xFFE3F2FD).copy(alpha = 0.92f),
-                                        Color(0xFFBBDEFB).copy(alpha = 0.88f)
-                                    )
+                            .border(
+                                width = 1.dp,
+                                color = InfiniteColors.AttendanceReportGlassBorder,
+                                shape = RoundedCornerShape(
+                                    topStart = 24.dp,
+                                    topEnd = 24.dp
                                 )
                             )
-                    ) {
-                        // Glass effect overlays
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .background(
-                                    brush = Brush.radialGradient(
-                                        colors = listOf(
-                                            Color.White.copy(alpha = 0.6f),
-                                            Color.Transparent,
-                                            Color(0xFF81D4FA).copy(alpha = 0.3f)
-                                        ),
-                                        radius = 1000f
-                                    )
-                                )
-                                .blur(2.dp)
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .background(
-                                    brush = Brush.linearGradient(
-                                        colors = listOf(
-                                            Color.Transparent,
-                                            Color.White.copy(alpha = 0.4f),
-                                            Color.Transparent
-                                        )
-                                    )
-                                )
-                        )
-
-                        // Content with drag handle
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            // Custom drag handle
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 12.dp, bottom = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .width(40.dp)
-                                        .height(4.dp)
-                                        .clip(RoundedCornerShape(2.dp))
-                                        .background(Color.Gray.copy(alpha = 0.3f))
-                                )
-                            }
-
-                            AttendanceBottomSheetContent(
-                                model = preparationUiModel,
-                                onEvent = { event ->
-                                    when (event) {
-                                        is AttendancePreparationEvent.ModeSelected ->
-                                            viewModel.onWorkModeSelected(event.mode)
-                                        is AttendancePreparationEvent.RecommendationSelected ->
-                                            discovery
-                                                ?.recommendations
-                                                ?.firstOrNull { it.stableKey == event.stableKey }
-                                                ?.let(viewModel::onWfaMarkerClicked)
-                                        AttendancePreparationEvent.SearchWfaLocation ->
-                                            navController.navigate(Screen.LocationSearch.route)
-                                        AttendancePreparationEvent.PickWfaLocationOnMap ->
-                                            viewModel.onMapPickRequested()
-                                        is AttendancePreparationEvent.PrimaryActionClicked -> {
-                                            when (event.action) {
-                                                AttendancePreparationPrimaryAction.WAIT -> Unit
-                                                AttendancePreparationPrimaryAction.CONTINUE_TO_FACE_VERIFICATION,
-                                                AttendancePreparationPrimaryAction.SUBMIT_ATTENDANCE ->
-                                                    viewModel.onAttendanceButtonClicked()
-                                                AttendancePreparationPrimaryAction.REFRESH_STATUS ->
-                                                    viewModel.onAttendanceStatusRefreshRequested()
-                                                AttendancePreparationPrimaryAction.REFRESH_PROFILE ->
-                                                    viewModel.onAttendanceProfileRefreshRequested()
-                                                AttendancePreparationPrimaryAction.RETRY_WFA_DISCOVERY ->
-                                                    viewModel.onWfaDiscoveryRetryRequested()
-                                                AttendancePreparationPrimaryAction.REFRESH_LOCATION ->
-                                                    viewModel.onFocusLocationClicked()
-                                                AttendancePreparationPrimaryAction.FOCUS_TARGET ->
-                                                    viewModel.onMapReady()
-                                                AttendancePreparationPrimaryAction.OPEN_WFA_BOOKING ->
-                                                    viewModel.onBookingClicked()
-                                                AttendancePreparationPrimaryAction.OPEN_WFA_REQUESTS ->
-                                                    navController.navigate(Screen.Wfa.route)
-                                                AttendancePreparationPrimaryAction.CONTACT_ADMIN ->
-                                                    navController.navigate(Screen.ContactUs.route)
-                                            }
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.padding(top = 0.dp)
-                            )
-                        }
-                    }
+                    )
                 }
             ) { _ -> // Renamed paddingValues to _ to indicate it's intentionally unused
                 AttendanceLocationPermissionGate(
@@ -458,6 +386,8 @@ fun AttendanceScreen(
                         onEvent = { event ->
                             when (event) {
                                 AttendanceMapEvent.Ready -> viewModel.onMapReady()
+                                is AttendanceMapEvent.CameraEffectConsumed ->
+                                    viewModel.onMapCameraEffectConsumed(event.effectId)
                                 is AttendanceMapEvent.CameraIdle -> viewModel.onMapIdle(
                                     centerPoint = event.center,
                                     origin = event.origin
@@ -531,21 +461,6 @@ fun AttendanceScreen(
                                 ),
                                 coordinates = "${selectedMarker.coordinate.latitude}, ${selectedMarker.coordinate.longitude}",
                                 onClose = { selectedTargetMarkerId = null }
-                            )
-                        }
-                    }
-
-                    // Display WFA marker details when clicked
-                    selectedWfaMarker?.let {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(top = 80.dp, start = 16.dp, end = 16.dp),
-                            contentAlignment = Alignment.TopCenter
-                        ) {
-                            MarkerViewWfa(
-                                recommendation = it,
-                                onClick = { viewModel.onDismissWfaMarkerInfo() }
                             )
                         }
                     }

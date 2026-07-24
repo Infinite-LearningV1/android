@@ -3,6 +3,7 @@ package com.example.infinite_track.domain.repository.location
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.location.PlaceDetailsResult
 import com.example.infinite_track.domain.model.location.PlaceSearchResult
+import com.example.infinite_track.domain.model.location.PlaceSuggestion
 
 interface PlaceDiscoveryRepository {
     suspend fun search(
@@ -10,7 +11,7 @@ interface PlaceDiscoveryRepository {
         proximity: GeoCoordinate? = null
     ): PlaceSearchResult
 
-    suspend fun resolve(placeId: String): PlaceDetailsResult
+    suspend fun resolve(suggestion: PlaceSuggestion): PlaceDetailsResult
 
     fun abandonSession()
 }

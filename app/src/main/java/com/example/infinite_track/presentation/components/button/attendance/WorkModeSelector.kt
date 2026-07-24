@@ -35,15 +35,15 @@ import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.components.surface.InfiniteCard
+import com.example.infinite_track.presentation.design.tokens.InfiniteBorder
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteIcons
 import com.example.infinite_track.presentation.design.tokens.InfiniteMotion
 import com.example.infinite_track.presentation.design.tokens.InfiniteRadius
-import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
 import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
 import com.example.infinite_track.presentation.design.tokens.InfiniteSurfaceVariant
-import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
+import com.example.infinite_track.presentation.design.tokens.WorkModeVisualTokens
 import com.example.infinite_track.presentation.screen.attendance.preparation.WorkModeOptionUiModel
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
@@ -74,10 +74,10 @@ private fun WorkModeOptionCard(
 ) {
     val presentation = option.mode.presentation()
     val selectedStateDescription = stringResource(R.string.attendance_work_mode_selected)
-    val semanticColors = infiniteSemanticColors(presentation.semantic)
+    val workModeColor = WorkModeVisualTokens.color(option.mode)
     val selectedTint by animateColorAsState(
         targetValue = if (option.isSelected) {
-            semanticColors.container
+            workModeColor.copy(alpha = 0.12f)
         } else {
             InfiniteColors.Transparent
         },
@@ -92,15 +92,24 @@ private fun WorkModeOptionCard(
             .sizeIn(minHeight = 96.dp)
             .clip(shape)
             .background(selectedTint, shape)
+            .border(
+                width = if (option.isSelected) {
+                    InfiniteBorder.Selected
+                } else {
+                    InfiniteBorder.Hairline
+                },
+                color = workModeColor.copy(alpha = if (option.isSelected) 0.72f else 0.28f),
+                shape = shape
+            )
             .semantics(mergeDescendants = true) {
                 selected = option.isSelected
                 role = Role.RadioButton
                 if (option.isSelected) stateDescription = selectedStateDescription
-            },
+        },
         variant = InfiniteSurfaceVariant.Outlined,
-        semantic = presentation.semantic,
-        selected = option.isSelected,
+        selected = false,
         clickable = true,
+        showBorder = false,
         showShadow = false,
         onClick = onClick
     ) {
@@ -113,14 +122,14 @@ private fun WorkModeOptionCard(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(MaterialTheme.shapes.medium)
-                    .background(semanticColors.container),
+                    .background(workModeColor.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = presentation.icon,
                     contentDescription = null,
                     modifier = Modifier.size(InfiniteSpacing.Default.xl),
-                    tint = semanticColors.accent
+                    tint = workModeColor
                 )
             }
 
@@ -132,7 +141,7 @@ private fun WorkModeOptionCard(
                     label = option.mode.shortLabel,
                     variant = InfiniteStatusVariant.Neutral,
                     size = InfiniteSize.Small,
-                    colorOverride = semanticColors.accent
+                    colorOverride = workModeColor
                 )
                 Text(
                     text = option.title,
@@ -149,7 +158,7 @@ private fun WorkModeOptionCard(
                     variant = InfiniteStatusVariant.Neutral,
                     size = InfiniteSize.Small,
                     leadingIcon = presentation.evidenceIcon,
-                    colorOverride = semanticColors.accent
+                    colorOverride = workModeColor
                 )
             }
 
@@ -158,7 +167,7 @@ private fun WorkModeOptionCard(
                     imageVector = InfiniteIcons.Success,
                     contentDescription = null,
                     modifier = Modifier.size(InfiniteSpacing.Default.xl),
-                    tint = semanticColors.accent
+                    tint = workModeColor
                 )
             } else {
                 Box(
@@ -172,7 +181,6 @@ private fun WorkModeOptionCard(
 }
 
 private data class WorkModePresentation(
-    val semantic: InfiniteSemantic,
     val icon: ImageVector,
     val evidenceLabel: String,
     val evidenceIcon: ImageVector
@@ -181,19 +189,16 @@ private data class WorkModePresentation(
 @Composable
 private fun WorkMode.presentation(): WorkModePresentation = when (this) {
     WorkMode.WFO -> WorkModePresentation(
-        semantic = InfiniteSemantic.Primary,
         icon = InfiniteIcons.Work,
         evidenceLabel = stringResource(R.string.attendance_wfo_evidence),
         evidenceIcon = InfiniteIcons.Location
     )
     WorkMode.WFH -> WorkModePresentation(
-        semantic = InfiniteSemantic.Info,
         icon = Icons.Default.Home,
         evidenceLabel = stringResource(R.string.attendance_wfh_evidence),
         evidenceIcon = InfiniteIcons.Shield
     )
     WorkMode.WFA -> WorkModePresentation(
-        semantic = InfiniteSemantic.Secondary,
         icon = InfiniteIcons.Location,
         evidenceLabel = stringResource(R.string.attendance_wfa_evidence),
         evidenceIcon = InfiniteIcons.Calendar

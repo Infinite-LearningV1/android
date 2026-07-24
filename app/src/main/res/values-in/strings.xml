@@ -82,4 +82,23 @@
     <string name="attendance_wfa_suitability_neutral_state">Informasi kesesuaian WFA</string>
     <string name="attendance_pick_location_fallback">Koordinat dipilih</string>
     <string name="attendance_pick_location_failed">Detail lokasi gagal dimuat.</string>
+
+    <!-- Explicit WFA place search -->
+    <string name="wfa_search_title">Cari Lokasi WFA</string>
+    <string name="wfa_search_placeholder">Cari tempat atau alamat</string>
+    <string name="wfa_search_guidance_title">Temukan lokasi kerja</string>
+    <string name="wfa_search_guidance_body">Ketik minimal 2 karakter untuk mencari lokasi WFA di Indonesia.</string>
+    <string name="wfa_search_loading">Mencari lokasi...</string>
+    <string name="wfa_search_empty_title">Lokasi tidak ditemukan</string>
+    <string name="wfa_search_empty_body">Tidak ada hasil untuk “%1$s”. Coba kata kunci lain.</string>
+    <string name="wfa_search_error_title">Pencarian lokasi gagal</string>
+    <string name="wfa_search_retry">Coba lagi</string>
+    <string name="wfa_search_clear_content_description">Hapus pencarian</string>
+    <string name="wfa_search_field_content_description">Pencarian lokasi WFA</string>
+    <string name="wfa_search_error_configuration">Pencarian lokasi belum dikonfigurasi.</string>
+    <string name="wfa_search_error_authentication">Akses pencarian lokasi ditolak.</string>
+    <string name="wfa_search_error_quota">Batas pencarian lokasi sedang tercapai. Coba lagi nanti.</string>
+    <string name="wfa_search_error_network">Jaringan bermasalah. Periksa koneksi lalu coba lagi.</string>
+    <string name="wfa_search_error_invalid_request">Kata kunci atau lokasi tidak valid.</string>
+    <string name="wfa_search_error_unavailable">Pencarian lokasi sedang tidak tersedia.</string>
 </resources>

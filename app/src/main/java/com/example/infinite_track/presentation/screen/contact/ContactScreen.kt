@@ -70,7 +70,8 @@ fun ContactScreen(
                 modifier = Modifier.fillMaxWidth(),
                 value = searchValue,
                 placeholder = "Search Contacts",
-                onChange = { newValue -> searchValue = newValue }
+                onChange = { newValue -> searchValue = newValue },
+                onClear = { searchValue = "" }
             )
 
             Spacer(modifier = Modifier.height(16.dp))

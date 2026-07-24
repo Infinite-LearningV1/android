@@ -424,6 +424,15 @@ class AttendanceScreenFaceResultRescueTest {
         )
     }
 
+    internal fun createDefaultAttendanceViewModelForCameraTest(): AttendanceViewModel =
+        createAttendanceViewModel()
+
+    internal fun createAttendanceViewModelForCameraTest(
+        wfaBookingResolver: BookingRepository
+    ): AttendanceViewModel = createAttendanceViewModel(
+        wfaBookingResolver = wfaBookingResolver
+    )
+
     private class FakeAttendanceRepository(
         private val checkInFailure: Throwable? = null
     ) : AttendanceRepository {
@@ -515,7 +524,7 @@ class AttendanceScreenFaceResultRescueTest {
         ): Result<Unit> = Result.success(Unit)
     }
 
-    private class ControllableFakeWfaBookingResolver : BookingRepository {
+    internal class ControllableFakeWfaBookingResolver : BookingRepository {
         private val requestStarted = CompletableDeferred<Unit>()
         private val response = CompletableDeferred<Result<BookingHistoryPage>>()
         private val requestCompleted = CompletableDeferred<Unit>()

@@ -95,7 +95,6 @@ android {
         debug {
             // Debug builds - NO optimization for faster build times
             isMinifyEnabled = false
-            isShrinkResources = false
             isDebuggable = true
             
             // NOTE: applicationIdSuffix removed to match google-services.json configuration
