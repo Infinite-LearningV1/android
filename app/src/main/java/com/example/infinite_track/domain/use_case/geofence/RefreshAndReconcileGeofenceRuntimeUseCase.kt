@@ -6,6 +6,7 @@ import com.example.infinite_track.domain.model.geofence.BackendTruthSource
 import com.example.infinite_track.domain.model.geofence.GeofenceReconcileReason
 import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeFailure
 import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeInputs
+import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeReadiness
 import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeModeResolution
 import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeResult
 import com.example.infinite_track.domain.model.wfa.WfaBookingForDate
@@ -25,6 +26,7 @@ sealed interface RefreshAndReconcileGeofenceRuntimeResult {
         val todayStatus: TodayStatus,
         val profile: UserModel?,
         val wfaBooking: WfaBookingForDate,
+        val readiness: GeofenceRuntimeReadiness,
         val resolution: GeofenceRuntimeModeResolution,
         val runtime: GeofenceRuntimeResult
     ) : RefreshAndReconcileGeofenceRuntimeResult
@@ -105,6 +107,7 @@ class RefreshAndReconcileGeofenceRuntimeUseCase @Inject constructor(
             todayStatus = todayStatus,
             profile = profile,
             wfaBooking = wfaBooking,
+            readiness = readiness,
             resolution = resolution,
             runtime = runtime
         )

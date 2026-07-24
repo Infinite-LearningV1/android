@@ -17,6 +17,7 @@ data class AttendanceScreenState(
     val currentUserAddress: String = "",
     val error: String? = null,
     val actionState: AttendanceActionState = AttendanceActionState.Loading,
+    val geofenceRuntime: GeofenceRuntimeUiState = GeofenceRuntimeUiState(),
     val navigationTarget: NavigationTarget? = null,
     val showPermissionDialog: Boolean = false,
     val permissionResult: LocationPermissionHelper.PermissionResult? = null,

@@ -3,40 +3,34 @@ package com.example.infinite_track.presentation.screen.attendance
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
 import com.example.infinite_track.domain.model.attendance.AttendancePreparationEligibility
 import com.example.infinite_track.domain.model.attendance.AuthoritativeTargetLocation
-import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.TargetLocationResolution
 import com.example.infinite_track.domain.model.attendance.TargetRangeStatus
 import com.example.infinite_track.domain.model.attendance.TargetRangeUnknownReason
 import com.example.infinite_track.domain.model.attendance.TargetResolutionFailure
-import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.location.GeoCoordinate
-import com.example.infinite_track.domain.model.location.DistanceMeters
 import com.example.infinite_track.domain.model.location.AddressResolutionResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.domain.model.wfa.WfaBookingForDate
+import com.example.infinite_track.domain.model.geofence.GeofenceReconcileReason
 import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
 import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
 import com.example.infinite_track.domain.use_case.attendance.EvaluateAttendancePreparationUseCase
 import com.example.infinite_track.domain.use_case.attendance.EvaluateTargetRangeUseCase
-import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
 import com.example.infinite_track.domain.use_case.attendance.ResolveAuthoritativeTargetLocationUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
-import com.example.infinite_track.domain.use_case.auth.RefreshAttendanceProfileUseCase
-import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayWfaBookingStateUseCase
+import com.example.infinite_track.domain.use_case.geofence.RefreshAndReconcileGeofenceRuntimeResult
+import com.example.infinite_track.domain.use_case.geofence.RefreshAndReconcileGeofenceRuntimeUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentLocationUseCase
 import com.example.infinite_track.domain.model.location.CurrentLocationResult
 import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
 import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
-import com.example.infinite_track.presentation.geofencing.GeofenceManager
-import com.example.infinite_track.presentation.geofencing.ReminderGeofenceCandidate
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.map.model.AttendanceMapCameraMoveOrigin
 import com.example.infinite_track.presentation.map.model.MapCameraEffect
@@ -80,20 +74,17 @@ sealed class NavigationTarget {
  */
 @HiltViewModel
 class AttendanceViewModel @Inject constructor(
-    private val getTodayStatusUseCase: GetTodayStatusUseCase,
     private val getCurrentAddressUseCase: GetCurrentAddressUseCase,
     private val getCurrentLocationUseCase: GetCurrentLocationUseCase,
     private val getWfaRecommendationsUseCase: GetWfaRecommendationsUseCase,
     private val reverseGeocodeUseCase: ReverseGeocodeUseCase,
-    private val attendancePreference: AttendancePreference,
-    private val geofenceManager: GeofenceManager,
     private val getLoggedInUserUseCase: GetLoggedInUserUseCase,
-    private val refreshAttendanceProfileUseCase: RefreshAttendanceProfileUseCase,
-    private val resolveTodayApprovedWfaBookingUseCase: ResolveTodayApprovedWfaBookingUseCase,
     private val resolveTodayWfaBookingStateUseCase: ResolveTodayWfaBookingStateUseCase,
     private val resolveAuthoritativeTargetLocationUseCase: ResolveAuthoritativeTargetLocationUseCase,
     private val evaluateTargetRangeUseCase: EvaluateTargetRangeUseCase,
     private val evaluateAttendancePreparationUseCase: EvaluateAttendancePreparationUseCase,
+    private val refreshAndReconcileGeofenceRuntimeUseCase: RefreshAndReconcileGeofenceRuntimeUseCase,
+    private val geofenceRuntimeUiMapper: GeofenceRuntimeUiMapper,
     // Add UseCase dependencies for attendance operations
     private val checkInUseCase: CheckInUseCase,
     private val checkOutUseCase: CheckOutUseCase
@@ -124,24 +115,9 @@ class AttendanceViewModel @Inject constructor(
     private var latestSelectionRequest: SelectionRequestToken =
         latestSelectionGuard.next(WorkMode.WFO)
     private var latestProfile: UserModel? = null
-    private val preparationRefreshCoordinator = AttendancePreparationRefreshCoordinator(
-        fetchStatus = ::fetchTodayStatus,
-        requestProfileRefresh = { refreshAttendanceProfileUseCase() },
-        applyProfile = { user -> latestProfile = user },
-        resolveWfh = {
-            if (_uiState.value.preparation.selectedMode == WorkMode.WFH) {
-                resolveAndApplyTargetForMode(WorkMode.WFH)
-            }
-            refreshReminderGeofencesIfNeeded()
-        },
-        preserveProfileRecovery = ::preserveProfileRefreshRecovery
-    )
-
     companion object {
         private const val TAG = "AttendanceViewModel"
         private const val DISPLAY_UPDATE_INTERVAL = 10000L // 10 seconds for UI updates
-        private const val SESSION_STATE_ACTIVE = "active"
-        private const val SESSION_STATE_NOT_STARTED = "not_started"
     }
 
     init {
@@ -201,85 +177,61 @@ class AttendanceViewModel @Inject constructor(
         return true
     }
 
-    /**
-     * Initialize data by fetching both WFO and WFH locations
-     */
+    /** Initializes backend-authoritative attendance and runtime state for this foreground entry. */
     private fun initializeData() {
         viewModelScope.launch {
-            try {
-                _uiState.value = _uiState.value.copy(uiState = UiState.Loading)
-
-                // Fetch both locations concurrently
-                fetchTodayStatus()
-                fetchUserHomeLocation()
-
-                // Don't start location updates automatically - let UI control this
-                refreshReminderGeofencesIfNeeded()
-
-            } catch (e: Exception) {
-                Log.e(TAG, "Error initializing data", e)
-                _uiState.value = _uiState.value.copy(
-                    uiState = UiState.Error("Data absensi belum dapat dimuat. Silakan coba lagi.")
-                )
-            }
+            _uiState.value = _uiState.value.copy(uiState = UiState.Loading)
+            refreshAttendanceAndRuntime(GeofenceReconcileReason.FOREGROUND_REFRESH)
+            observeProfileForPreparation()
         }
     }
 
-    /**
-     * Fetch today status to get WFO location and resolve explicit attendance action state.
-     */
-    private suspend fun fetchTodayStatus(forceRefresh: Boolean = false) {
+    private suspend fun refreshAttendanceAndRuntime(
+        reason: GeofenceReconcileReason
+    ) {
         try {
-            getTodayStatusUseCase(forceRefresh).onSuccess { todayStatus ->
-                Log.d(
-                    TAG,
-                    "Today status fetched successfully: mode=${todayStatus.activeMode}, canCheckIn=${todayStatus.canCheckIn}, canCheckOut=${todayStatus.canCheckOut}, state=${todayStatus.attendanceSessionState?.key}"
-                )
+            when (val result = refreshAndReconcileGeofenceRuntimeUseCase(reason)) {
+                is RefreshAndReconcileGeofenceRuntimeResult.Reconciled -> {
+                    latestProfile = result.profile
+                    val selectedMode = WorkMode.fromRaw(result.todayStatus.activeMode) ?: WorkMode.WFO
+                    _uiState.value = _uiState.value.copy(
+                        todayStatus = result.todayStatus,
+                        uiState = UiState.Success(Unit),
+                        geofenceRuntime = geofenceRuntimeUiMapper.map(
+                            readiness = result.readiness,
+                            runtime = result.runtime
+                        )
+                    ).withResolvedActionStatePreservingInFlightSubmit()
 
-                val selectedMode = WorkMode.fromRaw(todayStatus.activeMode) ?: WorkMode.WFO
+                    resolveAndApplyTargetForMode(selectedMode)
+                }
 
-                val nextState = _uiState.value.copy(
-                    todayStatus = todayStatus,
-                    uiState = UiState.Success(Unit)
-                )
-                _uiState.value = nextState.withResolvedActionStatePreservingInFlightSubmit()
+                is RefreshAndReconcileGeofenceRuntimeResult.BackendUnavailable -> {
+                    showRetryableStatusError(result.failure)
+                }
 
-                resolveAndApplyTargetForMode(selectedMode)
-
-                Log.d(TAG, "WFO location updated: ${todayStatus.activeLocation}")
-                Log.d(
-                    TAG,
-                    "Attendance action state updated: ${_uiState.value.actionState}"
-                )
-
-                refreshReminderGeofencesIfNeeded()
-
-            }.onFailure { exception ->
-                Log.e(TAG, "Failed to fetch today status", exception)
-                val message = "Status absensi belum dapat dimuat. Silakan coba lagi."
-                _uiState.value = _uiState.value.copy(
-                    uiState = UiState.Error(message)
-                ).withActionState(
-                    AttendanceActionState.RetryableFailure(
-                        intent = null,
-                        title = "Status absensi gagal dimuat",
-                        message = message
-                    )
-                )
+                is RefreshAndReconcileGeofenceRuntimeResult.AuthUnavailable -> {
+                    // Global session/reauth handling owns this outcome. Do not invent attendance-local UI.
+                }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Unexpected error in fetchTodayStatus", e)
-            val message = "Status absensi belum dapat dimuat. Silakan coba lagi."
-            _uiState.value = _uiState.value.copy(
-                uiState = UiState.Error(message)
-            ).withActionState(
-                AttendanceActionState.RetryableFailure(
-                    intent = null,
-                    title = "Status absensi gagal dimuat",
-                    message = message
-                )
-            )
+            Log.e(TAG, "Unexpected error while refreshing attendance runtime", e)
+            showRetryableStatusError(e)
         }
+    }
+
+    private fun showRetryableStatusError(cause: Any?) {
+        Log.e(TAG, "Attendance status refresh failed: $cause")
+        val message = "Status absensi belum dapat dimuat. Silakan coba lagi."
+        _uiState.value = _uiState.value.copy(
+            uiState = UiState.Error(message)
+        ).withActionState(
+            AttendanceActionState.RetryableFailure(
+                intent = null,
+                title = "Status absensi gagal dimuat",
+                message = message
+            )
+        )
     }
 
     private fun AttendanceScreenState.withActionState(
@@ -304,117 +256,17 @@ class AttendanceViewModel @Inject constructor(
         _uiState.value = _uiState.value.withResolvedActionStatePreservingInFlightSubmit()
     }
 
-    /**
-     * Fetch user home location from logged in user data
-     */
-    private suspend fun fetchUserHomeLocation() {
+    private suspend fun observeProfileForPreparation() {
         try {
             getLoggedInUserUseCase().collect { user ->
-                Log.d(TAG, "User data fetched successfully")
                 latestProfile = user
-
-                val wfhLocation = user.toWfhAttendanceLocation()
-
                 if (_uiState.value.preparation.selectedMode == WorkMode.WFH) {
                     resolveAndApplyTargetForMode(WorkMode.WFH)
                 }
-
-                Log.d(TAG, "WFH location updated: $wfhLocation")
-                refreshReminderGeofencesIfNeeded()
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Unexpected error in fetchUserHomeLocation", e)
-            // Continue without WFH location
+            Log.w(TAG, "Unable to observe attendance profile updates", e)
         }
-    }
-
-    private fun refreshReminderGeofencesIfNeeded() {
-        viewModelScope.launch {
-            val state = _uiState.value
-            val todayStatus = state.todayStatus ?: return@launch
-            val sessionKey = todayStatus.attendanceSessionState?.key
-            val shouldRegisterReminders = todayStatus.activeAttendanceId == null &&
-                sessionKey == SESSION_STATE_NOT_STARTED &&
-                todayStatus.canCheckIn
-
-            attendancePreference.saveAttendanceSessionStateKey(sessionKey)
-
-            if (!shouldRegisterReminders) {
-                Log.d(
-                    TAG,
-                    "Reminder geofence skipped: attendanceId=${todayStatus.activeAttendanceId}, state=$sessionKey, canCheckIn=${todayStatus.canCheckIn}"
-                )
-                return@launch
-            }
-
-            val candidates = buildReminderCandidates(
-                todayStatus,
-                latestProfile.toWfhAttendanceLocation()
-            )
-            Log.d(
-                TAG,
-                "Reminder candidates built: " + candidates.joinToString { "${it.id}:${it.modeKey}:${it.source}" }
-            )
-            geofenceManager.registerReminderGeofences(candidates)
-        }
-    }
-
-    private suspend fun buildReminderCandidates(
-        todayStatus: TodayStatus,
-        wfhLocation: Location?
-    ): List<ReminderGeofenceCandidate> {
-        val candidates = mutableListOf<ReminderGeofenceCandidate>()
-
-        todayStatus.activeLocation?.let { primary ->
-            candidates += ReminderGeofenceCandidate(
-                id = "reminder:primary:${primary.locationId}",
-                modeKey = WorkMode.fromRaw(todayStatus.activeMode)?.shortLabel?.lowercase() ?: WorkMode.WFO.shortLabel.lowercase(),
-                label = primary.description,
-                coordinate = primary.coordinate,
-                radius = DistanceMeters(primary.radius.toDouble()),
-                source = "status-today.active_location"
-            )
-        }
-
-        wfhLocation?.let { home ->
-            candidates += ReminderGeofenceCandidate(
-                id = "reminder:wfh:user_home:${home.locationId}",
-                modeKey = WorkMode.WFH.shortLabel.lowercase(),
-                label = home.description,
-                coordinate = home.coordinate,
-                radius = DistanceMeters(home.radius.toDouble()),
-                source = "/me"
-            )
-        }
-
-        val todayDate = todayStatus.todayDate
-        if (todayDate.isNotBlank()) {
-            resolveTodayApprovedWfaBookingUseCase(todayDate).onSuccess { booking ->
-                val latitude = booking.latitude
-                val longitude = booking.longitude
-                if (latitude != null && longitude != null && !isDuplicateWithPrimary(todayStatus.activeLocation, latitude, longitude)) {
-                    val coordinate = runCatching { GeoCoordinate(latitude, longitude) }.getOrNull()
-                    if (coordinate != null) candidates += ReminderGeofenceCandidate(
-                        id = "reminder:wfa:${booking.bookingId}:${booking.locationId ?: 0}",
-                        modeKey = WorkMode.WFA.shortLabel.lowercase(),
-                        label = booking.locationDescription,
-                        coordinate = coordinate,
-                        radius = DistanceMeters((booking.radiusMeters ?: 100f).toDouble()),
-                        source = "approved-wfa-booking"
-                    )
-                }
-            }.onFailure {
-                Log.d(TAG, "No approved WFA reminder candidate")
-            }
-        }
-
-        return candidates.distinctBy { it.id }
-    }
-
-    private fun isDuplicateWithPrimary(primary: Location?, latitude: Double, longitude: Double): Boolean {
-        if (primary == null) return false
-        return kotlin.math.abs(primary.latitude - latitude) < 0.00001 &&
-            kotlin.math.abs(primary.longitude - longitude) < 0.00001
     }
 
     /**
@@ -528,39 +380,18 @@ class AttendanceViewModel @Inject constructor(
 
     fun onAttendanceStatusRefreshRequested() {
         viewModelScope.launch {
-            preparationRefreshCoordinator.refreshStatus()
+            refreshAttendanceAndRuntime(GeofenceReconcileReason.FOREGROUND_REFRESH)
         }
     }
 
     fun onAttendanceProfileRefreshRequested() {
         viewModelScope.launch {
-            preparationRefreshCoordinator.refreshProfile()
+            refreshAttendanceAndRuntime(GeofenceReconcileReason.FOREGROUND_REFRESH)
         }
     }
 
     fun onWfaDiscoveryRetryRequested() {
         resolveAndApplyTargetForMode(WorkMode.WFA)
-    }
-
-    private fun preserveProfileRefreshRecovery() {
-        if (_uiState.value.preparation.selectedMode != WorkMode.WFH) return
-        val resolution = TargetLocationResolution.Failed(
-            mode = WorkMode.WFH,
-            failure = TargetResolutionFailure.PROFILE_REFRESH_FAILED
-        )
-        val eligibility = evaluateAttendancePreparationUseCase(
-            resolution = resolution,
-            rangeStatus = TargetRangeStatus.Unknown(
-                TargetRangeUnknownReason.CURRENT_LOCATION_UNAVAILABLE
-            )
-        )
-        _uiState.value = _uiState.value.copy(
-            preparation = _uiState.value.preparation.copy(
-                targetResolution = resolution,
-                rangeStatus = null,
-                eligibility = eligibility
-            )
-        ).withResolvedActionStatePreservingInFlightSubmit()
     }
 
     private fun resolveAndApplyTargetForMode(
@@ -1032,7 +863,7 @@ class AttendanceViewModel @Inject constructor(
                     )
 
                     // Finish on backend-resolved state so snackbar auto-dismiss leaves a usable screen.
-                    fetchTodayStatus(forceRefresh = true)
+                    refreshAttendanceAndRuntime(GeofenceReconcileReason.CHECK_IN_SUCCEEDED)
 
                 }.onFailure { exception ->
                     Log.e(TAG, "Check-in failed", exception)
@@ -1098,7 +929,7 @@ class AttendanceViewModel @Inject constructor(
                     )
 
                     // Finish on backend-resolved state so snackbar auto-dismiss leaves a usable screen.
-                    fetchTodayStatus(forceRefresh = true)
+                    refreshAttendanceAndRuntime(GeofenceReconcileReason.CHECK_OUT_SUCCEEDED)
 
                 }.onFailure { exception ->
                     Log.e(TAG, "Check-out failed", exception)
@@ -1339,20 +1170,6 @@ class AttendanceViewModel @Inject constructor(
                 consumedPreparation,
                 locationResult
             )
-        )
-    }
-
-    private fun UserModel?.toWfhAttendanceLocation(): Location? {
-        val user = this ?: return null
-        val latitude = user.latitude ?: return null
-        val longitude = user.longitude ?: return null
-        return Location(
-            locationId = user.id,
-            latitude = latitude,
-            longitude = longitude,
-            radius = user.radius ?: 100,
-            description = user.locationDescription ?: "Work From Home Location",
-            category = user.locationCategoryName ?: "Home"
         )
     }
 
