@@ -32,10 +32,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,17 +50,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.auth.UserModel
-import com.example.infinite_track.presentation.components.loading.LoadingAnimation
 import com.example.infinite_track.presentation.components.popUp.LanguagePopUp
 import com.example.infinite_track.presentation.components.status.InfiniteTrackConfirmDialog
-import com.example.infinite_track.presentation.components.status.InfiniteTrackStatusDialog
 import com.example.infinite_track.presentation.components.status.StatusStates
 import com.example.infinite_track.presentation.core.body1
 import com.example.infinite_track.presentation.core.body2
@@ -67,16 +65,17 @@ import com.example.infinite_track.presentation.core.body3
 import com.example.infinite_track.presentation.core.headline2
 import com.example.infinite_track.presentation.core.headline3
 import com.example.infinite_track.presentation.core.headline4
+import com.example.infinite_track.presentation.design.components.status.InfiniteInlineAlert
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
+import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
 import com.example.infinite_track.presentation.theme.Blue_500
 import com.example.infinite_track.presentation.theme.Purple_300
 import com.example.infinite_track.presentation.theme.Purple_500
 import com.example.infinite_track.utils.UiState
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.filterNotNull
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -92,15 +91,37 @@ fun ProfileScreen(
     rootNavController: NavHostController,
     profileViewModel: ProfileViewModel = hiltViewModel()
 ) {
-    val scope = rememberCoroutineScope()
     var showLogoutConfirmDialog by remember { mutableStateOf(false) }
-    var showLogoutLoadingDialog by remember { mutableStateOf(false) }
 
     // Collect all states from the ViewModel
     val profileState by profileViewModel.profileState.collectAsStateWithLifecycle()
     val language by profileViewModel.languageState.collectAsStateWithLifecycle()
     val showLanguageDialog by profileViewModel.showLanguageDialog.collectAsStateWithLifecycle()
-    val logoutState by profileViewModel.logoutState.collectAsStateWithLifecycle()
+    val logoutUiState by profileViewModel.uiState.collectAsStateWithLifecycle()
+    val currentRootNavController by rememberUpdatedState(rootNavController)
+    val isLoggingOut = logoutUiState == ProfileLogoutUiState.Submitting
+
+    LaunchedEffect(profileViewModel) {
+        profileViewModel.effects.filterNotNull().collect { effect ->
+            when (effect) {
+                ProfileEffect.NavigateToLogin -> {
+                    currentRootNavController.navigate("auth_graph") {
+                        popUpTo(currentRootNavController.graph.startDestinationId) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
+                }
+            }
+            profileViewModel.consumeEffect(effect)
+        }
+    }
+
+    LaunchedEffect(logoutUiState) {
+        if (logoutUiState is ProfileLogoutUiState.LocalCleanupFailure) {
+            showLogoutConfirmDialog = false
+        }
+    }
 
     // Show language selection dialog using LanguagePopUp
     LanguagePopUp(
@@ -122,79 +143,16 @@ fun ProfileScreen(
 
     InfiniteTrackConfirmDialog(
         status = StatusStates.Warning,
-        title = "Log out",
-        message = "Are you sure you want to log out?",
+        title = stringResource(R.string.profile_logout_confirmation_title),
+        message = stringResource(R.string.profile_logout_confirmation_message),
         showDialog = showLogoutConfirmDialog,
-        confirmText = "Log out",
-        cancelText = "Cancel",
+        confirmText = stringResource(R.string.logOut),
+        cancelText = stringResource(R.string.cancel),
         isDestructive = true,
+        confirmLoading = isLoggingOut,
         onDismiss = { showLogoutConfirmDialog = false },
-        onConfirm = {
-            showLogoutConfirmDialog = false
-            showLogoutLoadingDialog = true
-            scope.launch {
-                delay(2000)
-                showLogoutLoadingDialog = false
-                profileViewModel.onConfirmLogout()
-            }
-        }
+        onConfirm = profileViewModel::confirmLogout
     )
-
-    ProfileLoadingDialog(showDialog = showLogoutLoadingDialog || logoutState is UiState.Loading)
-
-    if (logoutState is UiState.Success) {
-        InfiniteTrackStatusDialog(
-            status = StatusStates.Success,
-            title = "Log out berhasil",
-            message = "Sampai jumpa kembali.",
-            showDialog = true,
-            onDismiss = {
-                profileViewModel.resetLogoutState()
-                rootNavController.navigate("auth_graph") {
-                    popUpTo(rootNavController.graph.startDestinationId) {
-                        inclusive = true
-                    }
-                    launchSingleTop = true
-                }
-            },
-            onConfirm = {
-                profileViewModel.resetLogoutState()
-                rootNavController.navigate("auth_graph") {
-                    popUpTo(rootNavController.graph.startDestinationId) {
-                        inclusive = true
-                    }
-                    launchSingleTop = true
-                }
-            }
-        )
-    }
-
-    if (logoutState is UiState.Error) {
-        InfiniteTrackStatusDialog(
-            status = StatusStates.Warning,
-            title = "Log out selesai dengan peringatan",
-            message = (logoutState as UiState.Error).errorMessage,
-            showDialog = true,
-            onDismiss = {
-                profileViewModel.resetLogoutState()
-                rootNavController.navigate("auth_graph") {
-                    popUpTo(rootNavController.graph.startDestinationId) {
-                        inclusive = true
-                    }
-                    launchSingleTop = true
-                }
-            },
-            onConfirm = {
-                profileViewModel.resetLogoutState()
-                rootNavController.navigate("auth_graph") {
-                    popUpTo(rootNavController.graph.startDestinationId) {
-                        inclusive = true
-                    }
-                    launchSingleTop = true
-                }
-            }
-        )
-    }
 
     // MainScreen already applies scaffold/bottom-bar padding.
     // Match Home/History content insets exactly.
@@ -202,66 +160,79 @@ fun ProfileScreen(
         modifier = Modifier.fillMaxSize(),
         containerColor = Color.Transparent
     ) { _ ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            when (profileState) {
-                is UiState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+            if (logoutUiState is ProfileLogoutUiState.LocalCleanupFailure) {
+                InfiniteInlineAlert(
+                    title = stringResource(R.string.profile_logout_cleanup_failure_title),
+                    message = stringResource(R.string.profile_logout_cleanup_failure_message),
+                    semantic = InfiniteSemantic.Error,
+                    actionLabel = stringResource(R.string.profile_logout_retry),
+                    onAction = profileViewModel::retryLogout
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            Box(modifier = Modifier.weight(1f)) {
+                when (profileState) {
+                    is UiState.Loading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator(
-                                color = InfiniteColors.AccountHubPrimary,
-                                modifier = Modifier.size(48.dp)
-                            )
-                            EmployeesAccessShortcut(onClick = navigateToContacts)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    color = InfiniteColors.AccountHubPrimary,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                EmployeesAccessShortcut(onClick = navigateToContacts)
+                            }
                         }
                     }
-                }
 
-                is UiState.Error -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                    is UiState.Error -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = (profileState as UiState.Error).errorMessage,
-                                style = headline3,
-                                color = InfiniteColors.AccountHubDestructive
-                            )
-                            EmployeesAccessShortcut(onClick = navigateToContacts)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Text(
+                                    text = (profileState as UiState.Error).errorMessage,
+                                    style = headline3,
+                                    color = InfiniteColors.AccountHubDestructive
+                                )
+                                EmployeesAccessShortcut(onClick = navigateToContacts)
+                            }
                         }
                     }
-                }
 
-                is UiState.Success -> {
-                    val user = (profileState as UiState.Success<UserModel>).data
-                    AccountHubContent(
-                        user = user,
-                        language = language,
-                        onEditProfile = navigateToEditProfile,
-                        onLanguageClick = { profileViewModel.onLanguageSettingsClicked() },
-                        onMyDocument = navigateToMyDocument,
-                        onPaySlip = navigateToPaySlip,
-                        onContactSupport = navigateToContactUs,
-                        onEmployees = navigateToContacts,
-                        onAbout = navigateToAbout,
-                        onLogout = { showLogoutConfirmDialog = true }
-                    )
-                }
+                    is UiState.Success -> {
+                        val user = (profileState as UiState.Success<UserModel>).data
+                        AccountHubContent(
+                            user = user,
+                            language = language,
+                            onEditProfile = navigateToEditProfile,
+                            onLanguageClick = { profileViewModel.onLanguageSettingsClicked() },
+                            onMyDocument = navigateToMyDocument,
+                            onPaySlip = navigateToPaySlip,
+                            onContactSupport = navigateToContactUs,
+                            onEmployees = navigateToContacts,
+                            onAbout = navigateToAbout,
+                            onLogout = { showLogoutConfirmDialog = true }
+                        )
+                    }
 
-                else -> { /* Idle state - do nothing */
+                    else -> { /* Idle state - do nothing */
+                    }
                 }
             }
         }
@@ -752,33 +723,4 @@ private fun String.shouldShowPayrollAccess(): Boolean {
     return !normalized.contains("intern") &&
         !normalized.contains("internship") &&
         !normalized.contains("magang")
-}
-
-@Composable
-private fun ProfileLoadingDialog(showDialog: Boolean) {
-    if (!showDialog) return
-
-    Dialog(onDismissRequest = { }) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = InfiniteColors.AccountHubSurface)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier.height(72.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    LoadingAnimation()
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Please wait",
-                    style = headline4
-                )
-            }
-        }
-    }
 }

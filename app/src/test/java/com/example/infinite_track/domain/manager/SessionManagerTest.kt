@@ -32,6 +32,19 @@ class SessionManagerTest {
         assertTrue(sessionManager.beginSessionExpiryHandling())
     }
 
+    @Test
+    fun `manual logout reset clears stale unknown reauth before login observes it`() {
+        val sessionManager = SessionManager()
+        assertTrue(sessionManager.beginSessionExpiryHandling())
+        sessionManager.triggerForcedReauth(ReauthReason.UNKNOWN)
+
+        sessionManager.resetSessionExpired()
+
+        assertFalse(sessionManager.sessionExpired.value)
+        assertEquals(null, sessionManager.reauthReason.value)
+        assertTrue(sessionManager.beginSessionExpiryHandling())
+    }
+
     @Suppress("DEPRECATION")
     @Test
     fun `legacy triggerSessionExpired maps to unknown reauth reason`() {

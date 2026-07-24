@@ -75,7 +75,8 @@ class SessionManager @Inject constructor() {
 
     /**
      * Reset session expiration state
-     * Dipanggil setelah user dismiss dialog atau navigate ke login
+     * Dipanggil setelah user dismiss dialog, atau setelah local cleanup pada manual logout
+     * berhasil dan sebelum feedback/navigation ke Login.
      */
     @Synchronized
     fun resetSessionExpired() {

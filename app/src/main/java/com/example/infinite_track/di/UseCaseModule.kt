@@ -107,9 +107,10 @@ object UseCaseModule {
     @Provides
     fun provideLogoutUseCase(
         authRepository: AuthRepository,
-        clearAuthenticatedRuntimeUseCase: ClearAuthenticatedRuntimeUseCase
+        clearAuthenticatedRuntimeUseCase: ClearAuthenticatedRuntimeUseCase,
+        sessionManager: SessionManager
     ): LogoutUseCase {
-        return LogoutUseCase(authRepository, clearAuthenticatedRuntimeUseCase)
+        return LogoutUseCase(authRepository, clearAuthenticatedRuntimeUseCase, sessionManager)
     }
 
     @Provides

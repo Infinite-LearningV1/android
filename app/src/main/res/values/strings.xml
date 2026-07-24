@@ -165,6 +165,11 @@
     <string name="account_hub_about_title">About Infinite Track</string>
     <string name="account_hub_about_description">App and company information</string>
     <string name="account_hub_logout_description">Securely sign out from this account</string>
+    <string name="profile_logout_confirmation_title">Log out</string>
+    <string name="profile_logout_confirmation_message">Are you sure you want to log out?</string>
+    <string name="profile_logout_cleanup_failure_title">Log out could not finish</string>
+    <string name="profile_logout_cleanup_failure_message">Local account data could not be cleared. Retry to sign out safely.</string>
+    <string name="profile_logout_retry">Retry</string>
     <string name="account_hub_not_available">Not available</string>
     <string name="account_hub_identifier">NIP/NIM %1$s</string>
     <string name="edit_profile_title">Edit Profile</string>
