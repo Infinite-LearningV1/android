@@ -6,6 +6,7 @@ import com.example.infinite_track.presentation.feedback.AppFeedbackEmitter
 import com.example.infinite_track.presentation.feedback.AppFeedbackEvent
 import com.example.infinite_track.testing.MainDispatcherRule
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -26,7 +27,7 @@ class LoginViewModelTest {
                 loginResult = Result.success(user()),
                 feedback = feedback
             )
-            val navigation = async { viewModel.effects.first() }
+            val navigation = async { viewModel.effects.filterNotNull().first() }
 
             viewModel.login("user@example.com", "password")
             advanceUntilIdle()
@@ -34,6 +35,29 @@ class LoginViewModelTest {
             assertEquals(listOf(AppFeedbackEvent.LOGIN_SUCCESS), feedback.events)
             assertEquals(LoginEffect.NavigateHome, navigation.await())
             assertEquals(LoginUiState.Idle, viewModel.uiState.value)
+        }
+
+    @Test
+    fun `login success keeps navigation pending for a delayed subscriber`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val viewModel = createViewModel(loginResult = Result.success(user()))
+
+            viewModel.login("user@example.com", "password")
+            advanceUntilIdle()
+
+            assertEquals(LoginEffect.NavigateHome, viewModel.effects.value)
+        }
+
+    @Test
+    fun `acknowledged login navigation is not replayed to a later subscriber`() =
+        runTest(mainDispatcherRule.dispatcher) {
+            val viewModel = createViewModel(loginResult = Result.success(user()))
+
+            viewModel.login("user@example.com", "password")
+            advanceUntilIdle()
+            viewModel.consumeEffect(LoginEffect.NavigateHome)
+
+            assertEquals(null, viewModel.effects.value)
         }
 
     @Test

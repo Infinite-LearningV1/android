@@ -24,8 +24,10 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.R
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.components.surface.InfiniteCard
@@ -39,6 +41,7 @@ import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
 import com.example.infinite_track.presentation.design.tokens.InfiniteSurfaceVariant
 import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
 import com.example.infinite_track.presentation.screen.attendance.preparation.WfaRecommendationUiModel
+import com.example.infinite_track.presentation.screen.attendance.preparation.WfaRecommendationCategoryIcon
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
 @Composable
@@ -49,6 +52,7 @@ fun WfaRecommendationOption(
     modifier: Modifier = Modifier
 ) {
     val colors = infiniteSemanticColors(InfiniteSemantic.Secondary)
+    val selectedStateDescription = stringResource(R.string.attendance_work_mode_selected)
     val selectedTint by animateColorAsState(
         targetValue = if (selected) colors.container else InfiniteColors.Transparent,
         animationSpec = InfiniteMotion.normalTween(),
@@ -65,7 +69,7 @@ fun WfaRecommendationOption(
             .semantics(mergeDescendants = true) {
                 this.selected = selected
                 role = Role.RadioButton
-                if (selected) stateDescription = "Dipilih"
+                if (selected) stateDescription = selectedStateDescription
             },
         variant = InfiniteSurfaceVariant.Outlined,
         semantic = InfiniteSemantic.Secondary,
@@ -87,7 +91,13 @@ fun WfaRecommendationOption(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = InfiniteIcons.Work,
+                    imageVector = when (model.categoryIcon) {
+                        WfaRecommendationCategoryIcon.CAFE -> InfiniteIcons.Cafe
+                        WfaRecommendationCategoryIcon.COWORKING -> InfiniteIcons.Coworking
+                        WfaRecommendationCategoryIcon.LIBRARY -> InfiniteIcons.Library
+                        WfaRecommendationCategoryIcon.PARK -> InfiniteIcons.Park
+                        WfaRecommendationCategoryIcon.WORK -> InfiniteIcons.Work
+                    },
                     contentDescription = null,
                     modifier = Modifier.size(InfiniteSpacing.Default.xl),
                     tint = colors.accent
@@ -110,9 +120,19 @@ fun WfaRecommendationOption(
                 )
                 InfiniteStatusPill(
                     label = model.suitabilityText,
-                    variant = InfiniteStatusVariant.Recommended,
+                    variant = when (model.suitabilitySemantic) {
+                        InfiniteSemantic.Success -> InfiniteStatusVariant.Excellent
+                        InfiniteSemantic.Warning -> InfiniteStatusVariant.NeedsReview
+                        InfiniteSemantic.Error -> InfiniteStatusVariant.Outside
+                        else -> InfiniteStatusVariant.Recommended
+                    },
                     size = InfiniteSize.Small,
-                    leadingIcon = InfiniteIcons.Success,
+                    leadingIcon = when (model.suitabilitySemantic) {
+                        InfiniteSemantic.Success -> InfiniteIcons.Success
+                        InfiniteSemantic.Warning -> InfiniteIcons.Warning
+                        InfiniteSemantic.Error -> InfiniteIcons.Error
+                        else -> InfiniteIcons.Info
+                    },
                     selected = selected
                 )
             }

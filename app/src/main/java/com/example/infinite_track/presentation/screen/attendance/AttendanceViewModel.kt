@@ -43,6 +43,7 @@ import com.example.infinite_track.presentation.screen.attendance.preparation.Att
 import com.example.infinite_track.presentation.screen.attendance.preparation.LatestSelectionGuard
 import com.example.infinite_track.presentation.screen.attendance.preparation.SelectionRequestToken
 import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryState
+import com.example.infinite_track.presentation.screen.attendance.preparation.WfaMapPickInteractionState
 import com.example.infinite_track.utils.LocationPermissionHelper
 import com.example.infinite_track.utils.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -114,6 +115,7 @@ class AttendanceViewModel @Inject constructor(
     )
     val mapCameraEffects: SharedFlow<MapCameraEffect> = _mapCameraEffects.asSharedFlow()
     private var nextMapCameraEffectId = 0L
+    private var nextMapPickSessionId = 0L
 
     // Job for UI-focused location updates (display purposes only)
     private var displayLocationJob: Job? = null
@@ -461,6 +463,15 @@ class AttendanceViewModel @Inject constructor(
                     }
                 }
                 is CurrentLocationResult.Failure -> {
+                    if (latestSelectionGuard.isCurrent(
+                            selectionRequest,
+                            _uiState.value.preparation.selectedMode
+                        )
+                    ) {
+                        _uiState.value = _uiState.value
+                            .withCurrentLocation(current)
+                            .withResolvedActionStatePreservingInFlightSubmit()
+                    }
                     Log.w(TAG, "Failed to get display coordinates: $current")
                 }
             }
@@ -471,28 +482,15 @@ class AttendanceViewModel @Inject constructor(
 
     private fun AttendanceScreenState.withCurrentLocation(
         current: CurrentLocationResult
-    ): AttendanceScreenState {
-        val resolved = preparation.targetResolution as? TargetLocationResolution.Resolved
-        val range = resolved?.let { target ->
-            evaluateTargetRangeUseCase(
-                target = target.target,
-                current = current,
-                nowEpochMillis = System.currentTimeMillis()
-            )
-        }
-        val eligibility = if (resolved != null && range != null) {
-            evaluateAttendancePreparationUseCase(resolved, range)
-        } else {
-            preparation.eligibility
-        }
-        return copy(
-            preparation = preparation.copy(
-                currentLocation = current,
-                rangeStatus = range,
-                eligibility = eligibility
-            )
+    ): AttendanceScreenState = copy(
+        preparation = AttendanceCurrentLocationTransition.apply(
+            preparation = preparation,
+            current = current,
+            nowEpochMillis = System.currentTimeMillis(),
+            evaluateRange = evaluateTargetRangeUseCase,
+            evaluateEligibility = evaluateAttendancePreparationUseCase
         )
-    }
+    )
 
     /**
      * Handle work mode selection without mutating active monitoring geofences.
@@ -664,6 +662,11 @@ class AttendanceViewModel @Inject constructor(
                 selectedTargetId = target.targetId
             ) == null
         ) return false
+        _uiState.value = _uiState.value.copy(
+            preparation = AttendanceSelectionTransition.cancelMapPick(
+                _uiState.value.preparation
+            )
+        )
         return _mapCameraEffects.tryEmit(
             MapCameraEffect.Focus(
                 id = nextMapCameraEffectId++,
@@ -716,6 +719,11 @@ class AttendanceViewModel @Inject constructor(
                     )
                     if (recommendations.isNotEmpty()) {
                         if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return@onSuccess
+                        _uiState.value = _uiState.value.copy(
+                            preparation = AttendanceSelectionTransition.cancelMapPick(
+                                _uiState.value.preparation
+                            )
+                        )
                         _mapCameraEffects.tryEmit(
                             MapCameraEffect.Fit(
                                 id = nextMapCameraEffectId++,
@@ -753,9 +761,12 @@ class AttendanceViewModel @Inject constructor(
         Log.d(TAG, "WFA Marker clicked: ${recommendation.name}")
         val request = latestSelectionRequest
         if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return
+        val preparation = AttendanceSelectionTransition.cancelMapPick(
+            _uiState.value.preparation
+        )
         _uiState.value = _uiState.value.copy(
             preparation = AttendancePreparationReducer.selectRecommendation(
-                _uiState.value.preparation,
+                preparation,
                 recommendation
             )
         )
@@ -1131,6 +1142,11 @@ class AttendanceViewModel @Inject constructor(
                                 _uiState.value.preparation.selectedMode
                             )
                         ) return@launch
+                        _uiState.value = _uiState.value.copy(
+                            preparation = AttendanceSelectionTransition.cancelMapPick(
+                                _uiState.value.preparation
+                            )
+                        )
                         _mapCameraEffects.tryEmit(
                             MapCameraEffect.Focus(
                                 id = nextMapCameraEffectId++,
@@ -1145,6 +1161,9 @@ class AttendanceViewModel @Inject constructor(
                                 _uiState.value.preparation.selectedMode
                             )
                         ) return@launch
+                        _uiState.value = _uiState.value
+                            .withCurrentLocation(current)
+                            .withResolvedActionStatePreservingInFlightSubmit()
                         Log.e(TAG, "Failed to get current GPS location: $current")
                         publishTransientFeedback(AttendanceTransientFeedbackKind.LOCATION_ERROR)
                     }
@@ -1200,10 +1219,26 @@ class AttendanceViewModel @Inject constructor(
     fun onLocationSelected(location: LocationResult) {
         val request = latestSelectionRequest
         if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return
+        val preparation = AttendanceSelectionTransition.cancelMapPick(
+            _uiState.value.preparation
+        )
         _uiState.value = _uiState.value.copy(
             preparation = AttendancePreparationReducer.selectSearchPreview(
-                _uiState.value.preparation,
+                preparation,
                 location
+            )
+        )
+    }
+
+    /** Starts one explicit user-owned map-pick session. Camera-idle is ignored otherwise. */
+    fun onMapPickRequested() {
+        val preparation = _uiState.value.preparation
+        if (preparation.selectedMode != WorkMode.WFA) return
+        nextMapPickSessionId += 1
+        _uiState.value = _uiState.value.copy(
+            preparation = AttendanceSelectionTransition.beginMapPick(
+                preparation = preparation,
+                sessionId = nextMapPickSessionId
             )
         )
     }
@@ -1213,8 +1248,9 @@ class AttendanceViewModel @Inject constructor(
      * Performs reverse geocoding for the center point of the map
      */
     fun onMapIdle(centerPoint: GeoCoordinate) {
-        // Only perform reverse geocoding if Pick on Map mode is active
-        if (!AttendanceSelectionTransition.isMapPickEnabled(_uiState.value.preparation)) return
+        val mapPickSession = AttendanceSelectionTransition.mapPickSessionForCameraIdle(
+            _uiState.value.preparation
+        ) ?: return
         val request = latestSelectionRequest
         if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return
 
@@ -1229,21 +1265,21 @@ class AttendanceViewModel @Inject constructor(
                 when (val result = reverseGeocodeUseCase(centerPoint)) {
                     is AddressResolutionResult.Resolved -> applyPickedLocation(
                         request = request,
+                        mapPickSession = mapPickSession,
                         coordinate = centerPoint,
-                        placeName = result.address.name ?: "Lokasi dipilih",
+                        placeName = result.address.name ?: result.address.formattedAddress,
                         address = result.address.formattedAddress
                     )
                     is AddressResolutionResult.CoordinateOnly -> applyPickedLocation(
                         request = request,
+                        mapPickSession = mapPickSession,
                         coordinate = result.coordinate,
-                        placeName = "Lokasi dipilih",
+                        placeName = result.coordinate.toDisplayText(),
                         address = result.coordinate.toDisplayText()
                     )
                     is AddressResolutionResult.Failed -> {
                         if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return@launch
-                        _uiState.value = _uiState.value.copy(
-                            error = "Gagal mendapatkan detail lokasi. Periksa koneksi Anda."
-                        )
+                        publishTransientFeedback(AttendanceTransientFeedbackKind.LOCATION_ERROR)
                     }
                 }
             } catch (cancelled: CancellationException) {
@@ -1256,6 +1292,7 @@ class AttendanceViewModel @Inject constructor(
 
     private fun applyPickedLocation(
         request: SelectionRequestToken,
+        mapPickSession: WfaMapPickInteractionState.Active,
         coordinate: GeoCoordinate,
         placeName: String,
         address: String
@@ -1267,9 +1304,13 @@ class AttendanceViewModel @Inject constructor(
             latitude = coordinate.latitude,
             longitude = coordinate.longitude
         )
+        val consumedPreparation = AttendanceSelectionTransition.consumeMapPick(
+            preparation = _uiState.value.preparation,
+            session = mapPickSession
+        ) ?: return
         _uiState.value = _uiState.value.copy(
             preparation = AttendancePreparationReducer.selectSearchPreview(
-                _uiState.value.preparation,
+                consumedPreparation,
                 locationResult
             )
         )

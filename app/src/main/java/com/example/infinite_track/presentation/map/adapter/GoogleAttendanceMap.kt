@@ -18,9 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.presentation.map.model.AttendanceMapEvent
 import com.example.infinite_track.presentation.map.model.MapCameraEffect
@@ -59,7 +61,7 @@ internal fun GoogleAttendanceMap(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Lokasi presisi belum siap",
+                text = stringResource(R.string.attendance_map_precise_location_unavailable),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(24.dp)

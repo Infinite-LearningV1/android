@@ -27,8 +27,10 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
@@ -71,6 +73,7 @@ private fun WorkModeOptionCard(
     modifier: Modifier = Modifier
 ) {
     val presentation = option.mode.presentation()
+    val selectedStateDescription = stringResource(R.string.attendance_work_mode_selected)
     val semanticColors = infiniteSemanticColors(presentation.semantic)
     val selectedTint by animateColorAsState(
         targetValue = if (option.isSelected) {
@@ -92,7 +95,7 @@ private fun WorkModeOptionCard(
             .semantics(mergeDescendants = true) {
                 selected = option.isSelected
                 role = Role.RadioButton
-                if (option.isSelected) stateDescription = "Dipilih"
+                if (option.isSelected) stateDescription = selectedStateDescription
             },
         variant = InfiniteSurfaceVariant.Outlined,
         semantic = presentation.semantic,
@@ -175,23 +178,24 @@ private data class WorkModePresentation(
     val evidenceIcon: ImageVector
 )
 
+@Composable
 private fun WorkMode.presentation(): WorkModePresentation = when (this) {
     WorkMode.WFO -> WorkModePresentation(
         semantic = InfiniteSemantic.Primary,
         icon = InfiniteIcons.Work,
-        evidenceLabel = "Kantor ditetapkan",
+        evidenceLabel = stringResource(R.string.attendance_wfo_evidence),
         evidenceIcon = InfiniteIcons.Location
     )
     WorkMode.WFH -> WorkModePresentation(
         semantic = InfiniteSemantic.Info,
         icon = Icons.Default.Home,
-        evidenceLabel = "Ditetapkan oleh admin",
+        evidenceLabel = stringResource(R.string.attendance_wfh_evidence),
         evidenceIcon = InfiniteIcons.Shield
     )
     WorkMode.WFA -> WorkModePresentation(
         semantic = InfiniteSemantic.Secondary,
         icon = InfiniteIcons.Location,
-        evidenceLabel = "Booking diperlukan",
+        evidenceLabel = stringResource(R.string.attendance_wfa_evidence),
         evidenceIcon = InfiniteIcons.Calendar
     )
 }

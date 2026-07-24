@@ -14,8 +14,14 @@ data class AttendancePreparationState(
     val currentLocation: CurrentLocationResult? = null,
     val rangeStatus: TargetRangeStatus? = null,
     val wfaDiscovery: WfaDiscoveryState = WfaDiscoveryState.Hidden,
+    val mapPickInteraction: WfaMapPickInteractionState = WfaMapPickInteractionState.Inactive,
     val eligibility: AttendancePreparationEligibility = AttendancePreparationEligibility.Resolving
 )
+
+sealed interface WfaMapPickInteractionState {
+    data object Inactive : WfaMapPickInteractionState
+    data class Active(val sessionId: Long) : WfaMapPickInteractionState
+}
 
 sealed interface WfaDiscoveryState {
     data object Hidden : WfaDiscoveryState

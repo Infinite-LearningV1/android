@@ -86,7 +86,8 @@ class ResolveAuthoritativeTargetLocationUseCaseTest {
             wfaBooking = WfaBookingForDate.Approved(
                 booking(
                     bookingId = 23,
-                    scheduleDate = "2026-07-23",
+                    scheduleDate = "23 Jul 2026",
+                    scheduleDateRaw = "2026-07-23",
                     latitude = -0.92,
                     longitude = 119.89,
                     radiusMeters = 150f
@@ -98,6 +99,7 @@ class ResolveAuthoritativeTargetLocationUseCaseTest {
         assertEquals(TargetLocationId("booking:23"), result.target.targetId)
         assertEquals(23, result.target.approvedWfaContext?.bookingId)
         assertEquals("2026-07-23", result.target.approvedWfaContext?.scheduleDate)
+        assertEquals("23 Jul 2026", result.target.approvedWfaContext?.scheduleDateDisplay)
     }
 
     @Test
@@ -109,7 +111,8 @@ class ResolveAuthoritativeTargetLocationUseCaseTest {
             wfaBooking = WfaBookingForDate.Approved(
                 booking(
                     bookingId = 23,
-                    scheduleDate = "2026-07-24",
+                    scheduleDate = "23 Jul 2026",
+                    scheduleDateRaw = "2026-07-24",
                     latitude = -0.92,
                     longitude = 119.89,
                     radiusMeters = 150f
@@ -224,6 +227,7 @@ class ResolveAuthoritativeTargetLocationUseCaseTest {
     private fun booking(
         bookingId: Int,
         scheduleDate: String,
+        scheduleDateRaw: String = scheduleDate,
         latitude: Double?,
         longitude: Double?,
         radiusMeters: Float?
@@ -235,7 +239,7 @@ class ResolveAuthoritativeTargetLocationUseCaseTest {
         notes = "",
         suitabilityLabel = "Suitable",
         bookingId = bookingId,
-        scheduleDateRaw = scheduleDate,
+        scheduleDateRaw = scheduleDateRaw,
         latitude = latitude,
         longitude = longitude,
         radiusMeters = radiusMeters

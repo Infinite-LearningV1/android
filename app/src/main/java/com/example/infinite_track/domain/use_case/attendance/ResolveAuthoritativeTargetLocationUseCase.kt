@@ -103,7 +103,7 @@ class ResolveAuthoritativeTargetLocationUseCase @Inject constructor() {
         todayStatus: TodayStatus?,
         booking: BookingHistoryItem
     ): TargetLocationResolution {
-        if (booking.scheduleDate != todayStatus?.todayDate) {
+        if (booking.scheduleDateRaw != todayStatus?.todayDate) {
             return unavailable(
                 mode = WorkMode.WFA,
                 reason = TargetUnavailableReason.WFA_APPROVAL_MISSING_FOR_DATE,
@@ -125,7 +125,8 @@ class ResolveAuthoritativeTargetLocationUseCase @Inject constructor() {
             displayName = booking.locationDescription,
             approvedWfaContext = ApprovedWfaTargetContext(
                 bookingId = booking.bookingId,
-                scheduleDate = booking.scheduleDate
+                scheduleDate = booking.scheduleDateRaw,
+                scheduleDateDisplay = booking.scheduleDate
             )
         )
     }

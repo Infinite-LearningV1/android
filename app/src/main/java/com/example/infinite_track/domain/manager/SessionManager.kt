@@ -21,6 +21,8 @@ class SessionManager @Inject constructor() {
 
     private var sessionExpiryHandlingInProgress: Boolean = false
     private var bootstrapSessionDepth: Int = 0
+    private var authLifecycleGeneration: Long = 0L
+    private var intentionalLogoutActive: Boolean = false
 
     val isBootstrapSessionInProgress: Boolean
         @Synchronized get() = bootstrapSessionDepth > 0
@@ -43,17 +45,42 @@ class SessionManager @Inject constructor() {
      */
     @Synchronized
     fun beginSessionExpiryHandling(): Boolean {
-        if (sessionExpiryHandlingInProgress) {
+        return beginSessionExpiryHandlingAttempt() != null
+    }
+
+    @Synchronized
+    internal fun beginSessionExpiryHandlingAttempt(): SessionExpiryHandlingAttempt? {
+        if (sessionExpiryHandlingInProgress || intentionalLogoutActive) return null
+
+        sessionExpiryHandlingInProgress = true
+        return SessionExpiryHandlingAttempt(authLifecycleGeneration)
+    }
+
+    @Synchronized
+    internal fun completeSessionExpiryHandling(
+        attempt: SessionExpiryHandlingAttempt,
+        reason: ReauthReason
+    ): Boolean {
+        if (
+            attempt.authLifecycleGeneration != authLifecycleGeneration ||
+            intentionalLogoutActive ||
+            !sessionExpiryHandlingInProgress
+        ) {
             return false
         }
 
-        sessionExpiryHandlingInProgress = true
+        _reauthReason.value = reason
+        _sessionExpired.value = true
         return true
     }
 
-    fun triggerForcedReauth(reason: ReauthReason) {
+    @Synchronized
+    fun triggerForcedReauth(reason: ReauthReason): Boolean {
+        if (intentionalLogoutActive) return false
+
         _reauthReason.value = reason
         _sessionExpired.value = true
+        return true
     }
 
     fun recordBootstrapReauth(reason: ReauthReason) {
@@ -73,6 +100,48 @@ class SessionManager @Inject constructor() {
         _reauthReason.value = null
     }
 
+    @Synchronized
+    internal fun beginIntentionalLogout(): IntentionalLogoutAttempt {
+        val restoreExpiryGuardOnFailure =
+            sessionExpiryHandlingInProgress && _sessionExpired.value
+        authLifecycleGeneration += 1L
+        intentionalLogoutActive = true
+        sessionExpiryHandlingInProgress = false
+        return IntentionalLogoutAttempt(
+            authLifecycleGeneration = authLifecycleGeneration,
+            restoreExpiryGuardOnFailure = restoreExpiryGuardOnFailure
+        )
+    }
+
+    @Synchronized
+    internal fun cancelIntentionalLogout(attempt: IntentionalLogoutAttempt) {
+        if (attempt.authLifecycleGeneration != authLifecycleGeneration) return
+
+        intentionalLogoutActive = false
+        sessionExpiryHandlingInProgress = attempt.restoreExpiryGuardOnFailure
+    }
+
+    @Synchronized
+    internal fun completeIntentionalLogout(attempt: IntentionalLogoutAttempt) {
+        if (attempt.authLifecycleGeneration != authLifecycleGeneration) return
+
+        _sessionExpired.value = false
+        _reauthReason.value = null
+        sessionExpiryHandlingInProgress = false
+        // Keep terminal 401 handling suppressed until a new login succeeds. Requests from
+        // the previous authenticated generation can still finish after local cleanup.
+        intentionalLogoutActive = true
+    }
+
+    @Synchronized
+    fun onAuthenticatedSessionStarted() {
+        authLifecycleGeneration += 1L
+        intentionalLogoutActive = false
+        _sessionExpired.value = false
+        _reauthReason.value = null
+        sessionExpiryHandlingInProgress = false
+    }
+
     /**
      * Reset session expiration state
      * Dipanggil setelah user dismiss dialog, atau setelah local cleanup pada manual logout
@@ -85,3 +154,12 @@ class SessionManager @Inject constructor() {
         sessionExpiryHandlingInProgress = false
     }
 }
+
+internal data class SessionExpiryHandlingAttempt(
+    val authLifecycleGeneration: Long
+)
+
+internal data class IntentionalLogoutAttempt(
+    val authLifecycleGeneration: Long,
+    val restoreExpiryGuardOnFailure: Boolean
+)

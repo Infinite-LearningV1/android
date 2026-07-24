@@ -13,11 +13,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.R
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.components.surface.InfiniteCard
@@ -41,7 +43,7 @@ fun WfaRecommendationSection(
     when (model) {
         WfaDiscoveryUiModel.Hidden -> Unit
         WfaDiscoveryUiModel.Loading -> WfaDiscoveryStateCard(
-            message = "Memuat rekomendasi lokasi WFA...",
+            message = stringResource(R.string.attendance_wfa_recommendation_loading),
             semantic = InfiniteSemantic.Info,
             modifier = modifier,
             loading = true
@@ -76,12 +78,12 @@ private fun WfaRecommendationContent(
     ) {
         if (model.rows.isNotEmpty()) {
             Text(
-                text = "Rekomendasi lokasi WFA",
+                text = stringResource(R.string.attendance_wfa_recommendation_heading),
                 style = MaterialTheme.typography.titleMedium,
                 color = InfiniteColors.Text
             )
             Text(
-                text = "Pilih lokasi sebagai draf pengajuan, bukan target attendance.",
+                text = stringResource(R.string.attendance_wfa_recommendation_supporting),
                 style = MaterialTheme.typography.bodySmall,
                 color = InfiniteColors.AttendanceReportBodyText
             )
@@ -106,7 +108,7 @@ private fun WfaRecommendationContent(
                 showShadow = false
             ) {
                 Text(
-                    text = "Lokasi WFA dipilih",
+                    text = stringResource(R.string.attendance_wfa_preview_selected),
                     style = MaterialTheme.typography.labelMedium,
                     color = InfiniteColors.AttendanceReportMutedText
                 )
@@ -116,7 +118,7 @@ private fun WfaRecommendationContent(
                     color = InfiniteColors.Text
                 )
                 InfiniteStatusPill(
-                    label = "Pratinjau untuk pengajuan WFA",
+                    label = stringResource(R.string.attendance_wfa_preview_draft),
                     variant = InfiniteStatusVariant.Recommended,
                     size = InfiniteSize.Small,
                     leadingIcon = InfiniteIcons.Location

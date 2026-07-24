@@ -1,6 +1,7 @@
 package com.example.infinite_track.presentation.screen.attendance.preparation
 
 import com.example.infinite_track.domain.model.attendance.WorkMode
+import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 
 data class AttendancePreparationUiModel(
     val modeOptions: List<WorkModeOptionUiModel>,
@@ -26,7 +27,10 @@ data class TargetLocationSummaryUiModel(
     val sourceLabel: String,
     val radiusText: String,
     val distanceText: String?,
-    val rangeText: String?
+    val rangeText: String?,
+    val rangeSemantic: InfiniteSemantic? = null,
+    val bookingStatusText: String? = null,
+    val bookingDateText: String? = null
 )
 
 sealed interface WfaDiscoveryUiModel {
@@ -46,8 +50,18 @@ data class WfaRecommendationUiModel(
     val stableKey: String,
     val name: String,
     val supportingText: String,
-    val suitabilityText: String
+    val suitabilityText: String,
+    val suitabilitySemantic: InfiniteSemantic = InfiniteSemantic.Neutral,
+    val categoryIcon: WfaRecommendationCategoryIcon = WfaRecommendationCategoryIcon.WORK
 )
+
+enum class WfaRecommendationCategoryIcon {
+    CAFE,
+    COWORKING,
+    LIBRARY,
+    PARK,
+    WORK
+}
 
 fun WfaDiscoveryUiModel.Content.isRecommendationSelected(
     recommendation: WfaRecommendationUiModel

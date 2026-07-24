@@ -1,6 +1,5 @@
 package com.example.infinite_track.presentation.feedback
 
-import androidx.compose.material3.SnackbarDuration
 import com.example.infinite_track.R
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import kotlinx.coroutines.async
@@ -21,21 +20,21 @@ class AppFeedbackMapperTest {
                 titleRes = R.string.app_feedback_login_success_title,
                 messageRes = R.string.app_feedback_login_success_message,
                 semantic = InfiniteSemantic.Success,
-                duration = SnackbarDuration.Short
+                timeout = AppFeedbackTimeout.SHORT
             ),
             ExpectedFeedback(
                 event = AppFeedbackEvent.LOGOUT_SUCCESS,
                 titleRes = R.string.app_feedback_logout_success_title,
                 messageRes = R.string.app_feedback_logout_success_message,
                 semantic = InfiniteSemantic.Success,
-                duration = SnackbarDuration.Short
+                timeout = AppFeedbackTimeout.SHORT
             ),
             ExpectedFeedback(
                 event = AppFeedbackEvent.LOGOUT_REMOTE_WARNING,
                 titleRes = R.string.app_feedback_logout_remote_warning_title,
                 messageRes = R.string.app_feedback_logout_remote_warning_message,
                 semantic = InfiniteSemantic.Warning,
-                duration = SnackbarDuration.Long
+                timeout = AppFeedbackTimeout.LONG
             )
         )
 
@@ -45,7 +44,7 @@ class AppFeedbackMapperTest {
             assertEquals(expected.titleRes, resource.titleRes)
             assertEquals(expected.messageRes, resource.messageRes)
             assertEquals(expected.semantic, resource.semantic)
-            assertEquals(expected.duration, resource.duration)
+            assertEquals(expected.timeout, resource.timeout)
         }
     }
 
@@ -66,6 +65,6 @@ class AppFeedbackMapperTest {
         val titleRes: Int,
         val messageRes: Int,
         val semantic: InfiniteSemantic,
-        val duration: SnackbarDuration
+        val timeout: AppFeedbackTimeout
     )
 }

@@ -13,11 +13,8 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.android.components.ViewModelComponent
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -32,11 +29,8 @@ class LoginViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
-    private val _effects = MutableSharedFlow<LoginEffect>(
-        replay = 0,
-        extraBufferCapacity = 1
-    )
-    val effects: SharedFlow<LoginEffect> = _effects.asSharedFlow()
+    private val _effects = MutableStateFlow<LoginEffect?>(null)
+    val effects: StateFlow<LoginEffect?> = _effects.asStateFlow()
 
     private val _reauthBannerMessage = MutableStateFlow<String?>(null)
     val reauthBannerMessage: StateFlow<String?> = _reauthBannerMessage.asStateFlow()
@@ -61,9 +55,10 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             loginExecutor.execute(email, password)
                 .onSuccess {
+                    sessionManager.onAuthenticatedSessionStarted()
                     _uiState.value = LoginUiState.Idle
                     appFeedbackEmitter.emit(AppFeedbackEvent.LOGIN_SUCCESS)
-                    _effects.emit(LoginEffect.NavigateHome)
+                    _effects.value = LoginEffect.NavigateHome
                 }
                 .onFailure { exception ->
                     _uiState.value = LoginUiState.Failure(
@@ -86,6 +81,12 @@ class LoginViewModel @Inject constructor(
 
     private fun ReauthReason.toBannerMessage(): String {
         return toReauthUiCopy().bannerMessage
+    }
+
+    fun consumeEffect(expectedEffect: LoginEffect) {
+        if (_effects.value == expectedEffect) {
+            _effects.value = null
+        }
     }
 }
 

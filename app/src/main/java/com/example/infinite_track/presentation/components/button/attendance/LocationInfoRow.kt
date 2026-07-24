@@ -18,8 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.R
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.components.surface.InfiniteCard
@@ -40,12 +42,15 @@ fun TargetLocationSummary(
     modifier: Modifier = Modifier
 ) {
     val colors = infiniteSemanticColors(InfiniteSemantic.Primary)
+    val heading = stringResource(R.string.attendance_target_heading)
     val semanticSummary = buildList {
-        add("Target lokasi ${model.displayName}")
+        add("$heading ${model.displayName}")
         add(model.sourceLabel)
         add(model.radiusText)
         model.distanceText?.let(::add)
         model.rangeText?.let(::add)
+        model.bookingStatusText?.let(::add)
+        model.bookingDateText?.let(::add)
     }.joinToString(separator = ", ")
 
     InfiniteCard(
@@ -83,7 +88,7 @@ fun TargetLocationSummary(
                 verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)
             ) {
                 Text(
-                    text = "Target Lokasi",
+                    text = heading,
                     style = MaterialTheme.typography.labelMedium,
                     color = InfiniteColors.AttendanceReportMutedText
                 )
@@ -130,9 +135,33 @@ fun TargetLocationSummary(
                     model.rangeText?.let { range ->
                         InfiniteStatusPill(
                             label = range,
-                            variant = InfiniteStatusVariant.Neutral,
+                            variant = when (model.rangeSemantic) {
+                                InfiniteSemantic.Success -> InfiniteStatusVariant.Inside
+                                InfiniteSemantic.Error -> InfiniteStatusVariant.Outside
+                                else -> InfiniteStatusVariant.Unknown
+                            },
+                            size = InfiniteSize.Small,
+                            leadingIcon = when (model.rangeSemantic) {
+                                InfiniteSemantic.Success -> InfiniteIcons.Success
+                                InfiniteSemantic.Error -> InfiniteIcons.Error
+                                else -> InfiniteIcons.Info
+                            }
+                        )
+                    }
+                    model.bookingStatusText?.let { status ->
+                        InfiniteStatusPill(
+                            label = status,
+                            variant = InfiniteStatusVariant.Approved,
                             size = InfiniteSize.Small,
                             leadingIcon = InfiniteIcons.Success
+                        )
+                    }
+                    model.bookingDateText?.let { date ->
+                        InfiniteStatusPill(
+                            label = date,
+                            variant = InfiniteStatusVariant.Neutral,
+                            size = InfiniteSize.Small,
+                            leadingIcon = InfiniteIcons.Calendar
                         )
                     }
                 }

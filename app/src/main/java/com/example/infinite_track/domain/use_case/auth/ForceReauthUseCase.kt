@@ -16,7 +16,7 @@ class ForceReauthUseCase internal constructor(
     ) : this(sessionManager, clearAuthenticatedRuntimeUseCase::invoke)
 
     suspend operator fun invoke(reason: ReauthReason) {
-        if (!sessionManager.beginSessionExpiryHandling()) return
+        val handlingAttempt = sessionManager.beginSessionExpiryHandlingAttempt() ?: return
 
         var cancellation: CancellationException? = null
         try {
@@ -29,7 +29,7 @@ class ForceReauthUseCase internal constructor(
             // foreground callers; ClearAuthenticatedRuntimeUseCase still attempts every
             // cleanup step before surfacing its aggregate failure here.
         } finally {
-            sessionManager.triggerForcedReauth(reason)
+            sessionManager.completeSessionExpiryHandling(handlingAttempt, reason)
         }
 
         cancellation?.let { throw it }

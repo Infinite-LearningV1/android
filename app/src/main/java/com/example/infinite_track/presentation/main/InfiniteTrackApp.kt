@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -249,7 +250,8 @@ private fun AppFeedbackResourceModel.toSnackbarVisuals() = InfiniteSnackbarVisua
     title = stringResource(titleRes),
     message = stringResource(messageRes),
     semantic = semantic,
-    duration = duration
+    duration = SnackbarDuration.Indefinite,
+    autoDismissTimeoutMillis = timeout.baseMillis
 )
 
 private data class LocalizedAppFeedbackVisuals(

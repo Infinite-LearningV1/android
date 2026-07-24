@@ -14,7 +14,10 @@ enum class TargetLocationSource {
 
 data class ApprovedWfaTargetContext(
     val bookingId: Int,
-    val scheduleDate: String
+    /** ISO-8601 date used for attendance authority comparisons and handoff. */
+    val scheduleDate: String,
+    /** Localized/display-formatted date supplied by the booking mapper for presentation only. */
+    val scheduleDateDisplay: String = scheduleDate
 )
 
 data class AuthoritativeTargetLocation(

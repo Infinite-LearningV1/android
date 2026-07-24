@@ -9,8 +9,10 @@ import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
 import com.example.infinite_track.domain.repository.ProfileSyncResult
 import java.util.concurrent.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -140,6 +142,52 @@ class LogoutUseCaseTest {
         assertEquals(1, repository.logoutRemoteCalls)
     }
 
+    @Test
+    fun `terminal forced reauth already cleaning cannot relatch after manual logout completes`() =
+        runTest {
+            val sessionManager = SessionManager()
+            val forcedCleanupStarted = CompletableDeferred<Unit>()
+            val finishForcedCleanup = CompletableDeferred<Unit>()
+            val forcedReauth = ForceReauthUseCase(sessionManager) {
+                forcedCleanupStarted.complete(Unit)
+                finishForcedCleanup.await()
+            }
+            val forcedJob = launch {
+                forcedReauth(ReauthReason.REFRESH_REVOKED)
+            }
+            forcedCleanupStarted.await()
+
+            val outcome = createUseCase(
+                repository = FakeAuthRepository(Result.success(Unit)),
+                sessionManager = sessionManager
+            )()
+            finishForcedCleanup.complete(Unit)
+            forcedJob.join()
+
+            assertEquals(LogoutOutcome.Success, outcome)
+            assertFalse(sessionManager.sessionExpired.value)
+            assertNull(sessionManager.reauthReason.value)
+        }
+
+    @Test
+    fun `successful login ends intentional logout suppression for later genuine forced reauth`() =
+        runTest {
+            val sessionManager = SessionManager()
+            createUseCase(
+                repository = FakeAuthRepository(Result.success(Unit)),
+                sessionManager = sessionManager
+            )()
+
+            assertFalse(sessionManager.beginSessionExpiryHandling())
+
+            sessionManager.onAuthenticatedSessionStarted()
+
+            assertTrue(sessionManager.beginSessionExpiryHandling())
+            sessionManager.triggerForcedReauth(ReauthReason.REFRESH_INVALID)
+            assertTrue(sessionManager.sessionExpired.value)
+            assertEquals(ReauthReason.REFRESH_INVALID, sessionManager.reauthReason.value)
+        }
+
     private fun staleSessionManager() = SessionManager().also {
         assertTrue(it.beginSessionExpiryHandling())
         it.triggerForcedReauth(ReauthReason.UNKNOWN)
@@ -148,7 +196,7 @@ class LogoutUseCaseTest {
     private fun assertSessionReset(sessionManager: SessionManager) {
         assertNull(sessionManager.reauthReason.value)
         assertFalse(sessionManager.sessionExpired.value)
-        assertTrue(sessionManager.beginSessionExpiryHandling())
+        assertFalse(sessionManager.beginSessionExpiryHandling())
     }
 
     private fun createUseCase(

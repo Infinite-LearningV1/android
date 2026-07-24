@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -18,6 +19,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.presentation.design.components.button.InfiniteButton
 import com.example.infinite_track.presentation.design.components.button.InfiniteButtonState
@@ -41,6 +43,7 @@ sealed interface AttendancePreparationEvent {
     data class ModeSelected(val mode: WorkMode) : AttendancePreparationEvent
     data class RecommendationSelected(val stableKey: String) : AttendancePreparationEvent
     data object SearchWfaLocation : AttendancePreparationEvent
+    data object PickWfaLocationOnMap : AttendancePreparationEvent
     data class PrimaryActionClicked(
         val action: AttendancePreparationPrimaryAction
     ) : AttendancePreparationEvent
@@ -78,13 +81,13 @@ fun WorkModePreparationContent(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)) {
             Text(
-                text = "Pilih Mode Kerja",
+                text = stringResource(R.string.attendance_work_mode_heading),
                 modifier = Modifier.semantics { heading() },
                 style = MaterialTheme.typography.headlineSmall,
                 color = InfiniteColors.Text
             )
             Text(
-                text = "Pilih cara Anda bekerja hari ini sebelum check-in.",
+                text = stringResource(R.string.attendance_work_mode_supporting),
                 style = MaterialTheme.typography.bodyMedium,
                 color = InfiniteColors.AttendanceReportBodyText
             )
@@ -107,7 +110,8 @@ fun WorkModePreparationContent(
         ) {
             WfaSearchAction(
                 label = model.secondaryActionLabel,
-                onClick = { onEvent(AttendancePreparationEvent.SearchWfaLocation) }
+                onSearchClick = { onEvent(AttendancePreparationEvent.SearchWfaLocation) },
+                onMapClick = { onEvent(AttendancePreparationEvent.PickWfaLocationOnMap) }
             )
         }
 
@@ -154,7 +158,8 @@ fun WorkModePreparationContent(
 @Composable
 private fun WfaSearchAction(
     label: String,
-    onClick: () -> Unit,
+    onSearchClick: () -> Unit,
+    onMapClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     InfiniteCard(
@@ -178,7 +183,7 @@ private fun WfaSearchAction(
                     color = InfiniteColors.Text
                 )
                 Text(
-                    text = "Cari atau pilih lokasi untuk draf pengajuan WFA.",
+                    text = stringResource(R.string.attendance_wfa_search_supporting),
                     style = MaterialTheme.typography.bodySmall,
                     color = InfiniteColors.AttendanceReportBodyText
                 )
@@ -186,7 +191,13 @@ private fun WfaSearchAction(
             InfiniteIconButton(
                 icon = InfiniteIcons.Search,
                 contentDescription = label,
-                onClick = onClick,
+                onClick = onSearchClick,
+                size = InfiniteSize.Large
+            )
+            InfiniteIconButton(
+                icon = InfiniteIcons.Location,
+                contentDescription = stringResource(R.string.attendance_action_pick_on_map),
+                onClick = onMapClick,
                 size = InfiniteSize.Large
             )
         }

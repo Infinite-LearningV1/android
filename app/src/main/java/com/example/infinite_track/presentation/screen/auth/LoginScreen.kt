@@ -37,6 +37,7 @@ import com.example.infinite_track.presentation.components.textfield.ThriveInInpu
 import com.example.infinite_track.presentation.core.body1
 import com.example.infinite_track.presentation.design.components.button.InfiniteButton
 import com.example.infinite_track.presentation.design.components.button.InfiniteButtonState
+import kotlinx.coroutines.flow.filterNotNull
 
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -58,10 +59,11 @@ fun LoginScreen(
     val failureMessage = validationFailure ?: (loginState as? LoginUiState.Failure)?.message
 
     LaunchedEffect(loginViewModel) {
-        loginViewModel.effects.collect { effect ->
+        loginViewModel.effects.filterNotNull().collect { effect ->
             when (effect) {
                 LoginEffect.NavigateHome -> currentNavigateToHome.value()
             }
+            loginViewModel.consumeEffect(effect)
         }
     }
 

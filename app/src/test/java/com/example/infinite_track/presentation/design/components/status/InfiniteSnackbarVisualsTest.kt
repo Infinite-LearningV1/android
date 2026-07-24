@@ -56,4 +56,22 @@ class InfiniteSnackbarVisualsTest {
             ).title
         )
     }
+
+    @Test
+    fun `root feedback timeout contract uses exact four and eight second baselines`() {
+        assertEquals(4_000L, resolveSnackbarTimeoutMillis(4_000L))
+        assertEquals(8_000L, resolveSnackbarTimeoutMillis(8_000L))
+    }
+
+    @Test
+    fun `accessibility recommendation may extend but never shorten snackbar timeout`() {
+        assertEquals(
+            12_000L,
+            resolveSnackbarTimeoutMillis(8_000L) { 12_000L }
+        )
+        assertEquals(
+            8_000L,
+            resolveSnackbarTimeoutMillis(8_000L) { 2_000L }
+        )
+    }
 }

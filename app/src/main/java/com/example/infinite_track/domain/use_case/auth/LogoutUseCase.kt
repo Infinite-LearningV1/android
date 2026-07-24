@@ -29,24 +29,31 @@ class LogoutUseCase private constructor(
     ) : this(authRepository, clearAuthenticatedRuntimeUseCase::invoke, sessionManager)
 
     suspend operator fun invoke(): LogoutOutcome {
+        val logoutAttempt = sessionManager.beginIntentionalLogout()
         val remoteResult = try {
             authRepository.logoutRemote()
         } catch (e: CancellationException) {
+            sessionManager.cancelIntentionalLogout(logoutAttempt)
             throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
-        (remoteResult.exceptionOrNull() as? CancellationException)?.let { throw it }
+        (remoteResult.exceptionOrNull() as? CancellationException)?.let {
+            sessionManager.cancelIntentionalLogout(logoutAttempt)
+            throw it
+        }
 
         try {
             clearAuthenticatedRuntime()
         } catch (e: CancellationException) {
+            sessionManager.cancelIntentionalLogout(logoutAttempt)
             throw e
         } catch (e: Exception) {
+            sessionManager.cancelIntentionalLogout(logoutAttempt)
             return LogoutOutcome.LocalCleanupFailed(e)
         }
 
-        sessionManager.resetSessionExpired()
+        sessionManager.completeIntentionalLogout(logoutAttempt)
 
         return if (remoteResult.isSuccess) {
             LogoutOutcome.Success

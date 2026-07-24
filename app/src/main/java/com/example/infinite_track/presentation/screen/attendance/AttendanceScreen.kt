@@ -43,8 +43,10 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -57,6 +59,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.infinite_track.domain.model.attendance.WorkMode
+import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.attendance.TargetLocationId
 import com.example.infinite_track.domain.model.attendance.TargetLocationResolution
 import com.example.infinite_track.domain.model.location.LocationResult
@@ -83,6 +86,7 @@ import com.example.infinite_track.presentation.screen.attendance.components.Atte
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationPrimaryAction
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationUiMapper
+import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationTextResolver
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePrimaryActionUiCombiner
 import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryState
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionPanelHost
@@ -99,6 +103,15 @@ fun AttendanceScreen(
     permissionViewModel: AttendancePermissionReadinessViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val attendanceLocale = LocalConfiguration.current.locales[0]
+    val attendanceStrings = remember(context, attendanceLocale) {
+        object : AttendancePreparationTextResolver {
+            override val locale = attendanceLocale
+
+            override fun text(resourceId: Int, vararg formatArgs: Any): String =
+                context.getString(resourceId, *formatArgs)
+        }
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     var hasPreciseLocationPermission by remember(context) {
         mutableStateOf(context.hasPreciseLocationPermission())
@@ -281,7 +294,10 @@ fun AttendanceScreen(
         is UiState.Success -> {
             val preparation = uiState.preparation
             val preparationUiModel = AttendancePrimaryActionUiCombiner.combine(
-                preparation = AttendancePreparationUiMapper.map(preparation),
+                preparation = AttendancePreparationUiMapper.map(
+                    preparation = preparation,
+                    strings = attendanceStrings
+                ),
                 actionState = uiState.actionState
             )
             val discovery = preparation.wfaDiscovery as? WfaDiscoveryState.Content
@@ -385,6 +401,8 @@ fun AttendanceScreen(
                                                 ?.let(viewModel::onWfaMarkerClicked)
                                         AttendancePreparationEvent.SearchWfaLocation ->
                                             navController.navigate(Screen.LocationSearch.route)
+                                        AttendancePreparationEvent.PickWfaLocationOnMap ->
+                                            viewModel.onMapPickRequested()
                                         is AttendancePreparationEvent.PrimaryActionClicked -> {
                                             when (event.action) {
                                                 AttendancePreparationPrimaryAction.WAIT -> Unit
@@ -488,7 +506,9 @@ fun AttendanceScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.LocationOn,
-                            contentDescription = "Pick Location",
+                            contentDescription = stringResource(
+                                R.string.attendance_map_pick_location
+                            ),
                             tint = Color.Red,
                             modifier = Modifier.size(32.dp)
                         )
@@ -503,8 +523,14 @@ fun AttendanceScreen(
                         ) {
                             MarkerView(
                                 title = selectedMarker.displayName,
-                                description = "Kategori: ${selectedMarker.mode.shortLabel}",
-                                radius = "${selectedMarker.radius.value.toInt()} meter",
+                                description = stringResource(
+                                    R.string.attendance_marker_category,
+                                    selectedMarker.mode.shortLabel
+                                ),
+                                radius = stringResource(
+                                    R.string.attendance_marker_radius,
+                                    selectedMarker.radius.value.toInt()
+                                ),
                                 coordinates = "${selectedMarker.coordinate.latitude}, ${selectedMarker.coordinate.longitude}",
                                 onClose = { selectedTargetMarkerId = null }
                             )
@@ -633,10 +659,10 @@ internal fun AttendancePermissionRevocationRecovery(
     modifier: Modifier = Modifier
 ) {
     InfiniteInlineAlert(
-        title = "Lokasi presisi tidak tersedia",
-        message = "Akses lokasi berubah saat Attendance dibuka. Pulihkan dari panel akses untuk melanjutkan.",
+        title = stringResource(R.string.attendance_permission_revoked_title),
+        message = stringResource(R.string.attendance_permission_revoked_message),
         semantic = InfiniteSemantic.Warning,
-        actionLabel = "Kelola akses",
+        actionLabel = stringResource(R.string.attendance_permission_manage),
         onAction = onOpenPermissionPanel,
         modifier = modifier
     )
