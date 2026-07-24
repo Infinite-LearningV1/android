@@ -11,7 +11,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
-import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
+import com.example.infinite_track.data.soucre.local.preferences.UserPreference
+import com.example.infinite_track.data.soucre.local.preferences.dataUserStore
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.local.room.UserEntity
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
@@ -26,6 +27,12 @@ import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.model.booking.BookingHistoryItem
 import com.example.infinite_track.domain.model.booking.BookingHistoryPage
+import com.example.infinite_track.domain.model.geofence.GeofenceDisabledReason
+import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeMode
+import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeReadiness
+import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeResult
+import com.example.infinite_track.domain.model.geofence.NotificationReadiness
+import com.example.infinite_track.domain.model.geofence.RegistrationReadiness
 import com.example.infinite_track.domain.model.location.CurrentLocation
 import com.example.infinite_track.domain.model.location.CurrentLocationResult
 import com.example.infinite_track.domain.model.location.AddressResolutionResult
@@ -36,6 +43,7 @@ import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.BookingRepository
+import com.example.infinite_track.domain.repository.GeofenceRuntimeRepository
 import com.example.infinite_track.domain.repository.location.AddressResolver
 import com.example.infinite_track.domain.repository.location.CurrentLocationRepository
 import com.example.infinite_track.domain.repository.ProfileSyncResult
@@ -44,17 +52,18 @@ import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
 import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
 import com.example.infinite_track.domain.use_case.attendance.EvaluateAttendancePreparationUseCase
 import com.example.infinite_track.domain.use_case.attendance.EvaluateTargetRangeUseCase
-import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
 import com.example.infinite_track.domain.use_case.attendance.ResolveAuthoritativeTargetLocationUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.auth.RefreshAttendanceProfileUseCase
-import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingUseCase
+import com.example.infinite_track.domain.use_case.auth.ValidateForegroundSessionUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayWfaBookingStateUseCase
+import com.example.infinite_track.domain.use_case.geofence.BuildReminderGeofenceCandidatesUseCase
+import com.example.infinite_track.domain.use_case.geofence.RefreshAndReconcileGeofenceRuntimeUseCase
+import com.example.infinite_track.domain.use_case.geofence.ResolveGeofenceRuntimeModeUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentLocationUseCase
 import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
 import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
-import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
@@ -64,11 +73,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -86,12 +93,6 @@ class AttendanceScreenFaceResultRescueTest {
         const val ATTENDANCE_ERROR_MESSAGE = "Absensi belum berhasil. Silakan coba lagi."
         const val SENTINEL_MESSAGE = "SECRET-SERVER-ID-9384"
     }
-
-    @Before
-    fun setUp() = clearAttendancePreferenceState()
-
-    @After
-    fun tearDown() = clearAttendancePreferenceState()
 
     @Test
     fun attendanceScreen_forwardsFailedFaceVerificationResultBeforeClearingIt() {
@@ -365,28 +366,19 @@ class AttendanceScreenFaceResultRescueTest {
         return navController
     }
 
-    private fun clearAttendancePreferenceState() = runBlocking {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val attendancePreference = AttendancePreference(context)
-        attendancePreference.clearActiveAttendanceId()
-        attendancePreference.setUserInsideGeofence(false)
-        attendancePreference.clearLastGeofenceParams()
-        attendancePreference.clearReminderGeofences()
-    }
-
     private fun createAttendanceViewModel(
         attendanceRepository: FakeAttendanceRepository = FakeAttendanceRepository(),
         wfaBookingResolver: BookingRepository = FakeBookingRepository()
     ): AttendanceViewModel {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val attendancePreference = AttendancePreference(context)
-        val geofenceManager = GeofenceManager(context, attendancePreference)
         val addressResolver = FakeAddressResolver()
         val bookingRepository = FakeBookingRepository()
         val getCurrentLocationUseCase = GetCurrentLocationUseCase(FakeCurrentLocationRepository())
+        val authRepository = FakeAuthRepository()
+        val targetResolver = ResolveAuthoritativeTargetLocationUseCase()
+        val geofenceRuntimeRepository = FakeGeofenceRuntimeRepository()
 
         return AttendanceViewModel(
-            getTodayStatusUseCase = GetTodayStatusUseCase(attendanceRepository),
             getCurrentAddressUseCase = GetCurrentAddressUseCase(
                 getCurrentLocationUseCase,
                 addressResolver
@@ -394,32 +386,37 @@ class AttendanceScreenFaceResultRescueTest {
             getCurrentLocationUseCase = getCurrentLocationUseCase,
             getWfaRecommendationsUseCase = GetWfaRecommendationsUseCase(FakeWfaRepository()),
             reverseGeocodeUseCase = ReverseGeocodeUseCase(addressResolver),
-            attendancePreference = attendancePreference,
-            geofenceManager = geofenceManager,
-            getLoggedInUserUseCase = GetLoggedInUserUseCase(FakeAuthRepository()),
-            refreshAttendanceProfileUseCase = RefreshAttendanceProfileUseCase(
-                FakeAuthRepository()
-            ),
-            resolveTodayApprovedWfaBookingUseCase = ResolveTodayApprovedWfaBookingUseCase(
-                bookingRepository
-            ),
+            getLoggedInUserUseCase = GetLoggedInUserUseCase(authRepository),
             resolveTodayWfaBookingStateUseCase = ResolveTodayWfaBookingStateUseCase(
                 wfaBookingResolver
             ),
-            resolveAuthoritativeTargetLocationUseCase = ResolveAuthoritativeTargetLocationUseCase(),
+            resolveAuthoritativeTargetLocationUseCase = targetResolver,
             evaluateTargetRangeUseCase = EvaluateTargetRangeUseCase(),
             evaluateAttendancePreparationUseCase = EvaluateAttendancePreparationUseCase(),
+            refreshAndReconcileGeofenceRuntimeUseCase = RefreshAndReconcileGeofenceRuntimeUseCase(
+                attendanceRepository = attendanceRepository,
+                refreshProfile = RefreshAttendanceProfileUseCase(authRepository),
+                getLoggedInUser = GetLoggedInUserUseCase(authRepository),
+                resolveBooking = ResolveTodayWfaBookingStateUseCase(bookingRepository),
+                validateSession = ValidateForegroundSessionUseCase(
+                    authRepository = authRepository,
+                    userPreference = UserPreference(context.dataUserStore),
+                    sessionManager = com.example.infinite_track.domain.manager.SessionManager()
+                ),
+                resolveMode = ResolveGeofenceRuntimeModeUseCase(
+                    buildCandidates = BuildReminderGeofenceCandidatesUseCase(targetResolver),
+                    resolveTarget = targetResolver
+                ),
+                runtimeRepository = geofenceRuntimeRepository
+            ),
+            geofenceRuntimeUiMapper = GeofenceRuntimeUiMapper(),
             checkInUseCase = CheckInUseCase(
                 attendanceRepository = attendanceRepository,
-                getCurrentLocationUseCase = getCurrentLocationUseCase,
-                geofenceManager = geofenceManager,
-                attendancePreference = attendancePreference
+                getCurrentLocationUseCase = getCurrentLocationUseCase
             ),
             checkOutUseCase = CheckOutUseCase(
                 attendanceRepository = attendanceRepository,
-                getCurrentLocationUseCase = getCurrentLocationUseCase,
-                geofenceManager = geofenceManager,
-                attendancePreference = attendancePreference
+                getCurrentLocationUseCase = getCurrentLocationUseCase
             )
         )
     }
@@ -613,7 +610,50 @@ class AttendanceScreenFaceResultRescueTest {
         ): Result<List<WfaRecommendation>> = Result.success(emptyList())
     }
 
+    private class FakeGeofenceRuntimeRepository : GeofenceRuntimeRepository {
+        override suspend fun reconcile(mode: GeofenceRuntimeMode): GeofenceRuntimeResult =
+            GeofenceRuntimeResult.Applied(
+                mode = mode,
+                generation = 1,
+                logicalIds = emptySet()
+            )
+
+        override suspend fun clearForLogout(): GeofenceRuntimeResult =
+            GeofenceRuntimeResult.Applied(
+                mode = GeofenceRuntimeMode.Disabled(GeofenceDisabledReason.LOGGED_OUT),
+                generation = 0,
+                logicalIds = emptySet()
+            )
+
+        override fun observeReadiness(): Flow<GeofenceRuntimeReadiness> = flowOf(
+            GeofenceRuntimeReadiness(
+                registration = RegistrationReadiness.Ready,
+                notification = NotificationReadiness.READY
+            )
+        )
+    }
+
     private class FakeAuthRepository : AuthRepository {
+        private val user = UserModel(
+            id = 1,
+            fullName = "Test User",
+            email = "test@example.com",
+            roleName = "Employee",
+            positionName = "Engineer",
+            programName = null,
+            divisionName = null,
+            nipNim = "123456789",
+            phone = "08123456789",
+            photoUrl = null,
+            photoUpdatedAt = null,
+            latitude = null,
+            longitude = null,
+            radius = null,
+            locationDescription = null,
+            locationCategoryName = null,
+            faceEmbedding = null
+        )
+
         override suspend fun refreshSession(): Result<AuthRefreshResult> {
             throw UnsupportedOperationException("Session refresh is outside this regression")
         }
@@ -622,33 +662,11 @@ class AttendanceScreenFaceResultRescueTest {
             throw UnsupportedOperationException("Login is outside this regression")
         }
 
-        override suspend fun syncUserProfile(): ProfileSyncResult {
-            throw UnsupportedOperationException("Profile sync is outside this regression")
-        }
+        override suspend fun syncUserProfile(): ProfileSyncResult = ProfileSyncResult.Success(user)
 
         override suspend fun logout(): Result<Unit> = Result.success(Unit)
 
-        override fun getLoggedInUser(): Flow<UserModel?> = flowOf(
-            UserModel(
-                id = 1,
-                fullName = "Test User",
-                email = "test@example.com",
-                roleName = "Employee",
-                positionName = "Engineer",
-                programName = null,
-                divisionName = null,
-                nipNim = "123456789",
-                phone = "08123456789",
-                photoUrl = null,
-                photoUpdatedAt = null,
-                latitude = null,
-                longitude = null,
-                radius = null,
-                locationDescription = null,
-                locationCategoryName = null,
-                faceEmbedding = null
-            )
-        )
+        override fun getLoggedInUser(): Flow<UserModel?> = flowOf(user)
 
         override suspend fun saveFaceEmbedding(
             userId: Int,
