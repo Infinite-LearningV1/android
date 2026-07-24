@@ -276,15 +276,15 @@
     <string name="attendance_pick_location_failed">Location details could not be loaded.</string>
 
     <!-- Explicit WFA place search -->
-    <string name="wfa_search_title">Cari Lokasi WFA</string>
-    <string name="wfa_search_placeholder">Cari tempat atau alamat</string>
-    <string name="wfa_search_guidance_title">Temukan lokasi kerja</string>
-    <string name="wfa_search_guidance_body">Ketik minimal 2 karakter untuk mencari lokasi WFA di Indonesia.</string>
-    <string name="wfa_search_loading">Mencari lokasi...</string>
-    <string name="wfa_search_empty_title">Lokasi tidak ditemukan</string>
-    <string name="wfa_search_empty_body">Tidak ada hasil untuk “%1$s”. Coba kata kunci lain.</string>
-    <string name="wfa_search_error_title">Pencarian lokasi gagal</string>
-    <string name="wfa_search_retry">Coba lagi</string>
-    <string name="wfa_search_clear_content_description">Hapus pencarian</string>
+    <string name="wfa_search_title">Search WFA Location</string>
+    <string name="wfa_search_placeholder">Search for a place or address</string>
+    <string name="wfa_search_guidance_title">Find a work location</string>
+    <string name="wfa_search_guidance_body">Type at least 2 characters to search for WFA locations in Indonesia.</string>
+    <string name="wfa_search_loading">Searching locations...</string>
+    <string name="wfa_search_empty_title">Location not found</string>
+    <string name="wfa_search_empty_body">No results for “%1$s”. Try another keyword.</string>
+    <string name="wfa_search_error_title">Location search failed</string>
+    <string name="wfa_search_retry">Try again</string>
+    <string name="wfa_search_clear_content_description">Clear search</string>
 
 </resources>
