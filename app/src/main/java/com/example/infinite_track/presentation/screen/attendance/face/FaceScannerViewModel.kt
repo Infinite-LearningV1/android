@@ -57,7 +57,12 @@ data class FaceScannerState(
     val imageSize: Size? = null, // Add image size for coordinate scaling
     val failureReason: FaceVerificationFailureReason? = null,
     val detectedFaceCount: Int = 0,
-    val capturedFacePreview: Bitmap? = null
+    val capturedFacePreview: Bitmap? = null,
+    val challengeIndex: Int = 1,
+    val challengeTotal: Int = 4,
+    val readyToVerify: Boolean = false,
+    val similarity: Float? = null,
+    val threshold: Float? = null
 )
 
 /**
@@ -82,6 +87,7 @@ class FaceScannerViewModel @Inject constructor(
     private var livenessJob: Job? = null
     private var currentDetectedFace: Face? = null
     private var currentImageBitmap: Bitmap? = null
+    private val sequencer = LivenessSequencer()
 
     /**
      * Inisialisasi scanner dengan random challenge
@@ -99,24 +105,16 @@ class FaceScannerViewModel @Inject constructor(
         // STEP 3: Reinitialize FaceDetector
         faceDetectorHelper.reinitialize()
 
-        // STEP 4: Pilih challenge secara acak
-        val randomChallenge = if ((0..1).random() == 0) {
-            LivenessChallenge.BLINK
-        } else {
-            LivenessChallenge.SMILE
-        }
-
-        val instructionText = when (randomChallenge) {
-            LivenessChallenge.BLINK -> "Posisikan wajah Anda di dalam frame, lalu kedipkan mata"
-            LivenessChallenge.SMILE -> "Posisikan wajah Anda di dalam frame, lalu tersenyum"
-            LivenessChallenge.TURN_LEFT -> "Posisikan wajah Anda di dalam frame, lalu tengok ke kiri"
-            LivenessChallenge.TURN_RIGHT -> "Posisikan wajah Anda di dalam frame, lalu tengok ke kanan"
-        }
+        // STEP 4: Reset the fixed 4-challenge liveness sequence
+        sequencer.reset()
+        val firstChallenge = sequencer.current
 
         // STEP 5: Reset state ke kondisi benar-benar fresh
         _uiState.value = FaceScannerState(
-            currentChallenge = randomChallenge,
-            instructionText = instructionText,
+            currentChallenge = firstChallenge,
+            challengeIndex = sequencer.index,
+            challengeTotal = sequencer.total,
+            instructionText = challengePrompt(firstChallenge),
             livenessState = LivenessState.DETECTING_FACE,
             timeRemaining = TIMEOUT_SECONDS,
             showCountdown = true,
@@ -124,10 +122,11 @@ class FaceScannerViewModel @Inject constructor(
             errorMessage = null,
             boundingBox = null,
             progress = 0f,
-            imageSize = null
+            imageSize = null,
+            readyToVerify = false
         )
 
-        // STEP 6: Start fresh timeout
+        // STEP 6: Start fresh per-challenge timeout
         startTimeout()
     }
 
@@ -289,58 +288,100 @@ class FaceScannerViewModel @Inject constructor(
      * Cek apakah challenge liveness saat ini terpenuhi dengan progressive feedback
      */
     private fun checkLivenessChallenge(face: Face) {
-        val livenessResult = when (_uiState.value.currentChallenge) {
+        val current = _uiState.value.currentChallenge
+        val livenessResult = when (current) {
             LivenessChallenge.BLINK -> faceDetectorHelper.verifyBlink(face)
             LivenessChallenge.SMILE -> faceDetectorHelper.verifySmile(face)
-            LivenessChallenge.TURN_LEFT, LivenessChallenge.TURN_RIGHT -> LivenessResult.FAILURE
+            LivenessChallenge.TURN_LEFT, LivenessChallenge.TURN_RIGHT ->
+                HeadTurnEvaluator.evaluate(face.headEulerAngleY, current)
         }
 
         when (livenessResult) {
             LivenessResult.SUCCESS -> {
-                // Liveness berhasil terdeteksi - lanjut ke verifikasi
+                // Tantangan saat ini terpenuhi - tahan sebentar lalu maju ke tantangan berikutnya
                 _uiState.value = _uiState.value.copy(
                     livenessState = LivenessState.LIVENESS_DETECTED,
-                    instructionText = "Liveness terdeteksi! Tetap di posisi..."
+                    instructionText = "Bagus! Tetap di posisi..."
                 )
-
-                // Tahan deteksi sebentar untuk stabilitas, lalu lanjut verifikasi
                 livenessJob?.cancel()
                 livenessJob = viewModelScope.launch {
                     delay(LIVENESS_HOLD_DURATION)
-                    proceedWithFaceVerification()
+                    advanceChallenge()
                 }
             }
 
             LivenessResult.IN_PROGRESS -> {
-                // User hampir berhasil - berikan umpan balik yang memandu
-                val progressText = when (_uiState.value.currentChallenge) {
-                    LivenessChallenge.BLINK -> "Hampir berhasil! Coba kedipkan kedua mata bersamaan"
-                    LivenessChallenge.SMILE -> "Bagus! Tersenyum sedikit lebih lebar lagi"
-                    LivenessChallenge.TURN_LEFT -> "Hampir! Tengok sedikit lagi ke kiri"
-                    LivenessChallenge.TURN_RIGHT -> "Hampir! Tengok sedikit lagi ke kanan"
-                }
-
                 _uiState.value = _uiState.value.copy(
                     livenessState = LivenessState.WAITING_FOR_LIVENESS,
-                    instructionText = progressText
+                    instructionText = challengeProgressText(current)
                 )
             }
 
             LivenessResult.FAILURE -> {
-                // Belum berhasil - berikan instruksi yang jelas
-                val failureText = when (_uiState.value.currentChallenge) {
-                    LivenessChallenge.BLINK -> "Silakan kedipkan mata Anda dengan jelas"
-                    LivenessChallenge.SMILE -> "Silakan tersenyum dengan lebih jelas"
-                    LivenessChallenge.TURN_LEFT -> "Silakan tengok ke kiri dengan jelas"
-                    LivenessChallenge.TURN_RIGHT -> "Silakan tengok ke kanan dengan jelas"
-                }
-
                 _uiState.value = _uiState.value.copy(
                     livenessState = LivenessState.WAITING_FOR_LIVENESS,
-                    instructionText = failureText
+                    instructionText = challengeFailureText(current)
                 )
             }
         }
+    }
+
+    /**
+     * Maju ke tantangan berikutnya, atau tandai siap verifikasi jika keempat tantangan selesai.
+     */
+    private fun advanceChallenge() {
+        sequencer.pass()
+        if (sequencer.isComplete) {
+            timeoutJob?.cancel()
+            livenessJob?.cancel()
+            _uiState.value = _uiState.value.copy(
+                livenessState = LivenessState.LIVENESS_DETECTED,
+                readyToVerify = true,
+                challengeIndex = sequencer.total,
+                instructionText = "Semua tantangan selesai. Tekan Verify untuk melanjutkan.",
+                showCountdown = false
+            )
+        } else {
+            val next = sequencer.current
+            _uiState.value = _uiState.value.copy(
+                currentChallenge = next,
+                challengeIndex = sequencer.index,
+                livenessState = LivenessState.WAITING_FOR_LIVENESS,
+                instructionText = challengePrompt(next),
+                errorMessage = null
+            )
+            // Reset the 20s countdown for the new challenge
+            startTimeout()
+        }
+    }
+
+    /**
+     * Dipanggil UI saat pengguna menekan Verify (hanya valid setelah semua tantangan selesai).
+     */
+    fun onVerifyClicked() {
+        if (!_uiState.value.readyToVerify) return
+        proceedWithFaceVerification()
+    }
+
+    private fun challengePrompt(challenge: LivenessChallenge): String = when (challenge) {
+        LivenessChallenge.BLINK -> "Posisikan wajah Anda di dalam frame, lalu kedipkan mata"
+        LivenessChallenge.SMILE -> "Posisikan wajah Anda di dalam frame, lalu tersenyum"
+        LivenessChallenge.TURN_LEFT -> "Posisikan wajah Anda di dalam frame, lalu tengok ke kiri"
+        LivenessChallenge.TURN_RIGHT -> "Posisikan wajah Anda di dalam frame, lalu tengok ke kanan"
+    }
+
+    private fun challengeProgressText(challenge: LivenessChallenge): String = when (challenge) {
+        LivenessChallenge.BLINK -> "Hampir berhasil! Coba kedipkan kedua mata bersamaan"
+        LivenessChallenge.SMILE -> "Bagus! Tersenyum sedikit lebih lebar lagi"
+        LivenessChallenge.TURN_LEFT -> "Hampir! Tengok sedikit lagi ke kiri"
+        LivenessChallenge.TURN_RIGHT -> "Hampir! Tengok sedikit lagi ke kanan"
+    }
+
+    private fun challengeFailureText(challenge: LivenessChallenge): String = when (challenge) {
+        LivenessChallenge.BLINK -> "Silakan kedipkan mata Anda dengan jelas"
+        LivenessChallenge.SMILE -> "Silakan tersenyum dengan lebih jelas"
+        LivenessChallenge.TURN_LEFT -> "Silakan tengok ke kiri dengan jelas"
+        LivenessChallenge.TURN_RIGHT -> "Silakan tengok ke kanan dengan jelas"
     }
 
     /**
@@ -383,6 +424,10 @@ class FaceScannerViewModel @Inject constructor(
 
                 // Verifikasi wajah lalu petakan hasilnya ke reason terdiferensiasi
                 val outcome = FaceOutcomeMapper.fromMatch(verifyFaceUseCase(faceBitmap))
+                _uiState.value = _uiState.value.copy(
+                    similarity = outcome.similarity,
+                    threshold = outcome.threshold
+                )
                 if (outcome.livenessState == LivenessState.SUCCESS) {
                     handleVerificationSuccess()
                 } else {
