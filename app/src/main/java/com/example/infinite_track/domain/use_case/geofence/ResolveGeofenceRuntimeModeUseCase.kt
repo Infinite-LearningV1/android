@@ -2,6 +2,7 @@ package com.example.infinite_track.domain.use_case.geofence
 
 import com.example.infinite_track.domain.model.attendance.AuthoritativeTargetLocation
 import com.example.infinite_track.domain.model.attendance.TargetLocationResolution
+import com.example.infinite_track.domain.model.attendance.TargetResolutionFailure
 import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.geofence.ActiveMonitoringTarget
 import com.example.infinite_track.domain.model.geofence.BackendTruthSource
@@ -12,6 +13,7 @@ import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeInputs
 import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeMode
 import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeModeResolution
 import com.example.infinite_track.domain.model.geofence.GeofenceTargetIdentity
+import com.example.infinite_track.domain.model.geofence.ReminderCandidateSource
 import com.example.infinite_track.domain.model.wfa.WfaBookingForDate
 import com.example.infinite_track.domain.use_case.attendance.ResolveAuthoritativeTargetLocationUseCase
 import java.time.LocalDate
@@ -44,7 +46,10 @@ class ResolveGeofenceRuntimeModeUseCase @Inject constructor(
             return GeofenceRuntimeModeResolution(GeofenceRuntimeMode.Completed(effectiveDate))
         }
 
-        if (attendanceId == null && stateKey == SESSION_STATE_NOT_STARTED && inputs.todayStatus.canCheckIn) {
+        if (inputs.todayStatus.activeAttendanceId == null &&
+            stateKey == SESSION_STATE_NOT_STARTED &&
+            inputs.todayStatus.canCheckIn
+        ) {
             val candidates = buildCandidates(
                 inputs.todayStatus,
                 inputs.profile,
@@ -76,9 +81,12 @@ class ResolveGeofenceRuntimeModeUseCase @Inject constructor(
             )
         ) {
             is TargetLocationResolution.Resolved -> resolution.target
+            is TargetLocationResolution.Failed -> return activeTargetUnavailable(
+                failureForActiveTarget(resolution.failure, mode)
+            )
+
             is TargetLocationResolution.Resolving,
-            is TargetLocationResolution.Unavailable,
-            is TargetLocationResolution.Failed -> return activeTargetUnavailable()
+            is TargetLocationResolution.Unavailable -> return activeTargetUnavailable()
         }
 
         return GeofenceRuntimeModeResolution(
@@ -128,9 +136,25 @@ class ResolveGeofenceRuntimeModeUseCase @Inject constructor(
         blockingFailure = GeofenceRuntimeFailure.InconsistentSessionTruth(attendanceId, stateKey)
     )
 
-    private fun activeTargetUnavailable() = GeofenceRuntimeModeResolution(
+    private fun failureForActiveTarget(
+        failure: TargetResolutionFailure,
+        mode: WorkMode
+    ): GeofenceRuntimeFailure = when (failure) {
+        TargetResolutionFailure.INVALID_RADIUS -> GeofenceRuntimeFailure.InvalidAuthoritativeRadius(sourceFor(mode))
+        else -> GeofenceRuntimeFailure.ActiveTargetUnavailable
+    }
+
+    private fun sourceFor(mode: WorkMode): ReminderCandidateSource = when (mode) {
+        WorkMode.WFO -> ReminderCandidateSource.STATUS_TODAY
+        WorkMode.WFA -> ReminderCandidateSource.APPROVED_WFA_BOOKING
+        WorkMode.WFH -> ReminderCandidateSource.USER_PROFILE
+    }
+
+    private fun activeTargetUnavailable(
+        blockingFailure: GeofenceRuntimeFailure = GeofenceRuntimeFailure.ActiveTargetUnavailable
+    ) = GeofenceRuntimeModeResolution(
         mode = GeofenceRuntimeMode.Disabled(GeofenceDisabledReason.ACTIVE_TARGET_UNAVAILABLE),
-        blockingFailure = GeofenceRuntimeFailure.ActiveTargetUnavailable
+        blockingFailure = blockingFailure
     )
 
     private fun disabledForUnavailableStatusTruth() = GeofenceRuntimeModeResolution(

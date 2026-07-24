@@ -16,6 +16,7 @@ import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeModeResol
 import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeReadiness
 import com.example.infinite_track.domain.model.geofence.GeofenceTargetIdentity
 import com.example.infinite_track.domain.model.geofence.NotificationReadiness
+import com.example.infinite_track.domain.model.geofence.ReminderCandidateSource
 import com.example.infinite_track.domain.model.geofence.RegistrationReadiness
 import com.example.infinite_track.domain.model.wfa.WfaBookingForDate
 import com.example.infinite_track.domain.use_case.attendance.ResolveAuthoritativeTargetLocationUseCase
@@ -38,6 +39,26 @@ class ResolveGeofenceRuntimeModeUseCaseTest {
         val mode = result.mode as GeofenceRuntimeMode.Reminder
         assertEquals(LocalDate.parse("2026-07-24"), mode.effectiveDate)
         assertNull(result.blockingFailure)
+    }
+
+    @Test
+    fun `zero attendance id does not resolve reminder`() {
+        val result = useCase(inputs(attendanceId = 0))
+
+        assertEquals(
+            GeofenceRuntimeMode.Disabled(GeofenceDisabledReason.NO_ELIGIBLE_SESSION),
+            result.mode
+        )
+    }
+
+    @Test
+    fun `negative attendance id does not resolve reminder`() {
+        val result = useCase(inputs(attendanceId = -1))
+
+        assertEquals(
+            GeofenceRuntimeMode.Disabled(GeofenceDisabledReason.NO_ELIGIBLE_SESSION),
+            result.mode
+        )
     }
 
     @Test
@@ -149,7 +170,10 @@ class ResolveGeofenceRuntimeModeUseCaseTest {
             GeofenceRuntimeMode.Disabled(GeofenceDisabledReason.ACTIVE_TARGET_UNAVAILABLE),
             result.mode
         )
-        assertEquals(GeofenceRuntimeFailure.ActiveTargetUnavailable, result.blockingFailure)
+        assertEquals(
+            GeofenceRuntimeFailure.InvalidAuthoritativeRadius(ReminderCandidateSource.STATUS_TODAY),
+            result.blockingFailure
+        )
     }
 
     @Test
