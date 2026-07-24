@@ -55,7 +55,7 @@
 
         <!-- BroadcastReceiver untuk Geofencing (triggered via PendingIntent, no intent-filter needed) -->
         <receiver
-            android:name=".presentation.geofencing.GeofenceBroadcastReceiver"
+            android:name=".data.platform.geofence.receiver.GeofenceBroadcastReceiver"
             android:enabled="true"
             android:exported="false" />
 

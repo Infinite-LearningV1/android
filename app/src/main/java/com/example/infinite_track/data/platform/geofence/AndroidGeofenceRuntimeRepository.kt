@@ -187,7 +187,7 @@ class AndroidGeofenceRuntimeRepository @Inject constructor(
         effectiveDateIso = mode.effectiveDateIso(),
         expectedMode = mode.persistedMode(),
         attendanceId = (mode as? GeofenceRuntimeMode.ActiveMonitoring)?.attendanceId,
-        sessionStateKey = null,
+        sessionStateKey = if (mode is GeofenceRuntimeMode.ActiveMonitoring) "active" else null,
         expectedRegistrations = registrations,
         appliedRequestIds = emptySet(),
         reconciliationState = PersistedReconciliationState.APPLYING,
@@ -204,6 +204,7 @@ class AndroidGeofenceRuntimeRepository @Inject constructor(
         if (expectedMode != mode.persistedMode()) return false
         if (effectiveDateIso != mode.effectiveDateIso()) return false
         if (attendanceId != (mode as? GeofenceRuntimeMode.ActiveMonitoring)?.attendanceId) return false
+        if (mode is GeofenceRuntimeMode.ActiveMonitoring && sessionStateKey != "active") return false
         return expectedRegistrations
             .map { it.withoutRequestId() }
             .sortedWith(compareBy(CanonicalRegistration::kind, CanonicalRegistration::logicalId)) ==

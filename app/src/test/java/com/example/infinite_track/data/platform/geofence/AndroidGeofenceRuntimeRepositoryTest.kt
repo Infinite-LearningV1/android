@@ -106,6 +106,28 @@ class AndroidGeofenceRuntimeRepositoryTest {
     }
 
     @Test
+    fun `legacy active snapshot without session state is reconciled`() = runTest {
+        val store = InMemoryGeofenceRuntimeStore(appliedSnapshot(activeMode(), generation = 7))
+        val platform = FakeGeofencingPlatformClient()
+
+        val result = repository(platform, store).reconcile(activeMode())
+
+        assertEquals(listOf("remove", "add"), platform.calls)
+        assertEquals(GeofenceRuntimeResult.Applied(activeMode(), 8, setOf("active:91:office:11")), result)
+        assertEquals("active", store.snapshot?.sessionStateKey)
+    }
+
+    @Test
+    fun `active monitoring snapshot records the active session state`() = runTest {
+        val store = InMemoryGeofenceRuntimeStore()
+        val platform = FakeGeofencingPlatformClient()
+
+        repository(platform, store).reconcile(activeMode())
+
+        assertEquals("active", store.snapshot?.sessionStateKey)
+    }
+
+    @Test
     fun `active to completed removes and applies empty set`() = runTest {
         val store = InMemoryGeofenceRuntimeStore(appliedSnapshot(activeMode(), 8))
         val platform = FakeGeofencingPlatformClient()

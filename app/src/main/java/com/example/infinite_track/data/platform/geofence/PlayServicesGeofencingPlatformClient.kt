@@ -13,7 +13,7 @@ import com.example.infinite_track.domain.model.geofence.GeofencePermissionRequir
 import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeReadiness
 import com.example.infinite_track.domain.model.geofence.NotificationReadiness
 import com.example.infinite_track.domain.model.geofence.RegistrationReadiness
-import com.example.infinite_track.presentation.geofencing.GeofenceBroadcastReceiver
+import com.example.infinite_track.data.platform.geofence.receiver.GeofenceBroadcastReceiver
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.location.Geofence
