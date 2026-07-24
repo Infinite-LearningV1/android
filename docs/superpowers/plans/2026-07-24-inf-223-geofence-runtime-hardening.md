@@ -1507,7 +1507,7 @@ git commit -m "chore: remove legacy geofence and FCM configuration"
 - Consumes: all implementation tasks.
 - Produces: governance, verification, and PR handoff evidence.
 
-- [ ] **Step 1: Write the ADR**
+- [x] **Step 1: Write the ADR**
 
 The ADR must contain these decisions in complete prose:
 
@@ -1522,7 +1522,7 @@ Consequences: temporary monitoring unavailability is preferred to stale alerts
 Rollback: revert by PR commit, never restore the old checkout reminder behavior
 ```
 
-- [ ] **Step 2: Run the complete automated gate from a clean worktree**
+- [x] **Step 2: Run the complete automated gate from a clean worktree**
 
 ```powershell
 git status --short
@@ -1538,7 +1538,7 @@ pass, Android tests compile, lint completes without unreported blockers, and
 debug APK assembles. Record command timestamps and exact failure counts; do not
 summarize a failed gate as passed.
 
-- [ ] **Step 3: Run architecture and cleanup searches**
+- [x] **Step 3: Run architecture and cleanup searches**
 
 ```powershell
 rg -n 'presentation\.geofencing|GeofenceManager|ReminderGeofenceCandidate' app/src/main app/src/test app/src/androidTest
@@ -1550,7 +1550,7 @@ rg -n 'NotificationManager|NotificationCompat' app/src/main/java/com/example/inf
 Expected: first three searches have no prohibited runtime hits; the notification
 search points to local Android notification code.
 
-- [ ] **Step 4: Execute supported-device verification**
+- [x] **Step 4: Execute supported-device verification**
 
 ```powershell
 adb devices -l
@@ -1581,7 +1581,7 @@ no FCM message/token path
 Redact user identity, coordinates, auth data, and keys. If a row cannot run,
 write `Needs Verification` with the missing device/backend prerequisite.
 
-- [ ] **Step 5: Run review preparation**
+- [x] **Step 5: Run review preparation**
 
 Invoke `superpowers:requesting-code-review`, then prepare PR notes containing:
 
@@ -1598,14 +1598,14 @@ Include affected files, automated gate results, device rows, cleanup evidence,
 ADR path, and explicit confirmation that Firebase App Distribution remains
 master-only.
 
-- [ ] **Step 6: Commit verification documentation**
+- [x] **Step 6: Commit verification documentation**
 
 ```powershell
 git add docs/adr/ADR-INF-223-geofence-runtime-reconciliation.md docs/linear-sync/INF-223-runtime-verification.md docs/superpowers/plans/2026-07-24-inf-223-geofence-runtime-hardening.md
 git commit -m "docs: record INF-223 runtime verification"
 ```
 
-- [ ] **Step 7: Final verification after the documentation commit**
+- [x] **Step 7: Final verification after the documentation commit**
 
 ```powershell
 git status --short --branch
