@@ -32,7 +32,9 @@ class GeofenceRequestIdCodec @Inject constructor() {
 
     fun decode(requestId: String): DecodedGeofenceRequestId? {
         val match = REQUEST_ID_PATTERN.matchEntire(requestId) ?: return null
-        val generation = match.groupValues[1].toLongOrNull(36) ?: return null
+        val generationToken = match.groupValues[1]
+        val generation = generationToken.toLongOrNull(36) ?: return null
+        if (generationToken != generation.toString(36)) return null
         val kind = when (match.groupValues[2]) {
             "r" -> PersistedRegistrationKind.REMINDER
             "a" -> PersistedRegistrationKind.ACTIVE

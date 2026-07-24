@@ -60,4 +60,10 @@ class GeofenceRequestIdCodecTest {
         assertNull(codec.decode("gf2:1:x:18e9994e5a22a4195451"))
         assertNull(codec.decode("gf2:1:r:not-a-valid-hash"))
     }
+
+    @Test
+    fun `decode rejects leading zero generation representations`() {
+        assertNull(codec.decode("gf2:00:r:18e9994e5a22a4195451"))
+        assertNull(codec.decode("gf2:0z:r:18e9994e5a22a4195451"))
+    }
 }
