@@ -35,7 +35,7 @@ Android is treated as a trusted data-capture client. Backend state remains the f
 - **Background Work:** WorkManager
 - **Maps & Location:** Google Maps Compose + Places + Google Play Services Location / Geofencing
 - **Camera & ML:** CameraX + ML Kit Face Detection + TensorFlow Lite
-- **Firebase:** Firebase Cloud Messaging, Firebase App Distribution workflow integration
+- **Release Distribution:** Firebase App Distribution workflow integration
 
 ## Getting Started
 
@@ -43,7 +43,6 @@ Android is treated as a trusted data-capture client. Backend state remains the f
 - Android Studio
 - JDK 17-compatible Android toolchain
 - Reachable backend environment for device/runtime testing
-- Firebase app config for Android
 - Android-restricted Google Maps Platform API key
 
 ### Local Configuration
@@ -161,14 +160,12 @@ Important distinction:
 - **TensorFlow Lite** — face embedding and on-device inference runtime
 - **TensorFlow Lite Support / Metadata** — preprocessing and model support utilities
 
-### Firebase
-- **Firebase Cloud Messaging** — push notification delivery
+### Release Distribution
 - **Firebase App Distribution** — internal release distribution from `master` via GitHub Actions
 
 ### Build & Tooling
 - **Android Gradle Plugin**
 - **Kotlin**
-- **Google Services Gradle Plugin**
 
 For exact dependency versions, use:
 - `gradle/libs.versions.toml`

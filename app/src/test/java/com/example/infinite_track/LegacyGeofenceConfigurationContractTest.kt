@@ -34,6 +34,9 @@ class LegacyGeofenceConfigurationContractTest {
             "google.gms.google.services",
             "GOOGLE_SERVICES_JSON",
             "google-services.json",
+            "Firebase Cloud Messaging",
+            "Google Services Gradle Plugin",
+            "Firebase app config for Android",
             "presentation.geofencing"
         ).forEach { forbidden ->
             assertFalse("Forbidden symbol remains: $forbidden", text.contains(forbidden))
