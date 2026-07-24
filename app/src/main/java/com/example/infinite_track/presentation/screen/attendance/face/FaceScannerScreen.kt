@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -180,11 +181,7 @@ fun FaceScannerScreen(
     // Handle navigation based on verification result
     LaunchedEffect(uiState.livenessState) {
         when (uiState.livenessState) {
-            LivenessState.SUCCESS -> {
-                publishResultOnce(FaceVerificationResult.SUCCESS)
-            }
-
-            // FAILURE and TIMEOUT stay on screen to allow explicit retry or close
+            LivenessState.SUCCESS,
             LivenessState.FAILURE,
             LivenessState.TIMEOUT -> Unit
 
@@ -212,6 +209,12 @@ fun FaceScannerScreen(
                     cameraExecutor = cameraExecutor,
                     onImageAnalysis = { imageProxy, bitmap ->
                         viewModel.processImageProxy(imageProxy, bitmap)
+                    },
+                    onVerify = {
+                        viewModel.onVerifyClicked()
+                    },
+                    onContinue = {
+                        publishResultOnce(FaceVerificationResult.SUCCESS)
                     },
                     onRetryClick = {
                         viewModel.resetScanner()
@@ -277,6 +280,8 @@ private fun CameraContent(
     uiState: FaceScannerState,
     cameraExecutor: ExecutorService,
     onImageAnalysis: (ImageProxy, Bitmap) -> Unit,
+    onVerify: () -> Unit,
+    onContinue: () -> Unit,
     onRetryClick: () -> Unit,
     onCloseClick: () -> Unit
 ) {
@@ -301,46 +306,69 @@ private fun CameraContent(
             }
         )
 
-        // Layer 2: Face Bounding Box Overlay with proper coordinate scaling
-        FaceBoundingBox(
-            modifier = Modifier.fillMaxSize(),
-            boundingBox = uiState.boundingBox,
-            livenessState = uiState.livenessState,
-            previewSize = previewSize, // Pass actual preview size
-            imageSize = uiState.imageSize // Pass image size from ViewModel
+        // Layer 2: Redesigned neon frame (replaces corner-bracket FaceBoundingBox visual)
+        FaceVerificationFrame(
+            state = uiState,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth(0.78f)
+                .fillMaxHeight(0.52f)
         )
 
-        // Layer 3: Top Info Section - More compact
-        TopInfoSection(
+        // Layer 3: Top bar + status pills
+        Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 16.dp, start = 16.dp, end = 16.dp),
-            action = action
-        )
-
-        // Layer 4: Instruction / terminal result section
-        val isTerminalFailure = uiState.livenessState == LivenessState.FAILURE ||
-            uiState.livenessState == LivenessState.TIMEOUT
-        if (isTerminalFailure) {
-            FaceResultSurface(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp, start = 16.dp, end = 16.dp),
-                livenessState = uiState.livenessState,
-                failureReason = uiState.failureReason,
-                capturedFacePreview = uiState.capturedFacePreview,
-                onRetry = onRetryClick,
-                onContinue = onCloseClick,
-                onCancel = onCloseClick
+                .fillMaxWidth()
+        ) {
+            FaceVerificationTopBar(
+                title = if (
+                    uiState.livenessState == LivenessState.WAITING_FOR_LIVENESS ||
+                    uiState.livenessState == LivenessState.LIVENESS_DETECTED ||
+                    uiState.livenessState == LivenessState.LOW_LIGHT
+                ) "Liveness Detection" else "Face Verification",
+                subtitle = if (action == "checkin") "Check In" else "Check Out",
+                intentLabel = if (action == "checkin") "Check-in" else "Check-out",
+                onBack = onCloseClick
             )
-        } else {
-            InstructionSection(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp, start = 16.dp, end = 16.dp),
-                uiState = uiState,
-                onRetryClick = onRetryClick,
-                onCloseClick = onCloseClick
+            FaceStatusPillRow(
+                state = uiState,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+        }
+
+        // Layer 4: Guidance + diagnostics + phase-aware bottom sheet
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            FaceGuidanceText(
+                state = uiState,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+            val diagnostics = faceDiagnosticsUiModel(
+                similarity = uiState.similarity,
+                threshold = uiState.threshold,
+                isMatch = when (uiState.livenessState) {
+                    LivenessState.SUCCESS -> true
+                    else -> if (uiState.failureReason == FaceVerificationFailureReason.NOT_MATCHED) false else null
+                }
+            )
+            if (diagnostics != null) {
+                FaceDiagnosticsCard(
+                    model = diagnostics,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+            FaceVerificationBottomSheet(
+                state = uiState,
+                onVerify = onVerify,
+                onContinue = onContinue,
+                onTryAgain = onRetryClick,
+                onCancel = onCloseClick
             )
         }
 
