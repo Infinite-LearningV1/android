@@ -172,7 +172,8 @@ No photo, score, rating, review, or oversized action row is added.
 
 ### Dependency and initialization
 
-- Replace Places SDK for Android 2.6.0 with the fixed version `5.1.1`.
+- Replace Places SDK for Android 2.6.0 with the fixed version `3.5.0`.
+- `3.5.0` is the approved compatibility baseline because it provides Autocomplete (New) and session pricing while remaining compatible with the project's Kotlin `1.9.0` toolchain.
 - Do not use a dynamic `+` dependency.
 - Initialize with `Places.initializeWithNewPlacesApiEnabled(...)`.
 - Preserve the existing API-key injection route from `local.properties` through the manifest placeholder.
@@ -429,7 +430,7 @@ If Google Cloud configuration prevents runtime search validation, the PR must be
 
 ### Search and cost
 
-- [ ] Places SDK for Android uses fixed version `5.1.1`.
+- [ ] Places SDK for Android uses fixed version `3.5.0`.
 - [ ] Places API (New) initialization is used.
 - [ ] Search input is fully controlled.
 - [ ] Debounce, minimum length, cancellation, country filter, and location bias work.

@@ -6,13 +6,14 @@
 
 **Architecture:** Keep the provider-neutral domain contracts and the cohesive Attendance preparation state delivered by PR #99. Upgrade only the Google Places adapter, make SearchViewModel the single owner of query/session-visible UI state, project typed marker categories through `AttendanceMapUiMapper`, and render Google-specific marker/camera behavior only in the map adapter.
 
-**Tech Stack:** Kotlin, Jetpack Compose, Material 3, Hilt, Kotlin Coroutines/Flow, Google Maps Compose 2.11.0, Places SDK for Android (New) 5.1.1, JUnit4, kotlinx-coroutines-test, Compose UI tests.
+**Tech Stack:** Kotlin, Jetpack Compose, Material 3, Hilt, Kotlin Coroutines/Flow, Google Maps Compose 2.11.0, Places SDK for Android (New) 3.5.0, JUnit4, kotlinx-coroutines-test, Compose UI tests.
 
 ## Global Constraints
 
 - Work only in `E:\skrisi\android\.worktrees\inf-238-wfa-search-revision` on `codex/inf-238-wfa-search-revision`.
 - Preserve the authoritative target contract: search results and WFA recommendations are preview/booking-draft state, never an Attendance target without an approved booking.
-- Use Places SDK for Android fixed version `5.1.1`; never use `+` or `latest`.
+- Use Places SDK for Android fixed version `3.5.0`; never use `+` or `latest`.
+- `3.5.0` is the approved compatibility baseline for the existing Kotlin `1.9.0` toolchain; do not expand this task into a Kotlin, Compose, AGP, or Gradle-wrapper upgrade.
 - Initialize with `Places.initializeWithNewPlacesApiEnabled(...)`.
 - API-key injection remains `local.properties -> MAPS_API_KEY manifest placeholder`; never print, log, document, or commit a key.
 - Keep the Gradle wrapper unchanged.
@@ -64,7 +65,7 @@ class GooglePlacesInitializationContractTest {
                 "GooglePlacesClientProvider.kt"
         ).readText()
 
-        assertTrue(versions.contains("places = \"5.1.1\""))
+        assertTrue(versions.contains("places = \"3.5.0\""))
         assertTrue(provider.contains("Places.initializeWithNewPlacesApiEnabled("))
         assertFalse(provider.contains("Places.initialize(context"))
     }
@@ -98,7 +99,7 @@ Expected: FAIL because the catalog still contains `places = "2.6.0"`, the provid
 In `gradle/libs.versions.toml`:
 
 ```toml
-places = "5.1.1"
+places = "3.5.0"
 ```
 
 In the debug block of `app/build.gradle.kts`, keep:
@@ -139,7 +140,7 @@ Run:
 .\gradlew.bat --no-daemon app:compileDebugKotlin --console=plain
 ```
 
-Expected: both commands PASS. If the new SDK changed a Places API symbol, correct only the touched adapter to the 5.1.1 API before proceeding.
+Expected: both commands PASS. If the new SDK changed a Places API symbol, correct only the touched adapter to the 3.5.0 API before proceeding.
 
 - [ ] **Step 5: Commit Task 1**
 
