@@ -977,8 +977,6 @@ class AttendanceViewModel @Inject constructor(
                     )
                     return@launch
                 }
-                val targetLocation = resolvedTarget.toAttendanceLocation()
-
                 // Get user info once for this mutation; long-running collection can replay submit.
                 val user = getLoggedInUserUseCase().firstOrNull()
                 if (user == null) {
@@ -1020,8 +1018,7 @@ class AttendanceViewModel @Inject constructor(
                     return@launch
                 }
 
-                // Call CheckInUseCase with both request and target location
-                checkInUseCase(attendanceRequest, targetLocation).onSuccess { activeSession ->
+                checkInUseCase(attendanceRequest).onSuccess { activeSession ->
                     Log.d(TAG, "Check-in successful: $activeSession")
 
                     val successMessage = publishTransientFeedback(
@@ -1344,16 +1341,6 @@ class AttendanceViewModel @Inject constructor(
             )
         )
     }
-
-    private fun AuthoritativeTargetLocation.toAttendanceLocation(): Location = Location(
-        locationId = approvedWfaContext?.bookingId
-            ?: targetId.value.substringAfter(':').toIntOrNull()
-            ?: 0,
-        coordinate = coordinate,
-        radius = radius.value.toInt(),
-        description = displayName,
-        category = mode.shortLabel
-    )
 
     private fun UserModel?.toWfhAttendanceLocation(): Location? {
         val user = this ?: return null
