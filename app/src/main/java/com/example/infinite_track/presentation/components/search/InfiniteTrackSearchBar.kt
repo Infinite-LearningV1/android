@@ -7,17 +7,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Devices
@@ -35,16 +33,12 @@ fun InfiniteTrackSearchBar(
     value: String = "",
     placeholder: String = "Search...",
     onChange: (String) -> Unit = {},
+    onClear: () -> Unit = {},
     onClick: (() -> Unit)? = null, // Tambahan parameter untuk handle click
 ) {
-    var searchValue by remember { mutableStateOf(value) }
-
     OutlinedTextField(
-        value = searchValue,
-        onValueChange = { newValue ->
-            searchValue = newValue
-            onChange(newValue)
-        },
+        value = value,
+        onValueChange = onChange,
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(15.dp))
@@ -64,6 +58,19 @@ fun InfiniteTrackSearchBar(
                 tint = Purple_500,
                 contentDescription = "Search Event"
             )
+        },
+        trailingIcon = if (value.isNotEmpty()) {
+            {
+                IconButton(onClick = onClear) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Clear search",
+                        tint = Purple_500
+                    )
+                }
+            }
+        } else {
+            null
         },
         placeholder = {
             Text(
