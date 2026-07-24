@@ -11,19 +11,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,21 +27,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.infinite_track.R
-import com.example.infinite_track.presentation.components.button.InfiniteTrackButton
-import com.example.infinite_track.presentation.components.loading.LoadingAnimation
 import com.example.infinite_track.presentation.components.status.InfiniteTrackInlineAlert
-import com.example.infinite_track.presentation.components.status.InfiniteTrackStatusDialog
-import com.example.infinite_track.presentation.components.status.StatusStateSpec
 import com.example.infinite_track.presentation.components.status.StatusStates
 import com.example.infinite_track.presentation.components.textfield.ThriveInInputText
 import com.example.infinite_track.presentation.core.body1
-import com.example.infinite_track.utils.UiState
-import kotlinx.coroutines.launch
+import com.example.infinite_track.presentation.design.components.button.InfiniteButton
+import com.example.infinite_track.presentation.design.components.button.InfiniteButtonState
+import kotlinx.coroutines.flow.filterNotNull
 
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -59,69 +50,21 @@ fun LoginScreen(
 
     var password by rememberSaveable { mutableStateOf("") }
 
-    var showLoadingDialog by remember { mutableStateOf(false) }
-    var statusDialog by remember { mutableStateOf<LoginStatusDialog?>(null) }
+    var validationFailure by remember { mutableStateOf<String?>(null) }
 
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-
-    // Collect login state using collectAsStateWithLifecycle for lifecycle awareness
-    val loginState by loginViewModel.loginState.collectAsStateWithLifecycle()
+    val loginState by loginViewModel.uiState.collectAsStateWithLifecycle()
     val reauthBannerMessage by loginViewModel.reauthBannerMessage.collectAsStateWithLifecycle()
+    val currentNavigateToHome = rememberUpdatedState(navigateToHome)
+    val isLoading = loginState == LoginUiState.Loading
+    val failureMessage = validationFailure ?: (loginState as? LoginUiState.Failure)?.message
 
-    // Handle login state changes
-    LaunchedEffect(loginState) {
-        when (loginState) {
-
-            is UiState.Idle -> {
-                // No action needed for idle state
+    LaunchedEffect(loginViewModel) {
+        loginViewModel.effects.filterNotNull().collect { effect ->
+            when (effect) {
+                LoginEffect.NavigateHome -> currentNavigateToHome.value()
             }
-
-            is UiState.Loading -> {
-                statusDialog = null
-                showLoadingDialog = true
-            }
-
-            is UiState.Success -> {
-                showLoadingDialog = false
-                statusDialog = LoginStatusDialog(
-                    status = StatusStates.Success,
-                    title = "Complete your Profile",
-                    message = "Please head to Setting and complete your profile",
-                    imageRes = R.drawable.img_login,
-                    onConfirm = {
-                        navigateToHome()
-                        loginViewModel.resetState()
-                        statusDialog = null
-                    }
-                )
-            }
-
-            is UiState.Error -> {
-                showLoadingDialog = false
-                statusDialog = LoginStatusDialog(
-                    status = StatusStates.Error,
-                    title = "Failed",
-                    message = (loginState as UiState.Error).errorMessage,
-                    onConfirm = { statusDialog = null }
-                )
-            }
+            loginViewModel.consumeEffect(effect)
         }
-    }
-
-
-    LoginLoadingDialog(showDialog = showLoadingDialog)
-
-    statusDialog?.let { dialog ->
-        InfiniteTrackStatusDialog(
-            status = dialog.status,
-            title = dialog.title,
-            message = dialog.message,
-            showDialog = true,
-            imageRes = dialog.imageRes,
-            onDismiss = { statusDialog = null },
-            onConfirm = dialog.onConfirm
-        )
     }
 
     Scaffold(
@@ -151,6 +94,23 @@ fun LoginScreen(
                                 .fillMaxWidth()
                                 .padding(bottom = 12.dp),
                             onDismiss = { loginViewModel.dismissReauthBanner() }
+                        )
+                    }
+
+                    failureMessage?.let { message ->
+                        InfiniteTrackInlineAlert(
+                            status = StatusStates.Error,
+                            title = "Failed",
+                            message = message,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                            onDismiss = {
+                                if (validationFailure == message) {
+                                    validationFailure = null
+                                }
+                                loginViewModel.dismissFailure(message)
+                            }
                         )
                     }
 
@@ -187,7 +147,7 @@ fun LoginScreen(
 
                             ThriveInInputText(
                                 value = email,
-                                onChange = { email = it },
+                                onChange = { if (!isLoading) email = it },
                                 leadingIcon = painterResource(id = R.drawable.ic_message),
                                 placeholder = stringResource(R.string.email_placeholder)
                             )
@@ -196,7 +156,7 @@ fun LoginScreen(
 
                             ThriveInInputText(
                                 value = password,
-                                onChange = { password = it },
+                                onChange = { if (!isLoading) password = it },
                                 leadingIcon = painterResource(id = R.drawable.ic_password),
                                 placeholder = stringResource(R.string.password_placeholder),
                                 isObsecure = true
@@ -221,21 +181,22 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    InfiniteTrackButton(
+                    InfiniteButton(
                         onClick = {
-                            if (email == "" || password == "") {
-                                scope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        "Data is invalid!",
-                                        withDismissAction = true,
-                                    )
-                                }
+                            if (email.isBlank() || password.isBlank()) {
+                                validationFailure = "Data is invalid!"
                             } else {
-                                // Call the login method with email and password directly
+                                validationFailure = null
                                 loginViewModel.login(email, password)
                             }
                         },
-                        label = stringResource(id = R.string.log_in),
+                        text = stringResource(id = R.string.log_in),
+                        state = if (isLoading) {
+                            InfiniteButtonState.Loading
+                        } else {
+                            InfiniteButtonState.Enabled
+                        },
+                        fullWidth = true
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -243,41 +204,4 @@ fun LoginScreen(
             }
         }
     )
-}
-
-private data class LoginStatusDialog(
-    val status: StatusStateSpec,
-    val title: String,
-    val message: String,
-    val imageRes: Int? = null,
-    val onConfirm: () -> Unit
-)
-
-@Composable
-private fun LoginLoadingDialog(showDialog: Boolean) {
-    if (!showDialog) return
-
-    Dialog(onDismissRequest = { }) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier.height(72.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    LoadingAnimation()
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Please wait",
-                    style = body1
-                )
-            }
-        }
-    }
 }

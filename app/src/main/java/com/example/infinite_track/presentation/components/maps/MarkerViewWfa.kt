@@ -35,7 +35,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
+import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
+import com.example.infinite_track.presentation.screen.attendance.preparation.WfaSuitabilityPresentationMapper
 
 /**
  * Composable for displaying WFA (Work From Anywhere) recommendation markers
@@ -80,8 +83,8 @@ fun MarkerViewWfa(
                 )
 
                 ScoreChip(
-                    score = recommendation.score,
-                    label = recommendation.label
+                    score = recommendation.suitabilityScore,
+                    label = recommendation.suitabilityLabel
                 )
             }
 
@@ -115,7 +118,7 @@ fun MarkerViewWfa(
 
             // Distance
             Text(
-                text = "${String.format("%.1f", recommendation.distance)} km away",
+                text = "${String.format("%.1f", recommendation.distanceMeters.value / 1_000.0)} km away",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium
@@ -130,19 +133,16 @@ private fun ScoreChip(
     label: String,
     modifier: Modifier = Modifier
 ) {
-    val chipColor = when {
-        score >= 4.0 -> Color(0xFF4CAF50) // Green
-        score >= 3.0 -> Color(0xFFFF9800) // Orange
-        else -> Color(0xFFF44336) // Red
-    }
+    val presentation = WfaSuitabilityPresentationMapper.map(score)
+    val colors = infiniteSemanticColors(presentation.semantic)
 
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = chipColor.copy(alpha = 0.1f),
+        color = colors.container,
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            chipColor.copy(alpha = 0.3f)
+            colors.border
         )
     ) {
         Row(
@@ -153,20 +153,20 @@ private fun ScoreChip(
             Icon(
                 imageVector = Icons.Default.Star,
                 contentDescription = "Score",
-                tint = chipColor,
+                tint = colors.accent,
                 modifier = Modifier.size(12.dp)
             )
             Text(
-                text = String.format("%.1f", score),
+                text = presentation.percentage.toString(),
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.Bold
                 ),
-                color = chipColor
+                color = colors.accent
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = chipColor,
+                color = colors.accent,
                 maxLines = 1
             )
         }
@@ -242,12 +242,12 @@ fun MarkerViewWfaPreview() {
                     recommendation = WfaRecommendation(
                         name = "Starbucks Coffee",
                         address = "Jl. Sudirman No. 123, Jakarta Pusat",
-                        latitude = -6.2088,
-                        longitude = 106.8456,
-                        score = 4.5,
-                        label = "Excellent",
+                        coordinate = GeoCoordinate(-6.2088, 106.8456),
                         category = "Coffee Shop",
-                        distance = 0.8
+                        suitabilityScore = 0.91,
+                        suitabilityLabel = "Sangat sesuai",
+                        distanceMeters = com.example.infinite_track.domain.model.location.DistanceMeters(800.0),
+                        stableKey = WfaRecommendation.stableKeyFor("Starbucks Coffee", -6.2088, 106.8456)
                     ),
                     onClick = { }
                 )
@@ -257,12 +257,12 @@ fun MarkerViewWfaPreview() {
                     recommendation = WfaRecommendation(
                         name = "Co-Working Space Central",
                         address = "Plaza Indonesia, Jl. M.H. Thamrin Kav. 28-30",
-                        latitude = -6.1944,
-                        longitude = 106.8229,
-                        score = 3.2,
-                        label = "Good",
+                        coordinate = GeoCoordinate(-6.1944, 106.8229),
                         category = "Co-Working Space",
-                        distance = 1.5
+                        suitabilityScore = 0.67,
+                        suitabilityLabel = "Cukup sesuai",
+                        distanceMeters = com.example.infinite_track.domain.model.location.DistanceMeters(1500.0),
+                        stableKey = WfaRecommendation.stableKeyFor("Co-Working Space Central", -6.1944, 106.8229)
                     ),
                     onClick = { }
                 )
@@ -272,12 +272,12 @@ fun MarkerViewWfaPreview() {
                     recommendation = WfaRecommendation(
                         name = "Warung Kopi Tradisional",
                         address = "Jl. Kebon Sirih Raya No. 45",
-                        latitude = -6.1751,
-                        longitude = 106.8650,
-                        score = 2.1,
-                        label = "Poor",
+                        coordinate = GeoCoordinate(-6.1751, 106.8650),
                         category = "Traditional Cafe",
-                        distance = 2.3
+                        suitabilityScore = 0.42,
+                        suitabilityLabel = "Kurang sesuai",
+                        distanceMeters = com.example.infinite_track.domain.model.location.DistanceMeters(2300.0),
+                        stableKey = WfaRecommendation.stableKeyFor("Warung Kopi Tradisional", -6.1751, 106.8650)
                     ),
                     onClick = { }
                 )
@@ -297,12 +297,12 @@ fun SingleMarkerViewWfaPreview() {
                 recommendation = WfaRecommendation(
                     name = "WeWork Menara Astra",
                     address = "Jl. Jenderal Sudirman Kav. 5-6, Jakarta Pusat, DKI Jakarta 10220",
-                    latitude = -6.2088,
-                    longitude = 106.8456,
-                    score = 4.8,
-                    label = "Excellent",
+                    coordinate = GeoCoordinate(-6.2088, 106.8456),
                     category = "Premium Co-Working",
-                    distance = 0.5
+                    suitabilityScore = 0.96,
+                    suitabilityLabel = "Sangat sesuai",
+                    distanceMeters = com.example.infinite_track.domain.model.location.DistanceMeters(500.0),
+                    stableKey = WfaRecommendation.stableKeyFor("WeWork Menara Astra", -6.2088, 106.8456)
                 ),
                 onClick = { }
             )

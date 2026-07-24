@@ -23,7 +23,6 @@ import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
@@ -43,8 +42,10 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -57,8 +58,12 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.infinite_track.domain.model.attendance.WorkMode
+import com.example.infinite_track.R
+import com.example.infinite_track.domain.model.attendance.TargetLocationId
+import com.example.infinite_track.domain.model.attendance.TargetLocationResolution
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.presentation.components.button.attendance.AttendanceBottomSheetContent
+import com.example.infinite_track.presentation.components.button.attendance.AttendancePreparationEvent
 import com.example.infinite_track.presentation.components.empty.ErrorAnimation
 import com.example.infinite_track.presentation.components.loading.LoadingAnimation
 import com.example.infinite_track.presentation.components.maps.MarkerView
@@ -68,6 +73,7 @@ import com.example.infinite_track.utils.LocationPermissionHelper
 import com.example.infinite_track.presentation.components.maps.MarkerViewWfa
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarHost
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarVisuals
+import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarTimeout
 import com.example.infinite_track.presentation.design.components.status.InfiniteInlineAlert
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.navigation.Screen
@@ -77,6 +83,12 @@ import com.example.infinite_track.presentation.map.model.AttendanceMapEvent
 import com.example.infinite_track.presentation.map.model.MapCameraEffect
 import com.example.infinite_track.presentation.map.model.MapMarkerRole
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
+import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
+import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationPrimaryAction
+import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationUiMapper
+import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationTextResolver
+import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePrimaryActionUiCombiner
+import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryState
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionPanelHost
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessEvent
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessViewModel
@@ -91,6 +103,15 @@ fun AttendanceScreen(
     permissionViewModel: AttendancePermissionReadinessViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val attendanceLocale = LocalConfiguration.current.locales[0]
+    val attendanceStrings = remember(context, attendanceLocale) {
+        object : AttendancePreparationTextResolver {
+            override val locale = attendanceLocale
+
+            override fun text(resourceId: Int, vararg formatArgs: Any): String =
+                context.getString(resourceId, *formatArgs)
+        }
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     var hasPreciseLocationPermission by remember(context) {
         mutableStateOf(context.hasPreciseLocationPermission())
@@ -110,9 +131,14 @@ fun AttendanceScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val permissionUiState by permissionViewModel.uiState.collectAsStateWithLifecycle()
     var cameraEffect by remember { mutableStateOf<MapCameraEffect?>(null) }
+    var selectedTargetMarkerId by remember { mutableStateOf<TargetLocationId?>(null) }
     var showPermissionPanel by rememberSaveable { mutableStateOf(false) }
     var initialPermissionCheckHandled by rememberSaveable { mutableStateOf(false) }
     val locationPermissionHelper = LocalLocationPermissionHelper.current
+
+    LaunchedEffect(uiState.preparation.selectedMode) {
+        selectedTargetMarkerId = null
+    }
 
     LaunchedEffect(
         permissionUiState.isLoading,
@@ -161,12 +187,7 @@ fun AttendanceScreen(
     LaunchedEffect(viewModel) {
         viewModel.transientFeedback.collect { feedback ->
             val result = scaffoldState.snackbarHostState.showSnackbar(
-                InfiniteSnackbarVisuals(
-                    message = feedback.message,
-                    semantic = feedback.semantic,
-                    actionLabel = feedback.actionLabel,
-                    duration = feedback.duration.toMaterialDuration()
-                )
+                feedback.toInfiniteSnackbarVisuals()
             )
             if (
                 result == SnackbarResult.ActionPerformed &&
@@ -266,6 +287,23 @@ fun AttendanceScreen(
         }
 
         is UiState.Success -> {
+            val preparation = uiState.preparation
+            val preparationUiModel = AttendancePrimaryActionUiCombiner.combine(
+                preparation = AttendancePreparationUiMapper.map(
+                    preparation = preparation,
+                    strings = attendanceStrings
+                ),
+                actionState = uiState.actionState
+            )
+            val discovery = preparation.wfaDiscovery as? WfaDiscoveryState.Content
+            val selectedWfaMarker = discovery?.recommendations?.firstOrNull {
+                it.stableKey == discovery.selectedKey
+            }
+            val selectedTargetMarker = AttendanceSelectionTransition.resolvedTargetForInteraction(
+                preparation = preparation,
+                selectedTargetId = selectedTargetMarkerId
+            )
+
             // Tampilkan konten utama dengan BottomSheet
             BottomSheetScaffold(
                 scaffoldState = scaffoldState,
@@ -346,20 +384,47 @@ fun AttendanceScreen(
                             }
 
                             AttendanceBottomSheetContent(
-                                modifier = Modifier.padding(top = 0.dp),
-                                targetLocationInfo = uiState.selectedTargetLocation,
-                                currentLocationAddress = uiState.currentUserAddress.ifEmpty { "Mengambil lokasi saat ini..." },
-                                selectedWorkMode = uiState.selectedWorkMode,
-                                isBookingEnabled = uiState.selectedWorkMode == WorkMode.WFA && uiState.selectedTargetLocation?.location != null,
-                                isCheckInEnabled = uiState.isButtonEnabled,
-                                checkInButtonText = uiState.buttonText,
-                                actionState = uiState.actionState,
-                                onSearchLocationClick = {
-                                    navController.navigate("location_search")
+                                model = preparationUiModel,
+                                onEvent = { event ->
+                                    when (event) {
+                                        is AttendancePreparationEvent.ModeSelected ->
+                                            viewModel.onWorkModeSelected(event.mode)
+                                        is AttendancePreparationEvent.RecommendationSelected ->
+                                            discovery
+                                                ?.recommendations
+                                                ?.firstOrNull { it.stableKey == event.stableKey }
+                                                ?.let(viewModel::onWfaMarkerClicked)
+                                        AttendancePreparationEvent.SearchWfaLocation ->
+                                            navController.navigate(Screen.LocationSearch.route)
+                                        AttendancePreparationEvent.PickWfaLocationOnMap ->
+                                            viewModel.onMapPickRequested()
+                                        is AttendancePreparationEvent.PrimaryActionClicked -> {
+                                            when (event.action) {
+                                                AttendancePreparationPrimaryAction.WAIT -> Unit
+                                                AttendancePreparationPrimaryAction.CONTINUE_TO_FACE_VERIFICATION,
+                                                AttendancePreparationPrimaryAction.SUBMIT_ATTENDANCE ->
+                                                    viewModel.onAttendanceButtonClicked()
+                                                AttendancePreparationPrimaryAction.REFRESH_STATUS ->
+                                                    viewModel.onAttendanceStatusRefreshRequested()
+                                                AttendancePreparationPrimaryAction.REFRESH_PROFILE ->
+                                                    viewModel.onAttendanceProfileRefreshRequested()
+                                                AttendancePreparationPrimaryAction.RETRY_WFA_DISCOVERY ->
+                                                    viewModel.onWfaDiscoveryRetryRequested()
+                                                AttendancePreparationPrimaryAction.REFRESH_LOCATION ->
+                                                    viewModel.onFocusLocationClicked()
+                                                AttendancePreparationPrimaryAction.FOCUS_TARGET ->
+                                                    viewModel.onMapReady()
+                                                AttendancePreparationPrimaryAction.OPEN_WFA_BOOKING ->
+                                                    viewModel.onBookingClicked()
+                                                AttendancePreparationPrimaryAction.OPEN_WFA_REQUESTS ->
+                                                    navController.navigate(Screen.Wfa.route)
+                                                AttendancePreparationPrimaryAction.CONTACT_ADMIN ->
+                                                    navController.navigate(Screen.ContactUs.route)
+                                            }
+                                        }
+                                    }
                                 },
-                                onModeSelected = { mode -> viewModel.onWorkModeSelected(mode) },
-                                onBookingClick = { viewModel.onBookingClicked() },
-                                onCheckInClick = { viewModel.onAttendanceButtonClicked() }
+                                modifier = Modifier.padding(top = 0.dp)
                             )
                         }
                     }
@@ -376,8 +441,8 @@ fun AttendanceScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     val mapUiState = AttendanceMapUiMapper.map(
-                        state = uiState,
-                        hasPreciseLocationPermission = hasPreciseLocationPermission
+                        uiState.preparation,
+                        hasPreciseLocationPermission
                     )
 
                     AttendanceMap(
@@ -393,17 +458,28 @@ fun AttendanceScreen(
                         onEvent = { event ->
                             when (event) {
                                 AttendanceMapEvent.Ready -> viewModel.onMapReady()
-                                is AttendanceMapEvent.CameraIdle -> viewModel.onMapIdle(event.center)
+                                is AttendanceMapEvent.CameraIdle -> viewModel.onMapIdle(
+                                    centerPoint = event.center,
+                                    origin = event.origin
+                                )
                                 is AttendanceMapEvent.MarkerClicked -> {
                                     when (event.marker.role) {
-                                        MapMarkerRole.CURRENT_USER -> Unit
-                                        MapMarkerRole.WFO -> uiState.wfoLocation?.let(viewModel::onMarkerClicked)
-                                        MapMarkerRole.WFH -> uiState.wfhLocation?.let(viewModel::onMarkerClicked)
-                                        MapMarkerRole.WFA_RECOMMENDATION -> uiState.wfaRecommendations
+                                        MapMarkerRole.CURRENT_LOCATION -> Unit
+                                        MapMarkerRole.AUTHORITATIVE_TARGET ->
+                                            (uiState.preparation.targetResolution
+                                                as? TargetLocationResolution.Resolved)
+                                            ?.target
+                                            ?.let { selectedTargetMarkerId = it.targetId }
+                                        MapMarkerRole.WFA_RECOMMENDATION ->
+                                            (uiState.preparation.wfaDiscovery
+                                                as? WfaDiscoveryState.Content)
+                                            ?.recommendations
+                                            .orEmpty()
                                             .firstOrNull {
                                                 AttendanceMapUiMapper.recommendationMarkerId(it) == event.marker.id
                                             }
                                             ?.let(viewModel::onWfaMarkerClicked)
+                                        MapMarkerRole.SEARCH_PREVIEW -> Unit
                                     }
                                 }
                             }
@@ -423,18 +499,20 @@ fun AttendanceScreen(
 
                     // Pick on Map Crosshair - shows static pin in center when Pick on Map mode is active
                     AnimatedVisibility(
-                        visible = uiState.isPickOnMapModeActive,
+                        visible = AttendanceSelectionTransition.isMapPickEnabled(preparation),
                         modifier = Modifier.align(Alignment.Center)
                     ) {
                         Icon(
                             imageVector = Icons.Default.LocationOn,
-                            contentDescription = "Pick Location",
+                            contentDescription = stringResource(
+                                R.string.attendance_map_pick_location
+                            ),
                             tint = Color.Red,
                             modifier = Modifier.size(32.dp)
                         )
                     }
 
-                    uiState.selectedMarkerInfo?.let { selectedMarker ->
+                    selectedTargetMarker?.let { selectedMarker ->
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -442,17 +520,23 @@ fun AttendanceScreen(
                             contentAlignment = Alignment.TopCenter
                         ) {
                             MarkerView(
-                                title = selectedMarker.description,
-                                description = "Kategori: ${selectedMarker.category}",
-                                radius = "${selectedMarker.radius} meter",
-                                coordinates = "${selectedMarker.latitude}, ${selectedMarker.longitude}",
-                                onClose = { viewModel.onDismissMarkerInfo() }
+                                title = selectedMarker.displayName,
+                                description = stringResource(
+                                    R.string.attendance_marker_category,
+                                    selectedMarker.mode.shortLabel
+                                ),
+                                radius = stringResource(
+                                    R.string.attendance_marker_radius,
+                                    selectedMarker.radius.value.toInt()
+                                ),
+                                coordinates = "${selectedMarker.coordinate.latitude}, ${selectedMarker.coordinate.longitude}",
+                                onClose = { selectedTargetMarkerId = null }
                             )
                         }
                     }
 
                     // Display WFA marker details when clicked
-                    uiState.selectedWfaMarkerInfo?.let { selectedWfaMarker ->
+                    selectedWfaMarker?.let {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -460,14 +544,14 @@ fun AttendanceScreen(
                             contentAlignment = Alignment.TopCenter
                         ) {
                             MarkerViewWfa(
-                                recommendation = selectedWfaMarker,
+                                recommendation = it,
                                 onClick = { viewModel.onDismissWfaMarkerInfo() }
                             )
                         }
                     }
 
                     // Loading overlay for WFA recommendations
-                    if (uiState.isLoadingWfaRecommendations) {
+                    if (preparation.wfaDiscovery is WfaDiscoveryState.Loading) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -537,10 +621,19 @@ fun AttendanceScreen(
     )
 }
 
-private fun AttendanceTransientFeedbackDuration.toMaterialDuration(): SnackbarDuration = when (this) {
-    AttendanceTransientFeedbackDuration.SHORT -> SnackbarDuration.Short
-    AttendanceTransientFeedbackDuration.LONG -> SnackbarDuration.Long
+internal fun AttendanceTransientFeedbackDuration.toInfiniteSnackbarTimeout():
+    InfiniteSnackbarTimeout = when (this) {
+    AttendanceTransientFeedbackDuration.SHORT -> InfiniteSnackbarTimeout.SHORT
+    AttendanceTransientFeedbackDuration.LONG -> InfiniteSnackbarTimeout.LONG
 }
+
+internal fun AttendanceTransientFeedback.toInfiniteSnackbarVisuals() =
+    InfiniteSnackbarVisuals(
+        message = message,
+        semantic = semantic,
+        actionLabel = actionLabel,
+        autoDismissTimeoutMillis = duration.toInfiniteSnackbarTimeout().baseMillis
+    )
 
 @Preview(showBackground = true)
 @Composable
@@ -573,10 +666,10 @@ internal fun AttendancePermissionRevocationRecovery(
     modifier: Modifier = Modifier
 ) {
     InfiniteInlineAlert(
-        title = "Lokasi presisi tidak tersedia",
-        message = "Akses lokasi berubah saat Attendance dibuka. Pulihkan dari panel akses untuk melanjutkan.",
+        title = stringResource(R.string.attendance_permission_revoked_title),
+        message = stringResource(R.string.attendance_permission_revoked_message),
         semantic = InfiniteSemantic.Warning,
-        actionLabel = "Kelola akses",
+        actionLabel = stringResource(R.string.attendance_permission_manage),
         onAction = onOpenPermissionPanel,
         modifier = modifier
     )

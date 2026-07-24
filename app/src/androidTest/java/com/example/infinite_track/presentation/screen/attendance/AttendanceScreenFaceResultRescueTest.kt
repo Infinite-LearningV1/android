@@ -20,8 +20,11 @@ import com.example.infinite_track.domain.model.attendance.ActiveAttendanceSessio
 import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
 import com.example.infinite_track.domain.model.attendance.CheckinWindow
 import com.example.infinite_track.domain.model.attendance.Location
+import com.example.infinite_track.domain.model.attendance.TargetLocationResolution
 import com.example.infinite_track.domain.model.attendance.TodayStatus
+import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.auth.UserModel
+import com.example.infinite_track.domain.model.booking.BookingHistoryItem
 import com.example.infinite_track.domain.model.booking.BookingHistoryPage
 import com.example.infinite_track.domain.model.location.CurrentLocation
 import com.example.infinite_track.domain.model.location.CurrentLocationResult
@@ -39,24 +42,32 @@ import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.repository.WfaRepository
 import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
 import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
-import com.example.infinite_track.domain.use_case.attendance.EvaluateWorkModeEligibilityUseCase
+import com.example.infinite_track.domain.use_case.attendance.EvaluateAttendancePreparationUseCase
+import com.example.infinite_track.domain.use_case.attendance.EvaluateTargetRangeUseCase
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
-import com.example.infinite_track.domain.use_case.attendance.ResolveSelectedTargetLocationUseCase
+import com.example.infinite_track.domain.use_case.attendance.ResolveAuthoritativeTargetLocationUseCase
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
-import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingIdUseCase
+import com.example.infinite_track.domain.use_case.auth.RefreshAttendanceProfileUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingUseCase
+import com.example.infinite_track.domain.use_case.booking.ResolveTodayWfaBookingStateUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentLocationUseCase
 import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
 import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.example.infinite_track.presentation.navigation.Screen
+import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -279,6 +290,52 @@ class AttendanceScreenFaceResultRescueTest {
         }
     }
 
+    @Test
+    fun attendanceScreen_projectsResolvedTargetFromPreparation() {
+        val viewModel = createAttendanceViewModel()
+
+        setAttendanceContent(viewModel)
+
+        composeRule.onNodeWithText("Test office").assertIsDisplayed()
+    }
+
+    @Test
+    fun attendanceViewModel_keepsWfoSelectedWhenLateWfaResolutionCompletes() {
+        val controllableResolver = ControllableFakeWfaBookingResolver()
+        val viewModel = createAttendanceViewModel(
+            wfaBookingResolver = controllableResolver
+        )
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            viewModel.uiState.value.preparation.isResolvedFor(WorkMode.WFO)
+        }
+
+        composeRule.runOnIdle {
+            viewModel.onWorkModeSelected(WorkMode.WFA)
+        }
+        runBlocking { controllableResolver.awaitRequestStarted() }
+
+        composeRule.runOnIdle {
+            viewModel.onWorkModeSelected(WorkMode.WFO)
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            viewModel.uiState.value.preparation.isResolvedFor(WorkMode.WFO)
+        }
+
+        controllableResolver.completeApprovedWfa()
+        runBlocking { controllableResolver.awaitRequestCompleted() }
+        composeRule.waitForIdle()
+
+        val preparation = viewModel.uiState.value.preparation
+        assertEquals(WorkMode.WFO, preparation.selectedMode)
+        assertTrue(preparation.isResolvedFor(WorkMode.WFO))
+    }
+
+    private fun AttendancePreparationState.isResolvedFor(mode: WorkMode): Boolean {
+        val target = (targetResolution as? TargetLocationResolution.Resolved)?.target
+        return selectedMode == mode && target?.mode == mode
+    }
+
     private fun setAttendanceContent(viewModel: AttendanceViewModel): NavHostController {
         lateinit var navController: NavHostController
 
@@ -318,7 +375,8 @@ class AttendanceScreenFaceResultRescueTest {
     }
 
     private fun createAttendanceViewModel(
-        attendanceRepository: FakeAttendanceRepository = FakeAttendanceRepository()
+        attendanceRepository: FakeAttendanceRepository = FakeAttendanceRepository(),
+        wfaBookingResolver: BookingRepository = FakeBookingRepository()
     ): AttendanceViewModel {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val attendancePreference = AttendancePreference(context)
@@ -339,16 +397,18 @@ class AttendanceScreenFaceResultRescueTest {
             attendancePreference = attendancePreference,
             geofenceManager = geofenceManager,
             getLoggedInUserUseCase = GetLoggedInUserUseCase(FakeAuthRepository()),
-            resolveTodayApprovedWfaBookingIdUseCase = ResolveTodayApprovedWfaBookingIdUseCase(
-                bookingRepository
+            refreshAttendanceProfileUseCase = RefreshAttendanceProfileUseCase(
+                FakeAuthRepository()
             ),
             resolveTodayApprovedWfaBookingUseCase = ResolveTodayApprovedWfaBookingUseCase(
                 bookingRepository
             ),
-            resolveSelectedTargetLocationUseCase = ResolveSelectedTargetLocationUseCase(),
-            evaluateWorkModeEligibilityUseCase = EvaluateWorkModeEligibilityUseCase(
-                ResolveTodayApprovedWfaBookingIdUseCase(bookingRepository)
+            resolveTodayWfaBookingStateUseCase = ResolveTodayWfaBookingStateUseCase(
+                wfaBookingResolver
             ),
+            resolveAuthoritativeTargetLocationUseCase = ResolveAuthoritativeTargetLocationUseCase(),
+            evaluateTargetRangeUseCase = EvaluateTargetRangeUseCase(),
+            evaluateAttendancePreparationUseCase = EvaluateAttendancePreparationUseCase(),
             checkInUseCase = CheckInUseCase(
                 attendanceRepository = attendanceRepository,
                 getCurrentLocationUseCase = getCurrentLocationUseCase,
@@ -455,6 +515,62 @@ class AttendanceScreenFaceResultRescueTest {
         ): Result<Unit> = Result.success(Unit)
     }
 
+    private class ControllableFakeWfaBookingResolver : BookingRepository {
+        private val requestStarted = CompletableDeferred<Unit>()
+        private val response = CompletableDeferred<Result<BookingHistoryPage>>()
+        private val requestCompleted = CompletableDeferred<Unit>()
+
+        suspend fun awaitRequestStarted() = requestStarted.await()
+
+        suspend fun awaitRequestCompleted() = requestCompleted.await()
+
+        fun completeApprovedWfa() {
+            response.complete(
+                Result.success(
+                    BookingHistoryPage(
+                        bookings = listOf(
+                            BookingHistoryItem(
+                                id = "88",
+                                locationDescription = "Late WFA target",
+                                scheduleDate = "2026-04-30",
+                                scheduleDateRaw = "2026-04-30",
+                                status = "Approved",
+                                statusRaw = "approved",
+                                statusKey = "approved",
+                                notes = "",
+                                suitabilityLabel = "Sesuai",
+                                bookingId = 88,
+                                latitude = -6.21,
+                                longitude = 106.81,
+                                radiusMeters = 100f
+                            )
+                        )
+                    )
+                )
+            )
+        }
+
+        override suspend fun getBookingHistory(
+            status: String?,
+            page: Int,
+            limit: Int,
+            sortBy: String,
+            sortOrder: String
+        ): Result<BookingHistoryPage> = withContext(NonCancellable) {
+            requestStarted.complete(Unit)
+            response.await().also { requestCompleted.complete(Unit) }
+        }
+
+        override suspend fun submitBooking(
+            scheduleDate: String,
+            latitude: Double,
+            longitude: Double,
+            radius: Int,
+            description: String,
+            notes: String
+        ): Result<Unit> = Result.success(Unit)
+    }
+
     private class FakeAddressResolver : AddressResolver {
         override suspend fun resolve(coordinate: GeoCoordinate): AddressResolutionResult {
             return AddressResolutionResult.Resolved(
@@ -473,7 +589,7 @@ class AttendanceScreenFaceResultRescueTest {
                 CurrentLocation(
                     coordinate = GeoCoordinate(-6.2, 106.8),
                     accuracy = null,
-                    capturedAtEpochMillis = 0L,
+                    capturedAtEpochMillis = System.currentTimeMillis(),
                     provider = "test",
                     isMock = true
                 )

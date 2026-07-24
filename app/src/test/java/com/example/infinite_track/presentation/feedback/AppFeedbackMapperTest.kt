@@ -1,0 +1,71 @@
+package com.example.infinite_track.presentation.feedback
+
+import com.example.infinite_track.R
+import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
+import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarTimeout
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeoutOrNull
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Test
+
+class AppFeedbackMapperTest {
+
+    @Test
+    fun `events map to stable resource ids and semantic duration policy`() {
+        val expectations = listOf(
+            ExpectedFeedback(
+                event = AppFeedbackEvent.LOGIN_SUCCESS,
+                titleRes = R.string.app_feedback_login_success_title,
+                messageRes = R.string.app_feedback_login_success_message,
+                semantic = InfiniteSemantic.Success,
+                timeout = InfiniteSnackbarTimeout.SHORT
+            ),
+            ExpectedFeedback(
+                event = AppFeedbackEvent.LOGOUT_SUCCESS,
+                titleRes = R.string.app_feedback_logout_success_title,
+                messageRes = R.string.app_feedback_logout_success_message,
+                semantic = InfiniteSemantic.Success,
+                timeout = InfiniteSnackbarTimeout.SHORT
+            ),
+            ExpectedFeedback(
+                event = AppFeedbackEvent.LOGOUT_REMOTE_WARNING,
+                titleRes = R.string.app_feedback_logout_remote_warning_title,
+                messageRes = R.string.app_feedback_logout_remote_warning_message,
+                semantic = InfiniteSemantic.Warning,
+                timeout = InfiniteSnackbarTimeout.LONG
+            )
+        )
+
+        expectations.forEach { expected ->
+            val resource = expected.event.toResourceModel()
+
+            assertEquals(expected.titleRes, resource.titleRes)
+            assertEquals(expected.messageRes, resource.messageRes)
+            assertEquals(expected.semantic, resource.semantic)
+            assertEquals(expected.timeout, resource.timeout)
+        }
+    }
+
+    @Test
+    fun `controller does not replay an event to a later collector`() = runTest {
+        val controller = AppFeedbackController()
+
+        controller.emit(AppFeedbackEvent.LOGIN_SUCCESS)
+        val replayed = async {
+            withTimeoutOrNull(1) { controller.events.first() }
+        }
+
+        assertNull(replayed.await())
+    }
+
+    private data class ExpectedFeedback(
+        val event: AppFeedbackEvent,
+        val titleRes: Int,
+        val messageRes: Int,
+        val semantic: InfiniteSemantic,
+        val timeout: InfiniteSnackbarTimeout
+    )
+}

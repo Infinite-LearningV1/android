@@ -1,44 +1,34 @@
 package com.example.infinite_track.domain.model.wfa
 
+import com.example.infinite_track.domain.model.location.DistanceMeters
 import com.example.infinite_track.domain.model.location.GeoCoordinate
+import java.util.Locale
 
 /**
  * Domain models for WFA (Work From Anywhere) recommendations
  * These are clean models used by the UI layer
  */
 data class WfaRecommendation(
+    val stableKey: String,
     val name: String,
     val address: String,
     val coordinate: GeoCoordinate,
-    val score: Double,
-    val label: String,
     val category: String,
-    val distance: Double
+    val suitabilityScore: Double,
+    val suitabilityLabel: String,
+    val distanceMeters: DistanceMeters
 ) {
-    constructor(
-        name: String,
-        address: String,
-        latitude: Double,
-        longitude: Double,
-        score: Double,
-        label: String,
-        category: String,
-        distance: Double
-    ) : this(
-        name = name,
-        address = address,
-        coordinate = GeoCoordinate(latitude, longitude),
-        score = score,
-        label = label,
-        category = category,
-        distance = distance
-    )
 
     val latitude: Double
         get() = coordinate.latitude
 
     val longitude: Double
         get() = coordinate.longitude
+
+    companion object {
+        fun stableKeyFor(name: String, latitude: Double, longitude: Double): String =
+            "${name.trim().lowercase(Locale.ROOT)}@${String.format(Locale.US, "%.6f,%.6f", latitude, longitude)}"
+    }
 }
 
 /**

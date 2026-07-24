@@ -157,6 +157,11 @@
     <string name="account_hub_about_title">Tentang Infinite Track</string>
     <string name="account_hub_about_description">Informasi aplikasi dan perusahaan</string>
     <string name="account_hub_logout_description">Keluar dengan aman dari akun ini</string>
+    <string name="profile_logout_confirmation_title">Keluar</string>
+    <string name="profile_logout_confirmation_message">Apakah Anda yakin ingin keluar?</string>
+    <string name="profile_logout_cleanup_failure_title">Proses keluar belum selesai</string>
+    <string name="profile_logout_cleanup_failure_message">Data akun lokal belum dapat dihapus. Coba lagi untuk keluar dengan aman.</string>
+    <string name="profile_logout_retry">Coba lagi</string>
     <string name="account_hub_not_available">Tidak tersedia</string>
     <string name="account_hub_identifier">NIP/NIM %1$s</string>
     <string name="edit_profile_title">Ubah Profil</string>

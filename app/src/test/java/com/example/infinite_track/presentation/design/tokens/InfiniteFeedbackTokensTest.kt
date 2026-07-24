@@ -5,7 +5,7 @@ import com.example.infinite_track.presentation.core.body1
 import com.example.infinite_track.presentation.core.body2
 import com.example.infinite_track.presentation.core.body2_5
 import com.example.infinite_track.presentation.core.headline3
-import com.example.infinite_track.presentation.core.headline4
+import androidx.compose.ui.text.font.FontWeight
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -25,13 +25,13 @@ class InfiniteFeedbackTokensTest {
     }
 
     @Test
-    fun `feedback typography reuses the registered project type scale`() {
+    fun `inline and snackbar title tokens use body1 metrics with bold weight`() {
         val typography = InfiniteFeedbackTypography
 
-        assertEquals(body1, typography.inlineTitle)
+        assertEquals(body1.copy(fontWeight = FontWeight.Bold), typography.inlineTitle)
         assertEquals(body2, typography.inlineBody)
         assertEquals(body1, typography.snackbarMessage)
-        assertEquals(headline4, typography.snackbarTitle)
+        assertEquals(body1.copy(fontWeight = FontWeight.Bold), typography.snackbarTitle)
         assertEquals(body2, typography.supportingBody)
         assertEquals(body2_5, typography.pillLabel)
         assertEquals(body2, typography.actionLabel)

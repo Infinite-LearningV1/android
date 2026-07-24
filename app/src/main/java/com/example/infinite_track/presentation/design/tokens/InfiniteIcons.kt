@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.BusinessCenter
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Description
@@ -13,8 +14,11 @@ import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.LocalCafe
+import androidx.compose.material.icons.outlined.LocalLibrary
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Park
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Share
@@ -42,6 +46,10 @@ object InfiniteIcons {
     val Share = Icons.Outlined.Share
     val Person = Icons.Outlined.Person
     val Work = Icons.Outlined.WorkOutline
+    val Cafe = Icons.Outlined.LocalCafe
+    val Coworking = Icons.Outlined.BusinessCenter
+    val Library = Icons.Outlined.LocalLibrary
+    val Park = Icons.Outlined.Park
     val Shield = Icons.Outlined.VerifiedUser
     val Wallet = Icons.Outlined.AccountBalanceWallet
     val Folder = Icons.Outlined.Folder

@@ -4,9 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
+import com.example.infinite_track.domain.use_case.auth.LogoutOutcome
 import com.example.infinite_track.domain.use_case.auth.LogoutUseCase
 import com.example.infinite_track.domain.use_case.language.GetSelectedLanguageUseCase
 import com.example.infinite_track.domain.use_case.language.SetSelectedLanguageUseCase
+import com.example.infinite_track.presentation.feedback.AppFeedbackEmitter
+import com.example.infinite_track.presentation.feedback.AppFeedbackEvent
 import com.example.infinite_track.utils.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,7 +25,8 @@ class ProfileViewModel @Inject constructor(
     private val getLoggedInUserUseCase: GetLoggedInUserUseCase,
     private val logoutUseCase: LogoutUseCase,
     private val getSelectedLanguageUseCase: GetSelectedLanguageUseCase,
-    private val setSelectedLanguageUseCase: SetSelectedLanguageUseCase
+    private val setSelectedLanguageUseCase: SetSelectedLanguageUseCase,
+    private val appFeedbackEmitter: AppFeedbackEmitter
 ) : ViewModel() {
 
     // Profile state
@@ -33,25 +37,15 @@ class ProfileViewModel @Inject constructor(
     private val _languageState = MutableStateFlow("en")
     val languageState: StateFlow<String> = _languageState.asStateFlow()
 
-    // Dialog states
-    private val _showLogoutDialog = MutableStateFlow(false)
-    val showLogoutDialog: StateFlow<Boolean> = _showLogoutDialog.asStateFlow()
-
     // Language dialog state
     private val _showLanguageDialog = MutableStateFlow(false)
     val showLanguageDialog: StateFlow<Boolean> = _showLanguageDialog.asStateFlow()
 
-    // Navigation state
-    private val _navigateToLogin = MutableStateFlow(false)
-    val navigateToLogin: StateFlow<Boolean> = _navigateToLogin.asStateFlow()
+    private val _uiState = MutableStateFlow<ProfileLogoutUiState>(ProfileLogoutUiState.Idle)
+    val uiState: StateFlow<ProfileLogoutUiState> = _uiState.asStateFlow()
 
-    // Loading state for logout
-    private val _isLoggingOut = MutableStateFlow(false)
-    val isLoggingOut: StateFlow<Boolean> = _isLoggingOut.asStateFlow()
-
-    // Logout result state
-    private val _logoutState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
-    val logoutState: StateFlow<UiState<Unit>> = _logoutState.asStateFlow()
+    private val _effects = MutableStateFlow<ProfileEffect?>(null)
+    val effects: StateFlow<ProfileEffect?> = _effects.asStateFlow()
 
     init {
         loadUserProfile()
@@ -108,31 +102,49 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    fun onConfirmLogout() {
-        viewModelScope.launch {
-            _isLoggingOut.value = true
-            _showLogoutDialog.value = false
-            _logoutState.value = UiState.Loading
+    fun confirmLogout() {
+        if (_uiState.value == ProfileLogoutUiState.Submitting) return
+        _uiState.value = ProfileLogoutUiState.Submitting
 
-            logoutUseCase()
-                .onSuccess {
-                    _isLoggingOut.value = false
-                    _logoutState.value = UiState.Success(Unit)
-                    _navigateToLogin.value = true
+        viewModelScope.launch {
+            when (val outcome = logoutUseCase()) {
+                LogoutOutcome.Success -> completeLogout(AppFeedbackEvent.LOGOUT_SUCCESS)
+                LogoutOutcome.SuccessWithRemoteWarning -> {
+                    completeLogout(AppFeedbackEvent.LOGOUT_REMOTE_WARNING)
                 }
-                .onFailure { exception ->
-                    // Keep navigation behavior, but expose state so UI can render
-                    // a consistent status-state surface instead of falling back to Toast.
-                    _isLoggingOut.value = false
-                    _logoutState.value = UiState.Error(
-                        exception.message ?: "Logout selesai dengan masalah jaringan. Silakan login kembali."
-                    )
-                    _navigateToLogin.value = true
+
+                is LogoutOutcome.LocalCleanupFailed -> {
+                    _uiState.value = ProfileLogoutUiState.LocalCleanupFailure(outcome.cause)
                 }
+            }
         }
     }
 
-    fun resetLogoutState() {
-        _logoutState.value = UiState.Idle
+    fun retryLogout() {
+        if (_uiState.value is ProfileLogoutUiState.LocalCleanupFailure) {
+            confirmLogout()
+        }
     }
+
+    fun consumeEffect(expectedEffect: ProfileEffect) {
+        if (_effects.value == expectedEffect) {
+            _effects.value = null
+        }
+    }
+
+    private fun completeLogout(feedbackEvent: AppFeedbackEvent) {
+        _uiState.value = ProfileLogoutUiState.Idle
+        appFeedbackEmitter.emit(feedbackEvent)
+        _effects.value = ProfileEffect.NavigateToLogin
+    }
+}
+
+sealed interface ProfileEffect {
+    data object NavigateToLogin : ProfileEffect
+}
+
+sealed interface ProfileLogoutUiState {
+    data object Idle : ProfileLogoutUiState
+    data object Submitting : ProfileLogoutUiState
+    data class LocalCleanupFailure(val cause: Throwable) : ProfileLogoutUiState
 }

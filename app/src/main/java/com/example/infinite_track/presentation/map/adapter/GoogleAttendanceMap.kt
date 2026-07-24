@@ -18,11 +18,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.presentation.map.model.AttendanceMapEvent
+import com.example.infinite_track.presentation.map.model.AttendanceMapCameraMoveOrigin
 import com.example.infinite_track.presentation.map.model.MapCameraEffect
 import com.example.infinite_track.presentation.map.model.MapMarkerRole
 import com.example.infinite_track.presentation.map.model.MapUiState
@@ -31,6 +34,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.maps.android.compose.Circle
+import com.google.maps.android.compose.CameraMoveStartedReason
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
@@ -39,7 +43,6 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
 
 @Composable
 internal fun GoogleAttendanceMap(
@@ -59,7 +62,7 @@ internal fun GoogleAttendanceMap(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Lokasi presisi belum siap",
+                text = stringResource(R.string.attendance_map_precise_location_unavailable),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(24.dp)
@@ -132,13 +135,24 @@ internal fun GoogleAttendanceMap(
 
     LaunchedEffect(cameraPositionState, mapLoaded) {
         if (!mapLoaded) return@LaunchedEffect
-        snapshotFlow { cameraPositionState.isMoving }
+        val movementOriginTracker = AttendanceMapCameraMovementOriginTracker()
+        snapshotFlow {
+            CameraMovementSnapshot(
+                isMoving = cameraPositionState.isMoving,
+                origin = cameraPositionState.cameraMoveStartedReason
+                    .toAttendanceMapCameraMoveOrigin()
+            )
+        }
             .distinctUntilChanged()
-            .filter { isMoving -> !isMoving }
-            .collect {
+            .collect { movement ->
+                val terminalOrigin = movementOriginTracker.onMovementChanged(
+                    isMoving = movement.isMoving,
+                    startedOrigin = movement.origin
+                ) ?: return@collect
                 currentOnEvent(
                     AttendanceMapEvent.CameraIdle(
-                        cameraPositionState.position.target.toGeoCoordinate()
+                        center = cameraPositionState.position.target.toGeoCoordinate(),
+                        origin = terminalOrigin
                     )
                 )
             }
@@ -180,9 +194,9 @@ internal fun GoogleAttendanceMap(
                 BitmapDescriptorFactory.defaultMarker(
                     when {
                         marker.isSelected -> BitmapDescriptorFactory.HUE_AZURE
-                        marker.role == MapMarkerRole.CURRENT_USER -> BitmapDescriptorFactory.HUE_CYAN
+                        marker.role == MapMarkerRole.CURRENT_LOCATION -> BitmapDescriptorFactory.HUE_CYAN
                         marker.role == MapMarkerRole.WFA_RECOMMENDATION -> BitmapDescriptorFactory.HUE_VIOLET
-                        marker.role == MapMarkerRole.WFH -> BitmapDescriptorFactory.HUE_GREEN
+                        marker.role == MapMarkerRole.SEARCH_PREVIEW -> BitmapDescriptorFactory.HUE_ORANGE
                         else -> BitmapDescriptorFactory.HUE_RED
                     }
                 )
@@ -204,3 +218,35 @@ internal fun GoogleAttendanceMap(
 private fun GeoCoordinate.toLatLng(): LatLng = LatLng(latitude, longitude)
 
 private fun LatLng.toGeoCoordinate(): GeoCoordinate = GeoCoordinate(latitude, longitude)
+
+internal fun CameraMoveStartedReason.toAttendanceMapCameraMoveOrigin():
+    AttendanceMapCameraMoveOrigin = when (this) {
+    CameraMoveStartedReason.GESTURE -> AttendanceMapCameraMoveOrigin.USER_GESTURE
+    CameraMoveStartedReason.API_ANIMATION,
+    CameraMoveStartedReason.DEVELOPER_ANIMATION ->
+        AttendanceMapCameraMoveOrigin.PROGRAMMATIC
+    CameraMoveStartedReason.NO_MOVEMENT_YET,
+    CameraMoveStartedReason.UNKNOWN -> AttendanceMapCameraMoveOrigin.UNKNOWN
+}
+
+private data class CameraMovementSnapshot(
+    val isMoving: Boolean,
+    val origin: AttendanceMapCameraMoveOrigin
+)
+
+internal class AttendanceMapCameraMovementOriginTracker {
+    private var activeOrigin = AttendanceMapCameraMoveOrigin.UNKNOWN
+
+    fun onMovementChanged(
+        isMoving: Boolean,
+        startedOrigin: AttendanceMapCameraMoveOrigin
+    ): AttendanceMapCameraMoveOrigin? {
+        if (isMoving) {
+            activeOrigin = startedOrigin
+            return null
+        }
+        return activeOrigin.also {
+            activeOrigin = AttendanceMapCameraMoveOrigin.UNKNOWN
+        }
+    }
+}

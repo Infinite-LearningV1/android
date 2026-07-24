@@ -103,6 +103,12 @@
     <string name="sign_in_prompt">Sign In to Your Account Now and Start Exploring!</string>
     <string name="hello_again">Hello Again!</string>
     <string name="log_in">Sign In</string>
+    <string name="app_feedback_login_success_title">Login successful</string>
+    <string name="app_feedback_login_success_message">Welcome back to Infinite Track.</string>
+    <string name="app_feedback_logout_success_title">Logout successful</string>
+    <string name="app_feedback_logout_success_message">You have been logged out safely.</string>
+    <string name="app_feedback_logout_remote_warning_title">Logged out on this device</string>
+    <string name="app_feedback_logout_remote_warning_message">The remote session could not be ended, but local data was cleared.</string>
 
 
     <!--  My Leave  -->
@@ -159,6 +165,11 @@
     <string name="account_hub_about_title">About Infinite Track</string>
     <string name="account_hub_about_description">App and company information</string>
     <string name="account_hub_logout_description">Securely sign out from this account</string>
+    <string name="profile_logout_confirmation_title">Log out</string>
+    <string name="profile_logout_confirmation_message">Are you sure you want to log out?</string>
+    <string name="profile_logout_cleanup_failure_title">Log out could not finish</string>
+    <string name="profile_logout_cleanup_failure_message">Local account data could not be cleared. Retry to sign out safely.</string>
+    <string name="profile_logout_retry">Retry</string>
     <string name="account_hub_not_available">Not available</string>
     <string name="account_hub_identifier">NIP/NIM %1$s</string>
     <string name="edit_profile_title">Edit Profile</string>
@@ -185,5 +196,83 @@
     <!--  TimeOff Screen  -->
     //TimeOff Screen
     <string name="time_off_requirement">Time Off - Requirement</string>
+
+    <!-- Attendance preparation (INF-238) -->
+    <string name="attendance_work_mode_heading">Choose Work Mode</string>
+    <string name="attendance_work_mode_supporting">Select how you are working today before check-in.</string>
+    <string name="attendance_work_mode_wfo">Work From Office</string>
+    <string name="attendance_work_mode_wfh">Work From Home</string>
+    <string name="attendance_work_mode_wfa">Work From Anywhere</string>
+    <string name="attendance_wfo_supporting">Assigned office location</string>
+    <string name="attendance_wfh_supporting">Home location assigned by admin</string>
+    <string name="attendance_wfa_supporting">An approved booking is required</string>
+    <string name="attendance_work_mode_selected">Selected</string>
+    <string name="attendance_wfo_evidence">Assigned office</string>
+    <string name="attendance_wfh_evidence">Assigned by admin</string>
+    <string name="attendance_wfa_evidence">Booking required</string>
+    <string name="attendance_target_heading">Target Location</string>
+    <string name="attendance_target_source_status_today">Today\'s attendance status</string>
+    <string name="attendance_target_source_admin_profile">Admin-assigned profile</string>
+    <string name="attendance_target_source_approved_wfa">Approved WFA booking</string>
+    <string name="attendance_target_booking_status_approved">Booking approved</string>
+    <string name="attendance_target_booking_date">Date %1$s</string>
+    <string name="attendance_target_radius">Radius %1$s</string>
+    <string name="attendance_target_distance">Distance %1$s</string>
+    <string name="attendance_distance_meters">%1$s m</string>
+    <string name="attendance_distance_kilometers">%1$s km</string>
+    <string name="attendance_range_inside">Inside target range</string>
+    <string name="attendance_range_outside">Outside target range</string>
+    <string name="attendance_range_unavailable">Current location is unavailable</string>
+    <string name="attendance_range_stale">Current location is out of date</string>
+    <string name="attendance_action_wait">Preparing location...</string>
+    <string name="attendance_action_continue_face">Continue to Face Verification</string>
+    <string name="attendance_action_reload">Reload</string>
+    <string name="attendance_action_refresh_location">Refresh location</string>
+    <string name="attendance_action_focus_target">Focus target location</string>
+    <string name="attendance_action_submit_wfa">Submit WFA Request</string>
+    <string name="attendance_action_view_wfa_requests">View request status</string>
+    <string name="attendance_action_contact_admin">Contact admin</string>
+    <string name="attendance_action_retry">Try again</string>
+    <string name="attendance_action_search_wfa">Search WFA location</string>
+    <string name="attendance_action_pick_on_map">Pick on map</string>
+    <string name="attendance_wfa_search_supporting">Search or pick a location for the WFA request draft.</string>
+    <string name="attendance_status_preparing">The target location is being prepared.</string>
+    <string name="attendance_status_ready">The target location is ready for attendance.</string>
+    <string name="attendance_status_recommendation_failed">WFA location recommendations could not be loaded. Try again.</string>
+    <string name="attendance_block_wfo_not_assigned">An office location has not been assigned. Reload attendance status.</string>
+    <string name="attendance_block_wfh_profile">The WFH location is unavailable from your profile. Reload or contact admin.</string>
+    <string name="attendance_block_wfa_not_requested">There is no WFA request for this attendance date.</string>
+    <string name="attendance_block_wfa_pending">The WFA request is awaiting approval.</string>
+    <string name="attendance_block_wfa_rejected">The WFA request was rejected. View request status for the next step.</string>
+    <string name="attendance_block_wfa_missing_date">WFA approval is unavailable for this attendance date.</string>
+    <string name="attendance_block_location_unavailable">Current location is unavailable. Refresh location.</string>
+    <string name="attendance_block_location_stale">Current location is out of date. Refresh location.</string>
+    <string name="attendance_block_outside_range">You are outside the target location range.</string>
+    <string name="attendance_block_status_failed">Attendance status could not be loaded. Try reloading.</string>
+    <string name="attendance_block_profile_failed">The location profile could not be loaded. Try reloading.</string>
+    <string name="attendance_block_booking_failed">WFA request status could not be loaded. View request status.</string>
+    <string name="attendance_block_target_invalid">Target location data is invalid. Contact admin.</string>
+    <string name="attendance_wfa_recommendation_heading">WFA location recommendations</string>
+    <string name="attendance_wfa_recommendation_supporting">Choose a location for the request draft, not as the attendance target.</string>
+    <string name="attendance_wfa_preview_selected">WFA location selected</string>
+    <string name="attendance_wfa_recommendation_empty">No WFA location recommendations are available.</string>
+    <string name="attendance_wfa_recommendation_failure">WFA location recommendations could not be loaded.</string>
+    <string name="attendance_wfa_recommendation_loading">Loading WFA location recommendations...</string>
+    <string name="attendance_wfa_preview_draft">Preview for WFA request</string>
+    <string name="attendance_map_precise_location_unavailable">Precise location is not ready</string>
+    <string name="attendance_map_pick_location">Pick location</string>
+    <string name="attendance_marker_category">Category: %1$s</string>
+    <string name="attendance_marker_radius">%1$d meters</string>
+    <string name="attendance_permission_revoked_title">Precise location is unavailable</string>
+    <string name="attendance_permission_revoked_message">Location access changed while Attendance was open. Restore it from the access panel to continue.</string>
+    <string name="attendance_permission_manage">Manage access</string>
+    <string name="attendance_wfa_recommendation_detail">%1$s &#8226; %2$s</string>
+    <string name="attendance_wfa_suitability">WFA score %1$d &#8226; %2$s</string>
+    <string name="attendance_wfa_suitability_success_state">WFA suitability is excellent</string>
+    <string name="attendance_wfa_suitability_warning_state">WFA suitability needs review</string>
+    <string name="attendance_wfa_suitability_error_state">WFA suitability is not recommended</string>
+    <string name="attendance_wfa_suitability_neutral_state">WFA suitability information</string>
+    <string name="attendance_pick_location_fallback">Selected coordinates</string>
+    <string name="attendance_pick_location_failed">Location details could not be loaded.</string>
 
 </resources>

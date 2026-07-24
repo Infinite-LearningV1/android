@@ -19,8 +19,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -31,6 +33,7 @@ import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
 import com.example.infinite_track.presentation.design.tokens.infiniteFeedbackPalette
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
+import kotlinx.coroutines.delay
 
 @Immutable
 data class InfiniteSnackbarVisuals(
@@ -38,17 +41,33 @@ data class InfiniteSnackbarVisuals(
     val semantic: InfiniteSemantic,
     override val actionLabel: String? = null,
     override val withDismissAction: Boolean = false,
-    override val duration: SnackbarDuration = semantic.defaultSnackbarDuration()
+    override val duration: SnackbarDuration = SnackbarDuration.Indefinite,
+    val title: String? = null,
+    val autoDismissTimeoutMillis: Long? = semantic.defaultSnackbarTimeout().baseMillis
 ) : SnackbarVisuals
 
-fun InfiniteSemantic.defaultSnackbarDuration(): SnackbarDuration = when (this) {
+enum class InfiniteSnackbarTimeout(val baseMillis: Long) {
+    SHORT(4_000L),
+    LONG(8_000L)
+}
+
+fun resolveSnackbarTimeoutMillis(
+    baseTimeoutMillis: Long,
+    recommendedTimeoutMillis: ((Long) -> Long)? = null
+): Long {
+    val recommendation = recommendedTimeoutMillis?.invoke(baseTimeoutMillis)
+        ?: baseTimeoutMillis
+    return recommendation.coerceAtLeast(baseTimeoutMillis)
+}
+
+fun InfiniteSemantic.defaultSnackbarTimeout(): InfiniteSnackbarTimeout = when (this) {
     InfiniteSemantic.Warning,
-    InfiniteSemantic.Error -> SnackbarDuration.Long
+    InfiniteSemantic.Error -> InfiniteSnackbarTimeout.LONG
     InfiniteSemantic.Success,
     InfiniteSemantic.Info,
     InfiniteSemantic.Primary,
     InfiniteSemantic.Secondary,
-    InfiniteSemantic.Neutral -> SnackbarDuration.Short
+    InfiniteSemantic.Neutral -> InfiniteSnackbarTimeout.SHORT
 }
 
 @Composable
@@ -56,7 +75,25 @@ fun InfiniteSnackbarHost(
     hostState: SnackbarHostState,
     modifier: Modifier = Modifier
 ) {
+    val accessibilityManager = LocalAccessibilityManager.current
     SnackbarHost(hostState = hostState, modifier = modifier) { data ->
+        val visuals = data.visuals as? InfiniteSnackbarVisuals
+        val baseTimeoutMillis = visuals?.autoDismissTimeoutMillis
+        LaunchedEffect(data, baseTimeoutMillis, accessibilityManager) {
+            if (baseTimeoutMillis != null) {
+                val resolvedTimeoutMillis = resolveSnackbarTimeoutMillis(baseTimeoutMillis) { base ->
+                    accessibilityManager?.calculateRecommendedTimeoutMillis(
+                        originalTimeoutMillis = base,
+                        containsIcons = false,
+                        containsText = true,
+                        containsControls = data.visuals.actionLabel != null ||
+                            data.visuals.withDismissAction
+                    ) ?: base
+                }
+                delay(resolvedTimeoutMillis)
+                data.dismiss()
+            }
+        }
         InfiniteSnackbar(data = data)
     }
 }
@@ -80,7 +117,17 @@ fun InfiniteSnackbar(
             horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.sm),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)
+            ) {
+                visuals?.title?.let { title ->
+                    Text(
+                        text = title,
+                        color = palette.content,
+                        style = InfiniteFeedbackTypography.snackbarTitle
+                    )
+                }
                 Text(
                     text = data.visuals.message,
                     color = palette.content,

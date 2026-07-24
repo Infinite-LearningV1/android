@@ -4,8 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.model.auth.ReauthReason
+import com.example.infinite_track.domain.model.auth.UserModel
 import com.example.infinite_track.domain.use_case.auth.LoginUseCase
-import com.example.infinite_track.utils.UiState
+import com.example.infinite_track.presentation.feedback.AppFeedbackEmitter
+import com.example.infinite_track.presentation.feedback.AppFeedbackEvent
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.android.components.ViewModelComponent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,13 +21,16 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val loginUseCase: LoginUseCase,
-    private val sessionManager: SessionManager
+    private val loginExecutor: LoginExecutor,
+    private val sessionManager: SessionManager,
+    private val appFeedbackEmitter: AppFeedbackEmitter
 ) : ViewModel() {
 
-    // Define login state as UiState<Unit> since we only need to track the login process status
-    private val _loginState = MutableStateFlow<UiState<Unit>>(UiState.Idle)
-    val loginState: StateFlow<UiState<Unit>> = _loginState.asStateFlow()
+    private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle)
+    val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+
+    private val _effects = MutableStateFlow<LoginEffect?>(null)
+    val effects: StateFlow<LoginEffect?> = _effects.asStateFlow()
 
     private val _reauthBannerMessage = MutableStateFlow<String?>(null)
     val reauthBannerMessage: StateFlow<String?> = _reauthBannerMessage.asStateFlow()
@@ -40,19 +49,21 @@ class LoginViewModel @Inject constructor(
      * @param password User's password
      */
     fun login(email: String, password: String) {
-        viewModelScope.launch {
-            // Set state to loading before API call
-            _loginState.value = UiState.Loading
+        if (_uiState.value == LoginUiState.Loading) return
+        _uiState.value = LoginUiState.Loading
 
-            // Call login use case
-            loginUseCase(email, password)
+        viewModelScope.launch {
+            loginExecutor.execute(email, password)
                 .onSuccess {
-                    // Login successful, update state to success
-                    _loginState.value = UiState.Success(Unit)
+                    sessionManager.onAuthenticatedSessionStarted()
+                    _uiState.value = LoginUiState.Idle
+                    appFeedbackEmitter.emit(AppFeedbackEvent.LOGIN_SUCCESS)
+                    _effects.value = LoginEffect.NavigateHome
                 }
                 .onFailure { exception ->
-                    // Login failed, update state to error with message
-                    _loginState.value = UiState.Error(exception.message ?: "Unknown error occurred")
+                    _uiState.value = LoginUiState.Failure(
+                        exception.message ?: "Unknown error occurred"
+                    )
                 }
         }
     }
@@ -62,15 +73,47 @@ class LoginViewModel @Inject constructor(
         sessionManager.resetSessionExpired()
     }
 
-    /**
-     * Reset login state to idle
-     * Call this after navigation to prevent showing dialogs again if user comes back to this screen
-     */
-    fun resetState() {
-        _loginState.value = UiState.Idle
+    fun dismissFailure(message: String) {
+        if (_uiState.value == LoginUiState.Failure(message)) {
+            _uiState.value = LoginUiState.Idle
+        }
     }
 
     private fun ReauthReason.toBannerMessage(): String {
         return toReauthUiCopy().bannerMessage
     }
+
+    fun consumeEffect(expectedEffect: LoginEffect) {
+        if (_effects.value == expectedEffect) {
+            _effects.value = null
+        }
+    }
+}
+
+sealed interface LoginEffect {
+    data object NavigateHome : LoginEffect
+}
+
+sealed interface LoginUiState {
+    data object Idle : LoginUiState
+    data object Loading : LoginUiState
+    data class Failure(val message: String) : LoginUiState
+}
+
+fun interface LoginExecutor {
+    suspend fun execute(email: String, password: String): Result<UserModel>
+}
+
+class LoginUseCaseExecutor @Inject constructor(
+    private val loginUseCase: LoginUseCase
+) : LoginExecutor {
+    override suspend fun execute(email: String, password: String): Result<UserModel> =
+        loginUseCase(email, password)
+}
+
+@Module
+@InstallIn(ViewModelComponent::class)
+abstract class LoginExecutorModule {
+    @Binds
+    abstract fun bindLoginExecutor(implementation: LoginUseCaseExecutor): LoginExecutor
 }

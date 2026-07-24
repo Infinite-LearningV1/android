@@ -1,192 +1,187 @@
 package com.example.infinite_track.presentation.components.button.attendance
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.infinite_track.domain.model.attendance.Location
-import com.example.infinite_track.domain.model.attendance.SelectedTargetLocation
-import com.example.infinite_track.domain.model.attendance.WorkMode
-import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.R
+import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
+import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
+import com.example.infinite_track.presentation.design.components.surface.InfiniteCard
+import com.example.infinite_track.presentation.design.tokens.InfiniteColors
+import com.example.infinite_track.presentation.design.tokens.InfiniteIcons
+import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
+import com.example.infinite_track.presentation.design.tokens.InfiniteSize
+import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
+import com.example.infinite_track.presentation.design.tokens.InfiniteSurfaceVariant
+import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
+import com.example.infinite_track.presentation.screen.attendance.preparation.TargetLocationSummaryUiModel
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
-/**
- * Komponen untuk menampilkan informasi lokasi dengan subtitle dan detail lengkap.
- */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun LocationInfoSection(
-    targetLocationInfo: SelectedTargetLocation?,
-    currentLocationAddress: String,
+fun TargetLocationSummary(
+    model: TargetLocationSummaryUiModel,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Target Location Section
-        targetLocationInfo?.let { targetInfo ->
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Subtitle: Lokasi Target
-                Text(
-                    text = "Lokasi Target",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.Black.copy(alpha = 0.8f)
-                )
+    val colors = infiniteSemanticColors(InfiniteSemantic.Primary)
+    val heading = stringResource(R.string.attendance_target_heading)
+    val semanticSummary = buildList {
+        add("$heading ${model.displayName}")
+        add(model.sourceLabel)
+        add(model.radiusText)
+        model.distanceText?.let(::add)
+        model.rangeText?.let(::add)
+        model.bookingStatusText?.let(::add)
+        model.bookingDateText?.let(::add)
+    }.joinToString(separator = ", ")
 
-                // Location Info Row dengan data dari API
-                LocationInfoRow(
-                    icon = Icons.Default.LocationOn,
-                    primaryText = targetInfo.displayName,
-                    secondaryText = targetInfo.description ?: targetInfo.unavailableReason
-                )
-            }
-        }
-
-        // Current Location Section
-        Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Subtitle: Lokasi Anda Saat Ini
-            Text(
-                text = "Lokasi Anda Saat Ini",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Black.copy(alpha = 0.8f)
-            )
-
-            // Current Location Info Row
-            LocationInfoRow(
-                icon = Icons.Default.MyLocation,
-                primaryText = currentLocationAddress,
-                secondaryText = null // Tidak ada secondary text untuk lokasi saat ini
-            )
-        }
-    }
-}
-
-/**
- * Komponen individu untuk menampilkan informasi lokasi dengan ikon dan teks.
- *
- * @param icon Ikon yang akan ditampilkan di sebelah kiri
- * @param primaryText Teks utama (description/address)
- * @param secondaryText Teks sekunder opsional (nama lokasi)
- */
-@Composable
-fun LocationInfoRow(
-    icon: ImageVector,
-    primaryText: String,
-    secondaryText: String? = null,
-    modifier: Modifier = Modifier
-) {
-    Row(
+    InfiniteCard(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .semantics(mergeDescendants = true) {
+                contentDescription = semanticSummary
+            },
+        variant = InfiniteSurfaceVariant.Default,
+        semantic = InfiniteSemantic.Primary,
+        showShadow = false
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = "Location Icon",
-            modifier = Modifier.size(24.dp),
-            tint = Color.Black.copy(alpha = 0.6f)
-        )
-
-        Column(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.md),
+            verticalAlignment = Alignment.Top
         ) {
-            // Primary text (description/address)
-            Text(
-                text = primaryText,
-                style = body1,
-                color = Color.Black.copy(alpha = 0.8f),
-                maxLines = 1, // Ubah dari 1 ke 2 untuk text yang lebih panjang
-                overflow = TextOverflow.Ellipsis
-            )
-
-            // Secondary text (location name) jika ada
-            secondaryText?.let { secondary ->
-                Text(
-                    text = secondary,
-                    fontSize = 12.sp,
-                    color = Color.Black.copy(alpha = 0.5f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(colors.container),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = InfiniteIcons.Location,
+                    contentDescription = null,
+                    modifier = Modifier.size(InfiniteSpacing.Default.xl),
+                    tint = colors.accent
                 )
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)
+            ) {
+                Text(
+                    text = heading,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = InfiniteColors.AttendanceReportMutedText
+                )
+                Text(
+                    text = model.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = InfiniteColors.Text
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = InfiniteIcons.Shield,
+                        contentDescription = null,
+                        modifier = Modifier.size(InfiniteSpacing.Default.lg),
+                        tint = colors.accent
+                    )
+                    Text(
+                        text = model.sourceLabel,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = InfiniteColors.AttendanceReportBodyText
+                    )
+                }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs),
+                    verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)
+                ) {
+                    InfiniteStatusPill(
+                        label = model.radiusText,
+                        variant = InfiniteStatusVariant.Neutral,
+                        size = InfiniteSize.Small,
+                        leadingIcon = InfiniteIcons.Location
+                    )
+                    model.distanceText?.let { distance ->
+                        InfiniteStatusPill(
+                            label = distance,
+                            variant = InfiniteStatusVariant.Neutral,
+                            size = InfiniteSize.Small,
+                            leadingIcon = InfiniteIcons.Location
+                        )
+                    }
+                    model.rangeText?.let { range ->
+                        InfiniteStatusPill(
+                            label = range,
+                            variant = when (model.rangeSemantic) {
+                                InfiniteSemantic.Success -> InfiniteStatusVariant.Inside
+                                InfiniteSemantic.Error -> InfiniteStatusVariant.Outside
+                                else -> InfiniteStatusVariant.Unknown
+                            },
+                            size = InfiniteSize.Small,
+                            leadingIcon = when (model.rangeSemantic) {
+                                InfiniteSemantic.Success -> InfiniteIcons.Success
+                                InfiniteSemantic.Error -> InfiniteIcons.Error
+                                else -> InfiniteIcons.Info
+                            }
+                        )
+                    }
+                    model.bookingStatusText?.let { status ->
+                        InfiniteStatusPill(
+                            label = status,
+                            variant = InfiniteStatusVariant.Approved,
+                            size = InfiniteSize.Small,
+                            leadingIcon = InfiniteIcons.Success
+                        )
+                    }
+                    model.bookingDateText?.let { date ->
+                        InfiniteStatusPill(
+                            label = date,
+                            variant = InfiniteStatusVariant.Neutral,
+                            size = InfiniteSize.Small,
+                            leadingIcon = InfiniteIcons.Calendar
+                        )
+                    }
+                }
             }
         }
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, widthDp = 320)
 @Composable
-private fun LocationInfoSectionPreview() {
+private fun TargetLocationSummaryPreview() {
     Infinite_TrackTheme {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Preview dengan target location info
-            LocationInfoSection(
-                targetLocationInfo = SelectedTargetLocation(
-                    mode = WorkMode.WFO,
-                    location = Location(
-                        locationId = 1,
-                        description = "Kantor Pusat PT. Technology Indonesia",
-                        latitude = 0.0,
-                        longitude = 0.0,
-                        radius = 100,
-                        category = "Gedung Cyber 2, Kuningan"
-                    ),
-                    displayName = "Kantor Pusat PT. Technology Indonesia",
-                    description = "Gedung Cyber 2, Kuningan",
-                    isAvailable = true
-                ),
-                currentLocationAddress = "Jl. Kemang Raya No. 123, Jakarta Selatan, DKI Jakarta"
+        TargetLocationSummary(
+            model = TargetLocationSummaryUiModel(
+                displayName = "Infinite Track Office Palu",
+                sourceLabel = "Today's attendance status",
+                radiusText = "Radius 100 m",
+                distanceText = "Distance 25 m",
+                rangeText = "Inside range"
             )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun LocationInfoRowPreview() {
-    Infinite_TrackTheme {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            LocationInfoRow(
-                icon = Icons.Default.LocationOn,
-                primaryText = "Kantor Pusat PT. Technology Indonesia",
-                secondaryText = "Gedung Cyber 2, Kuningan"
-            )
-
-            LocationInfoRow(
-                icon = Icons.Default.MyLocation,
-                primaryText = "Jl. Kemang Raya No. 123, Jakarta Selatan, DKI Jakarta"
-            )
-        }
+        )
     }
 }

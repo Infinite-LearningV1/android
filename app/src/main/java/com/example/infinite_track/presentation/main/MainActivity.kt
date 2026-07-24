@@ -12,6 +12,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.infinite_track.domain.manager.SessionManager
 import com.example.infinite_track.domain.repository.LocalizationRepository
+import com.example.infinite_track.presentation.feedback.AppFeedbackController
 import com.example.infinite_track.presentation.navigation.AppNavigator
 import com.example.infinite_track.presentation.screen.splash.SplashViewModel
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
@@ -39,6 +40,9 @@ class MainActivity : ComponentActivity() {
 	// Inject LocalizationRepository untuk mendapatkan bahasa tersimpan
 	@Inject
 	lateinit var localizationRepository: LocalizationRepository
+
+	@Inject
+	lateinit var appFeedbackController: AppFeedbackController
 
 	// Location permission helper untuk geofencing
 	private lateinit var locationPermissionHelper: LocationPermissionHelper
@@ -93,7 +97,8 @@ class MainActivity : ComponentActivity() {
 					appNavigator = appNavigator,
 					sessionManager = sessionManager,
 					locationPermissionHelper = locationPermissionHelper,
-					splashViewModel = viewModel
+					splashViewModel = viewModel,
+					appFeedbackController = appFeedbackController
 				)
 			}
 		}
