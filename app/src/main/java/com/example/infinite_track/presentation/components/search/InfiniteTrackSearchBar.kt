@@ -34,6 +34,7 @@ fun InfiniteTrackSearchBar(
     placeholder: String = "Search...",
     onChange: (String) -> Unit = {},
     onClear: () -> Unit,
+    clearContentDescription: String = "Clear search",
     onClick: (() -> Unit)? = null, // Tambahan parameter untuk handle click
 ) {
     OutlinedTextField(
@@ -64,7 +65,7 @@ fun InfiniteTrackSearchBar(
                 IconButton(onClick = onClear) {
                     Icon(
                         imageVector = Icons.Default.Clear,
-                        contentDescription = "Clear search",
+                        contentDescription = clearContentDescription,
                         tint = Purple_500
                     )
                 }

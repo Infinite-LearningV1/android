@@ -275,4 +275,16 @@
     <string name="attendance_pick_location_fallback">Selected coordinates</string>
     <string name="attendance_pick_location_failed">Location details could not be loaded.</string>
 
+    <!-- Explicit WFA place search -->
+    <string name="wfa_search_title">Cari Lokasi WFA</string>
+    <string name="wfa_search_placeholder">Cari tempat atau alamat</string>
+    <string name="wfa_search_guidance_title">Temukan lokasi kerja</string>
+    <string name="wfa_search_guidance_body">Ketik minimal 2 karakter untuk mencari lokasi WFA di Indonesia.</string>
+    <string name="wfa_search_loading">Mencari lokasi...</string>
+    <string name="wfa_search_empty_title">Lokasi tidak ditemukan</string>
+    <string name="wfa_search_empty_body">Tidak ada hasil untuk “%1$s”. Coba kata kunci lain.</string>
+    <string name="wfa_search_error_title">Pencarian lokasi gagal</string>
+    <string name="wfa_search_retry">Coba lagi</string>
+    <string name="wfa_search_clear_content_description">Hapus pencarian</string>
+
 </resources>
