@@ -8,6 +8,10 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.google.gson.Gson
+import com.google.gson.JsonElement
+import com.google.gson.JsonNull
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -34,7 +38,7 @@ class PreferencesGeofenceRuntimeStore internal constructor(
 
     override suspend fun writeSnapshot(snapshot: GeofenceRuntimeSnapshot) {
         dataStore.edit { preferences ->
-            preferences[SNAPSHOT_KEY] = gson.toJson(snapshot)
+            preferences[SNAPSHOT_KEY] = snapshot.toPersistedJson()
         }
     }
 
@@ -72,9 +76,9 @@ class PreferencesGeofenceRuntimeStore internal constructor(
                 return@edit
             }
 
-            preferences[SNAPSHOT_KEY] = gson.toJson(
-                snapshot.copy(insideActiveGeofence = isInside)
-            )
+            preferences[SNAPSHOT_KEY] = snapshot.copy(
+                insideActiveGeofence = isInside
+            ).toPersistedJson()
         }
     }
 
@@ -88,8 +92,52 @@ class PreferencesGeofenceRuntimeStore internal constructor(
     private fun String?.toSnapshotOrNull(): GeofenceRuntimeSnapshot? =
         this
             ?.takeIf { it.isNotBlank() }
-            ?.let { json -> runCatching { gson.fromJson(json, GeofenceRuntimeSnapshot::class.java) }.getOrNull() }
+            ?.let { json -> runCatching { json.parseSnapshotOrNull() }.getOrNull() }
+
+    private fun String.parseSnapshotOrNull(): GeofenceRuntimeSnapshot? {
+        val snapshotJson = JsonParser.parseString(this)
+            .takeIf(JsonElement::isJsonObject)
+            ?.asJsonObject
+            ?.takeIf { it.hasCompleteSnapshotSchema() }
+            ?: return null
+
+        return gson.fromJson(snapshotJson, GeofenceRuntimeSnapshot::class.java)
             ?.takeIf { it.isValidV2() }
+    }
+
+    private fun GeofenceRuntimeSnapshot.toPersistedJson(): String {
+        val snapshotJson = gson.toJsonTree(this).asJsonObject.apply {
+            ensureFields(SNAPSHOT_FIELD_NAMES)
+            getAsJsonArray("expectedRegistrations").forEach { registrationJson ->
+                registrationJson.asJsonObject.ensureFields(REGISTRATION_FIELD_NAMES)
+            }
+        }
+        return snapshotJson.toString()
+    }
+
+    private fun JsonObject.hasCompleteSnapshotSchema(): Boolean =
+        hasFields(SNAPSHOT_FIELD_NAMES) &&
+            hasNonNullFields(SNAPSHOT_NON_NULL_FIELD_NAMES) &&
+            get("expectedRegistrations")
+                ?.takeIf(JsonElement::isJsonArray)
+                ?.asJsonArray
+                ?.all { registrationJson ->
+                    registrationJson.isJsonObject &&
+                        registrationJson.asJsonObject.hasFields(REGISTRATION_FIELD_NAMES) &&
+                        registrationJson.asJsonObject.hasNonNullFields(
+                            REGISTRATION_NON_NULL_FIELD_NAMES
+                        )
+                }
+                ?: false
+
+    private fun JsonObject.hasFields(fieldNames: Set<String>): Boolean = fieldNames.all(::has)
+
+    private fun JsonObject.hasNonNullFields(fieldNames: Set<String>): Boolean =
+        fieldNames.all { fieldName -> get(fieldName)?.isJsonNull == false }
+
+    private fun JsonObject.ensureFields(fieldNames: Set<String>) {
+        fieldNames.filterNot(::has).forEach { fieldName -> add(fieldName, JsonNull.INSTANCE) }
+    }
 
     private fun GeofenceRuntimeSnapshot.isValidV2(): Boolean = runCatching {
         require(schemaVersion == SCHEMA_VERSION)
@@ -102,11 +150,59 @@ class PreferencesGeofenceRuntimeStore internal constructor(
             require(registration.label.isNotBlank())
         }
         appliedRequestIds.forEach { requestId -> require(requestId.isNotBlank()) }
+        val expectedRequestIds = expectedRegistrations.map(PersistedGeofenceRegistration::requestId)
+        require(expectedRequestIds.size == expectedRequestIds.toSet().size)
+        if (reconciliationState == PersistedReconciliationState.APPLIED) {
+            require(appliedRequestIds == expectedRequestIds.toSet())
+        }
         true
     }.getOrDefault(false)
 
     private companion object {
         const val SCHEMA_VERSION = 2
+        val SNAPSHOT_FIELD_NAMES = setOf(
+            "schemaVersion",
+            "generation",
+            "effectiveDateIso",
+            "expectedMode",
+            "attendanceId",
+            "sessionStateKey",
+            "expectedRegistrations",
+            "appliedRequestIds",
+            "reconciliationState",
+            "insideActiveGeofence",
+            "failureCategory",
+            "updatedAtEpochMillis"
+        )
+        val SNAPSHOT_NON_NULL_FIELD_NAMES = setOf(
+            "schemaVersion",
+            "generation",
+            "expectedMode",
+            "expectedRegistrations",
+            "appliedRequestIds",
+            "reconciliationState",
+            "insideActiveGeofence",
+            "updatedAtEpochMillis"
+        )
+        val REGISTRATION_FIELD_NAMES = setOf(
+            "requestId",
+            "logicalId",
+            "kind",
+            "label",
+            "latitude",
+            "longitude",
+            "radiusMeters",
+            "attendanceId"
+        )
+        val REGISTRATION_NON_NULL_FIELD_NAMES = setOf(
+            "requestId",
+            "logicalId",
+            "kind",
+            "label",
+            "latitude",
+            "longitude",
+            "radiusMeters"
+        )
         val SNAPSHOT_KEY = stringPreferencesKey("geofence_runtime_snapshot_v2")
         val NOTIFICATION_COOLDOWNS_KEY = stringSetPreferencesKey(
             "geofence_runtime_notification_cooldowns_v2"
