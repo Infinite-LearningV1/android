@@ -41,10 +41,15 @@ data class InfiniteSnackbarVisuals(
     val semantic: InfiniteSemantic,
     override val actionLabel: String? = null,
     override val withDismissAction: Boolean = false,
-    override val duration: SnackbarDuration = semantic.defaultSnackbarDuration(),
+    override val duration: SnackbarDuration = SnackbarDuration.Indefinite,
     val title: String? = null,
-    val autoDismissTimeoutMillis: Long? = null
+    val autoDismissTimeoutMillis: Long? = semantic.defaultSnackbarTimeout().baseMillis
 ) : SnackbarVisuals
+
+enum class InfiniteSnackbarTimeout(val baseMillis: Long) {
+    SHORT(4_000L),
+    LONG(8_000L)
+}
 
 fun resolveSnackbarTimeoutMillis(
     baseTimeoutMillis: Long,
@@ -55,14 +60,14 @@ fun resolveSnackbarTimeoutMillis(
     return recommendation.coerceAtLeast(baseTimeoutMillis)
 }
 
-fun InfiniteSemantic.defaultSnackbarDuration(): SnackbarDuration = when (this) {
+fun InfiniteSemantic.defaultSnackbarTimeout(): InfiniteSnackbarTimeout = when (this) {
     InfiniteSemantic.Warning,
-    InfiniteSemantic.Error -> SnackbarDuration.Long
+    InfiniteSemantic.Error -> InfiniteSnackbarTimeout.LONG
     InfiniteSemantic.Success,
     InfiniteSemantic.Info,
     InfiniteSemantic.Primary,
     InfiniteSemantic.Secondary,
-    InfiniteSemantic.Neutral -> SnackbarDuration.Short
+    InfiniteSemantic.Neutral -> InfiniteSnackbarTimeout.SHORT
 }
 
 @Composable

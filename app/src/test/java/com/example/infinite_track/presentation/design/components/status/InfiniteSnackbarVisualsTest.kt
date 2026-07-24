@@ -8,7 +8,7 @@ import org.junit.Test
 class InfiniteSnackbarVisualsTest {
 
     @Test
-    fun `success informational primary secondary and neutral visuals default to short`() {
+    fun `success informational primary secondary and neutral visuals use exact short timeout`() {
         listOf(
             InfiniteSemantic.Success,
             InfiniteSemantic.Info,
@@ -16,14 +16,18 @@ class InfiniteSnackbarVisualsTest {
             InfiniteSemantic.Secondary,
             InfiniteSemantic.Neutral
         ).forEach { semantic ->
-            assertEquals(SnackbarDuration.Short, semantic.defaultSnackbarDuration())
+            val visuals = InfiniteSnackbarVisuals(message = "status", semantic = semantic)
+            assertEquals(SnackbarDuration.Indefinite, visuals.duration)
+            assertEquals(4_000L, visuals.autoDismissTimeoutMillis)
         }
     }
 
     @Test
-    fun `warning and error visuals default to long`() {
+    fun `warning and error visuals use exact long timeout without Material Long`() {
         listOf(InfiniteSemantic.Warning, InfiniteSemantic.Error).forEach { semantic ->
-            assertEquals(SnackbarDuration.Long, semantic.defaultSnackbarDuration())
+            val visuals = InfiniteSnackbarVisuals(message = "status", semantic = semantic)
+            assertEquals(SnackbarDuration.Indefinite, visuals.duration)
+            assertEquals(8_000L, visuals.autoDismissTimeoutMillis)
         }
     }
 
@@ -32,10 +36,12 @@ class InfiniteSnackbarVisualsTest {
         val visuals = InfiniteSnackbarVisuals(
             message = "Tetap tampil sampai diselesaikan",
             semantic = InfiniteSemantic.Warning,
-            duration = SnackbarDuration.Indefinite
+            duration = SnackbarDuration.Indefinite,
+            autoDismissTimeoutMillis = null
         )
 
         assertEquals(SnackbarDuration.Indefinite, visuals.duration)
+        assertEquals(null, visuals.autoDismissTimeoutMillis)
     }
 
     @Test

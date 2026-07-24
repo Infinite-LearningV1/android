@@ -2,6 +2,7 @@ package com.example.infinite_track.presentation.feedback
 
 import com.example.infinite_track.R
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
+import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarTimeout
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -20,21 +21,21 @@ class AppFeedbackMapperTest {
                 titleRes = R.string.app_feedback_login_success_title,
                 messageRes = R.string.app_feedback_login_success_message,
                 semantic = InfiniteSemantic.Success,
-                timeout = AppFeedbackTimeout.SHORT
+                timeout = InfiniteSnackbarTimeout.SHORT
             ),
             ExpectedFeedback(
                 event = AppFeedbackEvent.LOGOUT_SUCCESS,
                 titleRes = R.string.app_feedback_logout_success_title,
                 messageRes = R.string.app_feedback_logout_success_message,
                 semantic = InfiniteSemantic.Success,
-                timeout = AppFeedbackTimeout.SHORT
+                timeout = InfiniteSnackbarTimeout.SHORT
             ),
             ExpectedFeedback(
                 event = AppFeedbackEvent.LOGOUT_REMOTE_WARNING,
                 titleRes = R.string.app_feedback_logout_remote_warning_title,
                 messageRes = R.string.app_feedback_logout_remote_warning_message,
                 semantic = InfiniteSemantic.Warning,
-                timeout = AppFeedbackTimeout.LONG
+                timeout = InfiniteSnackbarTimeout.LONG
             )
         )
 
@@ -65,6 +66,6 @@ class AppFeedbackMapperTest {
         val titleRes: Int,
         val messageRes: Int,
         val semantic: InfiniteSemantic,
-        val timeout: AppFeedbackTimeout
+        val timeout: InfiniteSnackbarTimeout
     )
 }

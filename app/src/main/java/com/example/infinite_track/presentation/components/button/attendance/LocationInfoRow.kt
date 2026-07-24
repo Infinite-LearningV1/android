@@ -177,10 +177,10 @@ private fun TargetLocationSummaryPreview() {
         TargetLocationSummary(
             model = TargetLocationSummaryUiModel(
                 displayName = "Infinite Track Office Palu",
-                sourceLabel = "Status kehadiran hari ini",
+                sourceLabel = "Today's attendance status",
                 radiusText = "Radius 100 m",
-                distanceText = "Jarak 25 m",
-                rangeText = "Di dalam jangkauan"
+                distanceText = "Distance 25 m",
+                rangeText = "Inside range"
             )
         )
     }

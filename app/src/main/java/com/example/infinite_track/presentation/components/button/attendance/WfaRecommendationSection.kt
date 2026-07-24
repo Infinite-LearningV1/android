@@ -190,8 +190,8 @@ private fun WfaRecommendationSectionPreview() {
                     WfaRecommendationUiModel(
                         stableKey = "cafe-palu",
                         name = "Cafe Palu",
-                        supportingText = "Cafe • 1,25 km",
-                        suitabilityText = "Skor WFA 91 • Sangat sesuai",
+                        supportingText = "Cafe • 1.25 km",
+                        suitabilityText = "WFA score 91 • Excellent",
                     )
                 ),
                 selectedKey = "cafe-palu",

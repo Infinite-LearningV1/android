@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -43,6 +42,7 @@ import com.example.infinite_track.domain.model.attendance.permission.AttendanceA
 import com.example.infinite_track.domain.model.attendance.permission.AttendancePermissionRequestOutcome
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarHost
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarVisuals
+import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarTimeout
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -254,15 +254,7 @@ fun AttendancePermissionPanelHost(
                 is AttendancePermissionReadinessEffect.ShowSnackbar -> {
                     val feedback = effect.feedback
                     val result = snackbarHostState.showSnackbar(
-                        InfiniteSnackbarVisuals(
-                            message = feedback.message,
-                            semantic = feedback.semantic,
-                            actionLabel = feedback.actionLabel,
-                            duration = when (feedback.duration) {
-                                AttendanceFeedbackDuration.SHORT -> SnackbarDuration.Short
-                                AttendanceFeedbackDuration.LONG -> SnackbarDuration.Long
-                            }
-                        )
+                        feedback.toInfiniteSnackbarVisuals()
                     )
                     if (result == SnackbarResult.ActionPerformed && feedback.action != null) {
                         viewModel.onEvent(
@@ -307,6 +299,20 @@ fun AttendancePermissionPanelHost(
         )
     }
 }
+
+internal fun AttendanceFeedbackDuration.toInfiniteSnackbarTimeout():
+    InfiniteSnackbarTimeout = when (this) {
+    AttendanceFeedbackDuration.SHORT -> InfiniteSnackbarTimeout.SHORT
+    AttendanceFeedbackDuration.LONG -> InfiniteSnackbarTimeout.LONG
+}
+
+internal fun AttendancePermissionFeedback.toInfiniteSnackbarVisuals() =
+    InfiniteSnackbarVisuals(
+        message = message,
+        semantic = semantic,
+        actionLabel = actionLabel,
+        autoDismissTimeoutMillis = duration.toInfiniteSnackbarTimeout().baseMillis
+    )
 
 private fun permissionOutcome(
     activity: Activity?,

@@ -198,6 +198,28 @@ class AttendancePreparationUiMapperTest {
     }
 
     @Test
+    fun `low score final recommendation row cannot expose success semantic`() {
+        val lowScore = recommendation().copy(
+            stableKey = "park@-0.910000,119.890000",
+            category = "Park",
+            suitabilityScore = 0.25,
+            suitabilityLabel = "Needs review"
+        )
+        val mapped = map(
+            readyPreparation(WorkMode.WFA).copy(
+                wfaDiscovery = WfaDiscoveryState.Content(
+                    recommendations = listOf(lowScore),
+                    selectedKey = lowScore.stableKey
+                )
+            )
+        )
+
+        val row = (mapped.wfaDiscovery as WfaDiscoveryUiModel.Content).rows.single()
+        assertEquals(InfiniteSemantic.Error, row.suitabilitySemantic)
+        assertEquals(WfaRecommendationCategoryIcon.PARK, row.categoryIcon)
+    }
+
+    @Test
     fun `approved WFA summary renders display evidence while preserving raw authority date`() {
         val mapped = map(readyPreparation(WorkMode.WFA))
 

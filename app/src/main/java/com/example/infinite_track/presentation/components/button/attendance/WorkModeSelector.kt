@@ -210,9 +210,9 @@ private fun WorkModeSelectorPreview() {
                     mode = mode,
                     title = mode.displayLabel,
                     supportingText = when (mode) {
-                        WorkMode.WFO -> "Lokasi kantor yang ditetapkan"
-                        WorkMode.WFH -> "Lokasi rumah yang ditetapkan admin"
-                        WorkMode.WFA -> "Memerlukan booking yang disetujui"
+                        WorkMode.WFO -> "Assigned office location"
+                        WorkMode.WFH -> "Admin-assigned home location"
+                        WorkMode.WFA -> "Requires an approved booking"
                     },
                     isSelected = mode == WorkMode.WFH
                 )

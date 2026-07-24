@@ -12,6 +12,7 @@ import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
 import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryState
 import com.example.infinite_track.presentation.screen.attendance.preparation.WfaMapPickInteractionState
+import com.example.infinite_track.presentation.map.model.AttendanceMapCameraMoveOrigin
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -73,15 +74,47 @@ class AttendanceSelectionTransitionTest {
         assertTrue(AttendanceSelectionTransition.isMapPickEnabled(active))
         assertEquals(
             WfaMapPickInteractionState.Active(7L),
-            AttendanceSelectionTransition.mapPickSessionForCameraIdle(active)
+            AttendanceSelectionTransition.mapPickSessionForCameraIdle(
+                active,
+                AttendanceMapCameraMoveOrigin.USER_GESTURE
+            )
         )
     }
 
     @Test
-    fun `programmatic camera idle cannot consume an inactive map pick session`() {
-        val wfaPreparation = readyPreparation(approvedWfaTarget)
+    fun `fit running then begin map pick cannot consume its programmatic terminal idle`() {
+        val fitRunning = readyPreparation(approvedWfaTarget)
+        val activeMidAnimation = AttendanceSelectionTransition.beginMapPick(
+            preparation = fitRunning,
+            sessionId = 8L
+        )
 
-        assertNull(AttendanceSelectionTransition.mapPickSessionForCameraIdle(wfaPreparation))
+        assertNull(
+            AttendanceSelectionTransition.mapPickSessionForCameraIdle(
+                activeMidAnimation,
+                AttendanceMapCameraMoveOrigin.PROGRAMMATIC
+            )
+        )
+        assertEquals(
+            WfaMapPickInteractionState.Active(8L),
+            activeMidAnimation.mapPickInteraction
+        )
+    }
+
+    @Test
+    fun `genuine user gesture idle consumes the active pick path`() {
+        val active = AttendanceSelectionTransition.beginMapPick(
+            preparation = readyPreparation(approvedWfaTarget),
+            sessionId = 9L
+        )
+
+        assertEquals(
+            WfaMapPickInteractionState.Active(9L),
+            AttendanceSelectionTransition.mapPickSessionForCameraIdle(
+                active,
+                AttendanceMapCameraMoveOrigin.USER_GESTURE
+            )
+        )
     }
 
     @Test
@@ -93,7 +126,12 @@ class AttendanceSelectionTransitionTest {
 
         val cancelled = AttendanceSelectionTransition.cancelMapPick(active)
 
-        assertNull(AttendanceSelectionTransition.mapPickSessionForCameraIdle(cancelled))
+        assertNull(
+            AttendanceSelectionTransition.mapPickSessionForCameraIdle(
+                cancelled,
+                AttendanceMapCameraMoveOrigin.USER_GESTURE
+            )
+        )
     }
 
     @Test

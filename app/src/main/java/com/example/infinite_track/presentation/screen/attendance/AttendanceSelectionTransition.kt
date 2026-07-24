@@ -6,6 +6,7 @@ import com.example.infinite_track.domain.model.attendance.TargetLocationResoluti
 import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
 import com.example.infinite_track.presentation.screen.attendance.preparation.WfaMapPickInteractionState
+import com.example.infinite_track.presentation.map.model.AttendanceMapCameraMoveOrigin
 
 internal object AttendanceSelectionTransition {
     fun resolvedTargetForInteraction(
@@ -18,7 +19,8 @@ internal object AttendanceSelectionTransition {
     }
 
     fun isMapPickEnabled(preparation: AttendancePreparationState): Boolean =
-        mapPickSessionForCameraIdle(preparation) != null
+        preparation.selectedMode == WorkMode.WFA &&
+            preparation.mapPickInteraction is WfaMapPickInteractionState.Active
 
     fun beginMapPick(
         preparation: AttendancePreparationState,
@@ -31,8 +33,10 @@ internal object AttendanceSelectionTransition {
     }
 
     fun mapPickSessionForCameraIdle(
-        preparation: AttendancePreparationState
+        preparation: AttendancePreparationState,
+        origin: AttendanceMapCameraMoveOrigin
     ): WfaMapPickInteractionState.Active? {
+        if (origin != AttendanceMapCameraMoveOrigin.USER_GESTURE) return null
         if (preparation.selectedMode != WorkMode.WFA) return null
         return preparation.mapPickInteraction as? WfaMapPickInteractionState.Active
     }
@@ -41,7 +45,9 @@ internal object AttendanceSelectionTransition {
         preparation: AttendancePreparationState,
         session: WfaMapPickInteractionState.Active
     ): AttendancePreparationState? {
-        val active = mapPickSessionForCameraIdle(preparation) ?: return null
+        val active = preparation.mapPickInteraction as? WfaMapPickInteractionState.Active
+            ?: return null
+        if (preparation.selectedMode != WorkMode.WFA) return null
         if (active != session) return null
         return preparation.copy(mapPickInteraction = WfaMapPickInteractionState.Inactive)
     }

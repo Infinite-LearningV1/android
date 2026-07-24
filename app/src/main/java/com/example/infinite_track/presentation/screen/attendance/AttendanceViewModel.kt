@@ -38,6 +38,7 @@ import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCa
 import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.example.infinite_track.presentation.geofencing.ReminderGeofenceCandidate
 import com.example.infinite_track.presentation.navigation.Screen
+import com.example.infinite_track.presentation.map.model.AttendanceMapCameraMoveOrigin
 import com.example.infinite_track.presentation.map.model.MapCameraEffect
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationReducer
 import com.example.infinite_track.presentation.screen.attendance.preparation.LatestSelectionGuard
@@ -1247,9 +1248,13 @@ class AttendanceViewModel @Inject constructor(
      * Handle map idle event - called when user stops moving the map
      * Performs reverse geocoding for the center point of the map
      */
-    fun onMapIdle(centerPoint: GeoCoordinate) {
+    fun onMapIdle(
+        centerPoint: GeoCoordinate,
+        origin: AttendanceMapCameraMoveOrigin
+    ) {
         val mapPickSession = AttendanceSelectionTransition.mapPickSessionForCameraIdle(
-            _uiState.value.preparation
+            preparation = _uiState.value.preparation,
+            origin = origin
         ) ?: return
         val request = latestSelectionRequest
         if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return

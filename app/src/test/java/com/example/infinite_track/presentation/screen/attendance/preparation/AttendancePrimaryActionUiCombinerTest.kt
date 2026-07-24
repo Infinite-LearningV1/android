@@ -89,6 +89,25 @@ class AttendancePrimaryActionUiCombinerTest {
     }
 
     @Test
+    fun `blocked attendance cannot re-enable WFA booking without a selected draft`() {
+        val result = AttendancePrimaryActionUiCombiner.combine(
+            preparation = preparation(
+                action = AttendancePreparationPrimaryAction.OPEN_WFA_BOOKING,
+                label = "Submit WFA",
+                enabled = false
+            ),
+            actionState = AttendanceActionState.Blocked(
+                reason = AttendanceBlockReason.TARGET_LOCATION_UNAVAILABLE,
+                title = "Location unavailable",
+                message = "Select a draft first"
+            )
+        )
+
+        assertEquals(AttendancePreparationPrimaryAction.OPEN_WFA_BOOKING, result.primaryAction)
+        assertFalse(result.isPrimaryActionEnabled)
+    }
+
+    @Test
     fun `in flight and completed states cannot expose an enabled stale checkin CTA`() {
         val staleReadyPreparation = preparation(
             action = AttendancePreparationPrimaryAction.CONTINUE_TO_FACE_VERIFICATION,

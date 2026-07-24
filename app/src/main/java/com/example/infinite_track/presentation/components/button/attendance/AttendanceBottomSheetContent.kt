@@ -215,29 +215,29 @@ private fun WorkModePreparationContentPreview() {
                         mode = mode,
                         title = mode.displayLabel,
                         supportingText = when (mode) {
-                            WorkMode.WFO -> "Lokasi kantor yang ditetapkan"
-                            WorkMode.WFH -> "Lokasi rumah yang ditetapkan admin"
-                            WorkMode.WFA -> "Memerlukan booking yang disetujui"
+                            WorkMode.WFO -> "Assigned office location"
+                            WorkMode.WFH -> "Admin-assigned home location"
+                            WorkMode.WFA -> "Requires an approved booking"
                         },
                         isSelected = mode == WorkMode.WFA
                     )
                 },
                 targetSummary = TargetLocationSummaryUiModel(
-                    displayName = "WFA Disetujui",
-                    sourceLabel = "Booking WFA disetujui",
+                    displayName = "Approved WFA",
+                    sourceLabel = "Approved WFA booking",
                     radiusText = "Radius 100 m",
-                    distanceText = "Jarak 25 m",
-                    rangeText = "Di dalam jangkauan"
+                    distanceText = "Distance 25 m",
+                    rangeText = "Inside range"
                 ),
-                statusMessage = "Lokasi target siap digunakan untuk kehadiran.",
+                statusMessage = "Target location is ready for attendance.",
                 wfaDiscovery = WfaDiscoveryUiModel.Empty(
-                    "Belum ada rekomendasi lokasi WFA."
+                    "No WFA location recommendations are available."
                 ),
                 primaryAction = AttendancePreparationPrimaryAction.CONTINUE_TO_FACE_VERIFICATION,
-                primaryActionLabel = "Lanjut ke Verifikasi Wajah",
+                primaryActionLabel = "Continue to Face Verification",
                 isPrimaryActionEnabled = true,
                 secondaryAction = AttendancePreparationSecondaryAction.SEARCH_WFA_LOCATION,
-                secondaryActionLabel = "Cari lokasi WFA"
+                secondaryActionLabel = "Search WFA location"
             ),
             onEvent = {}
         )

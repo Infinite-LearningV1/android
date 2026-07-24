@@ -23,7 +23,6 @@ import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
@@ -74,6 +73,7 @@ import com.example.infinite_track.utils.LocationPermissionHelper
 import com.example.infinite_track.presentation.components.maps.MarkerViewWfa
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarHost
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarVisuals
+import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarTimeout
 import com.example.infinite_track.presentation.design.components.status.InfiniteInlineAlert
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.navigation.Screen
@@ -187,12 +187,7 @@ fun AttendanceScreen(
     LaunchedEffect(viewModel) {
         viewModel.transientFeedback.collect { feedback ->
             val result = scaffoldState.snackbarHostState.showSnackbar(
-                InfiniteSnackbarVisuals(
-                    message = feedback.message,
-                    semantic = feedback.semantic,
-                    actionLabel = feedback.actionLabel,
-                    duration = feedback.duration.toMaterialDuration()
-                )
+                feedback.toInfiniteSnackbarVisuals()
             )
             if (
                 result == SnackbarResult.ActionPerformed &&
@@ -463,7 +458,10 @@ fun AttendanceScreen(
                         onEvent = { event ->
                             when (event) {
                                 AttendanceMapEvent.Ready -> viewModel.onMapReady()
-                                is AttendanceMapEvent.CameraIdle -> viewModel.onMapIdle(event.center)
+                                is AttendanceMapEvent.CameraIdle -> viewModel.onMapIdle(
+                                    centerPoint = event.center,
+                                    origin = event.origin
+                                )
                                 is AttendanceMapEvent.MarkerClicked -> {
                                     when (event.marker.role) {
                                         MapMarkerRole.CURRENT_LOCATION -> Unit
@@ -623,10 +621,19 @@ fun AttendanceScreen(
     )
 }
 
-private fun AttendanceTransientFeedbackDuration.toMaterialDuration(): SnackbarDuration = when (this) {
-    AttendanceTransientFeedbackDuration.SHORT -> SnackbarDuration.Short
-    AttendanceTransientFeedbackDuration.LONG -> SnackbarDuration.Long
+internal fun AttendanceTransientFeedbackDuration.toInfiniteSnackbarTimeout():
+    InfiniteSnackbarTimeout = when (this) {
+    AttendanceTransientFeedbackDuration.SHORT -> InfiniteSnackbarTimeout.SHORT
+    AttendanceTransientFeedbackDuration.LONG -> InfiniteSnackbarTimeout.LONG
 }
+
+internal fun AttendanceTransientFeedback.toInfiniteSnackbarVisuals() =
+    InfiniteSnackbarVisuals(
+        message = message,
+        semantic = semantic,
+        actionLabel = actionLabel,
+        autoDismissTimeoutMillis = duration.toInfiniteSnackbarTimeout().baseMillis
+    )
 
 @Preview(showBackground = true)
 @Composable
