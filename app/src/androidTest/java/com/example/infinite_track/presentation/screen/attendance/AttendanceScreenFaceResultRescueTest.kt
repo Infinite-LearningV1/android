@@ -424,6 +424,9 @@ class AttendanceScreenFaceResultRescueTest {
         )
     }
 
+    internal fun createDefaultAttendanceViewModelForCameraTest(): AttendanceViewModel =
+        createAttendanceViewModel()
+
     private class FakeAttendanceRepository(
         private val checkInFailure: Throwable? = null
     ) : AttendanceRepository {

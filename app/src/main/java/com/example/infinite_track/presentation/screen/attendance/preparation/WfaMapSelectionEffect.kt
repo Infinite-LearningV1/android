@@ -10,4 +10,7 @@ internal object WfaMapSelectionEffect {
             coordinate = coordinate,
             zoom = 17f
         )
+
+    fun shouldAutoFitRecommendations(discovery: WfaDiscoveryState.Content): Boolean =
+        discovery.selectedKey == null && discovery.searchPreview == null
 }

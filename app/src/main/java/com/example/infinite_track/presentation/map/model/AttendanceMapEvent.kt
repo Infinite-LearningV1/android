@@ -4,6 +4,7 @@ import com.example.infinite_track.domain.model.location.GeoCoordinate
 
 sealed interface AttendanceMapEvent {
     object Ready : AttendanceMapEvent
+    data class CameraEffectConsumed(val effectId: Long) : AttendanceMapEvent
     data class MarkerClicked(val marker: MapMarkerUiModel) : AttendanceMapEvent
     data class CameraIdle(
         val center: GeoCoordinate,

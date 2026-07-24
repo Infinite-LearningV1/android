@@ -111,11 +111,8 @@ class AttendanceViewModel @Inject constructor(
         _transientFeedback.asSharedFlow()
     private var nextTransientFeedbackId = 0L
 
-    private val _mapCameraEffects = MutableSharedFlow<MapCameraEffect>(
-        replay = 0,
-        extraBufferCapacity = 1
-    )
-    val mapCameraEffects: SharedFlow<MapCameraEffect> = _mapCameraEffects.asSharedFlow()
+    private val _mapCameraEffect = MutableStateFlow<MapCameraEffect?>(null)
+    val mapCameraEffect: StateFlow<MapCameraEffect?> = _mapCameraEffect.asStateFlow()
     private var nextMapCameraEffectId = 0L
     private var nextMapPickSessionId = 0L
 
@@ -175,6 +172,17 @@ class AttendanceViewModel @Inject constructor(
             viewModelScope.launch { _transientFeedback.emit(feedback) }
         }
         return feedback
+    }
+
+    private fun publishMapCameraEffect(effect: MapCameraEffect) {
+        _mapCameraEffect.value = effect
+    }
+
+    fun onMapCameraEffectConsumed(effectId: Long) {
+        val pending = _mapCameraEffect.value ?: return
+        if (pending.id == effectId) {
+            _mapCameraEffect.compareAndSet(pending, null)
+        }
     }
 
     /**
@@ -669,13 +677,14 @@ class AttendanceViewModel @Inject constructor(
                 _uiState.value.preparation
             )
         )
-        return _mapCameraEffects.tryEmit(
+        publishMapCameraEffect(
             MapCameraEffect.Focus(
                 id = nextMapCameraEffectId++,
                 coordinate = target.coordinate,
                 zoom = zoomLevel.toFloat()
             )
         )
+        return true
     }
 
     /**
@@ -719,14 +728,17 @@ class AttendanceViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(
                         preparation = _uiState.value.preparation.copy(wfaDiscovery = discovery)
                     )
-                    if (recommendations.isNotEmpty()) {
+                    val shouldAutoFit = (discovery as? WfaDiscoveryState.Content)
+                        ?.let(WfaMapSelectionEffect::shouldAutoFitRecommendations)
+                        ?: false
+                    if (recommendations.isNotEmpty() && shouldAutoFit) {
                         if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return@onSuccess
                         _uiState.value = _uiState.value.copy(
                             preparation = AttendanceSelectionTransition.cancelMapPick(
                                 _uiState.value.preparation
                             )
                         )
-                        _mapCameraEffects.tryEmit(
+                        publishMapCameraEffect(
                             MapCameraEffect.Fit(
                                 id = nextMapCameraEffectId++,
                                 coordinates = recommendations.map(WfaRecommendation::coordinate)
@@ -773,7 +785,7 @@ class AttendanceViewModel @Inject constructor(
             )
         )
         if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return
-        _mapCameraEffects.tryEmit(
+        publishMapCameraEffect(
             WfaMapSelectionEffect.focus(
                 id = nextMapCameraEffectId++,
                 coordinate = recommendation.coordinate
@@ -1142,7 +1154,7 @@ class AttendanceViewModel @Inject constructor(
                                 _uiState.value.preparation
                             )
                         )
-                        _mapCameraEffects.tryEmit(
+                        publishMapCameraEffect(
                             MapCameraEffect.Focus(
                                 id = nextMapCameraEffectId++,
                                 coordinate = coordinate,
@@ -1188,6 +1200,7 @@ class AttendanceViewModel @Inject constructor(
      * Called when the map is ready to receive commands.
      */
     fun onMapReady() {
+        if (_mapCameraEffect.value != null) return
         Log.d(TAG, "Map is ready, focusing to selected target location")
         val request = latestSelectionRequest
         val target = (_uiState.value.preparation.targetResolution as? TargetLocationResolution.Resolved)
@@ -1224,7 +1237,7 @@ class AttendanceViewModel @Inject constructor(
             )
         )
         if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return
-        _mapCameraEffects.tryEmit(
+        publishMapCameraEffect(
             WfaMapSelectionEffect.focus(
                 id = nextMapCameraEffectId++,
                 coordinate = GeoCoordinate(location.latitude, location.longitude)

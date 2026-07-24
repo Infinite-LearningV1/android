@@ -77,7 +77,6 @@ import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.map.adapter.AttendanceMap
 import com.example.infinite_track.presentation.map.mapper.AttendanceMapUiMapper
 import com.example.infinite_track.presentation.map.model.AttendanceMapEvent
-import com.example.infinite_track.presentation.map.model.MapCameraEffect
 import com.example.infinite_track.presentation.map.model.MapMarkerRole
 import com.example.infinite_track.presentation.screen.attendance.components.AttendanceTopBar
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
@@ -126,8 +125,8 @@ fun AttendanceScreen(
 
     // Observasi state dari ViewModel yang sudah disederhanakan
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val cameraEffect by viewModel.mapCameraEffect.collectAsStateWithLifecycle()
     val permissionUiState by permissionViewModel.uiState.collectAsStateWithLifecycle()
-    var cameraEffect by remember { mutableStateOf<MapCameraEffect?>(null) }
     var selectedTargetMarkerId by remember { mutableStateOf<TargetLocationId?>(null) }
     var showPermissionPanel by rememberSaveable { mutableStateOf(false) }
     var initialPermissionCheckHandled by rememberSaveable { mutableStateOf(false) }
@@ -194,12 +193,6 @@ fun AttendanceScreen(
                     popUpTo(Screen.Home.route) { inclusive = false }
                 }
             }
-        }
-    }
-
-    LaunchedEffect(viewModel) {
-        viewModel.mapCameraEffects.collect { effect ->
-            cameraEffect = effect
         }
     }
 
@@ -393,6 +386,8 @@ fun AttendanceScreen(
                         onEvent = { event ->
                             when (event) {
                                 AttendanceMapEvent.Ready -> viewModel.onMapReady()
+                                is AttendanceMapEvent.CameraEffectConsumed ->
+                                    viewModel.onMapCameraEffectConsumed(event.effectId)
                                 is AttendanceMapEvent.CameraIdle -> viewModel.onMapIdle(
                                     centerPoint = event.center,
                                     origin = event.origin

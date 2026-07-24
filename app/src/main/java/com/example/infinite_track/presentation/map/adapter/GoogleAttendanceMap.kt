@@ -129,6 +129,7 @@ internal fun GoogleAttendanceMap(
                     }
                 }
             }
+            currentOnEvent(AttendanceMapEvent.CameraEffectConsumed(effect.id))
         } catch (error: CancellationException) {
             throw error
         } catch (_: RuntimeException) {
