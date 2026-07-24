@@ -268,6 +268,10 @@
     <string name="attendance_permission_manage">Manage access</string>
     <string name="attendance_wfa_recommendation_detail">%1$s &#8226; %2$s</string>
     <string name="attendance_wfa_suitability">WFA score %1$d &#8226; %2$s</string>
+    <string name="attendance_wfa_suitability_success_state">WFA suitability is excellent</string>
+    <string name="attendance_wfa_suitability_warning_state">WFA suitability needs review</string>
+    <string name="attendance_wfa_suitability_error_state">WFA suitability is not recommended</string>
+    <string name="attendance_wfa_suitability_neutral_state">WFA suitability information</string>
     <string name="attendance_pick_location_fallback">Selected coordinates</string>
     <string name="attendance_pick_location_failed">Location details could not be loaded.</string>
 

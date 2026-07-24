@@ -76,6 +76,10 @@
     <string name="attendance_permission_manage">Kelola akses</string>
     <string name="attendance_wfa_recommendation_detail">%1$s &#8226; %2$s</string>
     <string name="attendance_wfa_suitability">Skor WFA %1$d &#8226; %2$s</string>
+    <string name="attendance_wfa_suitability_success_state">Kesesuaian WFA sangat baik</string>
+    <string name="attendance_wfa_suitability_warning_state">Kesesuaian WFA perlu ditinjau</string>
+    <string name="attendance_wfa_suitability_error_state">Kesesuaian WFA tidak direkomendasikan</string>
+    <string name="attendance_wfa_suitability_neutral_state">Informasi kesesuaian WFA</string>
     <string name="attendance_pick_location_fallback">Koordinat dipilih</string>
     <string name="attendance_pick_location_failed">Detail lokasi gagal dimuat.</string>
 </resources>

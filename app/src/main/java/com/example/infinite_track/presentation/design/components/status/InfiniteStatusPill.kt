@@ -72,6 +72,7 @@ fun InfiniteStatusPill(
     label: String,
     variant: InfiniteStatusVariant,
     modifier: Modifier = Modifier,
+    contentDescription: String = label,
     size: InfiniteSize = InfiniteSize.Medium,
     leadingIcon: ImageVector? = null,
     selected: Boolean = false,
@@ -95,7 +96,7 @@ fun InfiniteStatusPill(
         InfiniteSize.Large -> 8.dp
     }
     Surface(
-        modifier = modifier.semantics { contentDescription = label },
+        modifier = modifier.semantics { this.contentDescription = contentDescription },
         shape = RoundedCornerShape(999.dp),
         color = colors.container,
         contentColor = colors.content,

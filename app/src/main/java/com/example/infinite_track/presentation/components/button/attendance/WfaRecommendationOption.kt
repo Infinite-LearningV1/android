@@ -29,7 +29,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.R
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
-import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.components.surface.InfiniteCard
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteIcons
@@ -52,6 +51,12 @@ fun WfaRecommendationOption(
     modifier: Modifier = Modifier
 ) {
     val colors = infiniteSemanticColors(InfiniteSemantic.Secondary)
+    val suitabilityPresentation = WfaRecommendationSuitabilityPresentationMapper.map(
+        model.suitabilitySemantic
+    )
+    val suitabilityContentDescription = stringResource(
+        suitabilityPresentation.contentDescriptionRes
+    )
     val selectedStateDescription = stringResource(R.string.attendance_work_mode_selected)
     val selectedTint by animateColorAsState(
         targetValue = if (selected) colors.container else InfiniteColors.Transparent,
@@ -120,19 +125,10 @@ fun WfaRecommendationOption(
                 )
                 InfiniteStatusPill(
                     label = model.suitabilityText,
-                    variant = when (model.suitabilitySemantic) {
-                        InfiniteSemantic.Success -> InfiniteStatusVariant.Excellent
-                        InfiniteSemantic.Warning -> InfiniteStatusVariant.NeedsReview
-                        InfiniteSemantic.Error -> InfiniteStatusVariant.Outside
-                        else -> InfiniteStatusVariant.Recommended
-                    },
+                    variant = suitabilityPresentation.variant,
+                    contentDescription = suitabilityContentDescription,
                     size = InfiniteSize.Small,
-                    leadingIcon = when (model.suitabilitySemantic) {
-                        InfiniteSemantic.Success -> InfiniteIcons.Success
-                        InfiniteSemantic.Warning -> InfiniteIcons.Warning
-                        InfiniteSemantic.Error -> InfiniteIcons.Error
-                        else -> InfiniteIcons.Info
-                    },
+                    leadingIcon = suitabilityPresentation.icon,
                     selected = selected
                 )
             }
