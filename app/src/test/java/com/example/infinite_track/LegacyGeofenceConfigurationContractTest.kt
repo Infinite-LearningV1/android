@@ -12,9 +12,13 @@ class LegacyGeofenceConfigurationContractTest {
         val text = sequenceOf(
             File(appRoot, "src/main"),
             File(appRoot, "build.gradle.kts"),
+            File(appRoot, "proguard-rules.pro"),
+            File(appRoot, "proguard-rules-aggressive.pro"),
             File(repositoryRoot, "build.gradle.kts"),
             File(repositoryRoot, "gradle/libs.versions.toml"),
-            File(repositoryRoot, ".github/workflows")
+            File(repositoryRoot, ".github/workflows"),
+            File(repositoryRoot, "README.md"),
+            File(repositoryRoot, "docs/ci/android-master-distribution.md")
         ).flatMap { root ->
             if (root.isFile) sequenceOf(root) else root.walkTopDown().filter(File::isFile)
         }.joinToString("\n") { it.readText() }
@@ -25,8 +29,12 @@ class LegacyGeofenceConfigurationContractTest {
             "REMINDER_GEOFENCES_KEY",
             "StoredGeofence",
             "FirebaseMessagingService",
+            "InfiniteTrackFCMService",
             "firebase.messaging",
-            "google.gms.google.services"
+            "google.gms.google.services",
+            "GOOGLE_SERVICES_JSON",
+            "google-services.json",
+            "presentation.geofencing"
         ).forEach { forbidden ->
             assertFalse("Forbidden symbol remains: $forbidden", text.contains(forbidden))
         }

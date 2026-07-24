@@ -36,8 +36,6 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
           FIREBASE_TESTER_GROUPS: ${{ vars.FIREBASE_TESTER_GROUPS }}
-          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           missing=()
           for name in \
@@ -53,10 +51,6 @@ jobs:
               missing+=("$name")
             fi
           done
-
-          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ] && [ -z "$GOOGLE_SERVICES_JSON" ]; then
-            missing+=("GOOGLE_SERVICES_JSON_BASE64 or GOOGLE_SERVICES_JSON")
-          fi
 
           if [ "${#missing[@]}" -gt 0 ]; then
             printf 'Missing required CI input(s):\n' >&2

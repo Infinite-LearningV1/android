@@ -277,9 +277,6 @@
 # Keep all BroadcastReceivers (required for Geofencing)
 -keep class * extends android.content.BroadcastReceiver { *; }
 
-# Keep Geofencing receivers
--keep class com.example.infinite_track.presentation.geofencing.** { *; }
-
 # ================================================================================================
 # DOMAIN MODELS (if accessed by reflection)
 # ================================================================================================

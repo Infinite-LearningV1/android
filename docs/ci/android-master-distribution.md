@@ -12,7 +12,7 @@ This document is the CI contract for Android Firebase App Distribution.
 - Firebase CLI authentication is non-interactive through service account JSON written to `firebase-service-account.json` and exposed with `GOOGLE_APPLICATION_CREDENTIALS`.
 - The workflow includes a GitHub Actions artifact upload step for generated release notes.
 - The workflow includes a GitHub Actions artifact upload step for the signed APK.
-- The workflow includes cleanup of temporary secret/config files: `release-keystore.jks`, `firebase-service-account.json`, `app/google-services.json`, and `local.properties`.
+- The workflow includes cleanup of temporary secret/config files: `release-keystore.jks`, `firebase-service-account.json`, and `local.properties`.
 
 ## Branch intent
 
@@ -46,7 +46,6 @@ End-to-end readiness remains blocked until backend final readiness exists.
 ## Required GitHub secrets
 
 - `MAPS_API_KEY`
-- `GOOGLE_SERVICES_JSON_BASE64` preferred, or `GOOGLE_SERVICES_JSON` as fallback
 - `ANDROID_KEYSTORE_BASE64`
 - `ANDROID_KEYSTORE_PASSWORD`
 - `ANDROID_KEY_ALIAS`
@@ -62,7 +61,7 @@ End-to-end readiness remains blocked until backend final readiness exists.
 
 The Firebase CLI must not require an interactive login in CI. The workflow writes the `FIREBASE_SERVICE_ACCOUNT_JSON` secret to `firebase-service-account.json`, sets `GOOGLE_APPLICATION_CREDENTIALS` to that file, and uses Firebase CLI under that service account context.
 
-The workflow also reconstructs temporary build inputs from GitHub-managed secrets, including `app/google-services.json`, `release-keystore.jks`, and `local.properties`. These are temporary secret/config files, and the workflow includes cleanup for them.
+The workflow also reconstructs temporary build inputs from GitHub-managed secrets, including `release-keystore.jks` and `local.properties`. These are temporary secret/config files, and the workflow includes cleanup for them.
 
 ## Needs Verification
 
