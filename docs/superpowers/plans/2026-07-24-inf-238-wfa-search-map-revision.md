@@ -73,7 +73,8 @@ class GooglePlacesInitializationContractTest {
     @Test
     fun `debug does not redundantly disable resource shrinking`() {
         val buildFile = repoRoot.resolve("app/build.gradle.kts").readText()
-        val debugBlock = buildFile.substringAfter("getByName(\"debug\")")
+        assertTrue(buildFile.contains("debug {"))
+        val debugBlock = buildFile.substringAfter("debug {")
             .substringBefore("}")
 
         assertFalse(debugBlock.contains("isShrinkResources = false"))

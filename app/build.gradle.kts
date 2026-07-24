@@ -92,7 +92,7 @@ android {
             }
         }
 
-        getByName("debug") {
+        debug {
             // Debug builds - NO optimization for faster build times
             isMinifyEnabled = false
             isDebuggable = true
