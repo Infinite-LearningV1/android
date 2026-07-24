@@ -54,7 +54,10 @@ data class FaceScannerState(
     val isProcessing: Boolean = false,
     val timeRemaining: Int = 20, // 20 detik sesuai kebutuhan
     val showCountdown: Boolean = false,
-    val imageSize: Size? = null // Add image size for coordinate scaling
+    val imageSize: Size? = null, // Add image size for coordinate scaling
+    val failureReason: FaceVerificationFailureReason? = null,
+    val detectedFaceCount: Int = 0,
+    val capturedFacePreview: Bitmap? = null
 )
 
 /**
@@ -153,10 +156,10 @@ class FaceScannerViewModel @Inject constructor(
 
         currentImageBitmap = imageBitmap
 
-        // Panggil FaceDetectorHelper untuk mendeteksi wajah
-        faceDetectorHelper.detect(imageProxy) { result ->
-            result.onSuccess { face ->
-                handleFaceDetected(face, imageBitmap)
+        // Panggil FaceDetectorHelper untuk mendeteksi wajah + jumlah wajah dalam frame
+        faceDetectorHelper.detectFaces(imageProxy) { result ->
+            result.onSuccess { detected ->
+                handleFaceDetected(detected.primary, imageBitmap, detected.totalFaces)
             }.onFailure { exception ->
                 handleFaceDetectionError(exception.message ?: "Error mendeteksi wajah")
             }
@@ -166,7 +169,7 @@ class FaceScannerViewModel @Inject constructor(
     /**
      * Handle ketika wajah berhasil terdeteksi
      */
-    private fun handleFaceDetected(face: Face, imageBitmap: Bitmap) {
+    private fun handleFaceDetected(face: Face, imageBitmap: Bitmap, totalFaces: Int) {
         currentDetectedFace = face
         val imageWidth = imageBitmap.width
         val imageHeight = imageBitmap.height
@@ -186,8 +189,19 @@ class FaceScannerViewModel @Inject constructor(
             imageSize = Size(
                 width = imageWidth.toFloat(),
                 height = imageHeight.toFloat()
-            )
+            ),
+            detectedFaceCount = totalFaces
         )
+
+        // Jika ada lebih dari satu wajah, minta pengguna menyisakan satu wajah dulu
+        if (FaceCountGuidance.reasonFor(totalFaces) == FaceVerificationFailureReason.MULTIPLE_FACES) {
+            livenessJob?.cancel()
+            _uiState.value = _uiState.value.copy(
+                instructionText = "Pastikan hanya ada satu wajah di dalam frame",
+                errorMessage = null
+            )
+            return
+        }
 
         // Cek apakah wajah berada di posisi yang baik
         if (!faceDetectorHelper.isFaceWellPositioned(face, imageWidth, imageHeight)) {
@@ -326,7 +340,10 @@ class FaceScannerViewModel @Inject constructor(
         val bitmap = currentImageBitmap
 
         if (face == null || bitmap == null) {
-            handleVerificationError("Gagal mengambil data wajah")
+            handleVerificationFailure(
+                FaceVerificationFailureReason.TECHNICAL_FAILURE,
+                "Gagal mengambil data wajah"
+            )
             return
         }
 
@@ -343,27 +360,35 @@ class FaceScannerViewModel @Inject constructor(
                 val faceBitmap = faceDetectorHelper.extractFaceBitmap(face, bitmap)
 
                 if (faceBitmap == null) {
-                    handleVerificationError("Gagal mengekstrak wajah dari gambar")
+                    handleVerificationFailure(
+                        FaceVerificationFailureReason.TECHNICAL_FAILURE,
+                        "Gagal mengekstrak wajah dari gambar"
+                    )
                     return@launch
                 }
 
-                // Verifikasi wajah menggunakan VerifyFaceUseCase
-                verifyFaceUseCase(faceBitmap)
-                    .onSuccess { isMatch ->
-                        if (isMatch) {
-                            handleVerificationSuccess()
-                        } else {
-                            handleVerificationError("Wajah tidak cocok dengan data yang tersimpan. Silakan coba lagi.")
-                        }
-                    }
-                    .onFailure { exception ->
-                        handleVerificationError(
-                            exception.message ?: "Gagal memverifikasi wajah. Silakan coba lagi."
-                        )
-                    }
+                // Simpan foto wajah yang dipakai untuk verifikasi (transient, untuk result surface)
+                _uiState.value = _uiState.value.copy(capturedFacePreview = faceBitmap)
 
+                // Verifikasi wajah lalu petakan hasilnya ke reason terdiferensiasi
+                val outcome = FaceOutcomeMapper.fromMatch(verifyFaceUseCase(faceBitmap))
+                if (outcome.livenessState == LivenessState.SUCCESS) {
+                    handleVerificationSuccess()
+                } else {
+                    val reason = outcome.failureReason
+                        ?: FaceVerificationFailureReason.TECHNICAL_FAILURE
+                    val message = if (reason == FaceVerificationFailureReason.NOT_MATCHED) {
+                        "Wajah tidak cocok dengan data yang tersimpan. Silakan coba lagi."
+                    } else {
+                        "Gagal memverifikasi wajah. Silakan coba lagi."
+                    }
+                    handleVerificationFailure(reason, message)
+                }
             } catch (e: Exception) {
-                handleVerificationError("Terjadi kesalahan: ${e.message}")
+                handleVerificationFailure(
+                    FaceVerificationFailureReason.TECHNICAL_FAILURE,
+                    "Terjadi kesalahan: ${e.message}"
+                )
             }
         }
     }
@@ -377,6 +402,7 @@ class FaceScannerViewModel @Inject constructor(
 
         _uiState.value = _uiState.value.copy(
             livenessState = LivenessState.SUCCESS,
+            failureReason = null,
             isProcessing = false,
             instructionText = "Verifikasi berhasil! Identitas terkonfirmasi.",
             progress = 1f,
@@ -399,14 +425,18 @@ class FaceScannerViewModel @Inject constructor(
     }
 
     /**
-     * Handle error verifikasi wajah
+     * Handle kegagalan verifikasi wajah dengan alasan terdiferensiasi
      */
-    private fun handleVerificationError(errorMessage: String) {
+    private fun handleVerificationFailure(
+        reason: FaceVerificationFailureReason,
+        errorMessage: String
+    ) {
         timeoutJob?.cancel()
         livenessJob?.cancel()
 
         _uiState.value = _uiState.value.copy(
             livenessState = LivenessState.FAILURE,
+            failureReason = reason,
             isProcessing = false,
             instructionText = "Verifikasi gagal",
             errorMessage = errorMessage,
