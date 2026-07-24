@@ -308,7 +308,7 @@ Its input is explicit about why reconciliation is running:
 data class GeofenceRuntimeInputs(
     val todayStatus: TodayStatus,
     val profile: UserModel,
-    val approvedWfaBooking: WfaBookingForDate?,
+    val approvedWfaBooking: WfaBookingForDate,
     val readiness: GeofenceRuntimeReadiness,
     val reason: GeofenceReconcileReason
 )
