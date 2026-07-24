@@ -262,6 +262,10 @@
     <string name="attendance_map_precise_location_unavailable">Precise location is not ready</string>
     <string name="attendance_map_pick_location">Pick location</string>
     <string name="attendance_marker_category">Category: %1$s</string>
+    <string name="attendance_map_callout_category">Category</string>
+    <string name="attendance_map_callout_distance">Distance</string>
+    <string name="attendance_map_callout_rating">AHP rating</string>
+    <string name="attendance_map_callout_rating_value">%1$d%% · %2$s</string>
     <string name="attendance_marker_radius">%1$d meters</string>
     <string name="attendance_permission_revoked_title">Precise location is unavailable</string>
     <string name="attendance_permission_revoked_message">Location access changed while Attendance was open. Restore it from the access panel to continue.</string>
@@ -288,7 +292,7 @@
     <string name="wfa_search_clear_content_description">Clear search</string>
     <string name="wfa_search_field_content_description">WFA location search</string>
     <string name="wfa_search_error_configuration">Location search is not configured yet.</string>
-    <string name="wfa_search_error_authentication">Location search access was denied.</string>
+    <string name="wfa_search_error_authentication">Google Places rejected this app build. Ask an administrator to authorize its package and signing certificate.</string>
     <string name="wfa_search_error_quota">The location search limit has been reached. Try again later.</string>
     <string name="wfa_search_error_network">There is a network problem. Check your connection and try again.</string>
     <string name="wfa_search_error_invalid_request">The keyword or location is invalid.</string>

@@ -219,7 +219,8 @@ internal fun GoogleAttendanceMap(
                 ) {
                     CompactMapCallout(
                         title = marker.title,
-                        category = marker.category
+                        category = marker.category,
+                        recommendationInfo = marker.recommendationInfo
                     )
                 }
             }

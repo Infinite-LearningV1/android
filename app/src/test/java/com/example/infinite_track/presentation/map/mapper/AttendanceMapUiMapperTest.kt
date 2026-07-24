@@ -45,6 +45,24 @@ class AttendanceMapUiMapperTest {
             MapMarkerCategory.WFA,
             mapped.markers.single { it.role == MapMarkerRole.WFA_RECOMMENDATION }.category
         )
+
+        val recommendationMarker = mapped.markers.single {
+            it.role == MapMarkerRole.WFA_RECOMMENDATION
+        }
+        assertEquals("Cafe", recommendationMarker.recommendationInfo?.category)
+        assertEquals(
+            DistanceMeters(1_250.0),
+            recommendationMarker.recommendationInfo?.distance
+        )
+        assertEquals(
+            0.91,
+            recommendationMarker.recommendationInfo?.fuzzyAhpScore ?: Double.NaN,
+            0.0
+        )
+        assertEquals(
+            "Sangat sesuai",
+            recommendationMarker.recommendationInfo?.suitabilityLabel
+        )
     }
 
     @Test
@@ -71,6 +89,10 @@ class AttendanceMapUiMapperTest {
             mapped.markers.single { it.role == MapMarkerRole.AUTHORITATIVE_TARGET }.coordinate
         )
         assertEquals(approvedTarget.coordinate, mapped.circles.single().center)
+        assertEquals(
+            null,
+            mapped.markers.single { it.role == MapMarkerRole.SEARCH_PREVIEW }.recommendationInfo
+        )
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.example.infinite_track.presentation.components.button.attendance
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,9 +9,12 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,15 +29,14 @@ import com.example.infinite_track.R
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
 import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.components.surface.InfiniteCard
-import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteIcons
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
 import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
 import com.example.infinite_track.presentation.design.tokens.InfiniteSurfaceVariant
-import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
 import com.example.infinite_track.presentation.screen.attendance.preparation.TargetLocationSummaryUiModel
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
+import com.example.infinite_track.presentation.theme.White
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -41,7 +44,6 @@ fun TargetLocationSummary(
     model: TargetLocationSummaryUiModel,
     modifier: Modifier = Modifier
 ) {
-    val colors = infiniteSemanticColors(InfiniteSemantic.Primary)
     val heading = stringResource(R.string.attendance_target_heading)
     val semanticSummary = buildList {
         add("$heading ${model.displayName}")
@@ -59,8 +61,9 @@ fun TargetLocationSummary(
             .semantics(mergeDescendants = true) {
                 contentDescription = semanticSummary
             },
-        variant = InfiniteSurfaceVariant.Default,
+        variant = InfiniteSurfaceVariant.PrimarySolid,
         semantic = InfiniteSemantic.Primary,
+        showBorder = false,
         showShadow = false
     ) {
         Row(
@@ -72,14 +75,14 @@ fun TargetLocationSummary(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(MaterialTheme.shapes.medium)
-                    .background(colors.container),
+                    .background(White.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = InfiniteIcons.Location,
                     contentDescription = null,
                     modifier = Modifier.size(InfiniteSpacing.Default.xl),
-                    tint = colors.accent
+                    tint = White
                 )
             }
 
@@ -90,12 +93,12 @@ fun TargetLocationSummary(
                 Text(
                     text = heading,
                     style = MaterialTheme.typography.labelMedium,
-                    color = InfiniteColors.AttendanceReportMutedText
+                    color = White.copy(alpha = 0.72f)
                 )
                 Text(
                     text = model.displayName,
                     style = MaterialTheme.typography.titleMedium,
-                    color = InfiniteColors.Text
+                    color = White
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs),
@@ -105,30 +108,26 @@ fun TargetLocationSummary(
                         imageVector = InfiniteIcons.Shield,
                         contentDescription = null,
                         modifier = Modifier.size(InfiniteSpacing.Default.lg),
-                        tint = colors.accent
+                        tint = White
                     )
                     Text(
                         text = model.sourceLabel,
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodySmall,
-                        color = InfiniteColors.AttendanceReportBodyText
+                        color = White.copy(alpha = 0.82f)
                     )
                 }
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs),
                     verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.xs)
                 ) {
-                    InfiniteStatusPill(
+                    TargetLocationMetadataPill(
                         label = model.radiusText,
-                        variant = InfiniteStatusVariant.Neutral,
-                        size = InfiniteSize.Small,
                         leadingIcon = InfiniteIcons.Location
                     )
                     model.distanceText?.let { distance ->
-                        InfiniteStatusPill(
+                        TargetLocationMetadataPill(
                             label = distance,
-                            variant = InfiniteStatusVariant.Neutral,
-                            size = InfiniteSize.Small,
                             leadingIcon = InfiniteIcons.Location
                         )
                     }
@@ -157,15 +156,49 @@ fun TargetLocationSummary(
                         )
                     }
                     model.bookingDateText?.let { date ->
-                        InfiniteStatusPill(
+                        TargetLocationMetadataPill(
                             label = date,
-                            variant = InfiniteStatusVariant.Neutral,
-                            size = InfiniteSize.Small,
                             leadingIcon = InfiniteIcons.Calendar
                         )
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun TargetLocationMetadataPill(
+    label: String,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.semantics { contentDescription = label },
+        shape = MaterialTheme.shapes.extraLarge,
+        color = White.copy(alpha = 0.14f),
+        contentColor = White,
+        border = BorderStroke(1.dp, White.copy(alpha = 0.24f))
+    ) {
+        Row(
+            modifier = Modifier
+                .background(White.copy(alpha = 0.02f))
+                .sizeIn(minHeight = 24.dp)
+                .padding(horizontal = 7.dp, vertical = 3.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null,
+                modifier = Modifier.size(12.dp),
+                tint = White
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = White
+            )
         }
     }
 }
