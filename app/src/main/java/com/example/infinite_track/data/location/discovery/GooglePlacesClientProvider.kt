@@ -21,7 +21,11 @@ class GooglePlacesClientProvider @Inject constructor(
         }
 
         if (!Places.isInitialized()) {
-            Places.initialize(context, apiKey, Locale("id", "ID"))
+            Places.initializeWithNewPlacesApiEnabled(
+                context,
+                apiKey,
+                Locale("id", "ID")
+            )
         }
         return Places.createClient(context)
     }
