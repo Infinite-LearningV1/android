@@ -23,7 +23,7 @@ import javax.inject.Inject
  * Enum untuk tantangan liveness detection
  */
 enum class LivenessChallenge {
-    BLINK, SMILE
+    BLINK, SMILE, TURN_LEFT, TURN_RIGHT
 }
 
 /**
@@ -109,6 +109,8 @@ class FaceScannerViewModel @Inject constructor(
         val instructionText = when (randomChallenge) {
             LivenessChallenge.BLINK -> "Posisikan wajah Anda di dalam frame, lalu kedipkan mata"
             LivenessChallenge.SMILE -> "Posisikan wajah Anda di dalam frame, lalu tersenyum"
+            LivenessChallenge.TURN_LEFT -> "Posisikan wajah Anda di dalam frame, lalu tengok ke kiri"
+            LivenessChallenge.TURN_RIGHT -> "Posisikan wajah Anda di dalam frame, lalu tengok ke kanan"
         }
 
         // STEP 5: Reset state ke kondisi benar-benar fresh
@@ -231,6 +233,8 @@ class FaceScannerViewModel @Inject constructor(
                 instructionText = when (_uiState.value.currentChallenge) {
                     LivenessChallenge.BLINK -> "Pencahayaan membaik. Sekarang kedipkan mata Anda"
                     LivenessChallenge.SMILE -> "Pencahayaan membaik. Sekarang tersenyum"
+                    LivenessChallenge.TURN_LEFT -> "Pencahayaan membaik. Sekarang tengok ke kiri"
+                    LivenessChallenge.TURN_RIGHT -> "Pencahayaan membaik. Sekarang tengok ke kanan"
                 }
             )
         }
@@ -244,6 +248,8 @@ class FaceScannerViewModel @Inject constructor(
                     instructionText = when (_uiState.value.currentChallenge) {
                         LivenessChallenge.BLINK -> "Wajah terdeteksi! Sekarang kedipkan mata Anda"
                         LivenessChallenge.SMILE -> "Wajah terdeteksi! Sekarang tersenyum"
+                        LivenessChallenge.TURN_LEFT -> "Wajah terdeteksi! Sekarang tengok ke kiri"
+                        LivenessChallenge.TURN_RIGHT -> "Wajah terdeteksi! Sekarang tengok ke kanan"
                     }
                 )
             }
@@ -286,6 +292,7 @@ class FaceScannerViewModel @Inject constructor(
         val livenessResult = when (_uiState.value.currentChallenge) {
             LivenessChallenge.BLINK -> faceDetectorHelper.verifyBlink(face)
             LivenessChallenge.SMILE -> faceDetectorHelper.verifySmile(face)
+            LivenessChallenge.TURN_LEFT, LivenessChallenge.TURN_RIGHT -> LivenessResult.FAILURE
         }
 
         when (livenessResult) {
@@ -309,6 +316,8 @@ class FaceScannerViewModel @Inject constructor(
                 val progressText = when (_uiState.value.currentChallenge) {
                     LivenessChallenge.BLINK -> "Hampir berhasil! Coba kedipkan kedua mata bersamaan"
                     LivenessChallenge.SMILE -> "Bagus! Tersenyum sedikit lebih lebar lagi"
+                    LivenessChallenge.TURN_LEFT -> "Hampir! Tengok sedikit lagi ke kiri"
+                    LivenessChallenge.TURN_RIGHT -> "Hampir! Tengok sedikit lagi ke kanan"
                 }
 
                 _uiState.value = _uiState.value.copy(
@@ -322,6 +331,8 @@ class FaceScannerViewModel @Inject constructor(
                 val failureText = when (_uiState.value.currentChallenge) {
                     LivenessChallenge.BLINK -> "Silakan kedipkan mata Anda dengan jelas"
                     LivenessChallenge.SMILE -> "Silakan tersenyum dengan lebih jelas"
+                    LivenessChallenge.TURN_LEFT -> "Silakan tengok ke kiri dengan jelas"
+                    LivenessChallenge.TURN_RIGHT -> "Silakan tengok ke kanan dengan jelas"
                 }
 
                 _uiState.value = _uiState.value.copy(
