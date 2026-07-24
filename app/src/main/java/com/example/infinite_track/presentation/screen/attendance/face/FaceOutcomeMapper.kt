@@ -1,32 +1,44 @@
 package com.example.infinite_track.presentation.screen.attendance.face
 
+import com.example.infinite_track.domain.use_case.auth.VerifyFaceMatch
+
 /**
- * Terminal outcome of a face match attempt, mapping VerifyFaceUseCase's `Result<Boolean>`
- * to a scanner [LivenessState] plus an optional differentiated [FaceVerificationFailureReason].
+ * Terminal outcome of a face match attempt, mapping VerifyFaceUseCase's `Result<VerifyFaceMatch>`
+ * to a scanner [LivenessState], an optional differentiated [FaceVerificationFailureReason], and
+ * the similarity/threshold to surface in the diagnostics card.
  *
  * Pure and free of Android types so it can be unit-tested on the JVM.
  */
 data class FaceMatchOutcome(
     val livenessState: LivenessState,
-    val failureReason: FaceVerificationFailureReason?
+    val failureReason: FaceVerificationFailureReason?,
+    val similarity: Float? = null,
+    val threshold: Float? = null
 )
 
 object FaceOutcomeMapper {
-    fun fromMatch(result: Result<Boolean>): FaceMatchOutcome = result.fold(
-        onSuccess = { isMatch ->
-            if (isMatch) {
-                FaceMatchOutcome(LivenessState.SUCCESS, null)
+    fun fromMatch(result: Result<VerifyFaceMatch>): FaceMatchOutcome = result.fold(
+        onSuccess = { match ->
+            if (match.isMatch) {
+                FaceMatchOutcome(
+                    livenessState = LivenessState.SUCCESS,
+                    failureReason = null,
+                    similarity = match.similarity,
+                    threshold = match.threshold
+                )
             } else {
                 FaceMatchOutcome(
-                    LivenessState.FAILURE,
-                    FaceVerificationFailureReason.NOT_MATCHED
+                    livenessState = LivenessState.FAILURE,
+                    failureReason = FaceVerificationFailureReason.NOT_MATCHED,
+                    similarity = match.similarity,
+                    threshold = match.threshold
                 )
             }
         },
         onFailure = {
             FaceMatchOutcome(
-                LivenessState.FAILURE,
-                FaceVerificationFailureReason.TECHNICAL_FAILURE
+                livenessState = LivenessState.FAILURE,
+                failureReason = FaceVerificationFailureReason.TECHNICAL_FAILURE
             )
         }
     )

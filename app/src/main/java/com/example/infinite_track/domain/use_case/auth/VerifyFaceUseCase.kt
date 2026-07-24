@@ -11,6 +11,16 @@ import javax.inject.Inject
  * Use case for verifying face against stored embedding
  * Handles face comparison for attendance check-in/check-out
  */
+/**
+ * Typed result of a face match: the decision plus the similarity/threshold used, so the
+ * UI can render diagnostics. Raw embeddings are never included.
+ */
+data class VerifyFaceMatch(
+    val isMatch: Boolean,
+    val similarity: Float,
+    val threshold: Float
+)
+
 class VerifyFaceUseCase @Inject constructor(
     private val faceProcessor: FaceProcessor,
     private val authRepository: AuthRepository
@@ -24,9 +34,9 @@ class VerifyFaceUseCase @Inject constructor(
     /**
      * Verifies captured face against stored user embedding
      * @param capturedFaceBitmap Bitmap of the captured face (sudah di-preprocess oleh FaceDetectorHelper)
-     * @return Result<Boolean> indicating if face matches (true) or not (false)
+     * @return Result<VerifyFaceMatch> carrying match flag, similarity, and threshold
      */
-    suspend operator fun invoke(capturedFaceBitmap: Bitmap): Result<Boolean> {
+    suspend operator fun invoke(capturedFaceBitmap: Bitmap): Result<VerifyFaceMatch> {
         return try {
             // Get current user data with stored face embedding
             val currentUser = authRepository.getLoggedInUser().first()
@@ -59,7 +69,7 @@ class VerifyFaceUseCase @Inject constructor(
                 .build(BuildConfig.DEBUG, similarity, SIMILARITY_THRESHOLD, isMatch)
                 ?.let { android.util.Log.d(TAG, "Face match diagnostics: $it") }
 
-            Result.success(isMatch)
+            Result.success(VerifyFaceMatch(isMatch, similarity, SIMILARITY_THRESHOLD))
 
         } catch (e: Exception) {
             android.util.Log.e(TAG, "Error in face verification", e)
