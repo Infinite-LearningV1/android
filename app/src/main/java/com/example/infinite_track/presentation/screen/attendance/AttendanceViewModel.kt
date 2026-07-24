@@ -44,6 +44,7 @@ import com.example.infinite_track.presentation.screen.attendance.preparation.Att
 import com.example.infinite_track.presentation.screen.attendance.preparation.LatestSelectionGuard
 import com.example.infinite_track.presentation.screen.attendance.preparation.SelectionRequestToken
 import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryState
+import com.example.infinite_track.presentation.screen.attendance.preparation.WfaMapSelectionEffect
 import com.example.infinite_track.presentation.screen.attendance.preparation.WfaMapPickInteractionState
 import com.example.infinite_track.utils.LocationPermissionHelper
 import com.example.infinite_track.utils.UiState
@@ -771,21 +772,14 @@ class AttendanceViewModel @Inject constructor(
                 recommendation
             )
         )
-        refreshResolvedActionState()
-    }
-
-    /**
-     * Handle WFA marker info dismissal
-     */
-    fun onDismissWfaMarkerInfo() {
-        Log.d(TAG, "WFA marker info dialog dismissed")
-        val discovery = _uiState.value.preparation.wfaDiscovery as? WfaDiscoveryState.Content
-            ?: return
-        _uiState.value = _uiState.value.copy(
-            preparation = _uiState.value.preparation.copy(
-                wfaDiscovery = discovery.copy(selectedKey = null)
+        if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return
+        _mapCameraEffects.tryEmit(
+            WfaMapSelectionEffect.focus(
+                id = nextMapCameraEffectId++,
+                coordinate = recommendation.coordinate
             )
         )
+        refreshResolvedActionState()
     }
 
     /**
@@ -1227,6 +1221,13 @@ class AttendanceViewModel @Inject constructor(
             preparation = AttendancePreparationReducer.selectSearchPreview(
                 preparation,
                 location
+            )
+        )
+        if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return
+        _mapCameraEffects.tryEmit(
+            WfaMapSelectionEffect.focus(
+                id = nextMapCameraEffectId++,
+                coordinate = GeoCoordinate(location.latitude, location.longitude)
             )
         )
     }

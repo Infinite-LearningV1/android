@@ -16,7 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -27,9 +27,12 @@ import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.presentation.map.model.AttendanceMapEvent
 import com.example.infinite_track.presentation.map.model.AttendanceMapCameraMoveOrigin
 import com.example.infinite_track.presentation.map.model.MapCameraEffect
-import com.example.infinite_track.presentation.map.model.MapMarkerRole
+import com.example.infinite_track.presentation.map.components.CompactMapCallout
+import com.example.infinite_track.presentation.map.components.color
+import com.example.infinite_track.presentation.map.model.MapMarkerCategory
 import com.example.infinite_track.presentation.map.model.MapUiState
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
@@ -38,7 +41,7 @@ import com.google.maps.android.compose.CameraMoveStartedReason
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerInfoWindow
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.CancellationException
@@ -190,28 +193,40 @@ internal fun GoogleAttendanceMap(
                 key = marker.id,
                 position = marker.coordinate.toLatLng()
             )
-            val icon = remember(marker.role, marker.isSelected) {
-                BitmapDescriptorFactory.defaultMarker(
-                    when {
-                        marker.isSelected -> BitmapDescriptorFactory.HUE_AZURE
-                        marker.role == MapMarkerRole.CURRENT_LOCATION -> BitmapDescriptorFactory.HUE_CYAN
-                        marker.role == MapMarkerRole.WFA_RECOMMENDATION -> BitmapDescriptorFactory.HUE_VIOLET
-                        marker.role == MapMarkerRole.SEARCH_PREVIEW -> BitmapDescriptorFactory.HUE_ORANGE
-                        else -> BitmapDescriptorFactory.HUE_RED
-                    }
-                )
+            LaunchedEffect(marker.isSelected, markerState) {
+                if (marker.isSelected) {
+                    markerState.showInfoWindow()
+                } else {
+                    markerState.hideInfoWindow()
+                }
             }
-            Marker(
+            MarkerInfoWindow(
                 state = markerState,
                 title = marker.title,
                 snippet = marker.snippet,
-                icon = icon,
+                icon = rememberMarkerDescriptor(marker.category),
+                zIndex = if (marker.isSelected) 2f else 1f,
                 onClick = {
                     currentOnEvent(AttendanceMapEvent.MarkerClicked(marker))
                     true
                 }
-            )
+            ) {
+                CompactMapCallout(
+                    title = marker.title,
+                    category = marker.category
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun rememberMarkerDescriptor(category: MapMarkerCategory): BitmapDescriptor {
+    val color = category.color()
+    return remember(category, color) {
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+        BitmapDescriptorFactory.defaultMarker(hsv[0])
     }
 }
 

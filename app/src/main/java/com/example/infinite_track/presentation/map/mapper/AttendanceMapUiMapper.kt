@@ -1,11 +1,13 @@
 package com.example.infinite_track.presentation.map.mapper
 
 import com.example.infinite_track.domain.model.attendance.TargetLocationResolution
+import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.location.CurrentLocationResult
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.presentation.map.model.MapCircleUiModel
 import com.example.infinite_track.presentation.map.model.MapMarkerRole
+import com.example.infinite_track.presentation.map.model.MapMarkerCategory
 import com.example.infinite_track.presentation.map.model.MapMarkerUiModel
 import com.example.infinite_track.presentation.map.model.MapUiState
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
@@ -22,6 +24,7 @@ object AttendanceMapUiMapper {
                     MapMarkerUiModel(
                         id = CURRENT_LOCATION_MARKER_ID,
                         role = MapMarkerRole.CURRENT_LOCATION,
+                        category = MapMarkerCategory.CURRENT_LOCATION,
                         coordinate = coordinate,
                         title = "Lokasi saat ini",
                         snippet = null
@@ -35,6 +38,7 @@ object AttendanceMapUiMapper {
                     MapMarkerUiModel(
                         id = "authoritative-target:${target.targetId.value}",
                         role = MapMarkerRole.AUTHORITATIVE_TARGET,
+                        category = target.mode.toMarkerCategory(),
                         coordinate = target.coordinate,
                         title = target.displayName,
                         snippet = "Radius ${target.radius.value.toInt()} m",
@@ -49,6 +53,7 @@ object AttendanceMapUiMapper {
                     MapMarkerUiModel(
                         id = recommendationMarkerId(recommendation),
                         role = MapMarkerRole.WFA_RECOMMENDATION,
+                        category = MapMarkerCategory.WFA,
                         coordinate = recommendation.coordinate,
                         title = recommendation.name,
                         snippet = recommendation.address,
@@ -64,6 +69,7 @@ object AttendanceMapUiMapper {
                             MapMarkerUiModel(
                                 id = SEARCH_PREVIEW_MARKER_ID,
                                 role = MapMarkerRole.SEARCH_PREVIEW,
+                                category = MapMarkerCategory.WFA,
                                 coordinate = coordinate,
                                 title = preview.placeName,
                                 snippet = preview.address,
@@ -101,6 +107,12 @@ object AttendanceMapUiMapper {
         (this as? CurrentLocationResult.Success)
             ?.location
             ?.coordinate
+
+    private fun WorkMode.toMarkerCategory(): MapMarkerCategory = when (this) {
+        WorkMode.WFO -> MapMarkerCategory.WFO
+        WorkMode.WFH -> MapMarkerCategory.WFH
+        WorkMode.WFA -> MapMarkerCategory.WFA
+    }
 
     private const val CURRENT_LOCATION_MARKER_ID = "current-location"
     private const val SEARCH_PREVIEW_MARKER_ID = "search-preview"

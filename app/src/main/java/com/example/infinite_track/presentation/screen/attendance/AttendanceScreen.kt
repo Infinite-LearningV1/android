@@ -67,7 +67,6 @@ import com.example.infinite_track.presentation.components.maps.MarkerView
 import com.example.infinite_track.presentation.components.dialog.LocationPermissionDialog
 import com.example.infinite_track.utils.LocalLocationPermissionHelper
 import com.example.infinite_track.utils.LocationPermissionHelper
-import com.example.infinite_track.presentation.components.maps.MarkerViewWfa
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarHost
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarVisuals
 import com.example.infinite_track.presentation.design.components.status.InfiniteSnackbarTimeout
@@ -293,10 +292,6 @@ fun AttendanceScreen(
                 ),
                 actionState = uiState.actionState
             )
-            val discovery = preparation.wfaDiscovery as? WfaDiscoveryState.Content
-            val selectedWfaMarker = discovery?.recommendations?.firstOrNull {
-                it.stableKey == discovery.selectedKey
-            }
             val selectedTargetMarker = AttendanceSelectionTransition.resolvedTargetForInteraction(
                 preparation = preparation,
                 selectedTargetId = selectedTargetMarkerId
@@ -471,21 +466,6 @@ fun AttendanceScreen(
                                 ),
                                 coordinates = "${selectedMarker.coordinate.latitude}, ${selectedMarker.coordinate.longitude}",
                                 onClose = { selectedTargetMarkerId = null }
-                            )
-                        }
-                    }
-
-                    // Display WFA marker details when clicked
-                    selectedWfaMarker?.let {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(top = 80.dp, start = 16.dp, end = 16.dp),
-                            contentAlignment = Alignment.TopCenter
-                        ) {
-                            MarkerViewWfa(
-                                recommendation = it,
-                                onClick = { viewModel.onDismissWfaMarkerInfo() }
                             )
                         }
                     }

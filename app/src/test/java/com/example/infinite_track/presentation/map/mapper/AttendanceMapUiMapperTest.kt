@@ -11,6 +11,7 @@ import com.example.infinite_track.domain.model.location.DistanceMeters
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
+import com.example.infinite_track.presentation.map.model.MapMarkerCategory
 import com.example.infinite_track.presentation.map.model.MapMarkerRole
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
 import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryState
@@ -20,6 +21,31 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AttendanceMapUiMapperTest {
+
+    @Test
+    fun `marker categories follow work mode and discovery roles`() {
+        val recommendation = recommendation("cafe", -0.90, 119.88)
+        val mapped = AttendanceMapUiMapper.map(
+            preparation = AttendancePreparationState(
+                selectedMode = WorkMode.WFA,
+                targetResolution = TargetLocationResolution.Resolved(approvedTarget),
+                wfaDiscovery = WfaDiscoveryState.Content(
+                    recommendations = listOf(recommendation),
+                    selectedKey = recommendation.stableKey
+                )
+            ),
+            hasPreciseLocationPermission = true
+        )
+
+        assertEquals(
+            MapMarkerCategory.WFA,
+            mapped.markers.single { it.role == MapMarkerRole.AUTHORITATIVE_TARGET }.category
+        )
+        assertEquals(
+            MapMarkerCategory.WFA,
+            mapped.markers.single { it.role == MapMarkerRole.WFA_RECOMMENDATION }.category
+        )
+    }
 
     @Test
     fun `WFA recommendation preview never replaces authoritative marker`() {
