@@ -51,6 +51,28 @@ The 320 lint warnings are reported here rather than hidden; the task gate had
 no error-level lint blocker and Gradle returned zero.  They are repository
 warnings outside this documentation-only task unless separately triaged.
 
+## Post-Documentation Gate Capture
+
+The following fresh commands ran against `e53d14cc937f9016a7dfe394028e049ce652fbfe`
+on 2026-07-25 with the JBR 17 / SDK environment above.  The subsequent review
+correction changes documentation only; it does not change Android source or
+build configuration.  This table supersedes any unsupported later timestamp
+claim in an earlier task report.
+
+| Start - end (UTC+08:00) | Exact command | Exit | Exact count / result |
+| --- | --- | ---: | --- |
+| 05:18:55 - 05:19:07 | `.\gradlew.bat --no-daemon app:testDebugUnitTest` | 0 | `BUILD SUCCESSFUL in 12s`; 112 XML suites, 550 tests, 0 failures, 0 errors, 2 skipped |
+| 05:19:07 - 05:19:20 | `.\gradlew.bat --no-daemon app:compileDebugAndroidTestKotlin` | 0 | `BUILD SUCCESSFUL in 12s`; 0 compilation failures |
+| 05:19:20 - 05:19:33 | `.\gradlew.bat --no-daemon app:lintDebug` | 0 | `BUILD SUCCESSFUL in 12s`; 0 errors, 320 warnings, and 20 informational issues in the lint XML |
+| 05:19:33 - 05:19:45 | `.\gradlew.bat --no-daemon app:assembleDebug` | 0 | `BUILD SUCCESSFUL in 12s`; 0 assembly failures |
+
+After the gate capture, `git status --short` was clean, `git diff
+origin/develop...HEAD --check` exited 0, and `git log --oneline --decorate -12`
+contained the intentional Task 1-12 commit sequence without author email
+output.  The merge base was `384de7496d49fb2719acec0718b98475ac502c53`; against
+HEAD `e53d14cc937f9016a7dfe394028e049ce652fbfe`,
+`git diff --name-only <merge-base>...<head>` counted exactly 75 changed files.
+
 ## Architecture and Cleanup Audit
 
 All commands ran at 2026-07-25T05:03:07+08:00.
@@ -107,8 +129,10 @@ backend mutation was performed.
 
 ### Fact
 
-The branch changes 73 implementation/test/configuration/documentation files
-relative to `origin/develop`, centered on `domain/model/geofence`,
+At the post-documentation gate capture, the branch changed exactly 75
+implementation/test/configuration/documentation files relative to merge base
+`384de7496d49fb2719acec0718b98475ac502c53` and HEAD
+`e53d14cc937f9016a7dfe394028e049ce652fbfe`, centered on `domain/model/geofence`,
 `domain/use_case/geofence`, `data/platform/geofence`, receivers/workers,
 attendance boundary/UI projection, DI, manifest, cleanup contracts, Gradle
 catalog/build files, and Android workflows.  The new ADR is
