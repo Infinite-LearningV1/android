@@ -172,8 +172,8 @@ class BuildReminderGeofenceCandidatesUseCaseTest {
         radius: Int? = 100
     ) = UserModel(
         id = 7,
-        fullName = "Febriyadi",
-        email = "febriyadi@example.com",
+        fullName = "Test Employee",
+        email = "employee@example.test",
         roleName = "Employee",
         positionName = null,
         programName = null,
