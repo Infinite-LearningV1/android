@@ -6,7 +6,6 @@ import androidx.datastore.preferences.core.Preferences
 import com.example.infinite_track.data.repository.auth.AuthRuntimeCleanerImpl
 import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
 import com.example.infinite_track.data.soucre.local.preferences.CachedTodayStatusPayload
-import com.example.infinite_track.data.soucre.local.preferences.StoredGeofence
 import com.example.infinite_track.data.soucre.local.preferences.TodayStatusPreference
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
@@ -18,8 +17,6 @@ import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeFailure
 import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeMode
 import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeReadiness
 import com.example.infinite_track.domain.model.geofence.GeofenceRuntimeResult
-import com.example.infinite_track.domain.model.location.DistanceMeters
-import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.repository.GeofenceRuntimeRepository
 import com.google.gson.Gson
 import java.io.File
@@ -70,14 +67,7 @@ class ClearAuthenticatedRuntimeUseCaseTest {
         userPreference.saveLastProfileSyncAt(456L)
         userDao.insertOrUpdateUserProfile(sampleUserEntity())
         attendancePreference.saveActiveAttendanceId(99)
-        attendancePreference.setUserInsideGeofence(true)
-        attendancePreference.saveLastGeofenceParams(
-            StoredGeofence(
-                "attendance-geofence",
-                GeoCoordinate(-0.9, 119.8),
-                DistanceMeters(100.0)
-            )
-        )
+        attendancePreference.saveAttendanceSessionStateKey("active")
         todayStatusPreference.saveTodayStatusCache(sampleCachedTodayStatus())
         calls.clear()
 
@@ -94,8 +84,7 @@ class ClearAuthenticatedRuntimeUseCaseTest {
         assertEquals(0L, userPreference.getLastProfileSyncAt().first())
         assertNull(userDao.getUserProfile())
         assertNull(attendancePreference.getActiveAttendanceId().first())
-        assertEquals(false, attendancePreference.isUserInsideGeofence().first())
-        assertNull(attendancePreference.getLastGeofenceParams().first())
+        assertNull(attendancePreference.getAttendanceSessionStateKey().first())
         assertNull(todayStatusPreference.getTodayStatusCache().first())
     }
 
@@ -169,14 +158,7 @@ class ClearAuthenticatedRuntimeUseCaseTest {
         userPreference.saveLastProfileSyncAt(654L)
         userDao.insertOrUpdateUserProfile(sampleUserEntity())
         attendancePreference.saveActiveAttendanceId(100)
-        attendancePreference.setUserInsideGeofence(true)
-        attendancePreference.saveLastGeofenceParams(
-            StoredGeofence(
-                "attendance-geofence",
-                GeoCoordinate(-1.0, 120.0),
-                DistanceMeters(150.0)
-            )
-        )
+        attendancePreference.saveAttendanceSessionStateKey("active")
         todayStatusPreference.saveTodayStatusCache(sampleCachedTodayStatus())
         calls.clear()
 
@@ -208,8 +190,7 @@ class ClearAuthenticatedRuntimeUseCaseTest {
         assertEquals(0L, userPreference.getLastProfileSyncAt().first())
         assertNull(userDao.getUserProfile())
         assertNull(attendancePreference.getActiveAttendanceId().first())
-        assertEquals(false, attendancePreference.isUserInsideGeofence().first())
-        assertNull(attendancePreference.getLastGeofenceParams().first())
+        assertNull(attendancePreference.getAttendanceSessionStateKey().first())
         assertNull(todayStatusPreference.getTodayStatusCache().first())
     }
 

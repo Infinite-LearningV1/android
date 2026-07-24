@@ -10,7 +10,7 @@ class AttendanceSubmissionBoundaryTest {
         listOf(CheckInUseCase::class.java, CheckOutUseCase::class.java).forEach { type ->
             val dependencies = type.declaredConstructors.single().parameterTypes.map { it.name }
 
-            assertFalse(dependencies.any { it.contains("GeofenceManager") })
+            assertFalse(dependencies.any { it.contains("Geofence") })
             assertFalse(dependencies.any { it.contains("AttendancePreference") })
             assertFalse(dependencies.any { it.startsWith("android.") })
         }

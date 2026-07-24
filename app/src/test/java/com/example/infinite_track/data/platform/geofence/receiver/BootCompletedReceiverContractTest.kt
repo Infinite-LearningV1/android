@@ -1,7 +1,6 @@
 package com.example.infinite_track.data.platform.geofence.receiver
 
 import java.io.File
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -20,10 +19,6 @@ class BootCompletedReceiverContractTest {
         assertTrue(receiver.contains("30, TimeUnit.SECONDS"))
         assertTrue(receiver.contains("addTag"))
         assertTrue(receiver.contains("GeofenceReconciliationWorker"))
-        assertFalse(receiver.contains("AttendancePreference"))
-        assertFalse(receiver.contains("GeofenceManager"))
-        assertFalse(receiver.contains("getLastGeofenceParams"))
-        assertFalse(receiver.contains("getReminderGeofences"))
     }
 
     @Test

@@ -84,7 +84,7 @@ class SplashViewModelBootstrapReauthTest {
                     AuthRuntimeCleaner {
                         userPreference.clearAuthData()
                         userDao.clearUserProfile()
-                        attendancePreference.clearAttendanceRuntimeState()
+                        attendancePreference.clearAttendanceSessionState()
                         todayStatusPreference.clearTodayStatusCache()
                         removeAllGeofencesCalls += 1
                     }

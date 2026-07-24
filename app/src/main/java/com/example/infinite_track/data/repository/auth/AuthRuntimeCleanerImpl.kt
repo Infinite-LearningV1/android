@@ -39,8 +39,8 @@ class AuthRuntimeCleanerImpl @Inject constructor(
         runBestEffort("todayStatusPreference.clearTodayStatusCache", failures) {
             todayStatusPreference.clearTodayStatusCache()
         }
-        runBestEffort("attendancePreference.clearAttendanceRuntimeState", failures) {
-            attendancePreference.clearAttendanceRuntimeState()
+        runBestEffort("attendancePreference.clearAttendanceSessionState", failures) {
+            attendancePreference.clearAttendanceSessionState()
         }
 
         if (failures.isNotEmpty()) {

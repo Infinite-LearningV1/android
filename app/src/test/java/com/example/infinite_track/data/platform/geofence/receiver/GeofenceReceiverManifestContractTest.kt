@@ -7,13 +7,9 @@ import org.junit.Test
 class GeofenceReceiverManifestContractTest {
 
     @Test
-    fun `manifest retains both geofence receivers while boot uses reconciliation receiver`() {
+    fun `manifest retains canonical geofence and boot reconciliation receivers`() {
         val manifest = source("src/main/AndroidManifest.xml")
 
-        assertTrue(
-            "Legacy receiver must remain declared until Task 11 cleanup",
-            manifest.contains("android:name=\".presentation.geofencing.GeofenceBroadcastReceiver\"")
-        )
         assertTrue(
             "V2 receiver must remain declared for canonical gf2 registrations",
             manifest.contains("android:name=\".data.platform.geofence.receiver.GeofenceBroadcastReceiver\"")

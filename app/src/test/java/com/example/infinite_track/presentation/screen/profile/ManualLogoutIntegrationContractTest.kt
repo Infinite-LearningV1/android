@@ -48,15 +48,14 @@ class ManualLogoutIntegrationContractTest {
     }
 
     @Test
-    fun `logout teardown uses the runtime repository rather than presentation geofence manager`() {
+    fun `logout teardown clears v2 runtime and attendance session state`() {
         val cleaner = source("data/repository/auth/AuthRuntimeCleanerImpl.kt")
         val repositoryModule = source("di/RepositoryModule.kt")
 
         assertTrue(cleaner.contains("private val geofenceRuntimeRepository: GeofenceRuntimeRepository"))
         assertTrue(cleaner.contains("geofenceRuntimeRepository.clearForLogout()"))
-        assertFalse(cleaner.contains("presentation.geofencing.GeofenceManager"))
+        assertTrue(cleaner.contains("attendancePreference.clearAttendanceSessionState()"))
         assertTrue(repositoryModule.contains("geofenceRuntimeRepository: GeofenceRuntimeRepository"))
-        assertFalse(repositoryModule.contains("presentation.geofencing.GeofenceManager"))
     }
 
     private fun source(relativePath: String): String = File(
