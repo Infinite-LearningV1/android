@@ -41,7 +41,6 @@ import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
 sealed interface AttendancePreparationEvent {
     data class ModeSelected(val mode: WorkMode) : AttendancePreparationEvent
-    data class RecommendationSelected(val stableKey: String) : AttendancePreparationEvent
     data object SearchWfaLocation : AttendancePreparationEvent
     data object PickWfaLocationOnMap : AttendancePreparationEvent
     data class PrimaryActionClicked(
@@ -114,13 +113,6 @@ fun WorkModePreparationContent(
                 onMapClick = { onEvent(AttendancePreparationEvent.PickWfaLocationOnMap) }
             )
         }
-
-        WfaRecommendationSection(
-            model = model.wfaDiscovery,
-            onRecommendationSelected = { stableKey ->
-                onEvent(AttendancePreparationEvent.RecommendationSelected(stableKey))
-            }
-        )
 
         InfiniteCard(
             modifier = Modifier
