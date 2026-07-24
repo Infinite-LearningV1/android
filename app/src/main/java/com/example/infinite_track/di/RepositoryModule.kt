@@ -49,7 +49,6 @@ import com.example.infinite_track.domain.repository.location.PlaceDiscoveryRepos
 import com.example.infinite_track.domain.repository.ProfileRepository
 import com.example.infinite_track.domain.repository.WfaRepository
 import com.example.infinite_track.domain.repository.GeofenceRuntimeRepository
-import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import com.google.gson.Gson
 import dagger.Module
 import dagger.Provides
@@ -140,14 +139,14 @@ object RepositoryModule {
         userDao: UserDao,
         attendancePreference: AttendancePreference,
         todayStatusPreference: TodayStatusPreference,
-        geofenceManager: GeofenceManager
+        geofenceRuntimeRepository: GeofenceRuntimeRepository
     ): AuthRuntimeCleaner {
         return AuthRuntimeCleanerImpl(
             userPreference = userPreference,
             userDao = userDao,
             attendancePreference = attendancePreference,
             todayStatusPreference = todayStatusPreference,
-            geofenceManager = geofenceManager
+            geofenceRuntimeRepository = geofenceRuntimeRepository
         )
     }
 
