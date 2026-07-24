@@ -59,6 +59,12 @@
             android:enabled="true"
             android:exported="false" />
 
+        <!-- Retained until Task 10 migrates BootCompletedReceiver off GeofenceManager. -->
+        <receiver
+            android:name=".presentation.geofencing.GeofenceBroadcastReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
         <!-- Boot Completed Receiver -->
         <receiver
             android:name=".presentation.geofencing.BootCompletedReceiver"
