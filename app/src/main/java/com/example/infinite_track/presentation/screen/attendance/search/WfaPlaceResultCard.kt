@@ -29,8 +29,6 @@ import com.example.infinite_track.presentation.design.tokens.InfiniteIcons
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
 import com.example.infinite_track.presentation.design.tokens.InfiniteSurfaceVariant
-import java.math.RoundingMode
-import java.text.NumberFormat
 import java.util.Locale
 
 @Composable
@@ -113,17 +111,5 @@ internal fun WfaPlaceResultCard(
     }
 }
 
-internal fun formatDistanceMeters(value: Double, locale: Locale): String {
-    val formatter = NumberFormat.getNumberInstance(locale).apply {
-        roundingMode = RoundingMode.HALF_UP
-    }
-    return if (value < 1_000.0) {
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 0
-        "${formatter.format(value)} m"
-    } else {
-        formatter.minimumFractionDigits = 1
-        formatter.maximumFractionDigits = 1
-        "${formatter.format(value / 1_000.0)} km"
-    }
-}
+internal fun formatDistanceMeters(value: Double, locale: Locale): String =
+    com.example.infinite_track.presentation.format.formatDistanceMeters(value, locale)

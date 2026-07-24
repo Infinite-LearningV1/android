@@ -1,6 +1,7 @@
 package com.example.infinite_track.presentation.map.model
 
 import com.example.infinite_track.domain.model.location.GeoCoordinate
+import com.example.infinite_track.domain.model.location.DistanceMeters
 
 data class MapMarkerUiModel(
     val id: String,
@@ -9,7 +10,15 @@ data class MapMarkerUiModel(
     val coordinate: GeoCoordinate,
     val title: String,
     val snippet: String?,
-    val isSelected: Boolean = false
+    val isSelected: Boolean = false,
+    val recommendationInfo: MapMarkerRecommendationInfo? = null
+)
+
+data class MapMarkerRecommendationInfo(
+    val category: String,
+    val distance: DistanceMeters,
+    val fuzzyAhpScore: Double,
+    val suitabilityLabel: String
 )
 
 enum class MapMarkerRole {

@@ -9,6 +9,7 @@ import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.presentation.map.model.MapCircleUiModel
 import com.example.infinite_track.presentation.map.model.MapMarkerRole
 import com.example.infinite_track.presentation.map.model.MapMarkerCategory
+import com.example.infinite_track.presentation.map.model.MapMarkerRecommendationInfo
 import com.example.infinite_track.presentation.map.model.MapMarkerUiModel
 import com.example.infinite_track.presentation.map.model.MapUiState
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
@@ -58,7 +59,13 @@ object AttendanceMapUiMapper {
                         coordinate = recommendation.coordinate,
                         title = recommendation.name,
                         snippet = recommendation.address,
-                        isSelected = recommendation.stableKey == discovery.selectedKey
+                        isSelected = recommendation.stableKey == discovery.selectedKey,
+                        recommendationInfo = MapMarkerRecommendationInfo(
+                            category = recommendation.category,
+                            distance = recommendation.distanceMeters,
+                            fuzzyAhpScore = recommendation.suitabilityScore,
+                            suitabilityLabel = recommendation.suitabilityLabel
+                        )
                     )
                 )
             }

@@ -24,6 +24,7 @@ enum class InfiniteSemantic {
 
 enum class InfiniteSurfaceVariant {
     Default,
+    PrimarySolid,
     Glass,
     Elevated,
     Outlined,

@@ -9,6 +9,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteDensity
 import com.example.infinite_track.presentation.design.tokens.InfiniteElevation
@@ -16,7 +17,9 @@ import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
 import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
 import com.example.infinite_track.presentation.design.tokens.InfiniteSurfaceVariant
+import com.example.infinite_track.presentation.design.tokens.InfiniteSemanticColors
 import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
+import com.example.infinite_track.presentation.theme.White
 
 @Composable
 fun InfiniteSurface(
@@ -51,16 +54,15 @@ fun InfiniteSurface(
             .then(clickModifier),
         shape = shape,
         colors = CardDefaults.cardColors(
-            containerColor = when (variant) {
-                InfiniteSurfaceVariant.StatusTint -> semanticColors.container
-                InfiniteSurfaceVariant.Default -> InfiniteColors.Surface
-                InfiniteSurfaceVariant.Outlined -> InfiniteColors.Surface.copy(alpha = 0.72f)
-                InfiniteSurfaceVariant.Elevated -> InfiniteColors.Surface
-                InfiniteSurfaceVariant.Glass,
-                InfiniteSurfaceVariant.SoftGradient -> InfiniteColors.Surface.copy(alpha = 0.58f)
+            containerColor = variant.resolveContainerColor(
+                semanticColors = semanticColors,
+                fallbackSurface = InfiniteColors.Surface
+            ),
+            contentColor = variant.resolveContentColor(semanticColors),
+            disabledContainerColor = when (variant) {
+                InfiniteSurfaceVariant.PrimarySolid -> InfiniteColors.Primary.copy(alpha = 0.42f)
+                else -> InfiniteColors.Surface.copy(alpha = 0.42f)
             },
-            contentColor = semanticColors.content,
-            disabledContainerColor = InfiniteColors.Surface.copy(alpha = 0.42f),
             disabledContentColor = semanticColors.content.copy(alpha = 0.45f)
         ),
         border = if (showBorder || selected) {
@@ -77,4 +79,24 @@ fun InfiniteSurface(
             content = content
         )
     }
+}
+
+internal fun InfiniteSurfaceVariant.resolveContainerColor(
+    semanticColors: InfiniteSemanticColors,
+    fallbackSurface: Color
+): Color = when (this) {
+    InfiniteSurfaceVariant.StatusTint -> semanticColors.container
+    InfiniteSurfaceVariant.PrimarySolid -> InfiniteColors.Primary
+    InfiniteSurfaceVariant.Default -> fallbackSurface
+    InfiniteSurfaceVariant.Outlined -> fallbackSurface.copy(alpha = 0.72f)
+    InfiniteSurfaceVariant.Elevated -> fallbackSurface
+    InfiniteSurfaceVariant.Glass,
+    InfiniteSurfaceVariant.SoftGradient -> fallbackSurface.copy(alpha = 0.58f)
+}
+
+internal fun InfiniteSurfaceVariant.resolveContentColor(
+    semanticColors: InfiniteSemanticColors
+): Color = when (this) {
+    InfiniteSurfaceVariant.PrimarySolid -> White
+    else -> semanticColors.content
 }

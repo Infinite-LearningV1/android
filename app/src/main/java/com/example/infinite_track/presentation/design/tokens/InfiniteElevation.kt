@@ -19,6 +19,7 @@ object InfiniteElevation {
             InfiniteSurfaceVariant.SoftGradient -> Soft
             InfiniteSurfaceVariant.Glass -> Soft
             InfiniteSurfaceVariant.StatusTint -> Soft
+            InfiniteSurfaceVariant.PrimarySolid -> None
             InfiniteSurfaceVariant.Default,
             InfiniteSurfaceVariant.Outlined -> None
         }
