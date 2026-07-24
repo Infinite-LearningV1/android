@@ -175,8 +175,10 @@ internal fun GoogleAttendanceMap(
         uiSettings = uiSettings,
         contentPadding = contentPadding,
         onMapLoaded = {
-            mapLoaded = true
-            currentOnEvent(AttendanceMapEvent.Ready)
+            if (!mapLoaded) {
+                mapLoaded = true
+                currentOnEvent(AttendanceMapEvent.Ready)
+            }
         }
     ) {
         state.circles.forEach { circle ->

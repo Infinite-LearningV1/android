@@ -1,5 +1,6 @@
 package com.example.infinite_track.presentation.screen.attendance
 
+import android.os.SystemClock
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.infinite_track.domain.model.attendance.AttendancePreparationEligibility
@@ -15,6 +16,7 @@ import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.presentation.map.model.MapCameraEffect
 import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryState
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -23,6 +25,69 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class AttendanceMapCameraDeliveryViewModelTest {
+    @Test
+    fun late_wfa_target_resolution_does_not_replace_explicit_search_preview_focus() {
+        val resolver =
+            AttendanceScreenFaceResultRescueTest.ControllableFakeWfaBookingResolver()
+        val viewModel = AttendanceScreenFaceResultRescueTest()
+            .createAttendanceViewModelForCameraTest(resolver)
+        waitUntil {
+            viewModel.uiState.value.preparation.targetResolution is
+                TargetLocationResolution.Resolved
+        }
+
+        onMainThread { viewModel.onWorkModeSelected(WorkMode.WFA) }
+        runBlocking { resolver.awaitRequestStarted() }
+
+        val preview = LocationResult(
+            placeName = "Pilihan saat resolving",
+            address = "Palu",
+            latitude = -0.90,
+            longitude = 119.88
+        )
+        onMainThread { viewModel.onLocationSelected(preview) }
+        val previewFocus = viewModel.mapCameraEffect.value.requireFocus()
+
+        resolver.completeApprovedWfa()
+        runBlocking { resolver.awaitRequestCompleted() }
+        waitUntil {
+            viewModel.uiState.value.preparation.targetResolution is
+                TargetLocationResolution.Resolved
+        }
+
+        assertEquals(previewFocus, viewModel.mapCameraEffect.value)
+        assertEquals(GeoCoordinate(-0.90, 119.88), previewFocus.coordinate)
+        assertEquals(17f, previewFocus.zoom)
+    }
+
+    @Test
+    fun map_recreation_refocuses_persisted_explicit_selection_before_authoritative_target() {
+        onMainThread {
+            val viewModel = createViewModelInWfaMode()
+            val preview = LocationResult(
+                placeName = "Pilihan persisten",
+                address = "Palu",
+                latitude = -0.91,
+                longitude = 119.89
+            )
+
+            viewModel.onLocationSelected(preview)
+            val initial = viewModel.mapCameraEffect.value.requireFocus()
+            viewModel.onMapCameraEffectConsumed(initial.id)
+            assertNull(viewModel.mapCameraEffect.value)
+
+            viewModel.onMapReady()
+            val recreated = viewModel.mapCameraEffect.value.requireFocus()
+
+            assertTrue(recreated.id > initial.id)
+            assertEquals(GeoCoordinate(-0.91, 119.89), recreated.coordinate)
+            assertEquals(17f, recreated.zoom)
+
+            viewModel.onMapReady()
+            assertEquals(recreated, viewModel.mapCameraEffect.value)
+        }
+    }
+
     @Test
     fun search_preview_without_collector_survives_map_ready_and_is_consumed_once() {
         onMainThread {
@@ -117,6 +182,20 @@ class AttendanceMapCameraDeliveryViewModelTest {
 
     private fun onMainThread(block: () -> Unit) {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(block)
+    }
+
+    private fun waitUntil(
+        timeoutMillis: Long = 5_000,
+        predicate: () -> Boolean
+    ) {
+        val deadline = SystemClock.uptimeMillis() + timeoutMillis
+        while (!predicate()) {
+            check(SystemClock.uptimeMillis() < deadline) {
+                "Timed out waiting for ViewModel state."
+            }
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            SystemClock.sleep(10)
+        }
     }
 
     private val approvedTarget = AuthoritativeTargetLocation(
