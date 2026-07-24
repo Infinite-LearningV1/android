@@ -130,3 +130,69 @@ Additional checks:
 ## Docs / ADR note
 
 - No ADR update is required. This implementation applies the already approved INF-238 spec and does not change backend, authoritative target, navigation shell, or release contracts.
+
+## Review fix addendum
+
+Review identified two Important findings and one Minor race:
+
+1. The clear icon could be visible while `onClear` used its default no-op.
+2. Editing the query did not cancel an unfinished Place Details resolution, allowing an obsolete selection event.
+3. A normalized-identical edit such as a trailing space cancelled retry, while the trimmed `distinctUntilChanged` flow suppressed replacement work and could strand `Loading`.
+
+### Review-fix RED
+
+Command:
+
+```powershell
+.\gradlew.bat --no-daemon app:testDebugUnitTest `
+  --tests '*SearchViewModelTest' --console=plain
+```
+
+Result before production fixes:
+
+- `BUILD FAILED in 22s`
+- 8 tests executed, 2 failed:
+  - `normalized identical edit keeps unfinished retry owned`
+  - `query edit cancels unfinished selection resolution without stale event`
+
+### Review-fix implementation
+
+- Made `InfiniteTrackSearchBar.onClear` mandatory.
+- Wired WFA search clear to `SearchViewModel.clearSearch()`.
+- Wired Contacts clear to its controlled local query state.
+- Kept the preview call explicit.
+- `updateSearchQuery` now compares trimmed old/new values:
+  - a semantic query change cancels both retry and resolution;
+  - a raw-only whitespace edit remains controlled without cancelling semantically identical retry work.
+- Added a deferred Place Details race test proving an obsolete resolution cannot emit `selectionEvents`.
+
+### Review-fix GREEN
+
+Focused command:
+
+```powershell
+.\gradlew.bat --no-daemon app:testDebugUnitTest `
+  --tests '*SearchViewModelTest' `
+  --tests '*PlaceDiscoveryUseCaseTest' --console=plain
+```
+
+Result:
+
+- `BUILD SUCCESSFUL in 40s`
+- `SearchViewModelTest`: 8 tests passed.
+- `PlaceDiscoveryUseCaseTest`: 4 tests passed.
+
+Compile:
+
+```powershell
+.\gradlew.bat --no-daemon app:compileDebugKotlin --console=plain
+```
+
+Result:
+
+- `BUILD SUCCESSFUL in 14s`
+- `git diff --check`: clean.
+
+Review-fix commit:
+
+- `6e14e17 fix: close WFA search cancellation races`
