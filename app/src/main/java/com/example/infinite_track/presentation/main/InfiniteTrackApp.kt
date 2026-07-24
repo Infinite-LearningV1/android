@@ -88,9 +88,7 @@ fun InfiniteTrackApp(
 
     // Handle session expiration
     LaunchedEffect(sessionExpired) {
-        if (sessionExpired) {
-            showSessionExpiredDialog = true
-        }
+        showSessionExpiredDialog = sessionExpired
     }
 
     val reauthUiCopy = reauthReason?.toReauthUiCopy()

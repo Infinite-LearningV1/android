@@ -106,9 +106,7 @@ fun ProfileScreen(
             when (effect) {
                 ProfileEffect.NavigateToLogin -> {
                     currentRootNavController.navigate("auth_graph") {
-                        popUpTo(currentRootNavController.graph.startDestinationId) {
-                            inclusive = true
-                        }
+                        popUpTo(0) { inclusive = true }
                         launchSingleTop = true
                     }
                 }
