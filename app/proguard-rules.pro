@@ -247,16 +247,10 @@
 -keep class com.airbnb.lottie.** { *; }
 
 # ================================================================================================
-# FIREBASE RULES
+# GOOGLE PLAY SERVICES RULES
 # ================================================================================================
-# WHY: Firebase uses reflection for messaging and analytics
-
-# Firebase Messaging
--keep class com.google.firebase.** { *; }
+# Keep Maps and other retained Play Services integrations stable under shrinking.
 -keep class com.google.android.gms.** { *; }
-
-# Keep FCM service
--keep class com.example.infinite_track.presentation.fcm.InfiniteTrackFCMService { *; }
 
 # ================================================================================================
 # PARCELIZE RULES
@@ -282,9 +276,6 @@
 
 # Keep all BroadcastReceivers (required for Geofencing)
 -keep class * extends android.content.BroadcastReceiver { *; }
-
-# Keep Geofencing receivers
--keep class com.example.infinite_track.presentation.geofencing.** { *; }
 
 # ================================================================================================
 # DOMAIN MODELS (if accessed by reflection)

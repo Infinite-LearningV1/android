@@ -3,8 +3,6 @@ package com.example.infinite_track.data.soucre.local.preferences
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
-import com.example.infinite_track.domain.model.location.DistanceMeters
-import com.example.infinite_track.domain.model.location.GeoCoordinate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -12,7 +10,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
@@ -39,32 +36,13 @@ class AttendancePreferenceRuntimeStateTest {
     }
 
     @Test
-    fun `clearAttendanceRuntimeState removes active attendance geofence and reminder state`() = runBlocking {
+    fun `clearAttendanceSessionState removes only attendance session values`() = runBlocking {
         attendancePreference.saveActiveAttendanceId(123)
-        attendancePreference.setUserInsideGeofence(true)
-        attendancePreference.saveLastGeofenceParams(
-            StoredGeofence(
-                id = "geofence-request-123",
-                coordinate = GeoCoordinate(-0.898, 119.87),
-                radius = DistanceMeters(100.0)
-            )
-        )
-        attendancePreference.addReminderGeofences(
-            listOf(
-                ReminderGeofence(
-                    id = "reminder-1",
-                    coordinate = GeoCoordinate(-0.898, 119.87),
-                    radius = DistanceMeters(100.0)
-                )
-            )
-        )
+        attendancePreference.saveAttendanceSessionStateKey("active")
 
-        attendancePreference.clearAttendanceRuntimeState()
+        attendancePreference.clearAttendanceSessionState()
 
         assertNull(attendancePreference.getActiveAttendanceId().first())
-        assertEquals(false, attendancePreference.isUserInsideGeofence().first())
-        assertNull(attendancePreference.getLastGeofenceRequestId().first())
-        assertNull(attendancePreference.getLastGeofenceParams().first())
-        assertEquals(emptyList<ReminderGeofence>(), attendancePreference.getReminderGeofences().first())
+        assertNull(attendancePreference.getAttendanceSessionStateKey().first())
     }
 }

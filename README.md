@@ -35,7 +35,7 @@ Android is treated as a trusted data-capture client. Backend state remains the f
 - **Background Work:** WorkManager
 - **Maps & Location:** Google Maps Compose + Places + Google Play Services Location / Geofencing
 - **Camera & ML:** CameraX + ML Kit Face Detection + TensorFlow Lite
-- **Firebase:** Firebase Cloud Messaging, Firebase App Distribution workflow integration
+- **Release Distribution:** Firebase App Distribution workflow integration
 
 ## Getting Started
 
@@ -43,7 +43,6 @@ Android is treated as a trusted data-capture client. Backend state remains the f
 - Android Studio
 - JDK 17-compatible Android toolchain
 - Reachable backend environment for device/runtime testing
-- Firebase app config for Android
 - Android-restricted Google Maps Platform API key
 
 ### Local Configuration
@@ -55,14 +54,7 @@ Create `local.properties` in the repository root:
 MAPS_API_KEY=YOUR_ANDROID_RESTRICTED_KEY
 ```
 
-#### 2. Firebase config
-Place the correct Android Firebase config file at:
-
-```text
-app/google-services.json
-```
-
-#### 2a. Firebase App Distribution and CI
+#### 2. Firebase App Distribution and CI
 Distribusi internal Firebase App Distribution di CI bersifat **master-only**: workflow distribusi hanya trigger pada `push` ke `master` dan tidak melakukan distribusi dari `develop`, `deploy`, `feature/**`, atau `pull_request`.
 
 Kontrak workflow distribusi:
@@ -70,10 +62,10 @@ Kontrak workflow distribusi:
 - APK yang didistribusikan adalah `app/build/outputs/apk/release/app-release.apk`.
 - Firebase CLI memakai autentikasi non-interaktif via service account JSON (`FIREBASE_SERVICE_ACCOUNT_JSON`) dan `GOOGLE_APPLICATION_CREDENTIALS`.
 - Workflow mencakup langkah GitHub Actions artifact upload untuk release notes artifact dan APK artifact.
-- Workflow mencakup cleanup temporary secret/config files: `release-keystore.jks`, `firebase-service-account.json`, `app/google-services.json`, dan `local.properties`.
+- Workflow mencakup cleanup temporary secret/config files: `release-keystore.jks`, `firebase-service-account.json`, dan `local.properties`.
 
 Input GitHub yang dibutuhkan:
-- Secrets: `MAPS_API_KEY`, `GOOGLE_SERVICES_JSON_BASE64` preferred atau `GOOGLE_SERVICES_JSON`, `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_APP_ID`.
+- Secrets: `MAPS_API_KEY`, `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_APP_ID`.
 - Variable: `FIREBASE_TESTER_GROUPS`.
 
 Catatan governance: repo dapat mendokumentasikan kontrak workflow, tetapi branch protection / ruleset GitHub untuk enforcement promosi `develop -> master` tetap **Needs Verification** di settings GitHub.
@@ -168,14 +160,12 @@ Important distinction:
 - **TensorFlow Lite** — face embedding and on-device inference runtime
 - **TensorFlow Lite Support / Metadata** — preprocessing and model support utilities
 
-### Firebase
-- **Firebase Cloud Messaging** — push notification delivery
+### Release Distribution
 - **Firebase App Distribution** — internal release distribution from `master` via GitHub Actions
 
 ### Build & Tooling
 - **Android Gradle Plugin**
 - **Kotlin**
-- **Google Services Gradle Plugin**
 
 For exact dependency versions, use:
 - `gradle/libs.versions.toml`

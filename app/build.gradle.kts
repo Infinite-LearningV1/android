@@ -5,7 +5,6 @@ plugins {
     id("kotlin-kapt")
     id("kotlin-parcelize")
     id("com.google.dagger.hilt.android")
-    alias(libs.plugins.google.gms.google.services)
     alias(libs.plugins.google.maps.secrets)
 }
 
@@ -97,9 +96,6 @@ android {
             isMinifyEnabled = false
             isDebuggable = true
             
-            // NOTE: applicationIdSuffix removed to match google-services.json configuration
-            // If you need separate debug/release apps, add a new client in Firebase Console
-            // with package name "com.example.infinite_track.debug"
             // applicationIdSuffix = ".debug"
             versionNameSuffix = "-DEBUG"
             
@@ -158,9 +154,6 @@ dependencies {
     implementation(libs.androidx.datastore.preferences.core.jvm)
     implementation(libs.androidx.datastore.preferences)
     
-    // Firebase
-    implementation(libs.firebase.messaging)
-
     // WorkManager untuk background tasks
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)

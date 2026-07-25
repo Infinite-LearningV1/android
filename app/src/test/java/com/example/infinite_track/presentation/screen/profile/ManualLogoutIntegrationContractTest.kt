@@ -47,6 +47,17 @@ class ManualLogoutIntegrationContractTest {
         )
     }
 
+    @Test
+    fun `logout teardown clears v2 runtime and attendance session state`() {
+        val cleaner = source("data/repository/auth/AuthRuntimeCleanerImpl.kt")
+        val repositoryModule = source("di/RepositoryModule.kt")
+
+        assertTrue(cleaner.contains("private val geofenceRuntimeRepository: GeofenceRuntimeRepository"))
+        assertTrue(cleaner.contains("geofenceRuntimeRepository.clearForLogout()"))
+        assertTrue(cleaner.contains("attendancePreference.clearAttendanceSessionState()"))
+        assertTrue(repositoryModule.contains("geofenceRuntimeRepository: GeofenceRuntimeRepository"))
+    }
+
     private fun source(relativePath: String): String = File(
         appModuleRoot,
         "src/main/java/com/example/infinite_track/$relativePath"

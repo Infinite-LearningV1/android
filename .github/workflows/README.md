@@ -19,6 +19,6 @@ Contract:
 - Distributed APK artifact: `app/build/outputs/apk/release/app-release.apk`.
 - Firebase CLI authentication is non-interactive with service account JSON via `GOOGLE_APPLICATION_CREDENTIALS`.
 - The workflow includes GitHub Actions artifact upload steps for both the release notes artifact and APK artifact.
-- The workflow includes cleanup of temporary secret/config files: `release-keystore.jks`, `firebase-service-account.json`, `app/google-services.json`, and `local.properties`.
+- The workflow includes cleanup of temporary secret/config files: `release-keystore.jks`, `firebase-service-account.json`, and `local.properties`.
 
 Required inputs are documented in `docs/ci/android-master-distribution.md`.

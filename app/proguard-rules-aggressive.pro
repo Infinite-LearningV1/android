@@ -194,12 +194,11 @@
 -keep class com.google.android.libraries.places.** { *; }
 
 # ================================================================================================
-# FIREBASE
+# GOOGLE PLAY SERVICES
 # ================================================================================================
 
--keep class com.google.firebase.** { *; }
+# Keep Maps and other retained Play Services integrations stable under shrinking.
 -keep class com.google.android.gms.** { *; }
--keep class com.example.infinite_track.presentation.fcm.InfiniteTrackFCMService { *; }
 
 # ================================================================================================
 # COIL IMAGE LOADING
@@ -230,8 +229,6 @@
 -keep class com.example.infinite_track.InfiniteTrackApplication { *; }
 -keep class com.example.infinite_track.presentation.main.MainActivity { *; }
 -keep class * extends android.content.BroadcastReceiver { *; }
--keep class com.example.infinite_track.presentation.geofencing.** { *; }
-
 # Keep BuildConfig for runtime checks
 -keep class com.example.infinite_track.BuildConfig { *; }
 

@@ -24,6 +24,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -42,6 +43,104 @@ class AttendancePermissionReadinessViewModelTest {
         assertFalse(viewModel.uiState.value.isLoading)
         assertEquals(2, viewModel.uiState.value.requiredReadyCount)
         assertEquals("Lanjutkan Setup", viewModel.uiState.value.primaryActionLabel)
+    }
+
+    @Test
+    fun `background permission completion requests one runtime reconciliation after readiness changes`() = runTest {
+        val repository = FakeRepository(
+            readiness(background = AttendanceAccessStatus.ACTION_REQUIRED)
+        )
+        val viewModel = viewModel(repository)
+        advanceUntilIdle()
+
+        repository.readiness.value = allRequiredReady()
+        viewModel.onEvent(
+            AttendancePermissionReadinessEvent.PermissionResultReceived(
+                access = AttendanceAccess.BACKGROUND_LOCATION,
+                outcome = AttendancePermissionRequestOutcome.GRANTED
+            )
+        )
+        advanceUntilIdle()
+
+        val request = viewModel.runtimeReconciliationRequest.value ?: error("Expected a reconciliation request")
+        viewModel.onRuntimeReconciliationHandled(request.token)
+        assertNull(viewModel.runtimeReconciliationRequest.value)
+        assertEquals(2, repository.refreshCount)
+    }
+
+    @Test
+    fun `settings completion and resumed lifecycle coalesce to one runtime reconciliation`() = runTest {
+        val repository = FakeRepository(
+            readiness(device = AttendanceAccessStatus.DEVICE_LOCATION_DISABLED)
+        )
+        val viewModel = viewModel(repository)
+        advanceUntilIdle()
+
+        repository.readiness.value = allRequiredReady()
+        viewModel.onEvent(AttendancePermissionReadinessEvent.ReturnedFromSettings)
+        advanceUntilIdle()
+        viewModel.onEvent(AttendancePermissionReadinessEvent.ScreenResumed)
+        advanceUntilIdle()
+
+        val request = viewModel.runtimeReconciliationRequest.value ?: error("Expected a reconciliation request")
+        viewModel.onRuntimeReconciliationHandled(request.token)
+        assertNull(viewModel.runtimeReconciliationRequest.value)
+    }
+
+    @Test
+    fun `refresh-produced readiness change queues reconciliation after the refreshed state is observed`() = runTest {
+        val repository = RefreshUpdatingRepository(
+            readiness(background = AttendanceAccessStatus.ACTION_REQUIRED)
+        )
+        val viewModel = viewModel(repository)
+        advanceUntilIdle()
+
+        repository.nextRefreshReadiness = allRequiredReady()
+        viewModel.onEvent(
+            AttendancePermissionReadinessEvent.PermissionResultReceived(
+                access = AttendanceAccess.BACKGROUND_LOCATION,
+                outcome = AttendancePermissionRequestOutcome.GRANTED
+            )
+        )
+        advanceUntilIdle()
+
+        assertTrue(viewModel.runtimeReconciliationRequest.value != null)
+    }
+
+    @Test
+    fun `older reconciliation acknowledgement cannot clear a newer readiness request`() = runTest {
+        val repository = FakeRepository(
+            readiness(background = AttendanceAccessStatus.ACTION_REQUIRED)
+        )
+        val viewModel = viewModel(repository)
+        advanceUntilIdle()
+
+        repository.readiness.value = allRequiredReady()
+        viewModel.onEvent(
+            AttendancePermissionReadinessEvent.PermissionResultReceived(
+                access = AttendanceAccess.BACKGROUND_LOCATION,
+                outcome = AttendancePermissionRequestOutcome.GRANTED
+            )
+        )
+        advanceUntilIdle()
+        val first = viewModel.runtimeReconciliationRequest.value ?: error("Expected the first request")
+
+        repository.readiness.value = allRequiredReady(notification = AttendanceAccessStatus.DEGRADED)
+        viewModel.onEvent(
+            AttendancePermissionReadinessEvent.PermissionResultReceived(
+                access = AttendanceAccess.NOTIFICATION,
+                outcome = AttendancePermissionRequestOutcome.DENIED
+            )
+        )
+        advanceUntilIdle()
+        val second = viewModel.runtimeReconciliationRequest.value ?: error("Expected the newer request")
+
+        assertTrue(second.token > first.token)
+        viewModel.onRuntimeReconciliationHandled(first.token)
+        assertEquals(second, viewModel.runtimeReconciliationRequest.value)
+
+        viewModel.onRuntimeReconciliationHandled(second.token)
+        assertNull(viewModel.runtimeReconciliationRequest.value)
     }
 
     @Test
@@ -375,6 +474,19 @@ class AttendancePermissionReadinessViewModelTest {
         override fun observeReadiness() = readiness
         override suspend fun refreshReadiness() { refreshCount++; releases.receive() }
         suspend fun release() { releases.send(Unit) }
+    }
+
+    private class RefreshUpdatingRepository(initial: AttendancePermissionReadiness) : AttendancePermissionRepository {
+        val readiness = MutableStateFlow(initial)
+        var nextRefreshReadiness = initial
+        var refreshCount = 0
+
+        override fun observeReadiness() = readiness
+
+        override suspend fun refreshReadiness() {
+            refreshCount++
+            readiness.value = nextRefreshReadiness
+        }
     }
 
     private fun partialReadiness() = readiness(camera = AttendanceAccessStatus.ACTION_REQUIRED)

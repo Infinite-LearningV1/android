@@ -1,7 +1,6 @@
 package com.example.infinite_track.di
 
 import com.example.infinite_track.data.face.FaceProcessor
-import com.example.infinite_track.data.soucre.local.preferences.AttendancePreference
 import com.example.infinite_track.data.soucre.local.preferences.TodayStatusPreference
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
@@ -13,6 +12,7 @@ import com.example.infinite_track.domain.repository.AuthRepository
 import com.example.infinite_track.domain.repository.AuthRuntimeCleaner
 import com.example.infinite_track.domain.repository.BookingRepository
 import com.example.infinite_track.domain.repository.ContactRepository
+import com.example.infinite_track.domain.repository.GeofenceRuntimeRepository
 import com.example.infinite_track.domain.repository.LocalizationRepository
 import com.example.infinite_track.domain.repository.location.AddressResolver
 import com.example.infinite_track.domain.repository.location.CurrentLocationRepository
@@ -21,6 +21,7 @@ import com.example.infinite_track.domain.repository.WfaRepository
 import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
 import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
+import com.example.infinite_track.domain.use_case.attendance.ResolveAuthoritativeTargetLocationUseCase
 import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
 import com.example.infinite_track.domain.use_case.auth.ClearAuthenticatedRuntimeUseCase
 import com.example.infinite_track.domain.use_case.auth.GenerateAndSaveEmbeddingUseCase
@@ -37,13 +38,15 @@ import com.example.infinite_track.domain.use_case.booking.SubmitWfaBookingUseCas
 import com.example.infinite_track.domain.use_case.contact.GetContactsUseCase
 import com.example.infinite_track.domain.use_case.history.ExportAttendanceReportPdfUseCase
 import com.example.infinite_track.domain.use_case.history.GetAttendanceHistoryUseCase
+import com.example.infinite_track.domain.use_case.geofence.BuildReminderGeofenceCandidatesUseCase
+import com.example.infinite_track.domain.use_case.geofence.RefreshAndReconcileGeofenceRuntimeUseCase
+import com.example.infinite_track.domain.use_case.geofence.ResolveGeofenceRuntimeModeUseCase
 import com.example.infinite_track.domain.use_case.language.GetSelectedLanguageUseCase
 import com.example.infinite_track.domain.use_case.language.SetSelectedLanguageUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentLocationUseCase
 import com.example.infinite_track.domain.use_case.profile.UpdateProfileUseCase
 import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
-import com.example.infinite_track.presentation.geofencing.GeofenceManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -228,25 +231,57 @@ object UseCaseModule {
         return ResolveTodayApprovedWfaBookingUseCase(bookingRepository)
     }
 
+    @Provides
+    fun provideBuildReminderGeofenceCandidatesUseCase(
+        resolveTarget: ResolveAuthoritativeTargetLocationUseCase
+    ): BuildReminderGeofenceCandidatesUseCase {
+        return BuildReminderGeofenceCandidatesUseCase(resolveTarget)
+    }
+
+    @Provides
+    fun provideResolveGeofenceRuntimeModeUseCase(
+        buildCandidates: BuildReminderGeofenceCandidatesUseCase,
+        resolveTarget: ResolveAuthoritativeTargetLocationUseCase
+    ): ResolveGeofenceRuntimeModeUseCase {
+        return ResolveGeofenceRuntimeModeUseCase(buildCandidates, resolveTarget)
+    }
+
+    @Provides
+    fun provideRefreshAndReconcileGeofenceRuntimeUseCase(
+        attendanceRepository: AttendanceRepository,
+        refreshProfile: RefreshAttendanceProfileUseCase,
+        getLoggedInUser: GetLoggedInUserUseCase,
+        resolveBooking: ResolveTodayWfaBookingStateUseCase,
+        validateSession: ValidateForegroundSessionUseCase,
+        resolveMode: ResolveGeofenceRuntimeModeUseCase,
+        runtimeRepository: GeofenceRuntimeRepository
+    ): RefreshAndReconcileGeofenceRuntimeUseCase {
+        return RefreshAndReconcileGeofenceRuntimeUseCase(
+            attendanceRepository = attendanceRepository,
+            refreshProfile = refreshProfile,
+            getLoggedInUser = getLoggedInUser,
+            resolveBooking = resolveBooking,
+            validateSession = validateSession,
+            resolveMode = resolveMode,
+            runtimeRepository = runtimeRepository
+        )
+    }
+
     // Provide the Check In Use Case
     @Provides
     fun provideCheckInUseCase(
         attendanceRepository: AttendanceRepository,
-        getCurrentLocationUseCase: GetCurrentLocationUseCase,
-        geofenceManager: GeofenceManager,
-        attendancePreference: AttendancePreference
+        getCurrentLocationUseCase: GetCurrentLocationUseCase
     ): CheckInUseCase {
-        return CheckInUseCase(attendanceRepository, getCurrentLocationUseCase, geofenceManager, attendancePreference)
+        return CheckInUseCase(attendanceRepository, getCurrentLocationUseCase)
     }
 
     // Provide the Check Out Use Case
     @Provides
     fun provideCheckOutUseCase(
         attendanceRepository: AttendanceRepository,
-        getCurrentLocationUseCase: GetCurrentLocationUseCase,
-        geofenceManager: GeofenceManager,
-        attendancePreference: AttendancePreference
+        getCurrentLocationUseCase: GetCurrentLocationUseCase
     ): CheckOutUseCase {
-        return CheckOutUseCase(attendanceRepository, getCurrentLocationUseCase, geofenceManager, attendancePreference)
+        return CheckOutUseCase(attendanceRepository, getCurrentLocationUseCase)
     }
 }

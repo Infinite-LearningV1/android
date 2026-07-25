@@ -1,10 +1,14 @@
 package com.example.infinite_track.presentation.screen.attendance
 
+import java.io.File
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.lang.reflect.Modifier
 
 class AttendancePreparationStateOwnershipTest {
+
+    private val appModuleRoot = File(requireNotNull(System.getProperty("user.dir")))
+
 
     @Test
     fun `forbidden property scan detects a computed getter`() {
@@ -35,6 +39,53 @@ class AttendancePreparationStateOwnershipTest {
 
         assertTrue(exposesProperty(AttendanceScreenState::class.java, "preparation"))
         assertTrue(forbiddenExposures(AttendanceScreenState::class.java, forbiddenNames).isEmpty())
+    }
+
+    @Test
+    fun `attendance view model has no legacy geofence runtime ownership`() {
+        val forbiddenDependencyNames = setOf(
+            "GeofenceManager",
+            "AttendancePreference",
+            "ReminderGeofenceCandidate",
+            "GeofencingClient"
+        )
+        val constructorDependencies = AttendanceViewModel::class.java
+            .declaredConstructors
+            .single()
+            .parameterTypes
+            .map { it.name }
+
+        assertTrue(
+            constructorDependencies.none { dependency ->
+                forbiddenDependencyNames.any(dependency::contains)
+            }
+        )
+
+        val imports = File(
+            appModuleRoot,
+            "src/main/java/com/example/infinite_track/presentation/screen/attendance/AttendanceViewModel.kt"
+        ).readLines().filter { it.trimStart().startsWith("import ") }
+
+        assertTrue(
+            imports.none { imported ->
+                forbiddenDependencyNames.any(imported::contains)
+            }
+        )
+    }
+
+    @Test
+    fun `auth unavailable leaves attendance local runtime projection to global reauth`() {
+        val source = File(
+            appModuleRoot,
+            "src/main/java/com/example/infinite_track/presentation/screen/attendance/AttendanceViewModel.kt"
+        ).readText()
+        val authUnavailableBranch = source.substringAfter(
+            "is RefreshAndReconcileGeofenceRuntimeResult.AuthUnavailable -> {"
+        ).substringBefore("                }")
+
+        assertTrue(authUnavailableBranch.isNotBlank())
+        assertTrue(!authUnavailableBranch.contains("_uiState"))
+        assertTrue(!authUnavailableBranch.contains("geofenceRuntime"))
     }
 
     private class ComputedGetterFixture {

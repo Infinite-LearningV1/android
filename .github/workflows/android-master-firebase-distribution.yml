@@ -36,8 +36,6 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
           FIREBASE_TESTER_GROUPS: ${{ vars.FIREBASE_TESTER_GROUPS }}
-          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           missing=()
           for name in \
@@ -54,10 +52,6 @@ jobs:
             fi
           done
 
-          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ] && [ -z "$GOOGLE_SERVICES_JSON" ]; then
-            missing+=("GOOGLE_SERVICES_JSON_BASE64 or GOOGLE_SERVICES_JSON")
-          fi
-
           if [ "${#missing[@]}" -gt 0 ]; then
             printf 'Missing required CI input(s):\n' >&2
             printf -- '- %s\n' "${missing[@]}" >&2
@@ -70,18 +64,6 @@ jobs:
           MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
         run: |
           printf 'MAPS_API_KEY=%s\n' "$MAPS_API_KEY" > local.properties
-
-      - name: Restore google-services.json
-        shell: bash
-        env:
-          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: |
-          if [ -n "$GOOGLE_SERVICES_JSON_BASE64" ]; then
-            printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > app/google-services.json
-          else
-            printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
-          fi
 
       - name: Restore release keystore
         shell: bash
@@ -159,4 +141,4 @@ jobs:
       - name: Cleanup temporary secrets
         if: always()
         shell: bash
-        run: rm -f release-keystore.jks firebase-service-account.json app/google-services.json local.properties
+        run: rm -f release-keystore.jks firebase-service-account.json local.properties
