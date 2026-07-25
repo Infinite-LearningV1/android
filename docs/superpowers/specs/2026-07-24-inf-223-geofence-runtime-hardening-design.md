@@ -6,7 +6,7 @@ Linear: `INF-223`
 
 Branch: `codex/inf-223-geofence-runtime-spec-plan`
 
-Worktree: `E:\skrisi\android\.worktrees\inf-223-geofence-runtime-spec-plan`
+Worktree: `$env:INF223_WORKTREE`
 
 Base: `origin/develop` at `384de74`
 

@@ -65,6 +65,13 @@ registration replacement or logout clear.  This establishes a single order
 between an OS callback and a new backend-truth runtime snapshot without
 blocking the main thread or weakening cancellation propagation.
 
+Permission-readiness reconciliation is delivered as a monotonically increasing
+token owned by the permission ViewModel.  The attendance screen consumes one
+token at a time only while started, awaits the terminal coordinator result, and
+acknowledges that exact token afterwards.  Lifecycle cancellation does not
+acknowledge pending work, and a newer token survives an older completion so it
+receives one follow-up reconciliation without concurrent coordinator calls.
+
 ## Cleanup Boundaries
 
 Google Maps Platform configuration and the master-only Firebase App

@@ -38,8 +38,9 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
     private val _effects = MutableSharedFlow<AttendancePermissionReadinessEffect>(extraBufferCapacity = 1)
     val effects: SharedFlow<AttendancePermissionReadinessEffect> = _effects.asSharedFlow()
 
-    private val _runtimeReconciliationPending = MutableStateFlow(false)
-    val runtimeReconciliationPending: StateFlow<Boolean> = _runtimeReconciliationPending.asStateFlow()
+    private val _runtimeReconciliationRequest = MutableStateFlow<RuntimeReconciliationRequest?>(null)
+    val runtimeReconciliationRequest: StateFlow<RuntimeReconciliationRequest?> =
+        _runtimeReconciliationRequest.asStateFlow()
 
     private var latestReadiness: AttendancePermissionReadiness? = null
     private var lastTrustworthyReadiness: AttendancePermissionReadiness? = null
@@ -49,6 +50,7 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
     private var initialRefreshCompleted = false
     private var runtimeReconciliationRequested = false
     private var lastRuntimeReconcileReadiness: AttendancePermissionReadiness? = null
+    private var nextRuntimeReconciliationToken = 1L
     private var inFlightAction: AttendancePermissionReadinessEffect? = null
     private var activeFeedback: AttendancePermissionFeedback? = null
 
@@ -187,8 +189,10 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
         }
     }
 
-    fun onRuntimeReconciliationHandled() {
-        _runtimeReconciliationPending.value = false
+    fun onRuntimeReconciliationHandled(token: Long) {
+        if (_runtimeReconciliationRequest.value?.token == token) {
+            _runtimeReconciliationRequest.value = null
+        }
     }
 
     private fun requestRuntimeReconciliationIfNeeded(refreshedReadiness: AttendancePermissionReadiness) {
@@ -206,7 +210,9 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
         runtimeReconciliationRequested = false
         if (shouldReconcile) {
             lastRuntimeReconcileReadiness = currentReadiness
-            _runtimeReconciliationPending.value = true
+            _runtimeReconciliationRequest.value = RuntimeReconciliationRequest(
+                token = nextRuntimeReconciliationToken++
+            )
         }
     }
 

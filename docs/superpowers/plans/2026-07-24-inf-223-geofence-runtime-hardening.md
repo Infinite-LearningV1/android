@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Work only in `E:\skrisi\android\.worktrees\inf-223-geofence-runtime-spec-plan` on `codex/inf-223-geofence-runtime-spec-plan`.
+- Work only in `$env:INF223_WORKTREE` on `codex/inf-223-geofence-runtime-spec-plan`.
 - Base behavior is `origin/develop` at `384de74`; preserve the main checkout's local `NetworkModule.kt` and `network_security_config.xml` edits.
 - Backend remains authoritative for authenticated session, attendance state, booking approval, and final check-in/check-out validation.
 - Local geofence notifications flow only through Google Play Services → `PendingIntent` → receiver → `NotificationManager`/`NotificationCompat`.
@@ -38,11 +38,11 @@
 Run this once in every fresh PowerShell used for plan execution:
 
 ```powershell
-$env:JAVA_HOME = 'C:\Users\Febriyadi\.jdks\jbr-17.0.14'
-$env:ANDROID_HOME = 'C:\Users\Febriyadi\AppData\Local\Android\Sdk'
+$env:JAVA_HOME = Join-Path $env:USERPROFILE '.jdks\jbr-17.0.14'
+$env:ANDROID_HOME = Join-Path $env:LOCALAPPDATA 'Android\Sdk'
 $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
 $env:Path = "$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$env:Path"
-Set-Location 'E:\skrisi\android\.worktrees\inf-223-geofence-runtime-spec-plan'
+Set-Location $env:INF223_WORKTREE
 java -version
 .\gradlew.bat --version
 ```

@@ -89,9 +89,9 @@ import com.example.infinite_track.presentation.screen.attendance.preparation.Wfa
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionPanelHost
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessEvent
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessViewModel
+import com.example.infinite_track.presentation.screen.attendance.permission.deliverRuntimeReconciliationRequests
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import com.example.infinite_track.utils.UiState
-import kotlinx.coroutines.flow.collect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,11 +136,11 @@ fun AttendanceScreen(
 
     LaunchedEffect(lifecycleOwner, permissionViewModel, viewModel) {
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            permissionViewModel.runtimeReconciliationPending.collect { pending ->
-                if (!pending) return@collect
-                viewModel.onGeofenceRuntimeReadinessChanged()
-                permissionViewModel.onRuntimeReconciliationHandled()
-            }
+            deliverRuntimeReconciliationRequests(
+                requests = permissionViewModel.runtimeReconciliationRequest,
+                reconcile = viewModel::reconcileGeofenceRuntimeReadiness,
+                acknowledge = permissionViewModel::onRuntimeReconciliationHandled
+            )
         }
     }
 

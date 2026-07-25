@@ -394,10 +394,8 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /** Reconciles backend truth after the permission surface observes a changed runtime prerequisite. */
-    fun onGeofenceRuntimeReadinessChanged() {
-        viewModelScope.launch {
-            refreshAttendanceAndRuntime(GeofenceReconcileReason.FOREGROUND_REFRESH)
-        }
+    suspend fun reconcileGeofenceRuntimeReadiness() {
+        refreshAttendanceAndRuntime(GeofenceReconcileReason.FOREGROUND_REFRESH)
     }
 
     fun onWfaDiscoveryRetryRequested() {
