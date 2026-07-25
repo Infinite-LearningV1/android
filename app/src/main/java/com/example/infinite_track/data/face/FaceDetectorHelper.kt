@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.annotation.OptIn
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
+import com.example.infinite_track.domain.model.face.LivenessResult
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
@@ -13,14 +14,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Enum for liveness detection results
- * Provides progressive feedback for user guidance
+ * Result of a detection pass: the primary (largest) face plus how many faces were in frame,
+ * so callers can distinguish a single face from a multiple-faces situation.
  */
-enum class LivenessResult {
-    SUCCESS,    // Liveness detected successfully
-    IN_PROGRESS, // User is on the right track, needs slight adjustment
-    FAILURE     // Liveness not detected
-}
+data class DetectedFaces(
+    val primary: Face,
+    val totalFaces: Int
+)
 
 /**
  * Helper class for ML Kit Face Detection operations
@@ -87,6 +87,19 @@ class FaceDetectorHelper @Inject constructor() {
      */
     @OptIn(ExperimentalGetImage::class)
     fun detect(imageProxy: ImageProxy, onResult: (Result<Face>) -> Unit) {
+        detectFaces(imageProxy) { result ->
+            onResult(result.map { it.primary })
+        }
+    }
+
+    /**
+     * Detects faces and reports the primary (largest) face together with the total face count,
+     * so callers can react to a multiple-faces situation.
+     * @param imageProxy Camera image frame from CameraX
+     * @param onResult Callback with the detection result
+     */
+    @OptIn(ExperimentalGetImage::class)
+    fun detectFaces(imageProxy: ImageProxy, onResult: (Result<DetectedFaces>) -> Unit) {
         val mediaImage = imageProxy.image
         if (mediaImage != null) {
             val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
@@ -97,15 +110,18 @@ class FaceDetectorHelper @Inject constructor() {
 
                 detector.process(image)
                     .addOnSuccessListener { faces ->
-                        if (faces.isNotEmpty()) {
-                            // Return the first (largest) detected face
-                            val largestFace =
-                                faces.maxByOrNull { it.boundingBox.width() * it.boundingBox.height() }
-                            if (largestFace != null) {
-                                onResult(Result.success(largestFace))
-                            } else {
-                                onResult(Result.failure(Exception("No valid face detected")))
-                            }
+                        val selection = FaceSelection.select(faces) {
+                            it.boundingBox.width() * it.boundingBox.height()
+                        }
+                        if (selection != null) {
+                            onResult(
+                                Result.success(
+                                    DetectedFaces(
+                                        primary = selection.primary,
+                                        totalFaces = selection.totalFaces
+                                    )
+                                )
+                            )
                         } else {
                             onResult(Result.failure(Exception("No faces detected")))
                         }

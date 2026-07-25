@@ -7,7 +7,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.data.face.FaceDetectorHelper
-import com.example.infinite_track.data.face.LivenessResult
+import com.example.infinite_track.domain.model.face.LivenessResult
 import com.example.infinite_track.domain.use_case.auth.VerifyFaceUseCase
 import com.google.mlkit.vision.face.Face
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,7 +23,7 @@ import javax.inject.Inject
  * Enum untuk tantangan liveness detection
  */
 enum class LivenessChallenge {
-    BLINK, SMILE
+    BLINK, SMILE, TURN_LEFT, TURN_RIGHT
 }
 
 /**
@@ -54,7 +54,15 @@ data class FaceScannerState(
     val isProcessing: Boolean = false,
     val timeRemaining: Int = 20, // 20 detik sesuai kebutuhan
     val showCountdown: Boolean = false,
-    val imageSize: Size? = null // Add image size for coordinate scaling
+    val imageSize: Size? = null, // Add image size for coordinate scaling
+    val failureReason: FaceVerificationFailureReason? = null,
+    val detectedFaceCount: Int = 0,
+    val capturedFacePreview: Bitmap? = null,
+    val challengeIndex: Int = 1,
+    val challengeTotal: Int = 4,
+    val readyToVerify: Boolean = false,
+    val similarity: Float? = null,
+    val threshold: Float? = null
 )
 
 /**
@@ -79,6 +87,7 @@ class FaceScannerViewModel @Inject constructor(
     private var livenessJob: Job? = null
     private var currentDetectedFace: Face? = null
     private var currentImageBitmap: Bitmap? = null
+    private val sequencer = LivenessSequencer()
 
     /**
      * Inisialisasi scanner dengan random challenge
@@ -96,22 +105,16 @@ class FaceScannerViewModel @Inject constructor(
         // STEP 3: Reinitialize FaceDetector
         faceDetectorHelper.reinitialize()
 
-        // STEP 4: Pilih challenge secara acak
-        val randomChallenge = if ((0..1).random() == 0) {
-            LivenessChallenge.BLINK
-        } else {
-            LivenessChallenge.SMILE
-        }
-
-        val instructionText = when (randomChallenge) {
-            LivenessChallenge.BLINK -> "Posisikan wajah Anda di dalam frame, lalu kedipkan mata"
-            LivenessChallenge.SMILE -> "Posisikan wajah Anda di dalam frame, lalu tersenyum"
-        }
+        // STEP 4: Reset the fixed 4-challenge liveness sequence
+        sequencer.reset()
+        val firstChallenge = sequencer.current
 
         // STEP 5: Reset state ke kondisi benar-benar fresh
         _uiState.value = FaceScannerState(
-            currentChallenge = randomChallenge,
-            instructionText = instructionText,
+            currentChallenge = firstChallenge,
+            challengeIndex = sequencer.index,
+            challengeTotal = sequencer.total,
+            instructionText = challengePrompt(firstChallenge),
             livenessState = LivenessState.DETECTING_FACE,
             timeRemaining = TIMEOUT_SECONDS,
             showCountdown = true,
@@ -119,10 +122,11 @@ class FaceScannerViewModel @Inject constructor(
             errorMessage = null,
             boundingBox = null,
             progress = 0f,
-            imageSize = null
+            imageSize = null,
+            readyToVerify = false
         )
 
-        // STEP 6: Start fresh timeout
+        // STEP 6: Start fresh per-challenge timeout
         startTimeout()
     }
 
@@ -137,26 +141,20 @@ class FaceScannerViewModel @Inject constructor(
      * Proses frame dari kamera untuk deteksi wajah dan verifikasi liveness
      */
     fun processImageProxy(imageProxy: ImageProxy, imageBitmap: Bitmap) {
-        val currentState = _uiState.value.livenessState
-        val isProcessing = _uiState.value.isProcessing
-
-        // Hanya blokir jika sedang processing atau scanner sudah berada di state final
-        if (
-            isProcessing ||
-            currentState == LivenessState.SUCCESS ||
-            currentState == LivenessState.FAILURE ||
-            currentState == LivenessState.TIMEOUT
-        ) {
+        if (!FaceScannerTransitionPolicy.canAcceptDetection(_uiState.value)) {
             imageProxy.close()
             return
         }
 
         currentImageBitmap = imageBitmap
 
-        // Panggil FaceDetectorHelper untuk mendeteksi wajah
-        faceDetectorHelper.detect(imageProxy) { result ->
-            result.onSuccess { face ->
-                handleFaceDetected(face, imageBitmap)
+        // Panggil FaceDetectorHelper untuk mendeteksi wajah + jumlah wajah dalam frame
+        faceDetectorHelper.detectFaces(imageProxy) { result ->
+            if (!FaceScannerTransitionPolicy.canAcceptDetection(_uiState.value)) {
+                return@detectFaces
+            }
+            result.onSuccess { detected ->
+                handleFaceDetected(detected.primary, imageBitmap, detected.totalFaces)
             }.onFailure { exception ->
                 handleFaceDetectionError(exception.message ?: "Error mendeteksi wajah")
             }
@@ -166,7 +164,7 @@ class FaceScannerViewModel @Inject constructor(
     /**
      * Handle ketika wajah berhasil terdeteksi
      */
-    private fun handleFaceDetected(face: Face, imageBitmap: Bitmap) {
+    private fun handleFaceDetected(face: Face, imageBitmap: Bitmap, totalFaces: Int) {
         currentDetectedFace = face
         val imageWidth = imageBitmap.width
         val imageHeight = imageBitmap.height
@@ -186,11 +184,21 @@ class FaceScannerViewModel @Inject constructor(
             imageSize = Size(
                 width = imageWidth.toFloat(),
                 height = imageHeight.toFloat()
-            )
+            ),
+            detectedFaceCount = totalFaces
         )
+
+        // Jika ada lebih dari satu wajah, minta pengguna menyisakan satu wajah dulu
+        if (FaceCountGuidance.reasonFor(totalFaces) == FaceVerificationFailureReason.MULTIPLE_FACES) {
+            livenessJob?.cancel()
+            _uiState.value = FaceScannerTransitionPolicy.onMultipleFaces(_uiState.value)
+            return
+        }
+        _uiState.value = FaceScannerTransitionPolicy.onSingleFaceRecovered(_uiState.value)
 
         // Cek apakah wajah berada di posisi yang baik
         if (!faceDetectorHelper.isFaceWellPositioned(face, imageWidth, imageHeight)) {
+            livenessJob?.cancel()
             _uiState.value = _uiState.value.copy(
                 livenessState = LivenessState.DETECTING_FACE,
                 instructionText = "Posisikan wajah Anda lebih dekat dan di tengah frame",
@@ -217,6 +225,8 @@ class FaceScannerViewModel @Inject constructor(
                 instructionText = when (_uiState.value.currentChallenge) {
                     LivenessChallenge.BLINK -> "Pencahayaan membaik. Sekarang kedipkan mata Anda"
                     LivenessChallenge.SMILE -> "Pencahayaan membaik. Sekarang tersenyum"
+                    LivenessChallenge.TURN_LEFT -> "Pencahayaan membaik. Sekarang tengok ke kiri"
+                    LivenessChallenge.TURN_RIGHT -> "Pencahayaan membaik. Sekarang tengok ke kanan"
                 }
             )
         }
@@ -230,6 +240,8 @@ class FaceScannerViewModel @Inject constructor(
                     instructionText = when (_uiState.value.currentChallenge) {
                         LivenessChallenge.BLINK -> "Wajah terdeteksi! Sekarang kedipkan mata Anda"
                         LivenessChallenge.SMILE -> "Wajah terdeteksi! Sekarang tersenyum"
+                        LivenessChallenge.TURN_LEFT -> "Wajah terdeteksi! Sekarang tengok ke kiri"
+                        LivenessChallenge.TURN_RIGHT -> "Wajah terdeteksi! Sekarang tengok ke kanan"
                     }
                 )
             }
@@ -269,53 +281,108 @@ class FaceScannerViewModel @Inject constructor(
      * Cek apakah challenge liveness saat ini terpenuhi dengan progressive feedback
      */
     private fun checkLivenessChallenge(face: Face) {
-        val livenessResult = when (_uiState.value.currentChallenge) {
+        val current = _uiState.value.currentChallenge
+        val livenessResult = when (current) {
             LivenessChallenge.BLINK -> faceDetectorHelper.verifyBlink(face)
             LivenessChallenge.SMILE -> faceDetectorHelper.verifySmile(face)
+            LivenessChallenge.TURN_LEFT, LivenessChallenge.TURN_RIGHT ->
+                HeadTurnEvaluator.evaluate(face.headEulerAngleY, current)
         }
 
         when (livenessResult) {
             LivenessResult.SUCCESS -> {
-                // Liveness berhasil terdeteksi - lanjut ke verifikasi
+                val completedChallenge = current
+                // Tantangan saat ini terpenuhi - tahan sebentar lalu maju ke tantangan berikutnya
                 _uiState.value = _uiState.value.copy(
                     livenessState = LivenessState.LIVENESS_DETECTED,
-                    instructionText = "Liveness terdeteksi! Tetap di posisi..."
+                    instructionText = "Bagus! Tetap di posisi..."
                 )
-
-                // Tahan deteksi sebentar untuk stabilitas, lalu lanjut verifikasi
                 livenessJob?.cancel()
                 livenessJob = viewModelScope.launch {
                     delay(LIVENESS_HOLD_DURATION)
-                    proceedWithFaceVerification()
+                    if (
+                        FaceScannerTransitionPolicy.canAdvanceHold(
+                            state = _uiState.value,
+                            expectedChallenge = completedChallenge
+                        )
+                    ) {
+                        advanceChallenge()
+                    }
                 }
             }
 
             LivenessResult.IN_PROGRESS -> {
-                // User hampir berhasil - berikan umpan balik yang memandu
-                val progressText = when (_uiState.value.currentChallenge) {
-                    LivenessChallenge.BLINK -> "Hampir berhasil! Coba kedipkan kedua mata bersamaan"
-                    LivenessChallenge.SMILE -> "Bagus! Tersenyum sedikit lebih lebar lagi"
-                }
-
                 _uiState.value = _uiState.value.copy(
                     livenessState = LivenessState.WAITING_FOR_LIVENESS,
-                    instructionText = progressText
+                    instructionText = challengeProgressText(current)
                 )
             }
 
             LivenessResult.FAILURE -> {
-                // Belum berhasil - berikan instruksi yang jelas
-                val failureText = when (_uiState.value.currentChallenge) {
-                    LivenessChallenge.BLINK -> "Silakan kedipkan mata Anda dengan jelas"
-                    LivenessChallenge.SMILE -> "Silakan tersenyum dengan lebih jelas"
-                }
-
                 _uiState.value = _uiState.value.copy(
                     livenessState = LivenessState.WAITING_FOR_LIVENESS,
-                    instructionText = failureText
+                    instructionText = challengeFailureText(current)
                 )
             }
         }
+    }
+
+    /**
+     * Maju ke tantangan berikutnya, atau tandai siap verifikasi jika keempat tantangan selesai.
+     */
+    private fun advanceChallenge() {
+        sequencer.pass()
+        if (sequencer.isComplete) {
+            timeoutJob?.cancel()
+            livenessJob?.cancel()
+            _uiState.value = _uiState.value.copy(
+                livenessState = LivenessState.LIVENESS_DETECTED,
+                readyToVerify = true,
+                challengeIndex = sequencer.total,
+                instructionText = "Semua tantangan selesai. Tekan Verify untuk melanjutkan.",
+                showCountdown = false
+            )
+        } else {
+            val next = sequencer.current
+            _uiState.value = _uiState.value.copy(
+                currentChallenge = next,
+                challengeIndex = sequencer.index,
+                livenessState = LivenessState.WAITING_FOR_LIVENESS,
+                instructionText = challengePrompt(next),
+                errorMessage = null
+            )
+            // Reset the 20s countdown for the new challenge
+            startTimeout()
+        }
+    }
+
+    /**
+     * Dipanggil UI saat pengguna menekan Verify (hanya valid setelah semua tantangan selesai).
+     */
+    fun onVerifyClicked() {
+        if (!_uiState.value.readyToVerify) return
+        proceedWithFaceVerification()
+    }
+
+    private fun challengePrompt(challenge: LivenessChallenge): String = when (challenge) {
+        LivenessChallenge.BLINK -> "Posisikan wajah Anda di dalam frame, lalu kedipkan mata"
+        LivenessChallenge.SMILE -> "Posisikan wajah Anda di dalam frame, lalu tersenyum"
+        LivenessChallenge.TURN_LEFT -> "Posisikan wajah Anda di dalam frame, lalu tengok ke kiri"
+        LivenessChallenge.TURN_RIGHT -> "Posisikan wajah Anda di dalam frame, lalu tengok ke kanan"
+    }
+
+    private fun challengeProgressText(challenge: LivenessChallenge): String = when (challenge) {
+        LivenessChallenge.BLINK -> "Hampir berhasil! Coba kedipkan kedua mata bersamaan"
+        LivenessChallenge.SMILE -> "Bagus! Tersenyum sedikit lebih lebar lagi"
+        LivenessChallenge.TURN_LEFT -> "Hampir! Tengok sedikit lagi ke kiri"
+        LivenessChallenge.TURN_RIGHT -> "Hampir! Tengok sedikit lagi ke kanan"
+    }
+
+    private fun challengeFailureText(challenge: LivenessChallenge): String = when (challenge) {
+        LivenessChallenge.BLINK -> "Silakan kedipkan mata Anda dengan jelas"
+        LivenessChallenge.SMILE -> "Silakan tersenyum dengan lebih jelas"
+        LivenessChallenge.TURN_LEFT -> "Silakan tengok ke kiri dengan jelas"
+        LivenessChallenge.TURN_RIGHT -> "Silakan tengok ke kanan dengan jelas"
     }
 
     /**
@@ -326,7 +393,10 @@ class FaceScannerViewModel @Inject constructor(
         val bitmap = currentImageBitmap
 
         if (face == null || bitmap == null) {
-            handleVerificationError("Gagal mengambil data wajah")
+            handleVerificationFailure(
+                FaceVerificationFailureReason.TECHNICAL_FAILURE,
+                "Gagal mengambil data wajah"
+            )
             return
         }
 
@@ -343,27 +413,39 @@ class FaceScannerViewModel @Inject constructor(
                 val faceBitmap = faceDetectorHelper.extractFaceBitmap(face, bitmap)
 
                 if (faceBitmap == null) {
-                    handleVerificationError("Gagal mengekstrak wajah dari gambar")
+                    handleVerificationFailure(
+                        FaceVerificationFailureReason.TECHNICAL_FAILURE,
+                        "Gagal mengekstrak wajah dari gambar"
+                    )
                     return@launch
                 }
 
-                // Verifikasi wajah menggunakan VerifyFaceUseCase
-                verifyFaceUseCase(faceBitmap)
-                    .onSuccess { isMatch ->
-                        if (isMatch) {
-                            handleVerificationSuccess()
-                        } else {
-                            handleVerificationError("Wajah tidak cocok dengan data yang tersimpan. Silakan coba lagi.")
-                        }
-                    }
-                    .onFailure { exception ->
-                        handleVerificationError(
-                            exception.message ?: "Gagal memverifikasi wajah. Silakan coba lagi."
-                        )
-                    }
+                // Simpan foto wajah yang dipakai untuk verifikasi (transient, untuk result surface)
+                _uiState.value = _uiState.value.copy(capturedFacePreview = faceBitmap)
 
+                // Verifikasi wajah lalu petakan hasilnya ke reason terdiferensiasi
+                val outcome = FaceOutcomeMapper.fromMatch(verifyFaceUseCase(faceBitmap))
+                _uiState.value = _uiState.value.copy(
+                    similarity = outcome.similarity,
+                    threshold = outcome.threshold
+                )
+                if (outcome.livenessState == LivenessState.SUCCESS) {
+                    handleVerificationSuccess()
+                } else {
+                    val reason = outcome.failureReason
+                        ?: FaceVerificationFailureReason.TECHNICAL_FAILURE
+                    val message = if (reason == FaceVerificationFailureReason.NOT_MATCHED) {
+                        "Wajah tidak cocok dengan data yang tersimpan. Silakan coba lagi."
+                    } else {
+                        "Gagal memverifikasi wajah. Silakan coba lagi."
+                    }
+                    handleVerificationFailure(reason, message)
+                }
             } catch (e: Exception) {
-                handleVerificationError("Terjadi kesalahan: ${e.message}")
+                handleVerificationFailure(
+                    FaceVerificationFailureReason.TECHNICAL_FAILURE,
+                    "Terjadi kesalahan: ${e.message}"
+                )
             }
         }
     }
@@ -377,6 +459,7 @@ class FaceScannerViewModel @Inject constructor(
 
         _uiState.value = _uiState.value.copy(
             livenessState = LivenessState.SUCCESS,
+            failureReason = null,
             isProcessing = false,
             instructionText = "Verifikasi berhasil! Identitas terkonfirmasi.",
             progress = 1f,
@@ -399,14 +482,18 @@ class FaceScannerViewModel @Inject constructor(
     }
 
     /**
-     * Handle error verifikasi wajah
+     * Handle kegagalan verifikasi wajah dengan alasan terdiferensiasi
      */
-    private fun handleVerificationError(errorMessage: String) {
+    private fun handleVerificationFailure(
+        reason: FaceVerificationFailureReason,
+        errorMessage: String
+    ) {
         timeoutJob?.cancel()
         livenessJob?.cancel()
 
         _uiState.value = _uiState.value.copy(
             livenessState = LivenessState.FAILURE,
+            failureReason = reason,
             isProcessing = false,
             instructionText = "Verifikasi gagal",
             errorMessage = errorMessage,
@@ -446,14 +533,9 @@ class FaceScannerViewModel @Inject constructor(
      */
     private fun handleTimeout() {
         livenessJob?.cancel()
-
-        _uiState.value = _uiState.value.copy(
-            livenessState = LivenessState.TIMEOUT,
-            isProcessing = false,
-            instructionText = "Waktu habis",
-            errorMessage = "Tidak dapat mendeteksi wajah dalam waktu $TIMEOUT_SECONDS detik. Silakan coba lagi.",
-            showCountdown = false,
-            timeRemaining = 0
+        _uiState.value = FaceScannerTransitionPolicy.onTimeout(
+            state = _uiState.value,
+            timeoutSeconds = TIMEOUT_SECONDS
         )
     }
 
