@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.example.infinite_track.presentation.components.button.ButtonStateType
 import com.example.infinite_track.presentation.components.button.ButtonStyle
 import com.example.infinite_track.presentation.components.button.StatefulButton
+import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 
 /**
  * Terminal result surface for face verification.
@@ -60,9 +61,9 @@ fun FaceResultSurface(
     }
 
     val accent = when (copy.role) {
-        FaceResultRole.SUCCESS -> Color(0xFF00C853)
-        FaceResultRole.ERROR -> Color(0xFFD32F2F)
-        FaceResultRole.WARNING -> Color(0xFFF9A825)
+        FaceResultRole.SUCCESS -> InfiniteColors.Success
+        FaceResultRole.ERROR -> InfiniteColors.Error
+        FaceResultRole.WARNING -> InfiniteColors.Warning
     }
     val icon = if (copy.role == FaceResultRole.SUCCESS) {
         Icons.Filled.CheckCircle

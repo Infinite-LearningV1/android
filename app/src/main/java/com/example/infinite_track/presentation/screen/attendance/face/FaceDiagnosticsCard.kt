@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.round
@@ -62,8 +63,18 @@ fun FaceDiagnosticsCard(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        DiagnosticRow("Similarity Score", model.similarityText, positive)
-        DiagnosticRow("Threshold", model.thresholdText, Color(0xFFFFCD29))
+        DiagnosticRow(
+            label = "Similarity Score",
+            value = model.similarityText,
+            valueColor = if (model.matched) positive else negative,
+            matched = model.matched
+        )
+        DiagnosticRow(
+            label = "Threshold",
+            value = model.thresholdText,
+            valueColor = Color(0xFFFFCD29),
+            matched = model.matched
+        )
         DiagnosticRow(
             label = "Result",
             value = if (model.matched) "Matched" else "Not matched",
@@ -93,6 +104,9 @@ private fun DiagnosticRow(
                 contentDescription = null,
                 tint = if (matched) valueColor else Color(0xFFFF5C5C),
                 modifier = Modifier
+                    .testTag(
+                        "diagnostic-$label-${if (matched) "matched" else "not-matched"}"
+                    )
                     .padding(start = 8.dp)
                     .size(18.dp)
             )

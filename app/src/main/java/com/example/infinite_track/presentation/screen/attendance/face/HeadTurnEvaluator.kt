@@ -1,6 +1,6 @@
 package com.example.infinite_track.presentation.screen.attendance.face
 
-import com.example.infinite_track.data.face.LivenessResult
+import com.example.infinite_track.domain.model.face.LivenessResult
 
 /**
  * Pure evaluator for head-turn liveness challenges based on ML Kit's `headEulerAngleY`.

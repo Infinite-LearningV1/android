@@ -352,9 +352,10 @@ private fun CameraContent(
             val diagnostics = faceDiagnosticsUiModel(
                 similarity = uiState.similarity,
                 threshold = uiState.threshold,
-                isMatch = when (uiState.livenessState) {
-                    LivenessState.SUCCESS -> true
-                    else -> if (uiState.failureReason == FaceVerificationFailureReason.NOT_MATCHED) false else null
+                isMatch = when {
+                    uiState.livenessState == LivenessState.SUCCESS -> true
+                    uiState.failureReason == FaceVerificationFailureReason.NOT_MATCHED -> false
+                    else -> null
                 }
             )
             if (diagnostics != null) {

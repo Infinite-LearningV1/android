@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import org.junit.Rule
 import org.junit.Test
 
@@ -78,5 +79,25 @@ class FaceScannerResultSurfaceTest {
         }
 
         composeTestRule.onNodeWithText("Pencahayaan kurang").assertIsDisplayed()
+    }
+
+    @Test
+    fun notMatched_diagnosticsUseFailureIconsForEveryRow() {
+        composeTestRule.setContent {
+            FaceDiagnosticsCard(
+                model = FaceDiagnosticsUiModel(
+                    similarityText = "0.1",
+                    thresholdText = "0.15",
+                    matched = false
+                )
+            )
+        }
+
+        composeTestRule.onNodeWithTag("diagnostic-Similarity Score-not-matched")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithTag("diagnostic-Threshold-not-matched")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithTag("diagnostic-Result-not-matched")
+            .assertIsDisplayed()
     }
 }

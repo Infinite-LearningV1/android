@@ -1,7 +1,6 @@
 package com.example.infinite_track.domain.use_case.auth
 
 import android.graphics.Bitmap
-import com.example.infinite_track.BuildConfig
 import com.example.infinite_track.data.face.FaceProcessor
 import com.example.infinite_track.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.first
@@ -28,7 +27,6 @@ class VerifyFaceUseCase @Inject constructor(
     companion object {
         // PERBAIKAN: Turunkan threshold berdasarkan hasil testing (0.197)
         private const val SIMILARITY_THRESHOLD = 0.15f // Turun dari 0.4f ke 0.15f
-        private const val TAG = "VerifyFaceUseCase"
     }
 
     /**
@@ -63,16 +61,9 @@ class VerifyFaceUseCase @Inject constructor(
             // Return true if similarity exceeds threshold
             val isMatch = similarity >= SIMILARITY_THRESHOLD
 
-            // Similarity/threshold are biometric-derived diagnostics: emit them only in
-            // debug builds so release logs never carry biometric signals.
-            FaceMatchDiagnosticsFactory
-                .build(BuildConfig.DEBUG, similarity, SIMILARITY_THRESHOLD, isMatch)
-                ?.let { android.util.Log.d(TAG, "Face match diagnostics: $it") }
-
             Result.success(VerifyFaceMatch(isMatch, similarity, SIMILARITY_THRESHOLD))
 
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "Error in face verification", e)
             Result.failure(e)
         }
     }

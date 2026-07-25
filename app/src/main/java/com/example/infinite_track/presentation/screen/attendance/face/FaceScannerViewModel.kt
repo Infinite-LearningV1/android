@@ -7,7 +7,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.infinite_track.data.face.FaceDetectorHelper
-import com.example.infinite_track.data.face.LivenessResult
+import com.example.infinite_track.domain.model.face.LivenessResult
 import com.example.infinite_track.domain.use_case.auth.VerifyFaceUseCase
 import com.google.mlkit.vision.face.Face
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -141,16 +141,7 @@ class FaceScannerViewModel @Inject constructor(
      * Proses frame dari kamera untuk deteksi wajah dan verifikasi liveness
      */
     fun processImageProxy(imageProxy: ImageProxy, imageBitmap: Bitmap) {
-        val currentState = _uiState.value.livenessState
-        val isProcessing = _uiState.value.isProcessing
-
-        // Hanya blokir jika sedang processing atau scanner sudah berada di state final
-        if (
-            isProcessing ||
-            currentState == LivenessState.SUCCESS ||
-            currentState == LivenessState.FAILURE ||
-            currentState == LivenessState.TIMEOUT
-        ) {
+        if (!FaceScannerTransitionPolicy.canAcceptDetection(_uiState.value)) {
             imageProxy.close()
             return
         }
@@ -159,6 +150,9 @@ class FaceScannerViewModel @Inject constructor(
 
         // Panggil FaceDetectorHelper untuk mendeteksi wajah + jumlah wajah dalam frame
         faceDetectorHelper.detectFaces(imageProxy) { result ->
+            if (!FaceScannerTransitionPolicy.canAcceptDetection(_uiState.value)) {
+                return@detectFaces
+            }
             result.onSuccess { detected ->
                 handleFaceDetected(detected.primary, imageBitmap, detected.totalFaces)
             }.onFailure { exception ->
@@ -197,15 +191,14 @@ class FaceScannerViewModel @Inject constructor(
         // Jika ada lebih dari satu wajah, minta pengguna menyisakan satu wajah dulu
         if (FaceCountGuidance.reasonFor(totalFaces) == FaceVerificationFailureReason.MULTIPLE_FACES) {
             livenessJob?.cancel()
-            _uiState.value = _uiState.value.copy(
-                instructionText = "Pastikan hanya ada satu wajah di dalam frame",
-                errorMessage = null
-            )
+            _uiState.value = FaceScannerTransitionPolicy.onMultipleFaces(_uiState.value)
             return
         }
+        _uiState.value = FaceScannerTransitionPolicy.onSingleFaceRecovered(_uiState.value)
 
         // Cek apakah wajah berada di posisi yang baik
         if (!faceDetectorHelper.isFaceWellPositioned(face, imageWidth, imageHeight)) {
+            livenessJob?.cancel()
             _uiState.value = _uiState.value.copy(
                 livenessState = LivenessState.DETECTING_FACE,
                 instructionText = "Posisikan wajah Anda lebih dekat dan di tengah frame",
@@ -298,6 +291,7 @@ class FaceScannerViewModel @Inject constructor(
 
         when (livenessResult) {
             LivenessResult.SUCCESS -> {
+                val completedChallenge = current
                 // Tantangan saat ini terpenuhi - tahan sebentar lalu maju ke tantangan berikutnya
                 _uiState.value = _uiState.value.copy(
                     livenessState = LivenessState.LIVENESS_DETECTED,
@@ -306,7 +300,14 @@ class FaceScannerViewModel @Inject constructor(
                 livenessJob?.cancel()
                 livenessJob = viewModelScope.launch {
                     delay(LIVENESS_HOLD_DURATION)
-                    advanceChallenge()
+                    if (
+                        FaceScannerTransitionPolicy.canAdvanceHold(
+                            state = _uiState.value,
+                            expectedChallenge = completedChallenge
+                        )
+                    ) {
+                        advanceChallenge()
+                    }
                 }
             }
 
@@ -532,14 +533,9 @@ class FaceScannerViewModel @Inject constructor(
      */
     private fun handleTimeout() {
         livenessJob?.cancel()
-
-        _uiState.value = _uiState.value.copy(
-            livenessState = LivenessState.TIMEOUT,
-            isProcessing = false,
-            instructionText = "Waktu habis",
-            errorMessage = "Tidak dapat mendeteksi wajah dalam waktu $TIMEOUT_SECONDS detik. Silakan coba lagi.",
-            showCountdown = false,
-            timeRemaining = 0
+        _uiState.value = FaceScannerTransitionPolicy.onTimeout(
+            state = _uiState.value,
+            timeoutSeconds = TIMEOUT_SECONDS
         )
     }
 

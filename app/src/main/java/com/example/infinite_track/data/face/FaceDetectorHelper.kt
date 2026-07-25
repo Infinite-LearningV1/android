@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.annotation.OptIn
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
+import com.example.infinite_track.domain.model.face.LivenessResult
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
@@ -11,16 +12,6 @@ import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import javax.inject.Inject
 import javax.inject.Singleton
-
-/**
- * Enum for liveness detection results
- * Provides progressive feedback for user guidance
- */
-enum class LivenessResult {
-    SUCCESS,    // Liveness detected successfully
-    IN_PROGRESS, // User is on the right track, needs slight adjustment
-    FAILURE     // Liveness not detected
-}
 
 /**
  * Result of a detection pass: the primary (largest) face plus how many faces were in frame,

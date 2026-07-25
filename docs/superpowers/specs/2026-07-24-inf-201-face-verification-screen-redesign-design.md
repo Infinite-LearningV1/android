@@ -121,16 +121,16 @@ Rules:
 - New typed result:
 
 ```kotlin
-data class FaceMatchOutcomeResult(
+data class VerifyFaceMatch(
     val isMatch: Boolean,
     val similarity: Float,
     val threshold: Float
 )
-// VerifyFaceUseCase now returns Result<FaceMatchOutcomeResult> (was Result<Boolean>).
+// VerifyFaceUseCase now returns Result<VerifyFaceMatch> (was Result<Boolean>).
 ```
 
 - `isMatch` → `Verified`; `!isMatch` → `NotMatched` (both carry similarity+threshold for the card); exceptions → `TechnicalFailure`.
-- The previous `FaceMatchDiagnostics` debug-gate is repurposed: the score/threshold now flow to the UI intentionally; logs still must not print raw embeddings.
+- The score/threshold flow to the approved UI diagnostics intentionally. The domain use case does not log them or raw embeddings.
 
 ## FaceVerificationFrame (redesign)
 
@@ -177,7 +177,7 @@ Verified copy must not claim attendance success. `Continue to Attendance` publis
 
 ## Diagnostics card (success & not-matched)
 
-A dark rounded card above the sheet with three rows: `Similarity Score: {value}`, `Threshold: {value}`, `Result: Matched|Not matched`, each with a leading icon and a trailing status check/cross. Shown for `Verified` and `NotMatched` (whenever a score was computed); absent for no-face/timeout/technical. Values come from `FaceMatchOutcomeResult`. Present in all build variants (approved override).
+A dark rounded card above the sheet with three rows: `Similarity Score: {value}`, `Threshold: {value}`, `Result: Matched|Not matched`, each with a leading icon and a trailing status check/cross. Shown for `Verified` and `NotMatched` (whenever a score was computed); absent for no-face/timeout/technical. Values come from `VerifyFaceMatch`. Present in all build variants (approved override).
 
 ## Navigation & handoff
 
@@ -196,7 +196,7 @@ Unchanged transport: `FaceVerificationResult` enum via `savedStateHandle` (`FACE
 - **Integration/existing:** Attendance handoff still locked by `AttendanceScreenFaceResultRescueTest` (SUCCESS→Submitting; others no submit).
 - **Device:** front-camera lifecycle, all 4 challenges, per-challenge timeout, no-face, multiple faces, low light, matched (card), not matched (card), cancel, permission recovery.
 
-Required verification: `app:testDebugUnitTest`, `app:compileDebugAndroidTestKotlin`, `app:lintDebug`, `app:assembleDebug`.
+Required verification: `app:compileDebugKotlin`, `app:test`, `app:testDebugUnitTest`, `app:compileDebugAndroidTestKotlin`, `app:lint`, `app:lintDebug`, `app:assembleDebug`.
 
 ## Acceptance criteria
 

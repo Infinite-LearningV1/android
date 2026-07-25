@@ -1,7 +1,9 @@
 package com.example.infinite_track.presentation.screen.attendance.face
 
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -14,7 +16,7 @@ class FaceVerificationRedesignScreenTest {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun liveness_showsVerifyAndChallengeSheet() {
+    fun liveness_disablesVerifyBeforeAllChallengesPass() {
         composeTestRule.setContent {
             FaceVerificationBottomSheet(
                 state = FaceScannerState(
@@ -30,7 +32,30 @@ class FaceVerificationRedesignScreenTest {
         }
 
         composeTestRule.onNodeWithText("Verify your liveness").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Verify").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Verify")
+            .assertIsDisplayed()
+            .assertIsNotEnabled()
+    }
+
+    @Test
+    fun liveness_enablesVerifyAfterAllChallengesPass() {
+        composeTestRule.setContent {
+            FaceVerificationBottomSheet(
+                state = FaceScannerState(
+                    livenessState = LivenessState.LIVENESS_DETECTED,
+                    challengeIndex = 4,
+                    readyToVerify = true
+                ),
+                onVerify = {},
+                onContinue = {},
+                onTryAgain = {},
+                onCancel = {}
+            )
+        }
+
+        composeTestRule.onNodeWithText("Verify")
+            .assertIsDisplayed()
+            .assertIsEnabled()
     }
 
     @Test

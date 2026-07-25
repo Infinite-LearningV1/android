@@ -1,6 +1,6 @@
 package com.example.infinite_track.presentation.screen.attendance.face
 
-import com.example.infinite_track.data.face.LivenessResult
+import com.example.infinite_track.domain.model.face.LivenessResult
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

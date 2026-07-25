@@ -204,7 +204,7 @@ Reuse existing components and tokens. The result surface (inside `InstructionSec
 
 - `VerifyFaceUseCase`: similarity/threshold logging is invoked only when debug; match/no-match/failure mapping.
 - `FaceScannerViewModel`: reason mapping (no face / multiple faces / low light / not matched / technical failure / timeout), retryability per reason, single-publish success, captured preview cleared on reset.
-- `FaceVerificationResult`: `fromScannerExitState` / `fromSavedState` round-trips including new reasons where surfaced.
+- `FaceVerificationResult`: `SUCCESS`, `FAILED`, `TIMEOUT`, and `CANCELLED` round-trip through `fromScannerExitState` / `fromSavedState`. Scanner-local failure reasons are covered by `FaceOutcomeMapper` and UI-copy tests; they are never persisted or navigated.
 - Reason → copy/colour mapping is pure and unit-tested.
 
 ### Compose (`app/src/androidTest`)
@@ -247,10 +247,16 @@ The following pass, or blockers are documented with evidence:
 
 ```bash
 ./gradlew app:testDebugUnitTest
+./gradlew app:test
+./gradlew app:compileDebugKotlin
 ./gradlew app:compileDebugAndroidTestKotlin
+./gradlew app:lint
 ./gradlew app:lintDebug
 ./gradlew app:assembleDebug
 ```
+
+The face-verification flow also requires emulator/device evidence. If a connected runtime is
+unavailable, report that gate as **Needs Verification**.
 
 ## Divergence from issue #102
 

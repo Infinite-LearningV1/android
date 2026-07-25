@@ -19,7 +19,7 @@
 - No new ML model, no CameraX pipeline rewrite, no nested graph, no new repository.
 - Similarity/threshold are shown in UI (approved override); raw embedding vectors are never displayed, logged, in nav args, or saved state.
 - No Mockito/Robolectric: pure logic gets JVM unit tests; Compose gets androidTest (compile-checked, device run = Needs Verification if no device).
-- Required verification: `app:testDebugUnitTest`, `app:compileDebugAndroidTestKotlin`, `app:lintDebug`, `app:assembleDebug`.
+- Required verification: `app:compileDebugKotlin`, `app:test`, `app:testDebugUnitTest`, `app:compileDebugAndroidTestKotlin`, `app:lint`, `app:lintDebug`, `app:assembleDebug`.
 
 ---
 
@@ -46,13 +46,11 @@ app/src/androidTest/java/com/example/infinite_track/presentation/screen/attendan
 
 ```text
 app/src/main/java/com/example/infinite_track/domain/use_case/auth/VerifyFaceUseCase.kt
-app/src/main/java/com/example/infinite_track/domain/use_case/auth/FaceMatchDiagnostics.kt
 app/src/main/java/com/example/infinite_track/data/face/FaceDetectorHelper.kt
 app/src/main/java/com/example/infinite_track/presentation/screen/attendance/face/FaceOutcomeMapper.kt
 app/src/main/java/com/example/infinite_track/presentation/screen/attendance/face/FaceScannerViewModel.kt
 app/src/main/java/com/example/infinite_track/presentation/screen/attendance/face/FaceScannerScreen.kt
 app/src/main/java/com/example/infinite_track/presentation/screen/attendance/face/FaceResultSurface.kt
-app/src/test/java/com/example/infinite_track/domain/use_case/auth/VerifyFaceUseCaseLoggingTest.kt
 app/src/test/java/com/example/infinite_track/presentation/screen/attendance/face/FaceOutcomeMapperTest.kt
 app/src/main/res/values/strings.xml
 ```
@@ -168,14 +166,14 @@ git commit -m "feat(face): add 4-challenge liveness sequencer"
 - Test: `app/src/test/java/com/example/infinite_track/presentation/screen/attendance/face/HeadTurnEvaluatorTest.kt`
 - Modify: `app/src/main/java/com/example/infinite_track/data/face/FaceDetectorHelper.kt`
 
-**Interfaces:** `HeadTurnEvaluator.evaluate(eulerY: Float, direction: LivenessChallenge, threshold: Float = 20f): LivenessResult`; `FaceDetectorHelper.verifyHeadTurn(face, direction): LivenessResult`.
+**Interfaces:** `HeadTurnEvaluator.evaluate(eulerY: Float, direction: LivenessChallenge, threshold: Float = 22f): LivenessResult`; `FaceDetectorHelper.verifyHeadTurn(face, direction): LivenessResult`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```kotlin
 package com.example.infinite_track.presentation.screen.attendance.face
 
-import com.example.infinite_track.data.face.LivenessResult
+import com.example.infinite_track.domain.model.face.LivenessResult
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -208,7 +206,7 @@ Expected: FAIL.
 ```kotlin
 package com.example.infinite_track.presentation.screen.attendance.face
 
-import com.example.infinite_track.data.face.LivenessResult
+import com.example.infinite_track.domain.model.face.LivenessResult
 import kotlin.math.abs
 
 object HeadTurnEvaluator {
@@ -263,9 +261,7 @@ git commit -m "feat(face): add head-turn liveness evaluator"
 
 **Files:**
 - Modify: `app/src/main/java/com/example/infinite_track/domain/use_case/auth/VerifyFaceUseCase.kt`
-- Modify: `app/src/main/java/com/example/infinite_track/domain/use_case/auth/FaceMatchDiagnostics.kt`
 - Modify: `app/src/main/java/com/example/infinite_track/presentation/screen/attendance/face/FaceOutcomeMapper.kt`
-- Modify: `app/src/test/java/com/example/infinite_track/domain/use_case/auth/VerifyFaceUseCaseLoggingTest.kt`
 - Modify: `app/src/test/java/com/example/infinite_track/presentation/screen/attendance/face/FaceOutcomeMapperTest.kt`
 
 **Interfaces:** `VerifyFaceMatch(isMatch, similarity, threshold)`; `VerifyFaceUseCase.invoke(Bitmap): Result<VerifyFaceMatch>`; `FaceOutcomeMapper.fromMatch(Result<VerifyFaceMatch>): FaceMatchOutcome` where `FaceMatchOutcome` gains `similarity`/`threshold` nullable.
@@ -310,7 +306,7 @@ data class VerifyFaceMatch(
 )
 ```
 
-Change `invoke` to compute `similarity`, build `VerifyFaceMatch(isMatch, similarity, SIMILARITY_THRESHOLD)`, and `Result.success(match)`. Keep the debug diagnostics log (no raw embedding). Update `FaceMatchDiagnostics.kt` only if needed for the new field names (keep `FaceMatchDiagnosticsFactory` as-is).
+Change `invoke` to compute `similarity`, build `VerifyFaceMatch(isMatch, similarity, SIMILARITY_THRESHOLD)`, and `Result.success(match)`. Do not log similarity, threshold, or raw embeddings from the domain use case.
 
 In `FaceOutcomeMapper.kt`, extend `FaceMatchOutcome`:
 
@@ -335,17 +331,15 @@ object FaceOutcomeMapper {
 
 `VerifyFaceMatch` is in the `auth` use-case package; add the import to `FaceOutcomeMapper.kt` and `FaceOutcomeMapperTest.kt`.
 
-Update `VerifyFaceUseCaseLoggingTest.kt` only if the diagnostics factory signature changed (it does not; keep as-is).
-
 - [ ] **Step 4: Run tests**
 
-Run: `.\gradlew.bat --no-daemon app:testDebugUnitTest --tests "*FaceOutcomeMapperTest" --tests "*VerifyFaceUseCaseLoggingTest" --console=plain`
+Run: `.\gradlew.bat --no-daemon app:testDebugUnitTest --tests "*FaceOutcomeMapperTest" --console=plain`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/src/main/java/com/example/infinite_track/domain/use_case/auth/VerifyFaceUseCase.kt app/src/main/java/com/example/infinite_track/domain/use_case/auth/FaceMatchDiagnostics.kt app/src/main/java/com/example/infinite_track/presentation/screen/attendance/face/FaceOutcomeMapper.kt app/src/test/java/com/example/infinite_track/domain/use_case/auth/VerifyFaceUseCaseLoggingTest.kt app/src/test/java/com/example/infinite_track/presentation/screen/attendance/face/FaceOutcomeMapperTest.kt
+git add app/src/main/java/com/example/infinite_track/domain/use_case/auth/VerifyFaceUseCase.kt app/src/main/java/com/example/infinite_track/presentation/screen/attendance/face/FaceOutcomeMapper.kt app/src/test/java/com/example/infinite_track/presentation/screen/attendance/face/FaceOutcomeMapperTest.kt
 git commit -m "feat(face): return similarity and threshold from verification"
 ```
 
@@ -389,11 +383,11 @@ object ChallengeTimeout {
 }
 ```
 
-Then wire the ViewModel: hold a `LivenessSequencer`; on a passed challenge, `sequencer.pass()`, reset the per-challenge deadline, update `challengeIndex`; when `sequencer.isComplete`, set `readyToVerify = true` (do not auto-verify). Replace the single random challenge in `initializeScanner()` with `sequencer.reset()` + first challenge. Route detection to the current challenge: `BLINK`→`verifyBlink`, `SMILE`→`verifySmile`, `TURN_LEFT`/`TURN_RIGHT`→`verifyHeadTurn`. Add `onVerifyClicked()` that guards on `readyToVerify` then runs `proceedWithFaceVerification()`; map result via `FaceOutcomeMapper.fromMatch` and store `similarity`/`threshold` into state. Timeout uses `clock.elapsedRealtime()`-style deadline (reuse existing coroutine countdown but reset on each pass).
+Then wire the ViewModel: hold a `LivenessSequencer`; on a passed challenge, `sequencer.pass()`, reset the per-challenge deadline, update `challengeIndex`; when `sequencer.isComplete`, set `readyToVerify = true` (do not auto-verify). Replace the single random challenge in `initializeScanner()` with `sequencer.reset()` + first challenge. Route detection to the current challenge: `BLINK`→`verifyBlink`, `SMILE`→`verifySmile`, `TURN_LEFT`/`TURN_RIGHT`→`HeadTurnEvaluator`. Add `onVerifyClicked()` that guards on `readyToVerify` then runs `proceedWithFaceVerification()`; map result via `FaceOutcomeMapper.fromMatch` and store `similarity`/`threshold` into state. Timeout transitions through `FaceScannerTransitionPolicy`, terminal states reject late detector callbacks, and a delayed hold advances only while the same challenge remains in `LIVENESS_DETECTED`.
 
 - [ ] **Step 4: Run tests + compile**
 
-Run: `.\gradlew.bat --no-daemon app:testDebugUnitTest --tests "*ChallengeTimeout*" --tests "*FaceOutcomeMapperTest" app:compileDebugKotlin --console=plain`
+Run: `.\gradlew.bat --no-daemon app:testDebugUnitTest --tests "*FaceScannerTransitionPolicyTest" --tests "*FaceOutcomeMapperTest" app:compileDebugKotlin --console=plain`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -630,7 +624,17 @@ class FaceVerificationRedesignScreenTest {
                 onVerify = {}, onContinue = {}, onTryAgain = {}, onCancel = {}
             )
         }
-        compose.onNodeWithText("Verify").assertIsDisplayed()
+        compose.onNodeWithText("Verify").assertIsDisplayed().assertIsNotEnabled()
+    }
+
+    @Test fun liveness_enablesVerifyWhenReady() {
+        compose.setContent {
+            FaceVerificationBottomSheet(
+                state = FaceScannerState(livenessState = LivenessState.LIVENESS_DETECTED, challengeIndex = 4, readyToVerify = true),
+                onVerify = {}, onContinue = {}, onTryAgain = {}, onCancel = {}
+            )
+        }
+        compose.onNodeWithText("Verify").assertIsEnabled()
     }
 
     @Test fun verified_showsContinueAndIdentityCopy() {
@@ -654,7 +658,7 @@ Expected: FAIL (`FaceVerificationBottomSheet` missing).
 
 - [ ] **Step 3: Implement sheet + wire screen**
 
-Implement `FaceVerificationBottomSheet` per the spec's phase table (titles/bodies/actions), reusing `StatefulButton`/`InfiniteButton`. `Verify` enabled only when `state.readyToVerify`. In `FaceScannerScreen`, replace the current `CameraContent` overlay stack with: `FaceVerificationTopBar`, `FaceStatusPillRow`, `FaceVerificationFrame(state)`, `FaceGuidanceText(state)`, `FaceDiagnosticsCard(faceDiagnosticsUiModel(state.similarity, state.threshold, state.livenessState == SUCCESS || failure-not-matched))`, and put `FaceVerificationBottomSheet` in the sheet slot. Keep permission-recovery branches and `publishResultOnce` intact; `onContinue`/success publishes `FaceVerificationResult.SUCCESS`; `onCancel` publishes exit state.
+Implement `FaceVerificationBottomSheet` per the spec's phase table (titles/bodies/actions), reusing `StatefulButton`/`InfiniteButton`. `Verify` enabled only when `state.readyToVerify`. In `FaceScannerScreen`, replace the current `CameraContent` overlay stack with: `FaceVerificationTopBar`, `FaceStatusPillRow`, `FaceVerificationFrame(state)`, `FaceGuidanceText(state)`, and `FaceDiagnosticsCard`. Build the diagnostics match predicate explicitly: `true` only for `SUCCESS`, `false` only when `failureReason == NOT_MATCHED`, otherwise `null`. Put `FaceVerificationBottomSheet` in the sheet slot. Keep permission-recovery branches and `publishResultOnce` intact; `onContinue`/success publishes `FaceVerificationResult.SUCCESS`; `onCancel` publishes exit state.
 
 - [ ] **Step 4: Compile + run Compose tests**
 
@@ -683,13 +687,15 @@ Expected: PASS.
 - [ ] **Step 2: Release-leak grep (no raw embedding)**
 
 ```bash
-grep -Rn "Log\..*embedding\|Log\..*ByteArray" app/src/main/java
+rg -n -i "(Log\\.|Timber\\.|println|print|analytics|savedStateHandle|navigate|serialize|write).*(embeddingVector|embedding|featureVector|vector|ByteArray)|(embeddingVector|embedding|featureVector|vector|ByteArray).*(Log\\.|Timber\\.|println|print|analytics|savedStateHandle|navigate|serialize|write)" app/src/main app/src/test app/src/androidTest
 ```
-Expected: no logging of raw embedding vectors (score/threshold display is allowed).
+Expected: no raw embedding data in logs, UI, analytics, navigation arguments, saved state,
+serialization, or persistence output. Similarity/threshold display is allowed by the approved
+INF-201 override.
 
 - [ ] **Step 3: Required verification**
 
-Run each: `app:testDebugUnitTest`, `app:compileDebugAndroidTestKotlin`, `app:lintDebug`, `app:assembleDebug` (canonical command). Expected: PASS; document blockers.
+Run each: `app:compileDebugKotlin`, `app:test`, `app:testDebugUnitTest`, `app:compileDebugAndroidTestKotlin`, `app:lint`, `app:lintDebug`, `app:assembleDebug` (canonical command). Expected: PASS; document blockers.
 
 - [ ] **Step 4: Device matrix**
 

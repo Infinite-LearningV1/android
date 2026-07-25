@@ -20,7 +20,7 @@
 - Do not change `VerifyFaceUseCase`'s public signature or the `FaceVerificationResult` enum transport protocol.
 - Do not change ML Kit `LANDMARK_MODE_ALL`, the CameraX per-frame pipeline, thresholds, or embedding format in this issue (tracked by INF-81/INF-82/INF-237).
 - Reuse `StatefulButton`, `ButtonStyle`, `ButtonStateType`, `FaceBoundingBox`, `LoadingAnimation`, and `InfiniteColors`/`InfiniteSemantic` tokens.
-- Required verification: `app:testDebugUnitTest`, `app:compileDebugAndroidTestKotlin`, `app:lintDebug`, `app:assembleDebug`.
+- Required verification: `app:compileDebugKotlin`, `app:test`, `app:testDebugUnitTest`, `app:compileDebugAndroidTestKotlin`, `app:lint`, `app:lintDebug`, `app:assembleDebug`.
 
 ---
 
@@ -41,7 +41,6 @@ app/src/main/res/values/strings.xml
 ```text
 app/src/main/java/com/example/infinite_track/presentation/screen/attendance/face/FaceVerificationReason.kt
 app/src/main/java/com/example/infinite_track/presentation/screen/attendance/face/FaceResultCopy.kt
-app/src/test/java/com/example/infinite_track/domain/use_case/auth/VerifyFaceUseCaseLoggingTest.kt
 app/src/test/java/com/example/infinite_track/data/face/FaceDetectorHelperFaceCountTest.kt
 app/src/test/java/com/example/infinite_track/presentation/screen/attendance/face/FaceScannerViewModelReasonTest.kt
 app/src/test/java/com/example/infinite_track/presentation/screen/attendance/face/FaceResultCopyTest.kt
@@ -55,92 +54,31 @@ Notes:
 
 ---
 
-### Task 1: Gate similarity/threshold logging behind BuildConfig.DEBUG
+### Task 1: Keep biometric diagnostics out of domain logging
 
 **Files:**
 - Modify: `app/src/main/java/com/example/infinite_track/domain/use_case/auth/VerifyFaceUseCase.kt`
-- Test: `app/src/test/java/com/example/infinite_track/domain/use_case/auth/VerifyFaceUseCaseLoggingTest.kt`
+- Delete: `app/src/main/java/com/example/infinite_track/domain/use_case/auth/FaceMatchDiagnostics.kt`
+- Delete: `app/src/test/java/com/example/infinite_track/domain/use_case/auth/VerifyFaceUseCaseLoggingTest.kt`
 
-**Interfaces:**
-- No public signature change. Introduces an injectable/overridable debug flag and a `diagnosticSink` seam so logging can be asserted in tests.
+**Invariant:** `VerifyFaceUseCase` returns the typed match decision and score needed by the
+approved result UI, but never imports `BuildConfig`, calls Android logging, or formats a
+biometric diagnostics payload.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Remove domain logging**
 
-Extract the debug decision into a testable pure function so no Android `Log`/`BuildConfig` is needed in a JVM unit test.
+Delete `FaceMatchDiagnostics`/`FaceMatchDiagnosticsFactory` and remove the associated logging
+call from `VerifyFaceUseCase`. Preserve `VerifyFaceMatch(isMatch, similarity, threshold)` as the
+typed return value.
 
-```kotlin
-class VerifyFaceUseCaseLoggingTest {
-    @Test
-    fun `diagnostic payload is null in release`() {
-        val payload = FaceMatchDiagnostics.build(
-            isDebug = false, similarity = 0.83f, threshold = 0.15f, isMatch = true
-        )
-        assertNull(payload)
-    }
-
-    @Test
-    fun `diagnostic payload is present in debug`() {
-        val payload = FaceMatchDiagnostics.build(
-            isDebug = true, similarity = 0.83f, threshold = 0.15f, isMatch = true
-        )
-        assertNotNull(payload)
-        assertEquals(0.83f, payload!!.similarity)
-        assertEquals(0.15f, payload.threshold)
-    }
-}
-```
-
-- [ ] **Step 2: Run the test to verify it fails**
+- [ ] **Step 2: Verify the boundary**
 
 ```bash
-./gradlew app:testDebugUnitTest --tests "*VerifyFaceUseCaseLoggingTest"
+./gradlew app:testDebugUnitTest --tests "*FaceOutcomeMapperTest"
+rg -n "BuildConfig|android\.util\.Log|FaceMatchDiagnostics" app/src/main/java/com/example/infinite_track/domain/use_case/auth
 ```
 
-Expected: FAIL because `FaceMatchDiagnostics` does not exist.
-
-- [ ] **Step 3: Implement the gated diagnostics**
-
-Add a pure helper in `VerifyFaceUseCase.kt` (or an adjacent file in the same package) and use `BuildConfig.DEBUG` at the call site:
-
-```kotlin
-data class FaceMatchDiagnostics(
-    val similarity: Float,
-    val threshold: Float,
-    val isMatch: Boolean
-)
-
-internal object FaceMatchDiagnosticsFactory {
-    fun build(isDebug: Boolean, similarity: Float, threshold: Float, isMatch: Boolean):
-        FaceMatchDiagnostics? =
-        if (isDebug) FaceMatchDiagnostics(similarity, threshold, isMatch) else null
-}
-```
-
-Replace the two unconditional `Log.d` calls (the "similarity score" and "verification result" lines) with:
-
-```kotlin
-FaceMatchDiagnosticsFactory
-    .build(BuildConfig.DEBUG, similarity, SIMILARITY_THRESHOLD, isMatch)
-    ?.let { Log.d(TAG, "Face match diagnostics: $it") }
-```
-
-Keep the `Log.e` error path (it must not include similarity/threshold/embedding values).
-
-- [ ] **Step 4: Run the tests and the release-leak grep**
-
-```bash
-./gradlew app:testDebugUnitTest --tests "*VerifyFaceUseCaseLoggingTest"
-grep -Rn "similarity score\|threshold: \|Log\.d.*similarity" app/src/main/java/com/example/infinite_track/domain/use_case/auth/VerifyFaceUseCase.kt
-```
-
-Expected: tests PASS; grep shows any similarity/threshold logging only inside the debug-gated path.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add app/src/main/java/com/example/infinite_track/domain/use_case/auth/VerifyFaceUseCase.kt app/src/test/java/com/example/infinite_track/domain/use_case/auth/VerifyFaceUseCaseLoggingTest.kt
-git commit -m "fix(face): gate similarity diagnostics behind BuildConfig.DEBUG"
-```
+Expected: tests PASS and the grep has no matches in the face-verification use case.
 
 ---
 
@@ -608,7 +546,10 @@ Expected: any such logging is inside an explicit `BuildConfig.DEBUG` path only.
 
 ```bash
 ./gradlew app:testDebugUnitTest
+./gradlew app:test
+./gradlew app:compileDebugKotlin
 ./gradlew app:compileDebugAndroidTestKotlin
+./gradlew app:lint
 ./gradlew app:lintDebug
 ./gradlew app:assembleDebug
 git diff --check
@@ -660,6 +601,12 @@ Verification: which tests, builds, and device scenarios passed?
 ```
 
 Include: Linear INF-201 link; spec and plan paths; before/after screenshots for each terminal state; build/test/lint evidence; device evidence; explicit note that face verification is not final Attendance success; and a short note referencing the [Divergence from issue #102](#divergence-from-issue-102) so reviewers know the nested-graph rewrite was intentionally deferred.
+
+## Divergence from issue #102
+
+The nested `FaceVerificationGraph` rewrite from issue #102 remains intentionally deferred.
+INF-201 evolves the active single `FaceScanner` route and preserves its existing Attendance
+handoff boundary.
 
 ## Plan Self-Review
 

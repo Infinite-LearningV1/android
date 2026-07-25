@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="face_result_success_title">Identitas terverifikasi</string>
+    <string name="face_result_success_message">Verifikasi wajah berhasil. Melanjutkan ke pengiriman absensi.</string>
+    <string name="face_result_no_face_title">Wajah tidak terdeteksi</string>
+    <string name="face_result_no_face_message">Posisikan wajah Anda di dalam frame lalu coba lagi.</string>
+    <string name="face_result_multiple_faces_title">Terlalu banyak wajah</string>
+    <string name="face_result_multiple_faces_message">Pastikan hanya ada satu wajah di dalam frame.</string>
+    <string name="face_result_low_light_title">Pencahayaan kurang</string>
+    <string name="face_result_low_light_message">Pindah ke area yang lebih terang lalu coba lagi.</string>
+    <string name="face_result_not_matched_title">Wajah tidak cocok</string>
+    <string name="face_result_not_matched_message">Wajah tidak cocok dengan data tersimpan. Silakan coba lagi.</string>
+    <string name="face_result_technical_title">Verifikasi gagal</string>
+    <string name="face_result_technical_message">Terjadi kendala teknis saat verifikasi. Silakan coba lagi.</string>
+    <string name="face_result_timeout_title">Waktu habis</string>
+    <string name="face_result_timeout_message">Waktu verifikasi wajah habis. Silakan coba lagi.</string>
     <string name="app_feedback_login_success_title">Login berhasil</string>
     <string name="app_feedback_login_success_message">Selamat datang kembali di Infinite Track.</string>
     <string name="app_feedback_logout_success_title">Berhasil keluar dari perangkat ini</string>
