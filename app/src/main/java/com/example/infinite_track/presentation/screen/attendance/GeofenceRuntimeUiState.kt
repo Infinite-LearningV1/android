@@ -14,3 +14,11 @@ data class GeofenceRuntimeUiState(
     val notificationAvailable: Boolean = false,
     val reason: GeofenceRuntimeUiReason? = null
 )
+
+internal fun GeofenceRuntimeUiState.requiresPermissionReadinessRecovery(): Boolean =
+    !monitoringAvailable && reason in setOf(
+        GeofenceRuntimeUiReason.PRECISE_LOCATION_REQUIRED,
+        GeofenceRuntimeUiReason.BACKGROUND_LOCATION_REQUIRED,
+        GeofenceRuntimeUiReason.DEVICE_LOCATION_DISABLED,
+        GeofenceRuntimeUiReason.PLAY_SERVICES_UNAVAILABLE
+    )

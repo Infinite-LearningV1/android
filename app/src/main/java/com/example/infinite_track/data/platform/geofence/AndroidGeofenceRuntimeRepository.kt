@@ -22,8 +22,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 @Singleton
@@ -31,20 +29,19 @@ class AndroidGeofenceRuntimeRepository @Inject constructor(
     private val platformClient: GeofencingPlatformClient,
     private val store: GeofenceRuntimeStore,
     private val requestIdCodec: GeofenceRequestIdCodec,
-    private val clock: Clock
+    private val clock: Clock,
+    private val operationLock: GeofenceRuntimeOperationLock
 ) : GeofenceRuntimeRepository {
-
-    private val reconciliationMutex = Mutex()
 
     override fun observeReadiness(): Flow<GeofenceRuntimeReadiness> =
         platformClient.observeReadiness()
 
     override suspend fun reconcile(mode: GeofenceRuntimeMode): GeofenceRuntimeResult =
-        reconciliationMutex.withLock {
+        operationLock.withOperation {
             reconcileLocked(mode)
         }
 
-    override suspend fun clearForLogout(): GeofenceRuntimeResult = reconciliationMutex.withLock {
+    override suspend fun clearForLogout(): GeofenceRuntimeResult = operationLock.withOperation {
         val loggedOut = GeofenceRuntimeMode.Disabled(GeofenceDisabledReason.LOGGED_OUT)
         var removalFailure: Throwable? = null
         try {
@@ -57,7 +54,7 @@ class AndroidGeofenceRuntimeRepository @Inject constructor(
         }
         store.clear()
         removalFailure?.let { exception ->
-            return@withLock GeofenceRuntimeResult.Degraded(
+            return@withOperation GeofenceRuntimeResult.Degraded(
                 loggedOut,
                 GeofenceRuntimeFailure.RemovalFailed(exceptionCategory(exception))
             )

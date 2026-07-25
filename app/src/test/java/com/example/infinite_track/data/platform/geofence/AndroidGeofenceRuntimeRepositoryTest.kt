@@ -233,7 +233,13 @@ class AndroidGeofenceRuntimeRepositoryTest {
     private fun repository(
         platform: FakeGeofencingPlatformClient,
         store: InMemoryGeofenceRuntimeStore
-    ) = AndroidGeofenceRuntimeRepository(platform, store, GeofenceRequestIdCodec(), clock)
+    ) = AndroidGeofenceRuntimeRepository(
+        platform,
+        store,
+        GeofenceRequestIdCodec(),
+        clock,
+        GeofenceRuntimeOperationLock()
+    )
 
     private fun ready() = GeofenceRuntimeReadiness(
         registration = RegistrationReadiness.Ready,

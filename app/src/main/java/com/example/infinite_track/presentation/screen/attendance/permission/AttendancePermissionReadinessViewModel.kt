@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @HiltViewModel
@@ -37,11 +38,17 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
     private val _effects = MutableSharedFlow<AttendancePermissionReadinessEffect>(extraBufferCapacity = 1)
     val effects: SharedFlow<AttendancePermissionReadinessEffect> = _effects.asSharedFlow()
 
+    private val _runtimeReconciliationPending = MutableStateFlow(false)
+    val runtimeReconciliationPending: StateFlow<Boolean> = _runtimeReconciliationPending.asStateFlow()
+
     private var latestReadiness: AttendancePermissionReadiness? = null
     private var lastTrustworthyReadiness: AttendancePermissionReadiness? = null
     private val requestOutcomes = mutableMapOf<AttendanceAccess, AttendancePermissionRequestOutcome>()
     private var refreshJob: Job? = null
     private var isRefreshing = false
+    private var initialRefreshCompleted = false
+    private var runtimeReconciliationRequested = false
+    private var lastRuntimeReconcileReadiness: AttendancePermissionReadiness? = null
     private var inFlightAction: AttendancePermissionReadinessEffect? = null
     private var activeFeedback: AttendancePermissionFeedback? = null
 
@@ -58,7 +65,7 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
             AttendancePermissionReadinessEvent.ReturnedFromSettings,
             AttendancePermissionReadinessEvent.RetryRefresh -> {
                 clearNativeAction()
-                refresh()
+                refresh(requestRuntimeReconciliation = true)
             }
             AttendancePermissionReadinessEvent.PrimaryActionClicked -> onPrimaryActionClicked()
             is AttendancePermissionReadinessEvent.PermissionItemClicked -> onItemClicked(event.access)
@@ -70,7 +77,9 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
                     requestOutcomes.remove(event.access)
                 }
                 render()
-                refresh()
+                refresh(
+                    requestRuntimeReconciliation = event.access.isGeofenceRuntimeRelevant()
+                )
             }
             is AttendancePermissionReadinessEvent.SettingsLaunchFailed -> {
                 clearNativeAction()
@@ -83,7 +92,8 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
                 if (activeFeedback?.id == event.feedbackId && activeFeedback?.action == event.action) {
                     activeFeedback = null
                     when (event.action) {
-                        AttendancePermissionFeedbackAction.RETRY_REFRESH -> refresh()
+                        AttendancePermissionFeedbackAction.RETRY_REFRESH ->
+                            refresh(requestRuntimeReconciliation = true)
                         AttendancePermissionFeedbackAction.OPEN_APPLICATION_SETTINGS -> Unit
                     }
                 }
@@ -158,18 +168,54 @@ class AttendancePermissionReadinessViewModel @Inject constructor(
         if (effect != null && inFlightAction == null) emit(effect, trackInFlight = true)
     }
 
-    private fun refresh() {
+    private fun refresh(requestRuntimeReconciliation: Boolean = false) {
+        if (requestRuntimeReconciliation) runtimeReconciliationRequested = true
         if (refreshJob?.isActive == true) return
         isRefreshing = true
         refreshJob = viewModelScope.launch {
+            var refreshedReadiness: AttendancePermissionReadiness? = null
             render()
             try {
                 refreshReadiness()
+                refreshedReadiness = observeReadiness().first()
+                onReadinessObserved(refreshedReadiness)
             } finally {
                 isRefreshing = false
                 render()
+                refreshedReadiness?.let(::requestRuntimeReconciliationIfNeeded)
             }
         }
+    }
+
+    fun onRuntimeReconciliationHandled() {
+        _runtimeReconciliationPending.value = false
+    }
+
+    private fun requestRuntimeReconciliationIfNeeded(refreshedReadiness: AttendancePermissionReadiness) {
+        val currentReadiness = refreshedReadiness.applyingRequestOutcomes(requestOutcomes)
+        if (!initialRefreshCompleted) {
+            initialRefreshCompleted = true
+            lastRuntimeReconcileReadiness = currentReadiness
+            runtimeReconciliationRequested = false
+            return
+        }
+
+        val shouldReconcile = runtimeReconciliationRequested &&
+            currentReadiness != null &&
+            currentReadiness != lastRuntimeReconcileReadiness
+        runtimeReconciliationRequested = false
+        if (shouldReconcile) {
+            lastRuntimeReconcileReadiness = currentReadiness
+            _runtimeReconciliationPending.value = true
+        }
+    }
+
+    private fun AttendanceAccess.isGeofenceRuntimeRelevant(): Boolean = when (this) {
+        AttendanceAccess.PRECISE_LOCATION,
+        AttendanceAccess.BACKGROUND_LOCATION,
+        AttendanceAccess.DEVICE_LOCATION,
+        AttendanceAccess.NOTIFICATION -> true
+        AttendanceAccess.CAMERA -> false
     }
 
     private fun effectiveReadiness(): AttendancePermissionReadiness? =

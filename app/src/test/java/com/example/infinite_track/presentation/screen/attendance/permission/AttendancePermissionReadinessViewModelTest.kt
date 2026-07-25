@@ -45,6 +45,68 @@ class AttendancePermissionReadinessViewModelTest {
     }
 
     @Test
+    fun `background permission completion requests one runtime reconciliation after readiness changes`() = runTest {
+        val repository = FakeRepository(
+            readiness(background = AttendanceAccessStatus.ACTION_REQUIRED)
+        )
+        val viewModel = viewModel(repository)
+        advanceUntilIdle()
+
+        repository.readiness.value = allRequiredReady()
+        viewModel.onEvent(
+            AttendancePermissionReadinessEvent.PermissionResultReceived(
+                access = AttendanceAccess.BACKGROUND_LOCATION,
+                outcome = AttendancePermissionRequestOutcome.GRANTED
+            )
+        )
+        advanceUntilIdle()
+
+        assertTrue(viewModel.runtimeReconciliationPending.value)
+        viewModel.onRuntimeReconciliationHandled()
+        assertFalse(viewModel.runtimeReconciliationPending.value)
+        assertEquals(2, repository.refreshCount)
+    }
+
+    @Test
+    fun `settings completion and resumed lifecycle coalesce to one runtime reconciliation`() = runTest {
+        val repository = FakeRepository(
+            readiness(device = AttendanceAccessStatus.DEVICE_LOCATION_DISABLED)
+        )
+        val viewModel = viewModel(repository)
+        advanceUntilIdle()
+
+        repository.readiness.value = allRequiredReady()
+        viewModel.onEvent(AttendancePermissionReadinessEvent.ReturnedFromSettings)
+        advanceUntilIdle()
+        viewModel.onEvent(AttendancePermissionReadinessEvent.ScreenResumed)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.runtimeReconciliationPending.value)
+        viewModel.onRuntimeReconciliationHandled()
+        assertFalse(viewModel.runtimeReconciliationPending.value)
+    }
+
+    @Test
+    fun `refresh-produced readiness change queues reconciliation after the refreshed state is observed`() = runTest {
+        val repository = RefreshUpdatingRepository(
+            readiness(background = AttendanceAccessStatus.ACTION_REQUIRED)
+        )
+        val viewModel = viewModel(repository)
+        advanceUntilIdle()
+
+        repository.nextRefreshReadiness = allRequiredReady()
+        viewModel.onEvent(
+            AttendancePermissionReadinessEvent.PermissionResultReceived(
+                access = AttendanceAccess.BACKGROUND_LOCATION,
+                outcome = AttendancePermissionRequestOutcome.GRANTED
+            )
+        )
+        advanceUntilIdle()
+
+        assertTrue(viewModel.runtimeReconciliationPending.value)
+    }
+
+    @Test
     fun `primary action follows required ordering and emits one native request`() = runTest {
         val viewModel = viewModel(FakeRepository(partialReadiness()))
         advanceUntilIdle()
@@ -375,6 +437,19 @@ class AttendancePermissionReadinessViewModelTest {
         override fun observeReadiness() = readiness
         override suspend fun refreshReadiness() { refreshCount++; releases.receive() }
         suspend fun release() { releases.send(Unit) }
+    }
+
+    private class RefreshUpdatingRepository(initial: AttendancePermissionReadiness) : AttendancePermissionRepository {
+        val readiness = MutableStateFlow(initial)
+        var nextRefreshReadiness = initial
+        var refreshCount = 0
+
+        override fun observeReadiness() = readiness
+
+        override suspend fun refreshReadiness() {
+            refreshCount++
+            readiness.value = nextRefreshReadiness
+        }
     }
 
     private fun partialReadiness() = readiness(camera = AttendanceAccessStatus.ACTION_REQUIRED)

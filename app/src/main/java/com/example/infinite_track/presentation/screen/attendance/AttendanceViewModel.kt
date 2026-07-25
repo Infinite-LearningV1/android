@@ -189,7 +189,8 @@ class AttendanceViewModel @Inject constructor(
     private suspend fun refreshAttendanceAndRuntime(
         reason: GeofenceReconcileReason
     ) {
-        try {
+        runAttendanceRuntimeRefresh(
+            operation = {
             when (val result = refreshAndReconcileGeofenceRuntimeUseCase(reason)) {
                 is RefreshAndReconcileGeofenceRuntimeResult.Reconciled -> {
                     latestProfile = result.profile
@@ -214,10 +215,12 @@ class AttendanceViewModel @Inject constructor(
                     // Global session/reauth handling owns this outcome. Do not invent attendance-local UI.
                 }
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Unexpected error while refreshing attendance runtime", e)
-            showRetryableStatusError(e)
-        }
+            },
+            onUnexpectedFailure = { error ->
+                Log.e(TAG, "Unexpected error while refreshing attendance runtime", error)
+                showRetryableStatusError(error)
+            }
+        )
     }
 
     private fun showRetryableStatusError(cause: Any?) {
@@ -385,6 +388,13 @@ class AttendanceViewModel @Inject constructor(
     }
 
     fun onAttendanceProfileRefreshRequested() {
+        viewModelScope.launch {
+            refreshAttendanceAndRuntime(GeofenceReconcileReason.FOREGROUND_REFRESH)
+        }
+    }
+
+    /** Reconciles backend truth after the permission surface observes a changed runtime prerequisite. */
+    fun onGeofenceRuntimeReadinessChanged() {
         viewModelScope.launch {
             refreshAttendanceAndRuntime(GeofenceReconcileReason.FOREGROUND_REFRESH)
         }

@@ -1,6 +1,7 @@
 package com.example.infinite_track.data.platform.geofence.event
 
 import com.example.infinite_track.data.platform.geofence.GeofenceRequestIdCodec
+import com.example.infinite_track.data.platform.geofence.GeofenceRuntimeOperationLock
 import com.example.infinite_track.data.platform.geofence.store.GeofenceRuntimeSnapshot
 import com.example.infinite_track.data.platform.geofence.store.GeofenceRuntimeStore
 import com.example.infinite_track.data.platform.geofence.store.PersistedGeofenceMode
@@ -32,10 +33,16 @@ class GeofenceEventProcessor @Inject constructor(
     private val requestIdCodec: GeofenceRequestIdCodec,
     private val notificationGateway: GeofenceNotificationGateway,
     private val evidenceScheduler: LocationEvidenceScheduler,
-    private val clock: Clock
+    private val clock: Clock,
+    private val operationLock: GeofenceRuntimeOperationLock
 ) {
 
-    suspend fun process(event: GeofenceTransitionEvent): GeofenceEventOutcome {
+    suspend fun process(event: GeofenceTransitionEvent): GeofenceEventOutcome =
+        operationLock.withOperation {
+            processLocked(event)
+        }
+
+    private suspend fun processLocked(event: GeofenceTransitionEvent): GeofenceEventOutcome {
         val snapshot = store.readSnapshot() ?: return GeofenceEventOutcome.Ignored("missing_snapshot")
         validateSnapshot(snapshot)?.let { reason -> return GeofenceEventOutcome.Ignored(reason) }
 

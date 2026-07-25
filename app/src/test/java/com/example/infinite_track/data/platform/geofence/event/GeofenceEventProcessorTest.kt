@@ -1,6 +1,7 @@
 package com.example.infinite_track.data.platform.geofence.event
 
 import com.example.infinite_track.data.platform.geofence.GeofenceRequestIdCodec
+import com.example.infinite_track.data.platform.geofence.GeofenceRuntimeOperationLock
 import com.example.infinite_track.data.platform.geofence.store.GeofenceRuntimeSnapshot
 import com.example.infinite_track.data.platform.geofence.store.GeofenceRuntimeStore
 import com.example.infinite_track.data.platform.geofence.store.PersistedGeofenceMode
@@ -225,7 +226,14 @@ class GeofenceEventProcessorTest {
         val notifications = FakeNotificationGateway(canPostNotifications)
         val evidence = FakeLocationEvidenceScheduler()
         return Fixture(
-            processor = GeofenceEventProcessor(store, codec, notifications, evidence, CLOCK),
+            processor = GeofenceEventProcessor(
+                store,
+                codec,
+                notifications,
+                evidence,
+                CLOCK,
+                GeofenceRuntimeOperationLock()
+            ),
             store = store,
             notifications = notifications,
             evidence = evidence

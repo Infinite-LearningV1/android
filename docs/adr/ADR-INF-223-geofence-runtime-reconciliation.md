@@ -58,6 +58,13 @@ validates the event and invokes the local notification gateway.  WorkManager is
 used only for uniquely named, connected evidence work; it does not restore
 geofences, decide registrations, or deliver the notification.
 
+Accepted receiver processing and reconciliation/logout share one Hilt-scoped
+coroutine operation lock.  The lock covers snapshot validation through the
+inside-state, evidence, and notification side effects, as well as the full
+registration replacement or logout clear.  This establishes a single order
+between an OS callback and a new backend-truth runtime snapshot without
+blocking the main thread or weakening cancellation propagation.
+
 ## Cleanup Boundaries
 
 Google Maps Platform configuration and the master-only Firebase App

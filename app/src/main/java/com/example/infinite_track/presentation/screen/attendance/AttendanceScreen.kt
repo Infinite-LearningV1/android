@@ -52,6 +52,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.infinite_track.domain.model.attendance.WorkMode
@@ -90,6 +91,7 @@ import com.example.infinite_track.presentation.screen.attendance.permission.Atte
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessViewModel
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import com.example.infinite_track.utils.UiState
+import kotlinx.coroutines.flow.collect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,6 +133,22 @@ fun AttendanceScreen(
     var showPermissionPanel by rememberSaveable { mutableStateOf(false) }
     var initialPermissionCheckHandled by rememberSaveable { mutableStateOf(false) }
     val locationPermissionHelper = LocalLocationPermissionHelper.current
+
+    LaunchedEffect(lifecycleOwner, permissionViewModel, viewModel) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            permissionViewModel.runtimeReconciliationPending.collect { pending ->
+                if (!pending) return@collect
+                viewModel.onGeofenceRuntimeReadinessChanged()
+                permissionViewModel.onRuntimeReconciliationHandled()
+            }
+        }
+    }
+
+    LaunchedEffect(uiState.geofenceRuntime) {
+        if (uiState.geofenceRuntime.requiresPermissionReadinessRecovery()) {
+            showPermissionPanel = true
+        }
+    }
 
     LaunchedEffect(uiState.preparation.selectedMode) {
         selectedTargetMarkerId = null
