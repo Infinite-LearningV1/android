@@ -5,9 +5,12 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.test.platform.app.InstrumentationRegistry
+import com.example.infinite_track.R
 import org.junit.Rule
 import org.junit.Test
 
@@ -15,6 +18,9 @@ class FaceVerificationRedesignScreenTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
+
+    private val targetContext
+        get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Test
     fun liveness_disablesVerifyBeforeAllChallengesPass() {
@@ -125,9 +131,9 @@ class FaceVerificationRedesignScreenTest {
             )
         }
 
-        listOf("1", "2", "3", "4").forEach { n ->
-            composeTestRule.onAllNodesWithText(n).assertCountEquals(0)
-        }
+        composeTestRule
+            .onAllNodesWithTag("face_frame_rail_node_passed")
+            .assertCountEquals(4)
     }
 
     @Test
@@ -138,7 +144,11 @@ class FaceVerificationRedesignScreenTest {
             )
         }
 
-        composeTestRule.onNodeWithContentDescription("Face verified").assertIsDisplayed()
+        composeTestRule
+            .onNodeWithContentDescription(
+                targetContext.getString(R.string.face_frame_badge_verified)
+            )
+            .assertIsDisplayed()
     }
 
     @Test
@@ -149,7 +159,11 @@ class FaceVerificationRedesignScreenTest {
             )
         }
 
-        composeTestRule.onNodeWithContentDescription("Face not matched").assertIsDisplayed()
+        composeTestRule
+            .onNodeWithContentDescription(
+                targetContext.getString(R.string.face_frame_badge_not_matched)
+            )
+            .assertIsDisplayed()
     }
 
     @Test
@@ -160,8 +174,14 @@ class FaceVerificationRedesignScreenTest {
             )
         }
 
-        composeTestRule.onNodeWithText("Verification Timeout").assertIsDisplayed()
-        composeTestRule.onNodeWithText("00:00").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Time's up").assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(targetContext.getString(R.string.face_frame_timeout_title))
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(targetContext.getString(R.string.face_frame_timeout_countdown))
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(targetContext.getString(R.string.face_frame_timeout_times_up))
+            .assertIsDisplayed()
     }
 }

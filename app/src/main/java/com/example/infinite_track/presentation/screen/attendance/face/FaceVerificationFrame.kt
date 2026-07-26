@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
@@ -23,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -122,6 +124,7 @@ fun FaceVerificationFrame(
     BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
         val frameInset = 8.dp
         val nodeSize = 28.dp
+        val tickLength = 12.dp
 
         Canvas(modifier = Modifier.fillMaxSize()) {
             val stroke = if (style.dashed) {
@@ -173,7 +176,7 @@ fun FaceVerificationFrame(
                 }
                 val tickX = when (placement.side) {
                     RailSide.LEFT -> nodeX + nodeSize
-                    RailSide.RIGHT -> nodeX - 12.dp
+                    RailSide.RIGHT -> nodeX - tickLength
                 }
 
                 // Short horizontal tick connecting the node to the frame interior.
@@ -181,7 +184,7 @@ fun FaceVerificationFrame(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .offset(x = tickX, y = nodeCenterY - 1.dp)
-                        .size(width = 12.dp, height = 2.dp)
+                        .size(width = tickLength, height = 2.dp)
                         .background(style.color)
                 )
                 Box(
@@ -216,6 +219,18 @@ fun FaceVerificationFrame(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .size(52.dp)
+                    .then(
+                        if (style.badge == FrameBadge.CHECK) {
+                            Modifier.shadow(
+                                elevation = 10.dp,
+                                shape = CircleShape,
+                                ambientColor = FramePurple.copy(alpha = 0.35f),
+                                spotColor = FramePurple.copy(alpha = 0.35f)
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
                     .clip(CircleShape)
                     .background(badgeColor),
                 contentAlignment = Alignment.Center
@@ -251,6 +266,21 @@ private fun TimeoutInnerContent(modifier: Modifier = Modifier) {
                 tint = FramePurple,
                 modifier = Modifier.size(30.dp)
             )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(FramePurple),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.PriorityHigh,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
         }
         Text(
             text = stringResource(R.string.face_frame_timeout_title),

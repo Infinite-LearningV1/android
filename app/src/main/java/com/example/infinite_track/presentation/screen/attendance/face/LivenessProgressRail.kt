@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,9 +72,15 @@ internal fun RailNode(number: Int, state: RailNodeState) {
         RailNodeState.PENDING -> InfiniteColors.Surface.copy(alpha = 0.9f)
         else -> container
     }
+    val stateTestTag = when (state) {
+        RailNodeState.PASSED -> "face_frame_rail_node_passed"
+        RailNodeState.ACTIVE -> "face_frame_rail_node_active"
+        RailNodeState.PENDING -> "face_frame_rail_node_pending"
+    }
     Box(
         modifier = Modifier
             .size(28.dp)
+            .testTag(stateTestTag)
             .clip(CircleShape)
             .background(container)
             .border(2.dp, border, CircleShape),
