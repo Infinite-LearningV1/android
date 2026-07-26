@@ -42,6 +42,10 @@ data class FrameStyle(
 private val FramePurple = Color(0xFF8A3DFF)
 private val FrameCyan = Color(0xFF38F9F5)
 
+// Consumed by Task 3 for the CROSS badge; not yet referenced by this task's mapping.
+@Suppress("unused")
+private val FrameRed = Color(0xFFFF5C5C)
+
 fun frameStyleFor(state: FaceScannerState): FrameStyle = when (state.livenessState) {
     LivenessState.IDLE,
     LivenessState.DETECTING_FACE -> FrameStyle(
