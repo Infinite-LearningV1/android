@@ -90,4 +90,42 @@ class FaceVerificationRedesignScreenTest {
         composeTestRule.onNodeWithText("No Face Detected").assertIsDisplayed()
         composeTestRule.onNodeWithText("Try Again").assertIsDisplayed()
     }
+
+    @Test
+    fun livenessFrame_showsBorderRailNodesMatchingProgress() {
+        composeTestRule.setContent {
+            FaceVerificationFrame(
+                state = FaceScannerState(
+                    livenessState = LivenessState.WAITING_FOR_LIVENESS,
+                    challengeIndex = 2,
+                    challengeTotal = 4
+                )
+            )
+        }
+
+        // Node 1 passed -> renders a check icon, not the number.
+        composeTestRule.onAllNodesWithText("1").assertCountEquals(0)
+        // Active node 2 and pending nodes 3, 4 render their numbers.
+        composeTestRule.onNodeWithText("2").assertIsDisplayed()
+        composeTestRule.onNodeWithText("3").assertIsDisplayed()
+        composeTestRule.onNodeWithText("4").assertIsDisplayed()
+    }
+
+    @Test
+    fun readyToVerifyFrame_showsAllNodesPassed() {
+        composeTestRule.setContent {
+            FaceVerificationFrame(
+                state = FaceScannerState(
+                    livenessState = LivenessState.LIVENESS_DETECTED,
+                    challengeIndex = 4,
+                    challengeTotal = 4,
+                    readyToVerify = true
+                )
+            )
+        }
+
+        listOf("1", "2", "3", "4").forEach { n ->
+            composeTestRule.onAllNodesWithText(n).assertCountEquals(0)
+        }
+    }
 }

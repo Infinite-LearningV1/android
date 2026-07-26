@@ -2,9 +2,7 @@ package com.example.infinite_track.presentation.screen.attendance.face
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -36,31 +34,34 @@ fun railNodeStates(passedCount: Int, activeIndex: Int, total: Int = 4): List<Rai
         }
     }
 
+enum class RailSide { LEFT, RIGHT }
+
+data class RailNodePlacement(val side: RailSide, val heightFraction: Float)
+
 /**
- * Numbered 1..N progress rail for the liveness challenges. Passed nodes are cyan with a check,
- * the active node is amber, pending nodes are outlined. Reuses Infinite color tokens.
+ * Border positions for the liveness nodes, as fractions of the frame height. The 4-challenge
+ * layout mirrors the approved mockups (1-2 on the left edge, 3-4 on the right); other totals
+ * alternate sides with even spacing. Pure for JVM unit testing.
  */
-@Composable
-fun LivenessProgressRail(
-    passedCount: Int,
-    activeIndex: Int,
-    modifier: Modifier = Modifier,
-    total: Int = 4
-) {
-    val states = railNodeStates(passedCount, activeIndex, total)
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        states.forEachIndexed { i, state ->
-            RailNode(number = i + 1, state = state)
+fun railNodePlacements(total: Int): List<RailNodePlacement> =
+    if (total == 4) {
+        listOf(
+            RailNodePlacement(RailSide.LEFT, 0.20f),
+            RailNodePlacement(RailSide.LEFT, 0.45f),
+            RailNodePlacement(RailSide.RIGHT, 0.35f),
+            RailNodePlacement(RailSide.RIGHT, 0.55f)
+        )
+    } else {
+        (1..total).map { n ->
+            RailNodePlacement(
+                side = if (n % 2 == 1) RailSide.LEFT else RailSide.RIGHT,
+                heightFraction = n.toFloat() / (total + 1)
+            )
         }
     }
-}
 
 @Composable
-private fun RailNode(number: Int, state: RailNodeState) {
+internal fun RailNode(number: Int, state: RailNodeState) {
     val container = when (state) {
         RailNodeState.PASSED -> InfiniteColors.Accent
         RailNodeState.ACTIVE -> InfiniteColors.Secondary

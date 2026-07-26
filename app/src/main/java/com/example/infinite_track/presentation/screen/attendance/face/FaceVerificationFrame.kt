@@ -3,8 +3,9 @@ package com.example.infinite_track.presentation.screen.attendance.face
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -108,7 +109,10 @@ fun FaceVerificationFrame(
     modifier: Modifier = Modifier
 ) {
     val style = frameStyleFor(state)
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+    BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
+        val frameInset = 8.dp
+        val nodeSize = 28.dp
+
         Canvas(modifier = Modifier.fillMaxSize()) {
             val stroke = if (style.dashed) {
                 Stroke(
@@ -140,20 +144,44 @@ fun FaceVerificationFrame(
         }
 
         if (style.railMode != RailMode.HIDDEN) {
-            val passed = if (style.railMode == RailMode.ALL_PASSED) {
-                state.challengeTotal
+            val nodeStates = if (style.railMode == RailMode.ALL_PASSED) {
+                railNodeStates(state.challengeTotal, 0, state.challengeTotal)
             } else {
-                (state.challengeIndex - 1).coerceAtLeast(0)
+                railNodeStates(
+                    (state.challengeIndex - 1).coerceAtLeast(0),
+                    state.challengeIndex,
+                    state.challengeTotal
+                )
             }
-            val active = if (style.railMode == RailMode.ALL_PASSED) 0 else state.challengeIndex
-            LivenessProgressRail(
-                passedCount = passed,
-                activeIndex = active,
-                total = state.challengeTotal,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 4.dp)
-            )
+            val placements = railNodePlacements(state.challengeTotal)
+
+            placements.forEachIndexed { i, placement ->
+                val nodeCenterY = maxHeight * placement.heightFraction
+                val nodeX = when (placement.side) {
+                    RailSide.LEFT -> frameInset - nodeSize / 2
+                    RailSide.RIGHT -> maxWidth - frameInset - nodeSize / 2
+                }
+                val tickX = when (placement.side) {
+                    RailSide.LEFT -> nodeX + nodeSize
+                    RailSide.RIGHT -> nodeX - 12.dp
+                }
+
+                // Short horizontal tick connecting the node to the frame interior.
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .offset(x = tickX, y = nodeCenterY - 1.dp)
+                        .size(width = 12.dp, height = 2.dp)
+                        .background(style.color)
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .offset(x = nodeX, y = nodeCenterY - nodeSize / 2)
+                ) {
+                    RailNode(number = i + 1, state = nodeStates[i])
+                }
+            }
         }
 
         if (style.badge == FrameBadge.CHECK) {
