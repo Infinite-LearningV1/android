@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import org.junit.Rule
 import org.junit.Test
@@ -127,5 +128,27 @@ class FaceVerificationRedesignScreenTest {
         listOf("1", "2", "3", "4").forEach { n ->
             composeTestRule.onAllNodesWithText(n).assertCountEquals(0)
         }
+    }
+
+    @Test
+    fun successFrame_showsCheckBadgeWithDescription() {
+        composeTestRule.setContent {
+            FaceVerificationFrame(
+                state = FaceScannerState(livenessState = LivenessState.SUCCESS)
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("Face verified").assertIsDisplayed()
+    }
+
+    @Test
+    fun failureFrame_showsCrossBadgeWithDescription() {
+        composeTestRule.setContent {
+            FaceVerificationFrame(
+                state = FaceScannerState(livenessState = LivenessState.FAILURE)
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("Face not matched").assertIsDisplayed()
     }
 }

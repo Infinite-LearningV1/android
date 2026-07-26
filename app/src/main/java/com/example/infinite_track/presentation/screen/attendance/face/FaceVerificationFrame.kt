@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -22,8 +23,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.example.infinite_track.presentation.design.tokens.InfiniteColors
+import com.example.infinite_track.R
 
 enum class RailMode { HIDDEN, PROGRESS, ALL_PASSED }
 enum class FrameBadge { NONE, CHECK, CROSS }
@@ -43,8 +45,6 @@ data class FrameStyle(
 private val FramePurple = Color(0xFF8A3DFF)
 private val FrameCyan = Color(0xFF38F9F5)
 
-// Consumed by Task 3 for the CROSS badge; not yet referenced by this task's mapping.
-@Suppress("unused")
 private val FrameRed = Color(0xFFFF5C5C)
 
 fun frameStyleFor(state: FaceScannerState): FrameStyle = when (state.livenessState) {
@@ -184,19 +184,32 @@ fun FaceVerificationFrame(
             }
         }
 
-        if (style.badge == FrameBadge.CHECK) {
+        if (style.badge != FrameBadge.NONE) {
+            val badgeColor = when (style.badge) {
+                FrameBadge.CHECK -> FramePurple
+                FrameBadge.CROSS -> FrameRed
+                FrameBadge.NONE -> Color.Transparent
+            }
+            val badgeIcon = when (style.badge) {
+                FrameBadge.CROSS -> Icons.Filled.Close
+                else -> Icons.Filled.Check
+            }
+            val badgeDescription = when (style.badge) {
+                FrameBadge.CROSS -> stringResource(R.string.face_frame_badge_not_matched)
+                else -> stringResource(R.string.face_frame_badge_verified)
+            }
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .size(52.dp)
                     .clip(CircleShape)
-                    .background(InfiniteColors.Surface),
+                    .background(badgeColor),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Check,
-                    contentDescription = null,
-                    tint = FramePurple,
+                    imageVector = badgeIcon,
+                    contentDescription = badgeDescription,
+                    tint = Color.White,
                     modifier = Modifier.size(28.dp)
                 )
             }
