@@ -14,6 +14,12 @@
     <string name="face_result_technical_message">Terjadi kendala teknis saat verifikasi. Silakan coba lagi.</string>
     <string name="face_result_timeout_title">Waktu habis</string>
     <string name="face_result_timeout_message">Waktu verifikasi wajah habis. Silakan coba lagi.</string>
+    <string name="face_frame_badge_verified">Wajah terverifikasi</string>
+    <string name="face_frame_badge_not_matched">Wajah tidak cocok</string>
+    <string name="face_frame_timeout_title">Waktu Verifikasi Habis</string>
+    <string name="face_frame_timeout_message">Verifikasi tidak selesai tepat waktu. Silakan coba lagi.</string>
+    <string name="face_frame_timeout_countdown">00:00</string>
+    <string name="face_frame_timeout_times_up">Waktu habis</string>
     <string name="app_feedback_login_success_title">Login berhasil</string>
     <string name="app_feedback_login_success_message">Selamat datang kembali di Infinite Track.</string>
     <string name="app_feedback_logout_success_title">Berhasil keluar dari perangkat ini</string>

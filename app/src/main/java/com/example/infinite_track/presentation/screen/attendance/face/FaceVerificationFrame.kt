@@ -2,27 +2,46 @@ package com.example.infinite_track.presentation.screen.attendance.face
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.infinite_track.R
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
+
+enum class RailMode { HIDDEN, PROGRESS, ALL_PASSED }
+enum class FrameBadge { NONE, CHECK, CROSS }
+enum class FrameInnerContent { NONE, SILHOUETTE, TIMEOUT_INFO }
 
 /**
  * Visual style of the face frame for a given phase. Derived purely so it can be unit-tested.
@@ -30,44 +49,65 @@ import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 data class FrameStyle(
     val color: Color,
     val dashed: Boolean,
-    val showRail: Boolean,
-    val showCheckBadge: Boolean,
-    val showSilhouette: Boolean
+    val railMode: RailMode,
+    val badge: FrameBadge,
+    val inner: FrameInnerContent
 )
 
 private val FramePurple = Color(0xFF8A3DFF)
 private val FrameCyan = Color(0xFF38F9F5)
+
 private val FrameRed = Color(0xFFFF5C5C)
 
-fun frameStyleFor(state: FaceScannerState): FrameStyle {
-    val livenessActive = state.livenessState in setOf(
-        LivenessState.WAITING_FOR_LIVENESS,
-        LivenessState.LOW_LIGHT,
-        LivenessState.LIVENESS_DETECTED,
-        LivenessState.VERIFYING_FACE
+fun frameStyleFor(state: FaceScannerState): FrameStyle = when (state.livenessState) {
+    LivenessState.IDLE,
+    LivenessState.DETECTING_FACE -> FrameStyle(
+        color = FramePurple, dashed = true,
+        railMode = RailMode.HIDDEN, badge = FrameBadge.NONE,
+        inner = FrameInnerContent.SILHOUETTE
     )
-    return when (state.livenessState) {
-        LivenessState.IDLE,
-        LivenessState.DETECTING_FACE -> FrameStyle(
-            color = FramePurple, dashed = true, showRail = false,
-            showCheckBadge = false, showSilhouette = true
-        )
-        LivenessState.SUCCESS -> FrameStyle(
-            color = FrameCyan, dashed = false, showRail = false,
-            showCheckBadge = true, showSilhouette = false
-        )
-        LivenessState.FAILURE,
-        LivenessState.TIMEOUT -> FrameStyle(
-            color = FrameRed, dashed = false, showRail = false,
-            showCheckBadge = false, showSilhouette = false
-        )
-        else -> FrameStyle(
-            color = FramePurple, dashed = false,
-            showRail = livenessActive && !state.readyToVerify &&
-                state.livenessState != LivenessState.VERIFYING_FACE,
-            showCheckBadge = false, showSilhouette = false
-        )
-    }
+
+    LivenessState.WAITING_FOR_LIVENESS -> FrameStyle(
+        color = FramePurple, dashed = false,
+        railMode = RailMode.PROGRESS, badge = FrameBadge.NONE,
+        inner = FrameInnerContent.NONE
+    )
+
+    LivenessState.LOW_LIGHT -> FrameStyle(
+        color = FramePurple, dashed = false,
+        railMode = RailMode.HIDDEN, badge = FrameBadge.NONE,
+        inner = FrameInnerContent.NONE
+    )
+
+    LivenessState.LIVENESS_DETECTED -> FrameStyle(
+        color = FramePurple, dashed = false,
+        railMode = if (state.readyToVerify) RailMode.ALL_PASSED else RailMode.PROGRESS,
+        badge = FrameBadge.NONE, inner = FrameInnerContent.NONE
+    )
+
+    LivenessState.VERIFYING_FACE -> FrameStyle(
+        color = FramePurple, dashed = false,
+        railMode = RailMode.ALL_PASSED, badge = FrameBadge.NONE,
+        inner = FrameInnerContent.NONE
+    )
+
+    LivenessState.SUCCESS -> FrameStyle(
+        color = FrameCyan, dashed = false,
+        railMode = RailMode.HIDDEN, badge = FrameBadge.CHECK,
+        inner = FrameInnerContent.NONE
+    )
+
+    LivenessState.FAILURE -> FrameStyle(
+        color = FrameCyan, dashed = false,
+        railMode = RailMode.HIDDEN, badge = FrameBadge.CROSS,
+        inner = FrameInnerContent.NONE
+    )
+
+    LivenessState.TIMEOUT -> FrameStyle(
+        color = FramePurple, dashed = false,
+        railMode = RailMode.HIDDEN, badge = FrameBadge.NONE,
+        inner = FrameInnerContent.TIMEOUT_INFO
+    )
 }
 
 /**
@@ -81,7 +121,11 @@ fun FaceVerificationFrame(
     modifier: Modifier = Modifier
 ) {
     val style = frameStyleFor(state)
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+    BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
+        val frameInset = 8.dp
+        val nodeSize = 28.dp
+        val tickLength = 12.dp
+
         Canvas(modifier = Modifier.fillMaxSize()) {
             val stroke = if (style.dashed) {
                 Stroke(
@@ -103,7 +147,7 @@ fun FaceVerificationFrame(
             )
         }
 
-        if (style.showSilhouette) {
+        if (style.inner == FrameInnerContent.SILHOUETTE) {
             Icon(
                 imageVector = Icons.Outlined.Person,
                 contentDescription = null,
@@ -112,31 +156,163 @@ fun FaceVerificationFrame(
             )
         }
 
-        if (style.showRail) {
-            LivenessProgressRail(
-                passedCount = (state.challengeIndex - 1).coerceAtLeast(0),
-                activeIndex = state.challengeIndex,
-                total = state.challengeTotal,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 4.dp)
-            )
+        if (style.railMode != RailMode.HIDDEN) {
+            val nodeStates = if (style.railMode == RailMode.ALL_PASSED) {
+                railNodeStates(state.challengeTotal, 0, state.challengeTotal)
+            } else {
+                railNodeStates(
+                    (state.challengeIndex - 1).coerceAtLeast(0),
+                    state.challengeIndex,
+                    state.challengeTotal
+                )
+            }
+            val placements = railNodePlacements(state.challengeTotal)
+
+            placements.forEachIndexed { i, placement ->
+                val nodeCenterY = maxHeight * placement.heightFraction
+                val nodeX = when (placement.side) {
+                    RailSide.LEFT -> frameInset - nodeSize / 2
+                    RailSide.RIGHT -> maxWidth - frameInset - nodeSize / 2
+                }
+                val tickX = when (placement.side) {
+                    RailSide.LEFT -> nodeX + nodeSize
+                    RailSide.RIGHT -> nodeX - tickLength
+                }
+
+                // Short horizontal tick connecting the node to the frame interior.
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .offset(x = tickX, y = nodeCenterY - 1.dp)
+                        .size(width = tickLength, height = 2.dp)
+                        .background(style.color)
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .offset(x = nodeX, y = nodeCenterY - nodeSize / 2)
+                ) {
+                    RailNode(number = i + 1, state = nodeStates[i])
+                }
+            }
         }
 
-        if (style.showCheckBadge) {
+        if (style.inner == FrameInnerContent.TIMEOUT_INFO) {
+            TimeoutInnerContent(modifier = Modifier.align(Alignment.Center))
+        }
+
+        if (style.badge != FrameBadge.NONE) {
+            val badgeColor = when (style.badge) {
+                FrameBadge.CHECK -> FramePurple
+                FrameBadge.CROSS -> FrameRed
+                FrameBadge.NONE -> Color.Transparent
+            }
+            val badgeIcon = when (style.badge) {
+                FrameBadge.CROSS -> Icons.Filled.Close
+                else -> Icons.Filled.Check
+            }
+            val badgeDescription = when (style.badge) {
+                FrameBadge.CROSS -> stringResource(R.string.face_frame_badge_not_matched)
+                else -> stringResource(R.string.face_frame_badge_verified)
+            }
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .size(52.dp)
+                    .then(
+                        if (style.badge == FrameBadge.CHECK) {
+                            Modifier.shadow(
+                                elevation = 10.dp,
+                                shape = CircleShape,
+                                ambientColor = FramePurple.copy(alpha = 0.35f),
+                                spotColor = FramePurple.copy(alpha = 0.35f)
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
                     .clip(CircleShape)
-                    .background(InfiniteColors.Surface),
+                    .background(badgeColor),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Check,
-                    contentDescription = null,
-                    tint = FramePurple,
+                    imageVector = badgeIcon,
+                    contentDescription = badgeDescription,
+                    tint = Color.White,
                     modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimeoutInnerContent(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(InfiniteColors.Surface),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Timer,
+                contentDescription = null,
+                tint = FramePurple,
+                modifier = Modifier.size(30.dp)
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(FramePurple),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.PriorityHigh,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+        }
+        Text(
+            text = stringResource(R.string.face_frame_timeout_title),
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            text = stringResource(R.string.face_frame_timeout_message),
+            color = Color.White.copy(alpha = 0.85f),
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center
+        )
+        Box(
+            modifier = Modifier
+                .size(88.dp)
+                .clip(CircleShape)
+                .border(4.dp, InfiniteColors.Secondary, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = stringResource(R.string.face_frame_timeout_countdown),
+                    color = InfiniteColors.Secondary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+                Text(
+                    text = stringResource(R.string.face_frame_timeout_times_up),
+                    color = Color.White,
+                    fontSize = 11.sp
                 )
             }
         }
