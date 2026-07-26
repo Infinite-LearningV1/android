@@ -18,7 +18,9 @@ import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.domain.model.wfa.WfaBookingForDate
 import com.example.infinite_track.domain.model.geofence.GeofenceReconcileReason
 import com.example.infinite_track.domain.model.attendance.AttendanceSubmitCommand
+import com.example.infinite_track.domain.model.attendance.AttendanceSubmitFailure
 import com.example.infinite_track.domain.model.attendance.AttendanceSubmitResult
+import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.domain.use_case.attendance.SubmitAttendanceUseCase
 import com.example.infinite_track.domain.use_case.attendance.EvaluateAttendancePreparationUseCase
 import com.example.infinite_track.domain.use_case.attendance.EvaluateTargetRangeUseCase
@@ -740,10 +742,7 @@ class AttendanceViewModel @Inject constructor(
                 message = intent.submittingMessage()
             )
             _uiState.value = _uiState.value.withActionState(submittingState)
-            when (intent) {
-                AttendanceActionIntent.CHECK_IN -> proceedWithCheckIn(intent)
-                AttendanceActionIntent.CHECK_OUT -> proceedWithCheckOut(intent)
-            }
+            submitAttendance(intent)
             return
         }
 
@@ -790,166 +789,92 @@ class AttendanceViewModel @Inject constructor(
     }
 
     /**
-     * Proceed with check-in after successful face verification
-     * FIXED: Added proper error message extraction from server response
+     * Single Layer 5 submit entry point after successful face verification.
+     * Builds the typed command from resolved screen state and delegates all
+     * business validation and the single backend mutation to SubmitAttendanceUseCase.
      */
-    private fun proceedWithCheckIn(intent: AttendanceActionIntent) {
+    private fun submitAttendance(intent: AttendanceActionIntent) {
         viewModelScope.launch {
-            try {
-                Log.d(TAG, "Proceeding with check-in after face verification")
+            val submittingState = _uiState.value.actionState as? AttendanceActionState.Submitting
+            if (submittingState?.intent != intent) {
+                Log.w(TAG, "Submit blocked because action state is not Submitting($intent): ${_uiState.value.actionState}")
+                return@launch
+            }
 
-                val initialSubmittingState = _uiState.value.actionState as? AttendanceActionState.Submitting
-                if (initialSubmittingState?.intent != intent) {
-                    Log.w(TAG, "Check-in submit blocked because action state is not Submitting($intent): ${_uiState.value.actionState}")
-                    return@launch
-                }
-
-                val preparation = _uiState.value.preparation
-                val selectedMode = preparation.selectedMode
-                val resolvedTarget = (preparation.targetResolution as? TargetLocationResolution.Resolved)
-                    ?.target
-                val eligibility = preparation.eligibility
-
-                if (resolvedTarget == null || eligibility !is AttendancePreparationEligibility.Ready) {
-                    _uiState.value = _uiState.value.withActionState(
-                        AttendanceActionResolver.resolve(_uiState.value)
-                    )
-                    return@launch
-                }
-                val submittingState = _uiState.value.actionState as? AttendanceActionState.Submitting
-                if (submittingState?.intent != intent) {
-                    Log.w(TAG, "Check-in submit blocked because action state is not Submitting($intent): ${_uiState.value.actionState}")
-                    return@launch
-                }
-
-                val submitResult = submitAttendanceUseCase(
-                    AttendanceSubmitCommand.CheckIn(
-                        workMode = selectedMode,
-                        authoritativeTarget = resolvedTarget
-                    )
-                )
-
-                when (submitResult) {
-                    is AttendanceSubmitResult.Success -> {
-                        Log.d(TAG, "Check-in successful: ${submitResult.session}")
-
-                        val successMessage = publishTransientFeedback(
-                            AttendanceTransientFeedbackKind.CHECK_IN_SUCCESS
-                        ).message
-                        _uiState.value = _uiState.value.withActionState(
-                            AttendanceActionState.Success(
-                                intent = intent,
-                                message = successMessage
-                            )
-                        )
-
-                        // Finish on backend-resolved state so snackbar auto-dismiss leaves a usable screen.
-                        refreshAttendanceAndRuntime(GeofenceReconcileReason.CHECK_IN_SUCCEEDED)
-                    }
-
-                    is AttendanceSubmitResult.Failure -> {
-                        Log.e(TAG, "Check-in failed: ${submitResult.failure}")
-
-                        val errorMessage = publishTransientFeedback(
-                            AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
-                        ).message
-
-                        _uiState.value = _uiState.value.withActionState(
-                            AttendanceActionState.RetryableFailure(
-                                intent = intent,
-                                title = "Check-in gagal",
-                                message = errorMessage
-                            )
-                        )
-                    }
-                }
-
-            } catch (e: Exception) {
-                Log.e(TAG, "Error in proceedWithCheckIn", e)
-                val message = publishTransientFeedback(
-                    AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
-                ).message
+            val command = AttendanceSubmitCommandBuilder.build(intent, _uiState.value)
+            if (command == null) {
+                // Preparation regressed while verifying face; fall back to resolved state.
                 _uiState.value = _uiState.value.withActionState(
-                    AttendanceActionState.RetryableFailure(
-                        intent = intent,
-                        title = "Check-in gagal",
-                        message = message
-                    )
+                    AttendanceActionResolver.resolve(_uiState.value)
                 )
+                return@launch
+            }
+
+            val result = try {
+                submitAttendanceUseCase(command)
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error during attendance submit", e)
+                AttendanceSubmitResult.Failure(intent, AttendanceSubmitFailure.Unknown)
+            }
+
+            when (result) {
+                is AttendanceSubmitResult.Success -> {
+                    Log.d(TAG, "Attendance submit successful: ${result.session}")
+
+                    val successMessage = publishTransientFeedback(
+                        when (intent) {
+                            AttendanceActionIntent.CHECK_IN ->
+                                AttendanceTransientFeedbackKind.CHECK_IN_SUCCESS
+                            AttendanceActionIntent.CHECK_OUT ->
+                                AttendanceTransientFeedbackKind.CHECK_OUT_SUCCESS
+                        }
+                    ).message
+                    _uiState.value = _uiState.value.withActionState(
+                        AttendanceActionState.Success(
+                            intent = intent,
+                            message = successMessage
+                        )
+                    )
+
+                    // Finish on backend-resolved state so snackbar auto-dismiss leaves a usable screen.
+                    refreshAttendanceAndRuntime(
+                        when (intent) {
+                            AttendanceActionIntent.CHECK_IN ->
+                                GeofenceReconcileReason.CHECK_IN_SUCCEEDED
+                            AttendanceActionIntent.CHECK_OUT ->
+                                GeofenceReconcileReason.CHECK_OUT_SUCCEEDED
+                        }
+                    )
+                }
+
+                is AttendanceSubmitResult.Failure -> {
+                    Log.e(TAG, "Attendance submit failed: ${result.failure}")
+
+                    val uiFailure = AttendanceSubmitUiMapper.map(intent, result.failure)
+                    publishSubmitFailureFeedback(uiFailure)
+                    _uiState.value = _uiState.value.withActionState(
+                        AttendanceActionState.RetryableFailure(
+                            intent = intent,
+                            title = uiFailure.title,
+                            message = uiFailure.message
+                        )
+                    )
+                    // No status refresh and no geofence reconciliation on failure.
+                }
             }
         }
     }
 
-    /**
-     * Proceed with check-out after successful face verification
-     * FIXED: Added proper error message extraction from server response
-     */
-    private fun proceedWithCheckOut(intent: AttendanceActionIntent) {
-        viewModelScope.launch {
-            try {
-                Log.d(TAG, "Proceeding with check-out after face verification")
-
-                val submittingState = _uiState.value.actionState as? AttendanceActionState.Submitting
-                if (submittingState?.intent != intent) {
-                    Log.w(TAG, "Check-out submit blocked because action state is not Submitting($intent): ${_uiState.value.actionState}")
-                    return@launch
-                }
-
-                val attendanceId = _uiState.value.todayStatus?.activeAttendanceId
-
-                // SubmitAttendanceUseCase resolves the attendance id fallback chain and fresh GPS.
-                val submitResult = submitAttendanceUseCase(
-                    AttendanceSubmitCommand.CheckOut(activeAttendanceId = attendanceId)
-                )
-
-                when (submitResult) {
-                    is AttendanceSubmitResult.Success -> {
-                        Log.d(TAG, "Check-out successful: ${submitResult.session}")
-
-                        val successMessage = publishTransientFeedback(
-                            AttendanceTransientFeedbackKind.CHECK_OUT_SUCCESS
-                        ).message
-                        _uiState.value = _uiState.value.withActionState(
-                            AttendanceActionState.Success(
-                                intent = intent,
-                                message = successMessage
-                            )
-                        )
-
-                        // Finish on backend-resolved state so snackbar auto-dismiss leaves a usable screen.
-                        refreshAttendanceAndRuntime(GeofenceReconcileReason.CHECK_OUT_SUCCEEDED)
-                    }
-
-                    is AttendanceSubmitResult.Failure -> {
-                        Log.e(TAG, "Check-out failed: ${submitResult.failure}")
-
-                        val errorMessage = publishTransientFeedback(
-                            AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
-                        ).message
-
-                        _uiState.value = _uiState.value.withActionState(
-                            AttendanceActionState.RetryableFailure(
-                                intent = intent,
-                                title = "Check-out gagal",
-                                message = errorMessage
-                            )
-                        )
-                    }
-                }
-
-            } catch (e: Exception) {
-                Log.e(TAG, "Error in proceedWithCheckOut", e)
-                val message = publishTransientFeedback(
-                    AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
-                ).message
-                _uiState.value = _uiState.value.withActionState(
-                    AttendanceActionState.RetryableFailure(
-                        intent = intent,
-                        title = "Check-out gagal",
-                        message = message
-                    )
-                )
-            }
+    private fun publishSubmitFailureFeedback(uiFailure: AttendanceSubmitUiFailure) {
+        nextTransientFeedbackId += 1
+        val feedback = AttendanceTransientFeedback(
+            id = nextTransientFeedbackId,
+            message = uiFailure.message,
+            semantic = InfiniteSemantic.Error,
+            duration = AttendanceTransientFeedbackDuration.LONG
+        )
+        if (!_transientFeedback.tryEmit(feedback)) {
+            viewModelScope.launch { _transientFeedback.emit(feedback) }
         }
     }
 
