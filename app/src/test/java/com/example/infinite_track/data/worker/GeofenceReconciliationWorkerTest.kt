@@ -161,14 +161,16 @@ class GeofenceReconciliationWorkerTest {
             )
 
         override suspend fun clearTodayStatusCache() = error("Not used")
-        override suspend fun checkIn(request: AttendanceRequestModel): Result<ActiveAttendanceSession> =
+        override suspend fun checkIn(
+            request: AttendanceRequestModel
+        ): com.example.infinite_track.domain.model.attendance.AttendanceSubmitResult =
             error("Not used")
 
         override suspend fun checkOut(
             attendanceId: Int,
             latitude: Double,
             longitude: Double
-        ): Result<ActiveAttendanceSession> = error("Not used")
+        ): com.example.infinite_track.domain.model.attendance.AttendanceSubmitResult = error("Not used")
 
         override suspend fun getActiveAttendanceId(): Int? = error("Not used")
         override suspend fun sendLocationEvent(request: LocationEventRequest): Result<Unit> =

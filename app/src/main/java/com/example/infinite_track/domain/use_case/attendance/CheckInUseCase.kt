@@ -2,6 +2,7 @@ package com.example.infinite_track.domain.use_case.attendance
 
 import com.example.infinite_track.domain.model.attendance.ActiveAttendanceSession
 import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
+import com.example.infinite_track.domain.model.attendance.AttendanceSubmitResult
 import com.example.infinite_track.domain.model.location.CurrentLocationResult
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.use_case.location.GetCurrentLocationUseCase
@@ -35,7 +36,12 @@ class CheckInUseCase @Inject constructor(
                 longitude = currentCoordinate.longitude
             )
 
-            attendanceRepository.checkIn(updatedRequest)
+            // Temporary adapter until SubmitAttendanceUseCase replaces this use case.
+            when (val submitResult = attendanceRepository.checkIn(updatedRequest)) {
+                is AttendanceSubmitResult.Success -> Result.success(submitResult.session)
+                is AttendanceSubmitResult.Failure ->
+                    Result.failure(Exception(submitResult.failure.toString()))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -207,11 +207,17 @@ class AttendanceRepositoryImplTodayStatusCacheTest {
         )
 
         todayStatusPreference.saveTodayStatusCache(cachedPayload)
-        assertTrue(repository.checkIn(createAttendanceRequest()).isSuccess)
+        assertTrue(
+            repository.checkIn(createAttendanceRequest())
+                is com.example.infinite_track.domain.model.attendance.AttendanceSubmitResult.Success
+        )
         assertNull(todayStatusPreference.getTodayStatusCache().first())
 
         todayStatusPreference.saveTodayStatusCache(cachedPayload)
-        assertTrue(repository.checkOut(attendanceId = 777, latitude = -0.842239, longitude = 119.892637).isSuccess)
+        assertTrue(
+            repository.checkOut(attendanceId = 777, latitude = -0.842239, longitude = 119.892637)
+                is com.example.infinite_track.domain.model.attendance.AttendanceSubmitResult.Success
+        )
         assertNull(todayStatusPreference.getTodayStatusCache().first())
     }
 

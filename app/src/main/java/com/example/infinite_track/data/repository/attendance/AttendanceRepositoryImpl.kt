@@ -1,6 +1,7 @@
 package com.example.infinite_track.data.repository.attendance
 
 import android.util.Log
+import com.example.infinite_track.data.mapper.attendance.AttendanceApiFailureMapper
 import com.example.infinite_track.data.mapper.attendance.toActiveSession
 import com.example.infinite_track.data.mapper.attendance.toDomain
 import com.example.infinite_track.data.mapper.attendance.toDto
@@ -11,13 +12,14 @@ import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.network.request.CheckOutRequestDto
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
-import com.example.infinite_track.domain.model.attendance.ActiveAttendanceSession
+import com.example.infinite_track.domain.model.attendance.AttendanceActionIntent
 import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
+import com.example.infinite_track.domain.model.attendance.AttendanceSubmitResult
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 import com.example.infinite_track.domain.model.auth.AuthRuntimePolicy
 import com.example.infinite_track.domain.repository.AttendanceRepository
+import com.google.gson.JsonParser
 import kotlinx.coroutines.flow.first
-import org.json.JSONObject
 import retrofit2.HttpException
 import java.time.LocalDate
 import javax.inject.Inject
@@ -37,24 +39,28 @@ class AttendanceRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Extract error message from HTTP response body
+     * Extract backend `message` from HTTP error body.
+     * Returns null when no safe backend message exists so callers never
+     * surface raw HTTP status text as user-facing copy.
      */
-    private fun extractErrorMessage(exception: HttpException): String {
+    private fun extractErrorMessage(exception: HttpException): String? {
         return try {
             val errorBody = exception.response()?.errorBody()?.string()
-            if (!errorBody.isNullOrEmpty()) {
-                val jsonObject = JSONObject(errorBody)
-                val message = jsonObject.optString("message", "")
-                if (message.isNotEmpty()) {
-                    Log.d(TAG, "Extracted error message: $message")
-                    return message
-                }
+            if (errorBody.isNullOrEmpty()) return null
+            val message = JsonParser.parseString(errorBody)
+                .takeIf { it.isJsonObject }
+                ?.asJsonObject
+                ?.get("message")
+                ?.takeIf { it.isJsonPrimitive }
+                ?.asString
+                ?.takeIf { it.isNotBlank() }
+            if (message != null) {
+                Log.d(TAG, "Extracted error message: $message")
             }
-            // Fallback to HTTP status message
-            "HTTP ${exception.code()} ${exception.message()}"
+            message
         } catch (e: Exception) {
             Log.e(TAG, "Failed to extract error message", e)
-            "HTTP ${exception.code()} ${exception.message()}"
+            null
         }
     }
 
@@ -93,7 +99,7 @@ class AttendanceRepositoryImpl @Inject constructor(
             }
         } catch (e: HttpException) {
             Log.e(TAG, "HTTP Error getting today's status", e)
-            val errorMessage = extractErrorMessage(e)
+            val errorMessage = extractErrorMessage(e) ?: "HTTP ${e.code()} ${e.message()}"
             Result.failure(Exception(errorMessage))
         } catch (e: Exception) {
             Log.e(TAG, "Error getting today's status", e)
@@ -106,71 +112,74 @@ class AttendanceRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Performs check-in operation - simplified without client-side location validation
-     * Backend will handle all location validation
+     * Performs check-in mutation - backend handles all location validation.
+     * Transport/backend failures are classified into typed domain failures.
      */
-    override suspend fun checkIn(request: AttendanceRequestModel): Result<ActiveAttendanceSession> {
+    override suspend fun checkIn(request: AttendanceRequestModel): AttendanceSubmitResult {
+        val intent = AttendanceActionIntent.CHECK_IN
         return try {
-            // Convert domain model to DTO using mapper
-            val requestDto = request.toDto()
-
-            // Call API for check-in - backend handles location validation
-            val response = apiService.checkIn(requestDto)
+            val response = apiService.checkIn(request.toDto())
 
             if (response.success) {
                 // Save the attendance ID for later checkout
                 attendancePreference.saveActiveAttendanceId(response.data.idAttendance)
                 todayStatusPreference.clearTodayStatusCache()
-                // Convert DTO to ActiveAttendanceSession domain model using mapper
-                Result.success(response.data.toActiveSession())
+                AttendanceSubmitResult.Success(intent, response.data.toActiveSession())
             } else {
-                Result.failure(Exception(response.message))
+                AttendanceSubmitResult.Failure(
+                    intent,
+                    AttendanceApiFailureMapper.mapHttp(code = 200, backendMessage = response.message)
+                )
             }
         } catch (e: HttpException) {
             Log.e(TAG, "HTTP Error during check-in", e)
-            val errorMessage = extractErrorMessage(e)
-            Result.failure(Exception(errorMessage))
+            AttendanceSubmitResult.Failure(
+                intent,
+                AttendanceApiFailureMapper.mapHttp(e.code(), extractErrorMessage(e))
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Error during check-in", e)
-            Result.failure(e)
+            AttendanceSubmitResult.Failure(intent, AttendanceApiFailureMapper.mapThrowable(e))
         }
     }
 
     /**
-     * Performs check-out operation with attendanceId and coordinates
-     * Backend will handle location validation for checkout
+     * Performs check-out mutation with attendanceId and coordinates.
+     * Backend handles location validation for checkout.
      */
     override suspend fun checkOut(
         attendanceId: Int,
         latitude: Double,
         longitude: Double
-    ): Result<ActiveAttendanceSession> {
+    ): AttendanceSubmitResult {
+        val intent = AttendanceActionIntent.CHECK_OUT
         return try {
-            // Create checkout request DTO with coordinates
             val checkOutRequestDto = CheckOutRequestDto(
                 latitude = latitude,
                 longitude = longitude
             )
-
-            // Call API for check-out with attendanceId in URL and coordinates in body
             val response = apiService.checkOut(attendanceId, checkOutRequestDto)
 
             if (response.success) {
                 // Clear the active attendance ID
                 attendancePreference.clearActiveAttendanceId()
                 todayStatusPreference.clearTodayStatusCache()
-                // Convert DTO to ActiveAttendanceSession domain model using mapper
-                Result.success(response.data.toActiveSession())
+                AttendanceSubmitResult.Success(intent, response.data.toActiveSession())
             } else {
-                Result.failure(Exception(response.message))
+                AttendanceSubmitResult.Failure(
+                    intent,
+                    AttendanceApiFailureMapper.mapHttp(code = 200, backendMessage = response.message)
+                )
             }
         } catch (e: HttpException) {
             Log.e(TAG, "HTTP Error during check-out", e)
-            val errorMessage = extractErrorMessage(e)
-            Result.failure(Exception(errorMessage))
+            AttendanceSubmitResult.Failure(
+                intent,
+                AttendanceApiFailureMapper.mapHttp(e.code(), extractErrorMessage(e))
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Error during check-out", e)
-            Result.failure(e)
+            AttendanceSubmitResult.Failure(intent, AttendanceApiFailureMapper.mapThrowable(e))
         }
     }
 
