@@ -18,8 +18,7 @@ import com.example.infinite_track.domain.repository.location.AddressResolver
 import com.example.infinite_track.domain.repository.location.CurrentLocationRepository
 import com.example.infinite_track.domain.repository.ProfileRepository
 import com.example.infinite_track.domain.repository.WfaRepository
-import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
-import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
+import com.example.infinite_track.domain.use_case.attendance.SubmitAttendanceUseCase
 import com.example.infinite_track.domain.use_case.attendance.GetTodayStatusUseCase
 import com.example.infinite_track.domain.use_case.attendance.ResolveAuthoritativeTargetLocationUseCase
 import com.example.infinite_track.domain.use_case.auth.CheckSessionUseCase
@@ -267,21 +266,17 @@ object UseCaseModule {
         )
     }
 
-    // Provide the Check In Use Case
+    // Provide the single Layer 5 submit orchestrator
     @Provides
-    fun provideCheckInUseCase(
+    fun provideSubmitAttendanceUseCase(
         attendanceRepository: AttendanceRepository,
-        getCurrentLocationUseCase: GetCurrentLocationUseCase
-    ): CheckInUseCase {
-        return CheckInUseCase(attendanceRepository, getCurrentLocationUseCase)
-    }
-
-    // Provide the Check Out Use Case
-    @Provides
-    fun provideCheckOutUseCase(
-        attendanceRepository: AttendanceRepository,
-        getCurrentLocationUseCase: GetCurrentLocationUseCase
-    ): CheckOutUseCase {
-        return CheckOutUseCase(attendanceRepository, getCurrentLocationUseCase)
+        getCurrentLocationUseCase: GetCurrentLocationUseCase,
+        getLoggedInUserUseCase: GetLoggedInUserUseCase
+    ): SubmitAttendanceUseCase {
+        return SubmitAttendanceUseCase(
+            attendanceRepository,
+            getCurrentLocationUseCase,
+            getLoggedInUserUseCase
+        )
     }
 }

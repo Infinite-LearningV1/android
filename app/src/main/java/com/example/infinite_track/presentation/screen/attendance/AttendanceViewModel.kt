@@ -17,8 +17,9 @@ import com.example.infinite_track.domain.model.location.AddressResolutionResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.domain.model.wfa.WfaBookingForDate
 import com.example.infinite_track.domain.model.geofence.GeofenceReconcileReason
-import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
-import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
+import com.example.infinite_track.domain.model.attendance.AttendanceSubmitCommand
+import com.example.infinite_track.domain.model.attendance.AttendanceSubmitResult
+import com.example.infinite_track.domain.use_case.attendance.SubmitAttendanceUseCase
 import com.example.infinite_track.domain.use_case.attendance.EvaluateAttendancePreparationUseCase
 import com.example.infinite_track.domain.use_case.attendance.EvaluateTargetRangeUseCase
 import com.example.infinite_track.domain.use_case.attendance.ResolveAuthoritativeTargetLocationUseCase
@@ -85,9 +86,8 @@ class AttendanceViewModel @Inject constructor(
     private val evaluateAttendancePreparationUseCase: EvaluateAttendancePreparationUseCase,
     private val refreshAndReconcileGeofenceRuntimeUseCase: RefreshAndReconcileGeofenceRuntimeUseCase,
     private val geofenceRuntimeUiMapper: GeofenceRuntimeUiMapper,
-    // Add UseCase dependencies for attendance operations
-    private val checkInUseCase: CheckInUseCase,
-    private val checkOutUseCase: CheckOutUseCase
+    // Single Layer 5 submit orchestrator for attendance mutations
+    private val submitAttendanceUseCase: SubmitAttendanceUseCase
 ) : ViewModel() {
 
     // Main UI state - now the SINGLE source of truth
@@ -816,77 +816,52 @@ class AttendanceViewModel @Inject constructor(
                     )
                     return@launch
                 }
-                // Get user info once for this mutation; long-running collection can replay submit.
-                val user = getLoggedInUserUseCase().firstOrNull()
-                if (user == null) {
-                    val message = publishTransientFeedback(
-                        AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
-                    ).message
-                    _uiState.value = _uiState.value.withActionState(
-                        AttendanceActionState.RetryableFailure(
-                            intent = intent,
-                            title = "Check-in gagal",
-                            message = message
-                        )
-                    )
-                    return@launch
-                }
-
-                val attendanceRequest = try {
-                    AttendanceCheckInRequestFactory.create(
-                        workMode = selectedMode,
-                        authoritativeTarget = resolvedTarget
-                    )
-                } catch (_: IllegalArgumentException) {
-                    val message = publishTransientFeedback(
-                        AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
-                    ).message
-                    _uiState.value = _uiState.value.withActionState(
-                        AttendanceActionState.RetryableFailure(
-                            intent = intent,
-                            title = "Check-in gagal",
-                            message = message
-                        )
-                    )
-                    return@launch
-                }
-
                 val submittingState = _uiState.value.actionState as? AttendanceActionState.Submitting
                 if (submittingState?.intent != intent) {
                     Log.w(TAG, "Check-in submit blocked because action state is not Submitting($intent): ${_uiState.value.actionState}")
                     return@launch
                 }
 
-                checkInUseCase(attendanceRequest).onSuccess { activeSession ->
-                    Log.d(TAG, "Check-in successful: $activeSession")
-
-                    val successMessage = publishTransientFeedback(
-                        AttendanceTransientFeedbackKind.CHECK_IN_SUCCESS
-                    ).message
-                    _uiState.value = _uiState.value.withActionState(
-                        AttendanceActionState.Success(
-                            intent = intent,
-                            message = successMessage
-                        )
+                val submitResult = submitAttendanceUseCase(
+                    AttendanceSubmitCommand.CheckIn(
+                        workMode = selectedMode,
+                        authoritativeTarget = resolvedTarget
                     )
+                )
 
-                    // Finish on backend-resolved state so snackbar auto-dismiss leaves a usable screen.
-                    refreshAttendanceAndRuntime(GeofenceReconcileReason.CHECK_IN_SUCCEEDED)
+                when (submitResult) {
+                    is AttendanceSubmitResult.Success -> {
+                        Log.d(TAG, "Check-in successful: ${submitResult.session}")
 
-                }.onFailure { exception ->
-                    Log.e(TAG, "Check-in failed", exception)
-
-                    val errorMessage = publishTransientFeedback(
-                        AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
-                    ).message
-
-                    _uiState.value = _uiState.value.withActionState(
-                        AttendanceActionState.RetryableFailure(
-                            intent = intent,
-                            title = "Check-in gagal",
-                            message = errorMessage
+                        val successMessage = publishTransientFeedback(
+                            AttendanceTransientFeedbackKind.CHECK_IN_SUCCESS
+                        ).message
+                        _uiState.value = _uiState.value.withActionState(
+                            AttendanceActionState.Success(
+                                intent = intent,
+                                message = successMessage
+                            )
                         )
-                    )
+
+                        // Finish on backend-resolved state so snackbar auto-dismiss leaves a usable screen.
+                        refreshAttendanceAndRuntime(GeofenceReconcileReason.CHECK_IN_SUCCEEDED)
+                    }
+
+                    is AttendanceSubmitResult.Failure -> {
+                        Log.e(TAG, "Check-in failed: ${submitResult.failure}")
+
+                        val errorMessage = publishTransientFeedback(
+                            AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
+                        ).message
+
+                        _uiState.value = _uiState.value.withActionState(
+                            AttendanceActionState.RetryableFailure(
+                                intent = intent,
+                                title = "Check-in gagal",
+                                message = errorMessage
+                            )
+                        )
+                    }
                 }
 
             } catch (e: Exception) {
@@ -922,37 +897,44 @@ class AttendanceViewModel @Inject constructor(
 
                 val attendanceId = _uiState.value.todayStatus?.activeAttendanceId
 
-                // Call CheckOutUseCase - it will refresh status if needed, get real-time GPS, and fallback to preference
-                checkOutUseCase(attendanceId).onSuccess { activeSession ->
-                    Log.d(TAG, "Check-out successful: $activeSession")
+                // SubmitAttendanceUseCase resolves the attendance id fallback chain and fresh GPS.
+                val submitResult = submitAttendanceUseCase(
+                    AttendanceSubmitCommand.CheckOut(activeAttendanceId = attendanceId)
+                )
 
-                    val successMessage = publishTransientFeedback(
-                        AttendanceTransientFeedbackKind.CHECK_OUT_SUCCESS
-                    ).message
-                    _uiState.value = _uiState.value.withActionState(
-                        AttendanceActionState.Success(
-                            intent = intent,
-                            message = successMessage
+                when (submitResult) {
+                    is AttendanceSubmitResult.Success -> {
+                        Log.d(TAG, "Check-out successful: ${submitResult.session}")
+
+                        val successMessage = publishTransientFeedback(
+                            AttendanceTransientFeedbackKind.CHECK_OUT_SUCCESS
+                        ).message
+                        _uiState.value = _uiState.value.withActionState(
+                            AttendanceActionState.Success(
+                                intent = intent,
+                                message = successMessage
+                            )
                         )
-                    )
 
-                    // Finish on backend-resolved state so snackbar auto-dismiss leaves a usable screen.
-                    refreshAttendanceAndRuntime(GeofenceReconcileReason.CHECK_OUT_SUCCEEDED)
+                        // Finish on backend-resolved state so snackbar auto-dismiss leaves a usable screen.
+                        refreshAttendanceAndRuntime(GeofenceReconcileReason.CHECK_OUT_SUCCEEDED)
+                    }
 
-                }.onFailure { exception ->
-                    Log.e(TAG, "Check-out failed", exception)
+                    is AttendanceSubmitResult.Failure -> {
+                        Log.e(TAG, "Check-out failed: ${submitResult.failure}")
 
-                    val errorMessage = publishTransientFeedback(
-                        AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
-                    ).message
+                        val errorMessage = publishTransientFeedback(
+                            AttendanceTransientFeedbackKind.ATTENDANCE_ERROR
+                        ).message
 
-                    _uiState.value = _uiState.value.withActionState(
-                        AttendanceActionState.RetryableFailure(
-                            intent = intent,
-                            title = "Check-out gagal",
-                            message = errorMessage
+                        _uiState.value = _uiState.value.withActionState(
+                            AttendanceActionState.RetryableFailure(
+                                intent = intent,
+                                title = "Check-out gagal",
+                                message = errorMessage
+                            )
                         )
-                    )
+                    }
                 }
 
             } catch (e: Exception) {
