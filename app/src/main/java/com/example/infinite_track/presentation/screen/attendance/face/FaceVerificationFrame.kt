@@ -24,50 +24,73 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 
+enum class RailMode { HIDDEN, PROGRESS, ALL_PASSED }
+enum class FrameBadge { NONE, CHECK, CROSS }
+enum class FrameInnerContent { NONE, SILHOUETTE, TIMEOUT_INFO }
+
 /**
  * Visual style of the face frame for a given phase. Derived purely so it can be unit-tested.
  */
 data class FrameStyle(
     val color: Color,
     val dashed: Boolean,
-    val showRail: Boolean,
-    val showCheckBadge: Boolean,
-    val showSilhouette: Boolean
+    val railMode: RailMode,
+    val badge: FrameBadge,
+    val inner: FrameInnerContent
 )
 
 private val FramePurple = Color(0xFF8A3DFF)
 private val FrameCyan = Color(0xFF38F9F5)
-private val FrameRed = Color(0xFFFF5C5C)
 
-fun frameStyleFor(state: FaceScannerState): FrameStyle {
-    val livenessActive = state.livenessState in setOf(
-        LivenessState.WAITING_FOR_LIVENESS,
-        LivenessState.LOW_LIGHT,
-        LivenessState.LIVENESS_DETECTED,
-        LivenessState.VERIFYING_FACE
+fun frameStyleFor(state: FaceScannerState): FrameStyle = when (state.livenessState) {
+    LivenessState.IDLE,
+    LivenessState.DETECTING_FACE -> FrameStyle(
+        color = FramePurple, dashed = true,
+        railMode = RailMode.HIDDEN, badge = FrameBadge.NONE,
+        inner = FrameInnerContent.SILHOUETTE
     )
-    return when (state.livenessState) {
-        LivenessState.IDLE,
-        LivenessState.DETECTING_FACE -> FrameStyle(
-            color = FramePurple, dashed = true, showRail = false,
-            showCheckBadge = false, showSilhouette = true
-        )
-        LivenessState.SUCCESS -> FrameStyle(
-            color = FrameCyan, dashed = false, showRail = false,
-            showCheckBadge = true, showSilhouette = false
-        )
-        LivenessState.FAILURE,
-        LivenessState.TIMEOUT -> FrameStyle(
-            color = FrameRed, dashed = false, showRail = false,
-            showCheckBadge = false, showSilhouette = false
-        )
-        else -> FrameStyle(
-            color = FramePurple, dashed = false,
-            showRail = livenessActive && !state.readyToVerify &&
-                state.livenessState != LivenessState.VERIFYING_FACE,
-            showCheckBadge = false, showSilhouette = false
-        )
-    }
+
+    LivenessState.WAITING_FOR_LIVENESS -> FrameStyle(
+        color = FramePurple, dashed = false,
+        railMode = RailMode.PROGRESS, badge = FrameBadge.NONE,
+        inner = FrameInnerContent.NONE
+    )
+
+    LivenessState.LOW_LIGHT -> FrameStyle(
+        color = FramePurple, dashed = false,
+        railMode = RailMode.HIDDEN, badge = FrameBadge.NONE,
+        inner = FrameInnerContent.NONE
+    )
+
+    LivenessState.LIVENESS_DETECTED -> FrameStyle(
+        color = FramePurple, dashed = false,
+        railMode = if (state.readyToVerify) RailMode.ALL_PASSED else RailMode.PROGRESS,
+        badge = FrameBadge.NONE, inner = FrameInnerContent.NONE
+    )
+
+    LivenessState.VERIFYING_FACE -> FrameStyle(
+        color = FramePurple, dashed = false,
+        railMode = RailMode.ALL_PASSED, badge = FrameBadge.NONE,
+        inner = FrameInnerContent.NONE
+    )
+
+    LivenessState.SUCCESS -> FrameStyle(
+        color = FrameCyan, dashed = false,
+        railMode = RailMode.HIDDEN, badge = FrameBadge.CHECK,
+        inner = FrameInnerContent.NONE
+    )
+
+    LivenessState.FAILURE -> FrameStyle(
+        color = FrameCyan, dashed = false,
+        railMode = RailMode.HIDDEN, badge = FrameBadge.CROSS,
+        inner = FrameInnerContent.NONE
+    )
+
+    LivenessState.TIMEOUT -> FrameStyle(
+        color = FramePurple, dashed = false,
+        railMode = RailMode.HIDDEN, badge = FrameBadge.NONE,
+        inner = FrameInnerContent.TIMEOUT_INFO
+    )
 }
 
 /**
@@ -103,7 +126,7 @@ fun FaceVerificationFrame(
             )
         }
 
-        if (style.showSilhouette) {
+        if (style.inner == FrameInnerContent.SILHOUETTE) {
             Icon(
                 imageVector = Icons.Outlined.Person,
                 contentDescription = null,
@@ -112,10 +135,16 @@ fun FaceVerificationFrame(
             )
         }
 
-        if (style.showRail) {
+        if (style.railMode != RailMode.HIDDEN) {
+            val passed = if (style.railMode == RailMode.ALL_PASSED) {
+                state.challengeTotal
+            } else {
+                (state.challengeIndex - 1).coerceAtLeast(0)
+            }
+            val active = if (style.railMode == RailMode.ALL_PASSED) 0 else state.challengeIndex
             LivenessProgressRail(
-                passedCount = (state.challengeIndex - 1).coerceAtLeast(0),
-                activeIndex = state.challengeIndex,
+                passedCount = passed,
+                activeIndex = active,
                 total = state.challengeTotal,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -123,7 +152,7 @@ fun FaceVerificationFrame(
             )
         }
 
-        if (style.showCheckBadge) {
+        if (style.badge == FrameBadge.CHECK) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
