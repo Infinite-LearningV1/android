@@ -306,6 +306,15 @@ private fun CameraContent(
             }
         )
 
+        // Layer 1.5: Dim the whole stage when the verification timed out (mockup behavior).
+        if (uiState.livenessState == LivenessState.TIMEOUT) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.65f))
+            )
+        }
+
         // Layer 2: Redesigned neon frame (replaces corner-bracket FaceBoundingBox visual)
         FaceVerificationFrame(
             state = uiState,

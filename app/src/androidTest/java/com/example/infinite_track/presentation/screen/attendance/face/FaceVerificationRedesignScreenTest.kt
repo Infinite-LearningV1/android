@@ -151,4 +151,17 @@ class FaceVerificationRedesignScreenTest {
 
         composeTestRule.onNodeWithContentDescription("Face not matched").assertIsDisplayed()
     }
+
+    @Test
+    fun timeoutFrame_showsTimeoutContent() {
+        composeTestRule.setContent {
+            FaceVerificationFrame(
+                state = FaceScannerState(livenessState = LivenessState.TIMEOUT)
+            )
+        }
+
+        composeTestRule.onNodeWithText("Verification Timeout").assertIsDisplayed()
+        composeTestRule.onNodeWithText("00:00").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Time's up").assertIsDisplayed()
+    }
 }

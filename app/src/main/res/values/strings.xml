@@ -35,6 +35,10 @@
     <string name="face_result_timeout_message">Waktu verifikasi wajah habis. Silakan coba lagi.</string>
     <string name="face_frame_badge_verified">Face verified</string>
     <string name="face_frame_badge_not_matched">Face not matched</string>
+    <string name="face_frame_timeout_title">Verification Timeout</string>
+    <string name="face_frame_timeout_message">You didn\'t complete the verification in time. Please try again.</string>
+    <string name="face_frame_timeout_countdown">00:00</string>
+    <string name="face_frame_timeout_times_up">Time\'s up</string>
     //Home
     <string name="see_more">See More</string>
     <string name="today_s_news">Today\'s News</string>

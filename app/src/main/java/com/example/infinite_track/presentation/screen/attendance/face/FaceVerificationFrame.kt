@@ -2,17 +2,23 @@ package com.example.infinite_track.presentation.screen.attendance.face
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,8 +30,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.infinite_track.R
+import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 
 enum class RailMode { HIDDEN, PROGRESS, ALL_PASSED }
 enum class FrameBadge { NONE, CHECK, CROSS }
@@ -184,6 +194,10 @@ fun FaceVerificationFrame(
             }
         }
 
+        if (style.inner == FrameInnerContent.TIMEOUT_INFO) {
+            TimeoutInnerContent(modifier = Modifier.align(Alignment.Center))
+        }
+
         if (style.badge != FrameBadge.NONE) {
             val badgeColor = when (style.badge) {
                 FrameBadge.CHECK -> FramePurple
@@ -211,6 +225,64 @@ fun FaceVerificationFrame(
                     contentDescription = badgeDescription,
                     tint = Color.White,
                     modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimeoutInnerContent(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(InfiniteColors.Surface),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Timer,
+                contentDescription = null,
+                tint = FramePurple,
+                modifier = Modifier.size(30.dp)
+            )
+        }
+        Text(
+            text = stringResource(R.string.face_frame_timeout_title),
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            text = stringResource(R.string.face_frame_timeout_message),
+            color = Color.White.copy(alpha = 0.85f),
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center
+        )
+        Box(
+            modifier = Modifier
+                .size(88.dp)
+                .clip(CircleShape)
+                .border(4.dp, InfiniteColors.Secondary, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = stringResource(R.string.face_frame_timeout_countdown),
+                    color = InfiniteColors.Secondary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+                Text(
+                    text = stringResource(R.string.face_frame_timeout_times_up),
+                    color = Color.White,
+                    fontSize = 11.sp
                 )
             }
         }
