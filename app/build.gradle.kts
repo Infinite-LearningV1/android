@@ -127,6 +127,13 @@ android {
             pickFirst("**/libc++_shared.so")
         }
     }
+    testOptions {
+        unitTests {
+            // Repository failure paths log via android.util.Log; JVM unit tests
+            // need Log calls to no-op instead of throwing "not mocked".
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 dependencies {

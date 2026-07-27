@@ -1,9 +1,7 @@
 package com.example.infinite_track.presentation.screen.attendance
 
-enum class AttendanceActionIntent {
-    CHECK_IN,
-    CHECK_OUT
-}
+typealias AttendanceActionIntent =
+    com.example.infinite_track.domain.model.attendance.AttendanceActionIntent
 
 enum class AttendanceBlockReason {
     PERMISSION_REQUIRED,

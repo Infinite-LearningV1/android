@@ -1,8 +1,8 @@
 package com.example.infinite_track.domain.repository
 
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
-import com.example.infinite_track.domain.model.attendance.ActiveAttendanceSession
 import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
+import com.example.infinite_track.domain.model.attendance.AttendanceSubmitResult
 import com.example.infinite_track.domain.model.attendance.TodayStatus
 
 /**
@@ -22,13 +22,14 @@ interface AttendanceRepository {
     suspend fun clearTodayStatusCache()
 
     /**
-     * Performs check-in operation
+     * Performs check-in mutation. Returns a typed submit outcome; transport
+     * failures are classified in the data layer and never leak upward.
      * @param request The attendance request containing necessary data for check-in
      */
-    suspend fun checkIn(request: AttendanceRequestModel): Result<ActiveAttendanceSession>
+    suspend fun checkIn(request: AttendanceRequestModel): AttendanceSubmitResult
 
     /**
-     * Performs check-out operation for the active attendance session
+     * Performs check-out mutation for the active attendance session.
      * @param attendanceId The ID of the active attendance session
      * @param latitude Current user latitude
      * @param longitude Current user longitude
@@ -37,7 +38,7 @@ interface AttendanceRepository {
         attendanceId: Int,
         latitude: Double,
         longitude: Double
-    ): Result<ActiveAttendanceSession>
+    ): AttendanceSubmitResult
 
     /**
      * Retrieves the active attendance ID from preferences

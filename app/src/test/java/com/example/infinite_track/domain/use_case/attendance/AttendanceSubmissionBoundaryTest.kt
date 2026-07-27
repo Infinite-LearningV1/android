@@ -6,8 +6,8 @@ import org.junit.Test
 class AttendanceSubmissionBoundaryTest {
 
     @Test
-    fun `attendance submission use cases have no geofence or preference dependency`() {
-        listOf(CheckInUseCase::class.java, CheckOutUseCase::class.java).forEach { type ->
+    fun `attendance submission use case has no geofence or preference dependency`() {
+        listOf(SubmitAttendanceUseCase::class.java).forEach { type ->
             val dependencies = type.declaredConstructors.single().parameterTypes.map { it.name }
 
             assertFalse(dependencies.any { it.contains("Geofence") })
