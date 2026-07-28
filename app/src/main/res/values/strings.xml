@@ -318,4 +318,44 @@
     <string name="wfa_search_error_invalid_request">The keyword or location is invalid.</string>
     <string name="wfa_search_error_unavailable">Location search is currently unavailable.</string>
 
+    <!-- INF-265 WFA request transaction -->
+    <string name="wfa_request_form_title">Ajukan WFA</string>
+    <string name="wfa_request_review_title">Tinjau Permintaan</string>
+    <string name="wfa_request_employee">Pemohon</string>
+    <string name="wfa_request_location">Lokasi WFA</string>
+    <string name="wfa_request_radius_policy">Radius kebijakan: %1$d m</string>
+    <string name="wfa_request_policy_title">Kebijakan lokasi</string>
+    <string name="wfa_request_policy_body">Permintaan ini menggunakan koordinat lokasi terpilih dan radius %1$d m dari server. Radius tidak dapat diubah.</string>
+    <string name="wfa_request_date">Tanggal WFA</string>
+    <string name="wfa_request_date_placeholder">Pilih tanggal</string>
+    <string name="wfa_request_reason">Alasan WFA</string>
+    <string name="wfa_request_other_reason">Alasan lainnya</string>
+    <string name="wfa_request_other_reason_placeholder">Jelaskan alasan Anda</string>
+    <string name="wfa_request_notes">Catatan (opsional)</string>
+    <string name="wfa_request_notes_placeholder">Tambahkan catatan untuk reviewer</string>
+    <string name="wfa_request_review_action">Tinjau permintaan</string>
+    <string name="wfa_request_review_guidance">Pastikan data berikut sudah benar sebelum dikirim.</string>
+    <string name="wfa_request_submit">Kirim permintaan</string>
+    <string name="wfa_request_submitting">Mengirim permintaan</string>
+    <string name="wfa_request_loading">Memuat formulir permintaan</string>
+    <string name="wfa_request_edit">Ubah data</string>
+    <string name="wfa_request_success">Permintaan berhasil dikirim</string>
+    <string name="wfa_request_booking_id">ID booking: %1$d</string>
+    <string name="wfa_request_status">Status: %1$s</string>
+    <string name="wfa_request_status_label">Status</string>
+    <string name="wfa_request_result_date">Tanggal WFA: %1$s</string>
+    <string name="wfa_request_done">Kembali ke Kehadiran</string>
+    <string name="wfa_request_home">Kembali ke Beranda</string>
+    <string name="wfa_request_result_location">Lokasi: %1$s</string>
+    <string name="wfa_request_result_reason">Alasan: %1$s</string>
+    <string name="wfa_request_result_radius">Radius diterapkan: %1$d m</string>
+    <string name="wfa_request_retry">Coba lagi</string>
+    <string name="wfa_request_back">Kembali</string>
+    <string name="wfa_request_date_confirm">Pilih</string>
+    <string name="wfa_request_cancel">Batal</string>
+    <string name="wfa_request_error_required">Wajib diisi</string>
+    <string name="wfa_request_error_reason_unavailable">Alasan tidak tersedia</string>
+    <string name="wfa_request_error_other_required">Jelaskan alasan lainnya</string>
+    <string name="wfa_request_error_too_long">Teks terlalu panjang</string>
+    <string name="wfa_request_error_location">Lokasi tidak valid</string>
 </resources>

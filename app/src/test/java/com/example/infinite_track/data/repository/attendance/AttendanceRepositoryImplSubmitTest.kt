@@ -9,7 +9,6 @@ import com.example.infinite_track.data.soucre.local.preferences.TodayStatusPrefe
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.mapper.attendance.toDomain
 import com.example.infinite_track.data.soucre.network.request.AttendanceRequest
-import com.example.infinite_track.data.soucre.network.request.BookingRequest
 import com.example.infinite_track.data.soucre.network.request.CheckOutRequestDto
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
@@ -30,7 +29,6 @@ import com.example.infinite_track.data.soucre.network.response.TodayStatusMeta
 import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
 import com.example.infinite_track.data.soucre.network.response.WfaRecommendationResponse
 import com.example.infinite_track.data.soucre.network.response.booking.BookingHistoryResponse
-import com.example.infinite_track.data.soucre.network.response.booking.BookingResponse
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.domain.model.attendance.AttendanceActionIntent
 import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
@@ -385,6 +383,9 @@ private class SubmitFakeApiService : ApiService {
     override suspend fun getWfaRecommendations(latitude: Double, longitude: Double): WfaRecommendationResponse =
         unsupported()
 
+    override suspend fun getWfaRequestConfig():
+        com.example.infinite_track.data.soucre.network.response.booking.WfaRequestConfigResponseDto = unsupported()
+
     override suspend fun getBookingHistory(
         status: String?,
         page: Int,
@@ -393,7 +394,10 @@ private class SubmitFakeApiService : ApiService {
         sortOrder: String
     ): BookingHistoryResponse = unsupported()
 
-    override suspend fun submitWfaBooking(request: BookingRequest): BookingResponse = unsupported()
+
+    override suspend fun submitWfaRequest(
+        request: com.example.infinite_track.data.soucre.network.request.WfaRequestDto
+    ): com.example.infinite_track.data.soucre.network.response.booking.WfaRequestResponseDto = unsupported()
 
     private fun unsupported(): Nothing = error("Not supported in this test")
 }

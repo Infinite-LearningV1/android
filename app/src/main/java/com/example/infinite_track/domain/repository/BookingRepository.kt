@@ -2,6 +2,9 @@ package com.example.infinite_track.domain.repository
 
 import com.example.infinite_track.domain.model.booking.BookingHistoryItem
 import com.example.infinite_track.domain.model.booking.BookingHistoryPage
+import com.example.infinite_track.domain.model.booking.SubmitWfaRequestCommand
+import com.example.infinite_track.domain.model.booking.WfaRequestConfigResult
+import com.example.infinite_track.domain.model.booking.WfaRequestResult
 
 interface BookingRepository {
 	suspend fun getBookingHistory(
@@ -12,12 +15,7 @@ interface BookingRepository {
 		sortOrder: String = "DESC"
 	): Result<BookingHistoryPage>
 
-	suspend fun submitBooking(
-		scheduleDate: String,
-		latitude: Double,
-		longitude: Double,
-		radius: Int,
-		description: String,
-		notes: String
-	): Result<Unit>
+	suspend fun getWfaRequestConfig(): WfaRequestConfigResult
+
+	suspend fun submitWfaRequest(command: SubmitWfaRequestCommand): WfaRequestResult
 }

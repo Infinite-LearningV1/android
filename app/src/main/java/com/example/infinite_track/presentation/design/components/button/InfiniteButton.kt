@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.presentation.core.body1
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteRadius
 import com.example.infinite_track.presentation.design.tokens.InfiniteSize
@@ -75,7 +76,7 @@ fun InfiniteButton(
             } else {
                 leadingIcon?.let { Icon(imageVector = it, contentDescription = null, modifier = Modifier.size(18.dp)) }
             }
-            Text(text = text)
+            Text(text = text, style = body1)
             trailingIcon?.let { Icon(imageVector = it, contentDescription = null, modifier = Modifier.size(18.dp)) }
         }
     }

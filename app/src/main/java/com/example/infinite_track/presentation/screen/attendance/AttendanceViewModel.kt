@@ -668,7 +668,7 @@ class AttendanceViewModel @Inject constructor(
             Log.w(TAG, "Booking clicked in WFA mode but no preview is selected.")
             return
         }
-        val route = Screen.WfaBooking.createRoute(
+        val route = Screen.WfaRequestFlow.createRoute(
             latitude = coordinate.latitude,
             longitude = coordinate.longitude
         )

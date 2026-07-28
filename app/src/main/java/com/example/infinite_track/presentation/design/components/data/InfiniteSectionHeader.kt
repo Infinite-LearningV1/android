@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.presentation.core.body2
+import com.example.infinite_track.presentation.core.headline4
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 
 @Composable
@@ -46,13 +47,13 @@ fun InfiniteSectionHeader(
                 text = title,
                 fontWeight = FontWeight.Medium,
                 color = InfiniteColors.Text,
-                style = MaterialTheme.typography.titleMedium
+                style = headline4
             )
             subtitle?.let {
                 Text(
                     text = it,
                     color = InfiniteColors.AttendanceReportMutedText,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = body2,
                     fontWeight = FontWeight.Normal
                 )
             }
@@ -67,7 +68,7 @@ fun InfiniteSectionHeader(
                     Text(
                         text = it,
                         color = InfiniteColors.Primary,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = body2,
                         fontWeight = FontWeight.Medium
                     )
                 }

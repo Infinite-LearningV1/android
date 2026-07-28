@@ -5,7 +5,6 @@ import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.local.room.UserEntity
 import com.example.infinite_track.data.soucre.network.request.AttendanceRequest
-import com.example.infinite_track.data.soucre.network.request.BookingRequest
 import com.example.infinite_track.data.soucre.network.request.CheckOutRequestDto
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
@@ -27,7 +26,6 @@ import com.example.infinite_track.data.soucre.network.response.UserData
 import com.example.infinite_track.data.soucre.network.response.WfaRecommendationResponse
 import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.data.soucre.network.response.booking.BookingHistoryResponse
-import com.example.infinite_track.data.soucre.network.response.booking.BookingResponse
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
 import com.example.infinite_track.domain.repository.AuthRefreshException
@@ -1220,6 +1218,11 @@ private class FakeApiService(
         throw NotImplementedError()
     }
 
+    override suspend fun getWfaRequestConfig():
+        com.example.infinite_track.data.soucre.network.response.booking.WfaRequestConfigResponseDto {
+        throw NotImplementedError()
+    }
+
     override suspend fun getBookingHistory(
         status: String?,
         page: Int,
@@ -1230,7 +1233,9 @@ private class FakeApiService(
         throw NotImplementedError()
     }
 
-    override suspend fun submitWfaBooking(request: BookingRequest): BookingResponse {
+    override suspend fun submitWfaRequest(
+        request: com.example.infinite_track.data.soucre.network.request.WfaRequestDto
+    ): com.example.infinite_track.data.soucre.network.response.booking.WfaRequestResponseDto {
         throw NotImplementedError()
     }
 }

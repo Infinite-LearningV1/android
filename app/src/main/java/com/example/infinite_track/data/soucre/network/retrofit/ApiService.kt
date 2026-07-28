@@ -1,13 +1,13 @@
 package com.example.infinite_track.data.soucre.network.retrofit
 
 import com.example.infinite_track.data.soucre.network.request.AttendanceRequest
-import com.example.infinite_track.data.soucre.network.request.BookingRequest
 import com.example.infinite_track.data.soucre.network.request.CheckOutRequestDto
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
 import com.example.infinite_track.data.soucre.network.request.LogoutRequest
 import com.example.infinite_track.data.soucre.network.request.ProfileUpdateRequest
 import com.example.infinite_track.data.soucre.network.request.RefreshRequest
+import com.example.infinite_track.data.soucre.network.request.WfaRequestDto
 import com.example.infinite_track.data.soucre.network.response.AttendanceHistoryResponse
 import com.example.infinite_track.data.soucre.network.response.AttendanceResponse
 import com.example.infinite_track.data.soucre.network.response.LoginResponse
@@ -17,7 +17,8 @@ import com.example.infinite_track.data.soucre.network.response.RefreshResponse
 import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
 import com.example.infinite_track.data.soucre.network.response.WfaRecommendationResponse
 import com.example.infinite_track.data.soucre.network.response.booking.BookingHistoryResponse
-import com.example.infinite_track.data.soucre.network.response.booking.BookingResponse
+import com.example.infinite_track.data.soucre.network.response.booking.WfaRequestConfigResponseDto
+import com.example.infinite_track.data.soucre.network.response.booking.WfaRequestResponseDto
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
@@ -105,6 +106,9 @@ interface ApiService {
         @Query("lng") longitude: Double
     ): WfaRecommendationResponse
 
+    @GET("api/wfa/request-config")
+    suspend fun getWfaRequestConfig(): WfaRequestConfigResponseDto
+
     @GET("api/bookings/history")
     suspend fun getBookingHistory(
         @Query("status") status: String? = null,
@@ -115,9 +119,9 @@ interface ApiService {
     ): BookingHistoryResponse
 
     @POST("api/bookings")
-    suspend fun submitWfaBooking(
-        @Body request: BookingRequest
-    ): BookingResponse
+    suspend fun submitWfaRequest(
+        @Body request: WfaRequestDto
+    ): WfaRequestResponseDto
 
     companion object {
         const val HEADER_BOOTSTRAP_AUTH_REQUEST = "X-Bootstrap-Auth-Request"

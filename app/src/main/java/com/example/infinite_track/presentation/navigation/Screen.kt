@@ -21,6 +21,13 @@ sealed class Screen(val route: String) {
     // Parent navigation graphs
     data object HistoryFlow : Screen("history_flow")
     data object ProfileFlow : Screen("profile_flow")
+    data object WfaRequestFlow : Screen("wfa_request/{latitude}/{longitude}") {
+        fun createRoute(latitude: Double, longitude: Double): String =
+            "wfa_request/$latitude/$longitude"
+    }
+    data object WfaRequestForm : Screen("wfa_request/form")
+    data object WfaRequestReview : Screen("wfa_request/review")
+    data object WfaRequestResult : Screen("wfa_request/result")
 
     //Time Off
     data object MyLeave : Screen("myLeave")
@@ -34,14 +41,6 @@ sealed class Screen(val route: String) {
     data object PaySlip : Screen("profile/PaySlip")
     data object MyDocument : Screen("profile/MyDocument")
     data object About : Screen("profile/about")
-
-    // WFA Booking
-    data object WfaBooking : Screen("wfa_booking/{latitude}/{longitude}") {
-        fun createRoute(latitude: Double, longitude: Double): String {
-            // Send Double directly, NavController will handle the conversion
-            return "wfa_booking/$latitude/$longitude"
-        }
-    }
 
     // Face Scanner
     data object FaceScanner : Screen("face_scanner?action={action}") {
