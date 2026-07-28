@@ -1220,6 +1220,11 @@ private class FakeApiService(
         throw NotImplementedError()
     }
 
+    override suspend fun getWfaRequestConfig():
+        com.example.infinite_track.data.soucre.network.response.booking.WfaRequestConfigResponseDto {
+        throw NotImplementedError()
+    }
+
     override suspend fun getBookingHistory(
         status: String?,
         page: Int,

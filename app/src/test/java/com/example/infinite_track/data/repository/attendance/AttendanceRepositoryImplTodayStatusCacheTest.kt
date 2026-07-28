@@ -347,6 +347,9 @@ private class FakeApiService(
 
     override suspend fun getWfaRecommendations(latitude: Double, longitude: Double): WfaRecommendationResponse = unsupported()
 
+    override suspend fun getWfaRequestConfig():
+        com.example.infinite_track.data.soucre.network.response.booking.WfaRequestConfigResponseDto = unsupported()
+
     override suspend fun getBookingHistory(
         status: String?,
         page: Int,
