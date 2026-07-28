@@ -5,15 +5,15 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,97 +22,96 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.R
 import com.example.infinite_track.presentation.core.body1
-import com.example.infinite_track.presentation.theme.Purple_300
-import com.example.infinite_track.presentation.theme.Purple_400
-import com.example.infinite_track.presentation.theme.Purple_500
-import com.example.infinite_track.presentation.theme.Violet_50
+import com.example.infinite_track.presentation.core.body2
+import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
+import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
+import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
+import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
 @Composable
 fun InfiniteTrackDropDown(
-    modifier: Modifier = Modifier,
+    selectedValue: String?,
     onSelected: (String) -> Unit,
     items: List<String>,
+    modifier: Modifier = Modifier,
+    label: String? = null,
     placeholder: String = "",
-    leadingIcon: Painter
+    enabled: Boolean = true
 ) {
-    var isExpanded by remember {
-        mutableStateOf(false)
-    }
+    var isExpanded by remember { mutableStateOf(false) }
+    val colors = infiniteSemanticColors(InfiniteSemantic.Neutral)
+    val shape = MaterialTheme.shapes.medium
 
-    var selectedItem by remember { mutableStateOf(placeholder) }
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(color = Violet_50.copy(alpha = 0.5f), shape = RoundedCornerShape(12.dp))
-            .border(width = 1.dp, color = Violet_50, shape = RoundedCornerShape(12.dp))
-            .padding(14.dp)
-            .clickable {
-                isExpanded = !isExpanded
-            }
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    painter = leadingIcon,
-                    tint = Purple_500,
-                    contentDescription = ""
-
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = placeholder,
-                    style = body1, color = Purple_400
-                )
-            }
-            Icon(
-                painter = painterResource(id = if (isExpanded) R.drawable.arrow_up else R.drawable.arrow_down),
-                tint = Purple_300,
-                contentDescription = ""
+    Column(modifier = modifier.fillMaxWidth()) {
+        label?.let {
+            Text(
+                text = it,
+                style = body2,
+                color = colors.content,
+                modifier = Modifier.padding(bottom = InfiniteSpacing.Default.xs)
             )
         }
-        DropdownMenu(
-            expanded = isExpanded,
-            onDismissRequest = { isExpanded = false }
-        ) {
-            items.forEach { item ->
-                DropdownMenuItem(
-                    text = { Text(text = item) },
-                    onClick = {
-                        selectedItem = item
-                        isExpanded = false
-                        onSelected(selectedItem)
-                    }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = 48.dp)
+                .background(colors.container, shape)
+                .border(1.dp, colors.border, shape)
+                .clickable(enabled = enabled) { isExpanded = !isExpanded }
+                .padding(
+                    horizontal = InfiniteSpacing.Default.lg,
+                    vertical = InfiniteSpacing.Default.sm
                 )
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = selectedValue ?: placeholder,
+                    style = body1,
+                    color = if (enabled) colors.content else colors.content.copy(alpha = 0.56f)
+                )
+                Icon(
+                    painter = painterResource(if (isExpanded) R.drawable.arrow_up else R.drawable.arrow_down),
+                    tint = if (enabled) colors.accent else colors.accent.copy(alpha = 0.56f),
+                    contentDescription = null
+                )
+            }
+            DropdownMenu(
+                expanded = isExpanded,
+                onDismissRequest = { isExpanded = false }
+            ) {
+                items.forEach { item ->
+                    DropdownMenuItem(
+                        text = { Text(text = item, style = body1) },
+                        onClick = {
+                            isExpanded = false
+                            onSelected(item)
+                        }
+                    )
+                }
             }
         }
     }
 }
 
-
 @Preview(showBackground = true, device = Devices.PIXEL_4)
 @Composable
-fun InfiniteTrackDropDownPreview() {
-    Box(
-        modifier = Modifier
-            .background(Color.LightGray)
-    ) {
+private fun InfiniteTrackDropDownPreview() {
+    Infinite_TrackTheme {
         InfiniteTrackDropDown(
+            selectedValue = null,
             onSelected = {},
             placeholder = "Pilih Head Program",
-            leadingIcon = painterResource(id = R.drawable.ic_headprogram),
-            items = listOf("items", "item")
+            items = listOf("Items", "Item")
         )
     }
 }

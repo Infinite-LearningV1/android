@@ -1,11 +1,17 @@
 package com.example.infinite_track.presentation.screen.attendance.wfa_request
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -25,6 +31,8 @@ import com.example.infinite_track.domain.model.booking.WfaRequestFieldError
 import com.example.infinite_track.domain.model.booking.WfaRequestFieldErrors
 import com.example.infinite_track.domain.model.booking.WfaRequestReason
 import com.example.infinite_track.domain.model.booking.WfaRequestStatus
+import com.example.infinite_track.presentation.components.textfield.InfiniteTrackDropDown
+import com.example.infinite_track.presentation.components.textfield.InfiniteTrackTextArea
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
@@ -56,6 +64,45 @@ class WfaRequestScreensTest {
         val state = editingState().let { it.copy(draft = it.draft.copy(reasonId = 2)) }
         renderForm(state)
         composeRule.onNodeWithTag("wfaOtherReason").assertIsDisplayed()
+    }
+
+    @Test
+    fun sharedRequestInputsKeepSelectionAndNotesCountInCallerState() {
+        composeRule.setContent {
+            Infinite_TrackTheme {
+                var selectedReason by remember { mutableStateOf<String?>(null) }
+                Column {
+                    InfiniteTrackDropDown(
+                        selectedValue = selectedReason,
+                        onSelected = { selectedReason = it },
+                        items = listOf("Keperluan keluarga", "Lainnya"),
+                        placeholder = "Pilih alasan",
+                        modifier = Modifier.testTag("wfaReasonDropdown")
+                    )
+                    if (selectedReason == "Lainnya") {
+                        InfiniteTrackTextArea(
+                            value = "",
+                            label = "Alasan lainnya",
+                            onValueChange = {},
+                            modifier = Modifier.testTag("wfaOtherReason")
+                        )
+                    }
+                    InfiniteTrackTextArea(
+                        value = "Butuh ruang tenang",
+                        label = "Catatan",
+                        onValueChange = {},
+                        maxLength = 250,
+                        showCharacterCount = true
+                    )
+                }
+            }
+        }
+
+        composeRule.onNodeWithTag("wfaReasonDropdown").performClick()
+        composeRule.onNodeWithText("Lainnya").performClick()
+        composeRule.onNodeWithText("Lainnya").assertIsDisplayed()
+        composeRule.onNodeWithTag("wfaOtherReason").assertIsDisplayed()
+        composeRule.onNodeWithText("18/250").assertIsDisplayed()
     }
 
     @Test
