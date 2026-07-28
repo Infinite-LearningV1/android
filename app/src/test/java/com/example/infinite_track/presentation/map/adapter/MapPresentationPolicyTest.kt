@@ -28,5 +28,13 @@ class MapPresentationPolicyTest {
         assertFalse(settings.rotationGesturesEnabled)
         assertFalse(settings.tiltGesturesEnabled)
         assertFalse(settings.mapToolbarEnabled)
+        assertFalse(settings.myLocationButtonEnabled)
+        assertFalse(settings.zoomControlsEnabled)
+    }
+
+    @Test
+    fun `read only mode suppresses marker click dispatch`() {
+        assertFalse(MapInteractionMode.ReadOnly.shouldDispatchMarkerClick())
+        assertTrue(MapInteractionMode.Interactive.shouldDispatchMarkerClick())
     }
 }
