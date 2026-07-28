@@ -19,6 +19,9 @@ import com.example.infinite_track.data.soucre.network.request.LocationEventReque
 import com.example.infinite_track.domain.model.auth.LoginCredentials
 import com.example.infinite_track.domain.model.attendance.ActiveAttendanceSession
 import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
+import com.example.infinite_track.domain.model.attendance.AttendanceActionIntent
+import com.example.infinite_track.domain.model.attendance.AttendanceSubmitFailure
+import com.example.infinite_track.domain.model.attendance.AttendanceSubmitResult
 import com.example.infinite_track.domain.model.attendance.CheckinWindow
 import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.attendance.TargetLocationResolution
@@ -48,8 +51,7 @@ import com.example.infinite_track.domain.repository.location.AddressResolver
 import com.example.infinite_track.domain.repository.location.CurrentLocationRepository
 import com.example.infinite_track.domain.repository.ProfileSyncResult
 import com.example.infinite_track.domain.repository.WfaRepository
-import com.example.infinite_track.domain.use_case.attendance.CheckInUseCase
-import com.example.infinite_track.domain.use_case.attendance.CheckOutUseCase
+import com.example.infinite_track.domain.use_case.attendance.SubmitAttendanceUseCase
 import com.example.infinite_track.domain.use_case.attendance.EvaluateAttendancePreparationUseCase
 import com.example.infinite_track.domain.use_case.attendance.EvaluateTargetRangeUseCase
 import com.example.infinite_track.domain.use_case.attendance.ResolveAuthoritativeTargetLocationUseCase
@@ -410,13 +412,10 @@ class AttendanceScreenFaceResultRescueTest {
                 runtimeRepository = geofenceRuntimeRepository
             ),
             geofenceRuntimeUiMapper = GeofenceRuntimeUiMapper(),
-            checkInUseCase = CheckInUseCase(
+            submitAttendanceUseCase = SubmitAttendanceUseCase(
                 attendanceRepository = attendanceRepository,
-                getCurrentLocationUseCase = getCurrentLocationUseCase
-            ),
-            checkOutUseCase = CheckOutUseCase(
-                attendanceRepository = attendanceRepository,
-                getCurrentLocationUseCase = getCurrentLocationUseCase
+                getCurrentLocationUseCase = getCurrentLocationUseCase,
+                getLoggedInUserUseCase = GetLoggedInUserUseCase(authRepository)
             )
         )
     }
@@ -466,11 +465,17 @@ class AttendanceScreenFaceResultRescueTest {
 
         override suspend fun checkIn(
             request: AttendanceRequestModel
-        ): Result<ActiveAttendanceSession> {
-            checkInFailure?.let { return Result.failure(it) }
+        ): AttendanceSubmitResult {
+            checkInFailure?.let {
+                return AttendanceSubmitResult.Failure(
+                    AttendanceActionIntent.CHECK_IN,
+                    AttendanceSubmitFailure.Unknown
+                )
+            }
             checkedIn = true
 
-            return Result.success(
+            return AttendanceSubmitResult.Success(
+                AttendanceActionIntent.CHECK_IN,
                 ActiveAttendanceSession(
                     idAttendance = 101,
                     userId = 1,
@@ -489,7 +494,7 @@ class AttendanceScreenFaceResultRescueTest {
             attendanceId: Int,
             latitude: Double,
             longitude: Double
-        ): Result<ActiveAttendanceSession> {
+        ): AttendanceSubmitResult {
             throw UnsupportedOperationException("False face verification must not check out")
         }
 
@@ -503,6 +508,17 @@ class AttendanceScreenFaceResultRescueTest {
     }
 
     private class FakeBookingRepository : BookingRepository {
+        override suspend fun getWfaRequestConfig() =
+            com.example.infinite_track.domain.model.booking.WfaRequestConfigResult.Failure(
+                com.example.infinite_track.domain.model.booking.WfaRequestFailure.ConfigUnavailable
+            )
+
+        override suspend fun submitWfaRequest(
+            command: com.example.infinite_track.domain.model.booking.SubmitWfaRequestCommand
+        ) = com.example.infinite_track.domain.model.booking.WfaRequestResult.Failure(
+            com.example.infinite_track.domain.model.booking.WfaRequestFailure.Unknown
+        )
+
         override suspend fun getBookingHistory(
             status: String?,
             page: Int,
@@ -522,6 +538,17 @@ class AttendanceScreenFaceResultRescueTest {
     }
 
     internal class ControllableFakeWfaBookingResolver : BookingRepository {
+        override suspend fun getWfaRequestConfig() =
+            com.example.infinite_track.domain.model.booking.WfaRequestConfigResult.Failure(
+                com.example.infinite_track.domain.model.booking.WfaRequestFailure.ConfigUnavailable
+            )
+
+        override suspend fun submitWfaRequest(
+            command: com.example.infinite_track.domain.model.booking.SubmitWfaRequestCommand
+        ) = com.example.infinite_track.domain.model.booking.WfaRequestResult.Failure(
+            com.example.infinite_track.domain.model.booking.WfaRequestFailure.Unknown
+        )
+
         private val requestStarted = CompletableDeferred<Unit>()
         private val response = CompletableDeferred<Result<BookingHistoryPage>>()
         private val requestCompleted = CompletableDeferred<Unit>()
