@@ -218,6 +218,13 @@ class GeofenceReconciliationWorkerTest {
             sortOrder: String
         ): Result<BookingHistoryPage> = Result.success(BookingHistoryPage(emptyList()))
 
+        override suspend fun getWfaRequestConfig():
+            com.example.infinite_track.domain.model.booking.WfaRequestConfigResult = error("Not used")
+
+        override suspend fun submitWfaRequest(
+            command: com.example.infinite_track.domain.model.booking.SubmitWfaRequestCommand
+        ): com.example.infinite_track.domain.model.booking.WfaRequestResult = error("Not used")
+
         override suspend fun submitBooking(
             scheduleDate: String,
             latitude: Double,
