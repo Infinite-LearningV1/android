@@ -16,13 +16,19 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestEffect
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestFormScreen
+import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestFlowController
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestResultScreen
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestReviewScreen
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestUiState
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestViewModel
 import kotlinx.coroutines.flow.collect
 
-fun NavGraphBuilder.wfaRequestNavGraph(navController: NavHostController) {
+fun NavGraphBuilder.wfaRequestNavGraph(
+    navController: NavHostController,
+    controllerFactory: @Composable (NavBackStackEntry) -> WfaRequestFlowController = { parentEntry ->
+        hiltViewModel<WfaRequestViewModel>(parentEntry)
+    }
+) {
     navigation(
         startDestination = Screen.WfaRequestForm.route,
         route = Screen.WfaRequestFlow.route,
@@ -32,7 +38,7 @@ fun NavGraphBuilder.wfaRequestNavGraph(navController: NavHostController) {
         )
     ) {
         composable(Screen.WfaRequestForm.route) { entry ->
-            WfaRequestRoute(entry, navController) { state, viewModel ->
+            WfaRequestRoute(entry, navController, controllerFactory) { state, viewModel ->
                 WfaRequestFormScreen(
                     uiState = state,
                     onEvent = viewModel::onEvent,
@@ -41,7 +47,7 @@ fun NavGraphBuilder.wfaRequestNavGraph(navController: NavHostController) {
             }
         }
         composable(Screen.WfaRequestReview.route) { entry ->
-            WfaRequestRoute(entry, navController) { state, viewModel ->
+            WfaRequestRoute(entry, navController, controllerFactory) { state, viewModel ->
                 BackHandler {
                     if (state.phase != com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestPhase.Submitting) {
                         viewModel.onEvent(com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestEvent.EditClicked)
@@ -55,7 +61,7 @@ fun NavGraphBuilder.wfaRequestNavGraph(navController: NavHostController) {
             }
         }
         composable(Screen.WfaRequestResult.route) { entry ->
-            WfaRequestRoute(entry, navController) { state, viewModel ->
+            WfaRequestRoute(entry, navController, controllerFactory) { state, viewModel ->
                 BackHandler {
                     if (state.phase != com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestPhase.Submitting) {
                         navController.returnToAttendance()
@@ -77,12 +83,13 @@ fun NavGraphBuilder.wfaRequestNavGraph(navController: NavHostController) {
 private fun WfaRequestRoute(
     entry: NavBackStackEntry,
     navController: NavHostController,
-    content: @Composable (WfaRequestUiState, WfaRequestViewModel) -> Unit
+    controllerFactory: @Composable (NavBackStackEntry) -> WfaRequestFlowController,
+    content: @Composable (WfaRequestUiState, WfaRequestFlowController) -> Unit
 ) {
     val parentEntry = remember(entry) {
         navController.getBackStackEntry(Screen.WfaRequestFlow.route)
     }
-    val viewModel: WfaRequestViewModel = hiltViewModel(parentEntry)
+    val viewModel = controllerFactory(parentEntry)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(viewModel, entry) {

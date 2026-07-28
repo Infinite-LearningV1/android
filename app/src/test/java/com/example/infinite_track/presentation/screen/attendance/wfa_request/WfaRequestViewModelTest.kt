@@ -92,6 +92,19 @@ class WfaRequestViewModelTest {
     }
 
     @Test
+    fun `review snapshot matches normalized submit command`() = runTest {
+        val viewModel = createViewModel(WfaRequestViewModelRepositoryFake())
+        advanceUntilIdle()
+        viewModel.onEvent(WfaRequestEvent.ScheduleDateChanged(LocalDate.of(2026, 8, 10)))
+        viewModel.onEvent(WfaRequestEvent.ReasonSelected(1L))
+        viewModel.onEvent(WfaRequestEvent.NotesChanged("  Pertemuan project  "))
+
+        viewModel.onEvent(WfaRequestEvent.ReviewClicked)
+
+        assertEquals("Pertemuan project", viewModel.uiState.value.draft.notes)
+    }
+
+    @Test
     fun `repeated confirm while in flight submits once and failure preserves draft`() = runTest {
         val gate = CompletableDeferred<WfaRequestResult>()
         val repository = WfaRequestViewModelRepositoryFake(submitGate = gate)
@@ -135,18 +148,35 @@ class WfaRequestViewModelTest {
         assertEquals(2, repository.configCalls)
     }
 
+    @Test
+    fun `invalid route coordinates are bootstrap failure and cannot retry config`() = runTest {
+        val repository = WfaRequestViewModelRepositoryFake()
+        val viewModel = createViewModel(
+            repository,
+            savedStateHandle = SavedStateHandle(mapOf("latitude" to "invalid", "longitude" to "119.877"))
+        )
+        advanceUntilIdle()
+
+        assertEquals(WfaRequestFailure.BootstrapUnavailable, viewModel.uiState.value.failure)
+        viewModel.onEvent(WfaRequestEvent.RetryConfigClicked)
+        advanceUntilIdle()
+        assertEquals(0, repository.configCalls)
+        assertEquals(WfaRequestPhase.Failure, viewModel.uiState.value.phase)
+    }
+
     private fun createViewModel(
         repository: WfaRequestViewModelRepositoryFake,
-        authRepository: WfaRequestAuthRepositoryFake = WfaRequestAuthRepositoryFake()
+        authRepository: WfaRequestAuthRepositoryFake = WfaRequestAuthRepositoryFake(),
+        savedStateHandle: SavedStateHandle = SavedStateHandle(
+            mapOf("latitude" to "-0.9001", "longitude" to "119.877")
+        )
     ): WfaRequestViewModel = WfaRequestViewModel(
         loadConfig = LoadWfaRequestConfigUseCase(repository),
         validateDraft = ValidateWfaRequestDraftUseCase(),
         submitRequest = SubmitWfaRequestUseCase(repository),
         getLoggedInUser = GetLoggedInUserUseCase(authRepository),
         reverseGeocode = ReverseGeocodeUseCase(WfaRequestAddressResolverFake()),
-        savedStateHandle = SavedStateHandle(
-            mapOf("latitude" to "-0.9001", "longitude" to "119.877")
-        )
+        savedStateHandle = savedStateHandle
     )
 }
 

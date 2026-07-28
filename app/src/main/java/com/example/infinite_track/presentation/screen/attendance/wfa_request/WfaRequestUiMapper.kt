@@ -16,6 +16,11 @@ data class WfaRequestUiFailure(
 
 object WfaRequestUiMapper {
     fun map(failure: WfaRequestFailure): WfaRequestUiFailure = when (failure) {
+        WfaRequestFailure.BootstrapUnavailable -> WfaRequestUiFailure(
+            title = "Form tidak dapat dibuka",
+            message = "Lokasi atau data pengguna tidak tersedia. Kembali ke Kehadiran lalu pilih lokasi lagi.",
+            primaryAction = WfaRequestFailureAction.BACK
+        )
         WfaRequestFailure.ConfigUnavailable -> WfaRequestUiFailure(
             title = "Form belum tersedia",
             message = "Konfigurasi WFA belum dapat dimuat. Silakan coba lagi.",

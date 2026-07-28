@@ -43,7 +43,7 @@ fun WfaRequestFormScreen(
             uiState.phase == WfaRequestPhase.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(modifier = Modifier.testTag("wfaFormLoading"))
             }
-            uiState.failure != null && uiState.config == null -> ConfigFailure(uiState.failure, onEvent)
+            uiState.failure != null && uiState.config == null -> ConfigFailure(uiState.failure, onEvent, onBack)
             else -> FormContent(uiState, onEvent)
         }
     }
@@ -108,7 +108,11 @@ private fun FormContent(uiState: WfaRequestUiState, onEvent: (WfaRequestEvent) -
 }
 
 @Composable
-private fun ConfigFailure(failure: com.example.infinite_track.domain.model.booking.WfaRequestFailure, onEvent: (WfaRequestEvent) -> Unit) {
+private fun ConfigFailure(
+    failure: com.example.infinite_track.domain.model.booking.WfaRequestFailure,
+    onEvent: (WfaRequestEvent) -> Unit,
+    onBack: () -> Unit
+) {
     val copy = WfaRequestUiMapper.map(failure)
     Column(
         modifier = Modifier.fillMaxSize().padding(InfiniteSpacing.Default.xl),
@@ -120,8 +124,15 @@ private fun ConfigFailure(failure: com.example.infinite_track.domain.model.booki
         Text(copy.message)
         Spacer(Modifier.height(16.dp))
         InfiniteButton(
-            text = stringResource(R.string.wfa_request_retry),
-            onClick = { onEvent(WfaRequestEvent.RetryConfigClicked) },
+            text = if (copy.primaryAction == WfaRequestFailureAction.BACK) {
+                stringResource(R.string.wfa_request_back)
+            } else {
+                stringResource(R.string.wfa_request_retry)
+            },
+            onClick = {
+                if (copy.primaryAction == WfaRequestFailureAction.BACK) onBack()
+                else onEvent(WfaRequestEvent.RetryConfigClicked)
+            },
             modifier = Modifier.fillMaxWidth(),
             fullWidth = true
         )

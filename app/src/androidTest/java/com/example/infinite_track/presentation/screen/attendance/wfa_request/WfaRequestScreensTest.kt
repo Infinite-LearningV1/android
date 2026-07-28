@@ -1,11 +1,20 @@
 package com.example.infinite_track.presentation.screen.attendance.wfa_request
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.infinite_track.domain.model.booking.SubmittedWfaRequest
 import com.example.infinite_track.domain.model.booking.WfaCandidateLocation
@@ -140,6 +149,29 @@ class WfaRequestScreensTest {
         composeRule.onNodeWithTag("wfaResultSubmitting").assertIsDisplayed()
         composeRule.onNodeWithTag("wfaFailurePrimaryAction").assertDoesNotExist()
         composeRule.onNodeWithTag("wfaDoneAction").assertDoesNotExist()
+    }
+
+    @Test
+    fun narrowLargeFontResultKeepsBothExitActionsReachable() {
+        val state = editingState().copy(
+            phase = WfaRequestPhase.Success,
+            submitResult = SubmittedWfaRequest(
+                9123, LocalDate.of(2026, 8, 4), WfaRequestStatus.PENDING,
+                location, "Keperluan keluarga", 100, null
+            )
+        )
+        composeRule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
+                Infinite_TrackTheme {
+                    Box(Modifier.width(320.dp).fillMaxSize()) {
+                        WfaRequestResultScreen(state, {}, {}, {}, {})
+                    }
+                }
+            }
+        }
+
+        composeRule.onNodeWithTag("wfaDoneAction").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("wfaHomeAction").performScrollTo().assertIsDisplayed()
     }
 
     private fun renderForm(state: WfaRequestUiState) {

@@ -22,6 +22,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -39,24 +40,25 @@ class WfaRequestViewModel @Inject constructor(
     private val getLoggedInUser: GetLoggedInUserUseCase,
     private val reverseGeocode: ReverseGeocodeUseCase,
     savedStateHandle: SavedStateHandle
-) : ViewModel() {
+) : ViewModel(), WfaRequestFlowController {
 
     private val latitude = savedStateHandle.get<String>("latitude")?.toDoubleOrNull()
     private val longitude = savedStateHandle.get<String>("longitude")?.toDoubleOrNull()
 
     private val _uiState = MutableStateFlow(WfaRequestUiState())
-    val uiState: StateFlow<WfaRequestUiState> = _uiState.asStateFlow()
+    override val uiState: StateFlow<WfaRequestUiState> = _uiState.asStateFlow()
 
     private val effectChannel = Channel<WfaRequestEffect>(Channel.BUFFERED)
-    val effects = effectChannel.receiveAsFlow()
+    override val effects: Flow<WfaRequestEffect> = effectChannel.receiveAsFlow()
 
     private var lastValidatedCommand: SubmitWfaRequestCommand? = null
+    private var configLoadFailed = false
 
     init {
         loadInitialData()
     }
 
-    fun onEvent(event: WfaRequestEvent) {
+    override fun onEvent(event: WfaRequestEvent) {
         when (event) {
             is WfaRequestEvent.ScheduleDateChanged -> mutateDraft {
                 copy(scheduleDate = event.date)
@@ -89,7 +91,7 @@ class WfaRequestViewModel @Inject constructor(
             val coordinate = createCoordinateOrNull()
             if (coordinate == null) {
                 _uiState.update {
-                    it.copy(phase = WfaRequestPhase.Failure, failure = WfaRequestFailure.Unknown)
+                    it.copy(phase = WfaRequestPhase.Failure, failure = WfaRequestFailure.BootstrapUnavailable)
                 }
                 return@launch
             }
@@ -97,6 +99,12 @@ class WfaRequestViewModel @Inject constructor(
             val user = runCatching { getLoggedInUser().filterNotNull().first() }.getOrNull()
             val employee = user?.let {
                 WfaEmployeeSummary(fullName = it.fullName, division = it.divisionName.orEmpty())
+            }
+            if (employee == null) {
+                _uiState.update {
+                    it.copy(phase = WfaRequestPhase.Failure, failure = WfaRequestFailure.BootstrapUnavailable)
+                }
+                return@launch
             }
             val location = resolveCandidate(coordinate)
             _uiState.update {
@@ -112,25 +120,31 @@ class WfaRequestViewModel @Inject constructor(
 
     private suspend fun loadConfigIntoState() {
         when (val result = loadConfig()) {
-            is WfaRequestConfigResult.Success -> _uiState.update {
-                it.copy(
-                    phase = WfaRequestPhase.Editing,
-                    config = result.config,
-                    failure = null
-                )
+            is WfaRequestConfigResult.Success -> {
+                configLoadFailed = false
+                _uiState.update {
+                    it.copy(
+                        phase = WfaRequestPhase.Editing,
+                        config = result.config,
+                        failure = null
+                    )
+                }
             }
-            is WfaRequestConfigResult.Failure -> _uiState.update {
-                it.copy(
-                    phase = WfaRequestPhase.Failure,
-                    config = null,
-                    failure = result.failure
-                )
+            is WfaRequestConfigResult.Failure -> {
+                configLoadFailed = true
+                _uiState.update {
+                    it.copy(
+                        phase = WfaRequestPhase.Failure,
+                        config = null,
+                        failure = result.failure
+                    )
+                }
             }
         }
     }
 
     private fun retryConfig() {
-        if (_uiState.value.config != null || _uiState.value.failure == null) return
+        if (!configLoadFailed || _uiState.value.config != null) return
         _uiState.update { it.copy(phase = WfaRequestPhase.Loading, failure = null) }
         viewModelScope.launch { loadConfigIntoState() }
     }
@@ -159,6 +173,13 @@ class WfaRequestViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         phase = WfaRequestPhase.ReadyForReview,
+                        draft = it.draft.copy(
+                            scheduleDate = result.command.scheduleDate,
+                            reasonId = result.command.reasonId,
+                            otherReasonText = result.command.otherReasonText.orEmpty(),
+                            notes = result.command.notes.orEmpty(),
+                            location = result.command.location
+                        ),
                         fieldErrors = WfaRequestFieldErrors(),
                         failure = null
                     )
@@ -242,4 +263,10 @@ class WfaRequestViewModel @Inject constructor(
         displayName = "Lokasi WFA",
         formattedAddress = "Lat: %.6f, Lng: %.6f".format(Locale.US, latitude, longitude)
     )
+}
+
+interface WfaRequestFlowController {
+    val uiState: StateFlow<WfaRequestUiState>
+    val effects: Flow<WfaRequestEffect>
+    fun onEvent(event: WfaRequestEvent)
 }

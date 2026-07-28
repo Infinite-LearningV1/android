@@ -29,6 +29,7 @@ data class SubmittedWfaRequest(
 )
 
 sealed interface WfaRequestFailure {
+    data object BootstrapUnavailable : WfaRequestFailure
     data object ConfigUnavailable : WfaRequestFailure
     data object InvalidDate : WfaRequestFailure
     data object ReasonUnavailable : WfaRequestFailure
