@@ -138,6 +138,7 @@
     <string name="wfa_request_location_map_content_description">Pratinjau peta hanya baca untuk %1$s dengan radius server %2$d meter.</string>
     <string name="wfa_request_location_status">Status lokasi</string>
     <string name="wfa_request_location_valid">Lokasi valid</string>
+    <string name="wfa_request_radius_policy_label">Radius kebijakan</string>
     <string name="wfa_request_radius_policy">Radius kebijakan: %1$d m</string>
     <string name="wfa_request_policy_title">Kebijakan lokasi</string>
     <string name="wfa_request_policy_body">Permintaan ini menggunakan koordinat lokasi terpilih dan radius %1$d m dari server. Radius tidak dapat diubah.</string>
@@ -163,11 +164,14 @@
     <string name="wfa_request_edit">Ubah data</string>
     <string name="wfa_request_success">Permintaan berhasil dikirim</string>
     <string name="wfa_request_success_message">Permintaan WFA Anda telah dikirim dan menunggu peninjauan.</string>
+    <string name="wfa_request_result_title">Hasil Permintaan</string>
+    <string name="wfa_request_result_details_title">Detail permintaan terkonfirmasi</string>
     <string name="wfa_request_booking_id">ID booking: %1$d</string>
     <string name="wfa_request_status">Status: %1$s</string>
     <string name="wfa_request_status_label">Status</string>
     <string name="wfa_request_result_date">Tanggal WFA: %1$s</string>
     <string name="wfa_request_done">Kembali ke Kehadiran</string>
+    <string name="wfa_request_view_status">Lihat status permintaan</string>
     <string name="wfa_request_home">Kembali ke Beranda</string>
     <string name="wfa_request_result_location">Lokasi: %1$s</string>
     <string name="wfa_request_result_reason">Alasan: %1$s</string>

@@ -57,7 +57,8 @@ fun NavGraphBuilder.wfaRequestNavGraph(
                 WfaRequestReviewScreen(
                     uiState = state,
                     onEvent = viewModel::onEvent,
-                    onBack = { viewModel.onEvent(com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestEvent.EditClicked) }
+                    onBack = { viewModel.onEvent(com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestEvent.EditClicked) },
+                    onClose = { navController.returnToAttendance() }
                 )
             }
         }
@@ -73,7 +74,8 @@ fun NavGraphBuilder.wfaRequestNavGraph(
                     onEvent = viewModel::onEvent,
                     onDone = { navController.returnToAttendance() },
                     onHome = { navController.returnToHome() },
-                    onBack = { navController.returnToAttendance() }
+                    onBack = { navController.returnToAttendance() },
+                    onClose = { navController.returnToAttendance() }
                 )
             }
         }

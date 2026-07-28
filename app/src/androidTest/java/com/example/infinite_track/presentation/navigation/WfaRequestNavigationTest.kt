@@ -4,6 +4,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -83,6 +84,65 @@ class WfaRequestNavigationTest {
         assertEquals(1, parentEntryIds.distinct().size)
 
         composeRule.onNodeWithTag("wfaDoneAction").performScrollTo().performClick()
+        composeRule.waitForIdle()
+        assertEquals(Screen.Attendance.route, navController.currentDestination?.route)
+        composeRule.onNodeWithText("Attendance host").assertIsDisplayed()
+    }
+
+    @Test
+    fun reviewCloseExitsToAttendanceWhenNotSubmitting() {
+        val controller = FakeWfaRequestFlowController()
+        lateinit var navController: TestNavHostController
+        composeRule.setContent {
+            navController = TestNavHostController(ApplicationProvider.getApplicationContext()).apply {
+                navigatorProvider.addNavigator(ComposeNavigator())
+            }
+            Infinite_TrackTheme {
+                NavHost(navController, startDestination = Screen.Attendance.route) {
+                    composable(Screen.Attendance.route) { Text("Attendance host") }
+                    wfaRequestNavGraph(navController) { controller }
+                }
+                LaunchedEffect(Unit) {
+                    navController.navigate(Screen.WfaRequestFlow.createRoute(-0.9, 119.8))
+                }
+            }
+        }
+
+        composeRule.onNodeWithTag("wfaReviewAction").performScrollTo().performClick()
+        composeRule.waitForIdle()
+        assertEquals(Screen.WfaRequestReview.route, navController.currentDestination?.route)
+
+        composeRule.onNodeWithContentDescription("Tutup").performClick()
+        composeRule.waitForIdle()
+        assertEquals(Screen.Attendance.route, navController.currentDestination?.route)
+        composeRule.onNodeWithText("Attendance host").assertIsDisplayed()
+    }
+
+    @Test
+    fun resultCloseExitsToAttendanceWhenNotSubmitting() {
+        val controller = FakeWfaRequestFlowController()
+        lateinit var navController: TestNavHostController
+        composeRule.setContent {
+            navController = TestNavHostController(ApplicationProvider.getApplicationContext()).apply {
+                navigatorProvider.addNavigator(ComposeNavigator())
+            }
+            Infinite_TrackTheme {
+                NavHost(navController, startDestination = Screen.Attendance.route) {
+                    composable(Screen.Attendance.route) { Text("Attendance host") }
+                    wfaRequestNavGraph(navController) { controller }
+                }
+                LaunchedEffect(Unit) {
+                    navController.navigate(Screen.WfaRequestFlow.createRoute(-0.9, 119.8))
+                }
+            }
+        }
+
+        composeRule.onNodeWithTag("wfaReviewAction").performScrollTo().performClick()
+        composeRule.onNodeWithTag("wfaConfirmAction").performScrollTo().performClick()
+        composeRule.waitForIdle()
+        assertEquals(Screen.WfaRequestResult.route, navController.currentDestination?.route)
+
+        composeRule.onNodeWithContentDescription("Tutup").performClick()
         composeRule.waitForIdle()
         assertEquals(Screen.Attendance.route, navController.currentDestination?.route)
         composeRule.onNodeWithText("Attendance host").assertIsDisplayed()

@@ -285,20 +285,36 @@ class WfaRequestScreensTest {
     }
 
     @Test
-    fun reviewShowsExactDraftAndConfirmEmitsOnlyOneEvent() {
+    fun reviewShowsReferenceSectionsOnTransparentPageAndExposesClose() {
         val events = mutableListOf<WfaRequestEvent>()
+        var closeCount = 0
         val state = editingState().copy(phase = WfaRequestPhase.Reviewing)
         composeRule.setContent {
             Infinite_TrackTheme {
-                WfaRequestReviewScreen(state, events::add, onBack = {})
+                WfaRequestReviewScreen(
+                    uiState = state,
+                    onEvent = events::add,
+                    onBack = {},
+                    onClose = { closeCount += 1 }
+                )
             }
         }
 
+        composeRule.onNodeWithTag("wfaReviewLocationMap").assertExists()
+        composeRule.onNodeWithTag("wfaReviewDetailsCard").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("wfaReviewEmployeeCard").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("2026-08-04").assertIsDisplayed()
         composeRule.onNodeWithText("Keperluan keluarga").assertIsDisplayed()
         composeRule.onNodeWithText("Kafe Taman").assertIsDisplayed()
         composeRule.onNodeWithText("Butuh ruang tenang").assertIsDisplayed()
-        composeRule.onNodeWithTag("wfaConfirmAction").performClick()
+        composeRule.onNodeWithTag("wfaConfirmAction").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("wfaEditAction").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("wfaScreenOwnedOpaqueBackground").assertDoesNotExist()
+
+        composeRule.onNodeWithContentDescription("Tutup").performClick()
+        composeRule.runOnIdle { assertEquals(1, closeCount) }
+
+        composeRule.onNodeWithTag("wfaConfirmAction").performScrollTo().performClick()
         assertEquals(listOf(WfaRequestEvent.SubmitConfirmed), events)
     }
 
@@ -316,27 +332,47 @@ class WfaRequestScreensTest {
     @Test
     fun successResultShowsBackendConfirmedFieldsAndDestinations() {
         val base = editingState()
+        val confirmedLocation = WfaCandidateLocation(
+            -0.91,
+            119.86,
+            "Hub Backend",
+            "Jl. Server 5, Palu"
+        )
         val success = base.copy(
             phase = WfaRequestPhase.Success,
             submitResult = SubmittedWfaRequest(
                 bookingId = 9123,
-                scheduleDate = LocalDate.of(2026, 8, 4),
-                status = WfaRequestStatus.PENDING,
-                location = location,
-                reasonLabel = "Keperluan keluarga",
-                radiusMeters = 100,
+                scheduleDate = LocalDate.of(2026, 8, 5),
+                status = WfaRequestStatus.APPROVED,
+                location = confirmedLocation,
+                reasonLabel = "Kunjungan klien",
+                radiusMeters = 175,
                 submittedAt = null
             )
         )
         composeRule.setContent {
-            Infinite_TrackTheme { WfaRequestResultScreen(success, {}, {}, {}, {}) }
+            Infinite_TrackTheme {
+                WfaRequestResultScreen(
+                    uiState = success,
+                    onEvent = {},
+                    onDone = {},
+                    onHome = {},
+                    onBack = {},
+                    onClose = {}
+                )
+            }
         }
+        composeRule.onNodeWithTag("wfaSuccessHero").assertIsDisplayed()
+        composeRule.onNodeWithTag("wfaResultDetailsCard").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("ID booking: 9123").assertIsDisplayed()
-        composeRule.onNodeWithText("Lokasi: Kafe Taman").assertIsDisplayed()
-        composeRule.onNodeWithText("Alasan: Keperluan keluarga").assertIsDisplayed()
-        composeRule.onNodeWithText("Radius diterapkan: 100 m").assertIsDisplayed()
-        composeRule.onNodeWithTag("wfaDoneAction").assertIsDisplayed()
-        composeRule.onNodeWithTag("wfaHomeAction").assertIsDisplayed()
+        composeRule.onNodeWithText("Tanggal WFA: 2026-08-05").assertIsDisplayed()
+        composeRule.onNodeWithText("Lokasi: Hub Backend").assertIsDisplayed()
+        composeRule.onNodeWithText("Alasan: Kunjungan klien").assertIsDisplayed()
+        composeRule.onNodeWithText("Radius diterapkan: 175 m").assertIsDisplayed()
+        composeRule.onNodeWithText("Lokasi: Kafe Taman").assertDoesNotExist()
+        composeRule.onNodeWithTag("wfaDoneAction").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("wfaHomeAction").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("wfaScreenOwnedOpaqueBackground").assertDoesNotExist()
     }
 
     @Test
