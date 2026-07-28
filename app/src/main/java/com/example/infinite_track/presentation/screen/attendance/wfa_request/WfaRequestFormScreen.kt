@@ -26,6 +26,7 @@ import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.presentation.components.button.DatePickerButton
 import com.example.infinite_track.presentation.components.map.ReadOnlyLocationMap
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackDropDown
+import com.example.infinite_track.presentation.components.textfield.InfiniteTrackDropDownOption
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackTextArea
 import com.example.infinite_track.presentation.design.components.button.InfiniteButton
 import com.example.infinite_track.presentation.design.components.data.InfiniteChecklistCard
@@ -176,19 +177,19 @@ private fun FormContent(uiState: WfaRequestUiState, onEvent: (WfaRequestEvent) -
                         )
                         FieldErrorText(uiState.fieldErrors.scheduleDate)
                     }
-                    Column(
-                        modifier = selectedReason?.let {
-                            Modifier.testTag("wfaReason-${it.id}")
-                        } ?: Modifier
-                    ) {
+                    Column {
                         InfiniteTrackDropDown(
-                            selectedValue = selectedReason?.label,
-                            onSelected = { selectedLabel ->
-                                config.reasons.firstOrNull { it.label == selectedLabel }?.let { reason ->
-                                    onEvent(WfaRequestEvent.ReasonSelected(reason.id))
-                                }
+                            selectedKey = uiState.draft.reasonId,
+                            onSelected = { reasonId ->
+                                onEvent(WfaRequestEvent.ReasonSelected(reasonId))
                             },
-                            items = config.reasons.map { it.label },
+                            options = config.reasons.map { reason ->
+                                InfiniteTrackDropDownOption(
+                                    key = reason.id,
+                                    label = reason.label,
+                                    testTag = "wfaReason-${reason.id}"
+                                )
+                            },
                             label = stringResource(R.string.wfa_request_reason),
                             placeholder = stringResource(R.string.wfa_request_reason_placeholder),
                             modifier = Modifier.testTag("wfaReasonDropdown")

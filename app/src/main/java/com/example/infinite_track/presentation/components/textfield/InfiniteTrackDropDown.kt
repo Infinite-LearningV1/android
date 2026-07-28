@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
@@ -35,6 +37,13 @@ import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
 import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 
+@Immutable
+data class InfiniteTrackDropDownOption<Key : Any>(
+    val key: Key,
+    val label: String,
+    val testTag: String? = null
+)
+
 @Composable
 fun InfiniteTrackDropDown(
     selectedValue: String?,
@@ -44,6 +53,50 @@ fun InfiniteTrackDropDown(
     label: String? = null,
     placeholder: String = "",
     enabled: Boolean = true
+) {
+    InfiniteTrackDropDownContent(
+        displayedValue = selectedValue,
+        onSelected = onSelected,
+        options = items.map { item ->
+            InfiniteTrackDropDownOption(key = item, label = item)
+        },
+        modifier = modifier,
+        label = label,
+        placeholder = placeholder,
+        enabled = enabled
+    )
+}
+
+@Composable
+fun <Key : Any> InfiniteTrackDropDown(
+    selectedKey: Key?,
+    onSelected: (Key) -> Unit,
+    options: List<InfiniteTrackDropDownOption<Key>>,
+    modifier: Modifier = Modifier,
+    label: String? = null,
+    placeholder: String = "",
+    enabled: Boolean = true
+) {
+    InfiniteTrackDropDownContent(
+        displayedValue = options.firstOrNull { it.key == selectedKey }?.label,
+        onSelected = onSelected,
+        options = options,
+        modifier = modifier,
+        label = label,
+        placeholder = placeholder,
+        enabled = enabled
+    )
+}
+
+@Composable
+private fun <Key : Any> InfiniteTrackDropDownContent(
+    displayedValue: String?,
+    onSelected: (Key) -> Unit,
+    options: List<InfiniteTrackDropDownOption<Key>>,
+    modifier: Modifier,
+    label: String?,
+    placeholder: String,
+    enabled: Boolean
 ) {
     var isExpanded by remember { mutableStateOf(false) }
     LaunchedEffect(enabled) {
@@ -79,7 +132,7 @@ fun InfiniteTrackDropDown(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = selectedValue ?: placeholder,
+                    text = displayedValue ?: placeholder,
                     style = body1,
                     color = if (enabled) colors.content else colors.content.copy(alpha = 0.56f)
                 )
@@ -93,13 +146,14 @@ fun InfiniteTrackDropDown(
                 expanded = isExpanded && enabled,
                 onDismissRequest = { isExpanded = false }
             ) {
-                items.forEach { item ->
+                options.forEach { option ->
                     DropdownMenuItem(
-                        text = { Text(text = item, style = body1) },
+                        text = { Text(text = option.label, style = body1) },
                         enabled = enabled,
+                        modifier = option.testTag?.let { Modifier.testTag(it) } ?: Modifier,
                         onClick = {
                             isExpanded = false
-                            if (enabled) onSelected(item)
+                            if (enabled) onSelected(option.key)
                         }
                     )
                 }

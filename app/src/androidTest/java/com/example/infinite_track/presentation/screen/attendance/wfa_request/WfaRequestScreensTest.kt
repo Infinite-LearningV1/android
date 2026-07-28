@@ -36,6 +36,7 @@ import com.example.infinite_track.domain.model.booking.WfaRequestFieldErrors
 import com.example.infinite_track.domain.model.booking.WfaRequestReason
 import com.example.infinite_track.domain.model.booking.WfaRequestStatus
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackDropDown
+import com.example.infinite_track.presentation.components.textfield.InfiniteTrackDropDownOption
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackTextArea
 import com.example.infinite_track.presentation.design.components.data.InfiniteChecklistCard
 import com.example.infinite_track.presentation.design.components.data.InfiniteChecklistItem
@@ -202,6 +203,76 @@ class WfaRequestScreensTest {
     }
 
     @Test
+    fun stringDropdownKeepsCallerSelectionWhenItemsRefresh() {
+        composeRule.setContent {
+            Infinite_TrackTheme {
+                InfiniteTrackDropDown(
+                    selectedValue = "Alasan tersimpan",
+                    onSelected = {},
+                    items = listOf("Alasan aktif"),
+                    placeholder = "Pilih alasan"
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Alasan tersimpan").assertIsDisplayed()
+    }
+
+    @Test
+    fun keyedDropdownPreservesIdentityForDuplicateLabels() {
+        val selections = mutableListOf<Long>()
+        composeRule.setContent {
+            Infinite_TrackTheme {
+                InfiniteTrackDropDown(
+                    selectedKey = 1L,
+                    onSelected = { selections += it },
+                    options = listOf(
+                        InfiniteTrackDropDownOption(
+                            key = 1L,
+                            label = "Alasan sama",
+                            testTag = "reason-1"
+                        ),
+                        InfiniteTrackDropDownOption(
+                            key = 2L,
+                            label = "Alasan sama",
+                            testTag = "reason-2"
+                        )
+                    ),
+                    modifier = Modifier.testTag("keyedReasonDropdown")
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("keyedReasonDropdown").performClick()
+        composeRule.onNodeWithTag("reason-2").performClick()
+
+        assertEquals(listOf(2L), selections)
+    }
+
+    @Test
+    fun formPreservesReasonIdentityWhenSelectingTaggedDuplicateLabelOption() {
+        val duplicateLabelState = editingState().let { state ->
+            state.copy(
+                config = WfaRequestConfig(
+                    radiusMeters = 100,
+                    reasons = listOf(
+                        WfaRequestReason(1, "Alasan sama", false),
+                        WfaRequestReason(2, "Alasan sama", true)
+                    )
+                ),
+                draft = state.draft.copy(reasonId = 1)
+            )
+        }
+        val events = mutableListOf<WfaRequestEvent>()
+        renderForm(duplicateLabelState, events::add)
+
+        composeRule.onNodeWithTag("wfaReasonDropdown").performScrollTo().performClick()
+        composeRule.onNodeWithTag("wfaReason-2").assertExists().performClick()
+
+        assertEquals(listOf(WfaRequestEvent.ReasonSelected(2)), events)
+    }
+
+    @Test
     fun fieldErrorIsRenderedNearConditionalOtherControl() {
         val state = editingState().copy(
             draft = editingState().draft.copy(reasonId = 2),
@@ -317,9 +388,12 @@ class WfaRequestScreensTest {
         composeRule.onNodeWithTag("wfaHomeAction").performScrollTo().assertIsDisplayed()
     }
 
-    private fun renderForm(state: WfaRequestUiState) {
+    private fun renderForm(
+        state: WfaRequestUiState,
+        onEvent: (WfaRequestEvent) -> Unit = {}
+    ) {
         composeRule.setContent {
-            Infinite_TrackTheme { WfaRequestFormScreen(state, {}, onBack = {}) }
+            Infinite_TrackTheme { WfaRequestFormScreen(state, onEvent, onBack = {}) }
         }
     }
 
