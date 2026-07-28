@@ -138,12 +138,14 @@
     <string name="wfa_request_location_map_content_description">Pratinjau peta hanya baca untuk %1$s dengan radius server %2$d meter.</string>
     <string name="wfa_request_location_status">Status lokasi</string>
     <string name="wfa_request_location_valid">Lokasi valid</string>
+    <string name="wfa_request_location_invalid">Koordinat tidak valid</string>
     <string name="wfa_request_radius_policy_label">Radius kebijakan</string>
     <string name="wfa_request_radius_policy">Radius kebijakan: %1$d m</string>
     <string name="wfa_request_policy_title">Kebijakan lokasi</string>
     <string name="wfa_request_policy_body">Permintaan ini menggunakan koordinat lokasi terpilih dan radius %1$d m dari server. Radius tidak dapat diubah.</string>
     <string name="wfa_request_eligibility_title">Informasi permintaan</string>
     <string name="wfa_request_eligibility_valid_location">Lokasi yang dipilih memiliki koordinat valid.</string>
+    <string name="wfa_request_eligibility_invalid_location">Koordinat lokasi belum valid. Pilih kembali lokasi untuk melanjutkan.</string>
     <string name="wfa_request_eligibility_server_radius">Radius validasi dimuat dari konfigurasi server.</string>
     <string name="wfa_request_eligibility_review_before_submission">Data wajib dapat ditinjau sebelum dikirim.</string>
     <string name="wfa_request_details">Detail permintaan</string>
@@ -155,7 +157,6 @@
     <string name="wfa_request_other_reason_placeholder">Jelaskan alasan Anda</string>
     <string name="wfa_request_notes">Catatan (opsional)</string>
     <string name="wfa_request_notes_placeholder">Tambahkan catatan untuk reviewer</string>
-    <string name="wfa_request_review_action">Tinjau permintaan</string>
     <string name="wfa_request_continue">Lanjutkan</string>
     <string name="wfa_request_review_guidance">Pastikan data berikut sudah benar sebelum dikirim.</string>
     <string name="wfa_request_submit">Kirim permintaan</string>
@@ -163,7 +164,7 @@
     <string name="wfa_request_loading">Memuat formulir permintaan</string>
     <string name="wfa_request_edit">Ubah data</string>
     <string name="wfa_request_success">Permintaan berhasil dikirim</string>
-    <string name="wfa_request_success_message">Permintaan WFA Anda telah dikirim dan menunggu peninjauan.</string>
+    <string name="wfa_request_success_message">Permintaan WFA Anda berhasil dikirim. Lihat status permintaan untuk pembaruan.</string>
     <string name="wfa_request_result_title">Hasil Permintaan</string>
     <string name="wfa_request_result_details_title">Detail permintaan terkonfirmasi</string>
     <string name="wfa_request_booking_id">ID booking: %1$d</string>

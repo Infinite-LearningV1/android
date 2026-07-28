@@ -89,8 +89,9 @@ The successful Result page contains:
 1. Top bar with Back and Close.
 2. Shared success hero with a large semantic success visual, title, and
    supporting message.
-3. Request detail card containing booking ID, backend status, date, location,
-   reason, and applied radius.
+3. Request detail card containing booking ID, backend status, date, reason, and
+   applied radius. Location is intentionally omitted until the domain can
+   distinguish backend-provided location from the request fallback.
 4. Outlined secondary action to return to Attendance/status.
 5. Primary action to return Home.
 

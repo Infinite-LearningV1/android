@@ -13,10 +13,19 @@ class MapPresentationPolicyTest {
     @Test
     fun `existing map defaults remain permission gated and interactive`() {
         val state = MapUiState()
+        val settings = state.interactionMode.toMapUiSettings()
 
         assertEquals(MapPermissionRequirement.PreciseLocation, state.permissionRequirement)
         assertEquals(MapInteractionMode.Interactive, state.interactionMode)
-        assertTrue(state.interactionMode.toMapUiSettings().scrollGesturesEnabled)
+        assertFalse(settings.compassEnabled)
+        assertFalse(settings.indoorLevelPickerEnabled)
+        assertFalse(settings.mapToolbarEnabled)
+        assertFalse(settings.myLocationButtonEnabled)
+        assertFalse(settings.rotationGesturesEnabled)
+        assertTrue(settings.scrollGesturesEnabled)
+        assertFalse(settings.tiltGesturesEnabled)
+        assertFalse(settings.zoomControlsEnabled)
+        assertTrue(settings.zoomGesturesEnabled)
     }
 
     @Test
@@ -29,6 +38,8 @@ class MapPresentationPolicyTest {
         assertFalse(settings.tiltGesturesEnabled)
         assertFalse(settings.mapToolbarEnabled)
         assertFalse(settings.myLocationButtonEnabled)
+        assertFalse(settings.compassEnabled)
+        assertFalse(settings.indoorLevelPickerEnabled)
         assertFalse(settings.zoomControlsEnabled)
     }
 

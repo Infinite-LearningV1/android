@@ -90,7 +90,7 @@ class WfaRequestNavigationTest {
     }
 
     @Test
-    fun reviewCloseExitsToAttendanceWhenNotSubmitting() {
+    fun reviewCloseReturnsToEditableFormAndPreservesGraphScopedDraft() {
         val controller = FakeWfaRequestFlowController()
         lateinit var navController: TestNavHostController
         composeRule.setContent {
@@ -114,8 +114,10 @@ class WfaRequestNavigationTest {
 
         composeRule.onNodeWithContentDescription("Tutup").performClick()
         composeRule.waitForIdle()
-        assertEquals(Screen.Attendance.route, navController.currentDestination?.route)
-        composeRule.onNodeWithText("Attendance host").assertIsDisplayed()
+        assertEquals(Screen.WfaRequestForm.route, navController.currentDestination?.route)
+        assertEquals(WfaRequestPhase.Editing, controller.uiState.value.phase)
+        assertEquals("Butuh ruang tenang", controller.uiState.value.draft.notes)
+        composeRule.onNodeWithText("Butuh ruang tenang").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -157,7 +159,13 @@ private class FakeWfaRequestFlowController : WfaRequestFlowController {
             employee = WfaEmployeeSummary("Alya", "Product"),
             location = location,
             config = WfaRequestConfig(100, listOf(WfaRequestReason(1, "Client meeting", false))),
-            draft = WfaRequestDraft(LocalDate.of(2026, 8, 4), 1, "", "", location)
+            draft = WfaRequestDraft(
+                LocalDate.of(2026, 8, 4),
+                1,
+                "",
+                "Butuh ruang tenang",
+                location
+            )
         )
     )
     override val uiState: StateFlow<WfaRequestUiState> = mutableState

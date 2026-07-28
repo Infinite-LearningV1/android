@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Person
@@ -81,10 +82,16 @@ private fun FormContent(uiState: WfaRequestUiState, onEvent: (WfaRequestEvent) -
     val employee = uiState.employee ?: return
     val location = uiState.location ?: uiState.draft.location ?: return
     val selectedReason = config.reasons.firstOrNull { it.id == uiState.draft.reasonId }
-    val locationCoordinate = if (location.hasValidCoordinates) {
+    val hasValidCoordinates = location.hasValidCoordinates
+    val locationCoordinate = if (hasValidCoordinates) {
         GeoCoordinate(location.latitude, location.longitude)
     } else {
         null
+    }
+    val locationStatus = if (hasValidCoordinates) {
+        stringResource(R.string.wfa_request_location_valid)
+    } else {
+        stringResource(R.string.wfa_request_location_invalid)
     }
 
     LazyColumn(
@@ -124,14 +131,27 @@ private fun FormContent(uiState: WfaRequestUiState, onEvent: (WfaRequestEvent) -
                     )
                     InfiniteInfoRow(
                         label = stringResource(R.string.wfa_request_location_status),
-                        value = stringResource(R.string.wfa_request_location_valid),
-                        semantic = InfiniteSemantic.Success,
+                        value = locationStatus,
+                        semantic = if (hasValidCoordinates) {
+                            InfiniteSemantic.Success
+                        } else {
+                            InfiniteSemantic.Error
+                        },
+                        modifier = Modifier.testTag("wfaLocationStatus"),
                         statusContent = {
                             InfiniteStatusPill(
-                                label = stringResource(R.string.wfa_request_location_valid),
-                                variant = InfiniteStatusVariant.Active,
+                                label = locationStatus,
+                                variant = if (hasValidCoordinates) {
+                                    InfiniteStatusVariant.Active
+                                } else {
+                                    InfiniteStatusVariant.Rejected
+                                },
                                 size = InfiniteSize.Small,
-                                leadingIcon = Icons.Outlined.CheckCircle
+                                leadingIcon = if (hasValidCoordinates) {
+                                    Icons.Outlined.CheckCircle
+                                } else {
+                                    Icons.Outlined.ErrorOutline
+                                }
                             )
                         }
                     )
@@ -228,7 +248,16 @@ private fun FormContent(uiState: WfaRequestUiState, onEvent: (WfaRequestEvent) -
                 title = stringResource(R.string.wfa_request_eligibility_title),
                 items = listOf(
                     InfiniteChecklistItem(
-                        text = stringResource(R.string.wfa_request_eligibility_valid_location)
+                        text = if (hasValidCoordinates) {
+                            stringResource(R.string.wfa_request_eligibility_valid_location)
+                        } else {
+                            stringResource(R.string.wfa_request_eligibility_invalid_location)
+                        },
+                        semantic = if (hasValidCoordinates) {
+                            InfiniteSemantic.Success
+                        } else {
+                            InfiniteSemantic.Error
+                        }
                     ),
                     InfiniteChecklistItem(
                         text = stringResource(R.string.wfa_request_eligibility_server_radius)

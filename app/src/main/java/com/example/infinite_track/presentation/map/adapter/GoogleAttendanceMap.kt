@@ -230,7 +230,7 @@ internal fun MapInteractionMode.toMapUiSettings() = MapUiSettings(
     indoorLevelPickerEnabled = false,
     mapToolbarEnabled = false,
     myLocationButtonEnabled = false,
-    rotationGesturesEnabled = this == MapInteractionMode.Interactive,
+    rotationGesturesEnabled = false,
     scrollGesturesEnabled = this == MapInteractionMode.Interactive,
     tiltGesturesEnabled = false,
     zoomControlsEnabled = false,

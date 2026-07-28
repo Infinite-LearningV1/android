@@ -58,7 +58,7 @@ fun NavGraphBuilder.wfaRequestNavGraph(
                     uiState = state,
                     onEvent = viewModel::onEvent,
                     onBack = { viewModel.onEvent(com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestEvent.EditClicked) },
-                    onClose = { navController.returnToAttendance() }
+                    onClose = { viewModel.onEvent(com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestEvent.EditClicked) }
                 )
             }
         }

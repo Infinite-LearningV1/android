@@ -15,6 +15,8 @@
 - WFA page roots do not paint a background; the existing root/Home background remains visible.
 - No API, repository, domain request, or backend contract changes.
 - Radius remains server-authoritative and read-only.
+- Result confirmed details explicitly omit location until the domain can
+  distinguish backend-provided location from the request fallback.
 - Do not claim that schedule-conflict validation passed because the current state does not contain that evidence.
 - Screens render visual content through shared components; do not create `wfa_request/components`.
 - Typography, colors, spacing, radius, density, and surface styles come from existing core/design tokens.
@@ -538,7 +540,9 @@ Review order:
 Result order:
 
 1. shared result hero;
-2. backend-confirmed request detail card;
+2. backend-confirmed request detail card with booking ID, backend status, date,
+   reason, and applied radius; omit location until backend provenance is
+   representable;
 3. Attendance/status outlined action;
 4. Home primary action.
 

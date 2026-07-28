@@ -93,7 +93,12 @@ class WfaRequestScreensTest {
         }
 
         composeRule.onNodeWithText("Permintaan berhasil dikirim").assertIsDisplayed()
-        composeRule.onNodeWithText("Permintaan WFA Anda telah dikirim dan menunggu peninjauan.").assertIsDisplayed()
+        composeRule.onNodeWithText(
+            "Permintaan WFA Anda berhasil dikirim. Lihat status permintaan untuk pembaruan."
+        ).assertIsDisplayed()
+        composeRule.onNodeWithText(
+            "Permintaan WFA Anda telah dikirim dan menunggu peninjauan."
+        ).assertDoesNotExist()
     }
 
     @Test
@@ -143,6 +148,28 @@ class WfaRequestScreensTest {
         val state = editingState().let { it.copy(draft = it.draft.copy(reasonId = 2)) }
         renderForm(state)
         composeRule.onNodeWithTag("wfaOtherReason").assertIsDisplayed()
+    }
+
+    @Test
+    fun invalidCoordinateFormShowsTruthfulLocationStatusAndFact() {
+        val invalidLocation = location.copy(latitude = 91.0)
+        val base = editingState()
+        val state = base.copy(
+            location = invalidLocation,
+            draft = base.draft.copy(location = invalidLocation)
+        )
+
+        renderForm(state)
+
+        composeRule.onNodeWithTag("wfaLocationStatus").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Koordinat tidak valid").assertIsDisplayed()
+        composeRule.onNodeWithText(
+            "Koordinat lokasi belum valid. Pilih kembali lokasi untuk melanjutkan."
+        ).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText("Lokasi valid").assertDoesNotExist()
+        composeRule.onNodeWithText(
+            "Lokasi yang dipilih memiliki koordinat valid."
+        ).assertDoesNotExist()
     }
 
     @Test
@@ -375,6 +402,12 @@ class WfaRequestScreensTest {
             }
         }
         composeRule.onNodeWithTag("wfaSuccessHero").assertIsDisplayed()
+        composeRule.onNodeWithText(
+            "Permintaan WFA Anda berhasil dikirim. Lihat status permintaan untuk pembaruan."
+        ).assertIsDisplayed()
+        composeRule.onNodeWithText(
+            "Permintaan WFA Anda telah dikirim dan menunggu peninjauan."
+        ).assertDoesNotExist()
         composeRule.onNodeWithTag("wfaResultDetailsCard").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("ID booking: 9123").assertIsDisplayed()
         composeRule.onNodeWithText("Tanggal WFA: 2026-08-05").assertIsDisplayed()
