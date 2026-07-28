@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.RadioButton
@@ -45,7 +45,7 @@ fun RadioButtonWithText(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(35.dp)
+            .heightIn(min = 48.dp)
             .toggleable(
                 value = selected,
                 onValueChange = { onClick() },

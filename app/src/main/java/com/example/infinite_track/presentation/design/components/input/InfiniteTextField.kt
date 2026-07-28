@@ -23,7 +23,6 @@ fun InfiniteTextField(
     leadingIcon: ImageVector? = null,
     trailingIcon: ImageVector? = null,
     enabled: Boolean = true,
-    readOnly: Boolean = false,
     singleLine: Boolean = true,
     size: InfiniteSize = InfiniteSize.Medium
 ) {
@@ -32,7 +31,6 @@ fun InfiniteTextField(
         onValueChange = onValueChange,
         modifier = modifier,
         enabled = enabled,
-        readOnly = readOnly,
         singleLine = singleLine,
         shape = InfiniteRadius.shape(size),
         label = label?.let { { Text(it) } },

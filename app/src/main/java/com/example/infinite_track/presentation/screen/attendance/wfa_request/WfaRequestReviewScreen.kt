@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -18,11 +20,12 @@ import com.example.infinite_track.presentation.design.components.button.Infinite
 import com.example.infinite_track.presentation.design.components.button.InfiniteButtonState
 import com.example.infinite_track.presentation.design.components.button.InfiniteButtonVariant
 import com.example.infinite_track.presentation.design.components.navigation.InfiniteTopBar
+import com.example.infinite_track.presentation.design.components.data.InfiniteInfoRow
+import com.example.infinite_track.presentation.design.components.data.InfiniteSectionHeader
 import com.example.infinite_track.presentation.design.components.surface.InfiniteCard
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
-import com.example.infinite_track.presentation.screen.attendance.wfa_request.components.WfaPolicyNotice
-import com.example.infinite_track.presentation.screen.attendance.wfa_request.components.WfaReviewRow
+import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 
 @Composable
 fun WfaRequestReviewScreen(
@@ -48,17 +51,34 @@ fun WfaRequestReviewScreen(
             }
             item {
                 InfiniteCard(modifier = Modifier.fillMaxWidth()) {
-                    WfaReviewRow("Nama", uiState.employee?.fullName.orEmpty())
-                    WfaReviewRow("Divisi", uiState.employee?.division.orEmpty())
-                    WfaReviewRow("Tanggal", uiState.draft.scheduleDate?.toString().orEmpty())
-                    WfaReviewRow("Lokasi", uiState.draft.location?.displayName ?: uiState.location?.displayName.orEmpty())
-                    WfaReviewRow("Alamat", uiState.draft.location?.formattedAddress ?: uiState.location?.formattedAddress.orEmpty())
-                    WfaReviewRow("Alasan", reason?.label.orEmpty())
-                    if (reason?.isOther == true) WfaReviewRow("Detail alasan", uiState.draft.otherReasonText)
-                    if (uiState.draft.notes.isNotBlank()) WfaReviewRow("Catatan", uiState.draft.notes)
+                    InfiniteInfoRow("Nama", uiState.employee?.fullName.orEmpty())
+                    InfiniteInfoRow("Divisi", uiState.employee?.division.orEmpty())
+                    InfiniteInfoRow("Tanggal", uiState.draft.scheduleDate?.toString().orEmpty())
+                    InfiniteInfoRow("Lokasi", uiState.draft.location?.displayName ?: uiState.location?.displayName.orEmpty())
+                    InfiniteInfoRow("Alamat", uiState.draft.location?.formattedAddress ?: uiState.location?.formattedAddress.orEmpty())
+                    InfiniteInfoRow("Alasan", reason?.label.orEmpty())
+                    if (reason?.isOther == true) InfiniteInfoRow("Detail alasan", uiState.draft.otherReasonText)
+                    if (uiState.draft.notes.isNotBlank()) InfiniteInfoRow("Catatan", uiState.draft.notes)
                 }
             }
-            uiState.config?.let { config -> item { WfaPolicyNotice(config.radiusMeters) } }
+            uiState.config?.let { config ->
+                item {
+                    InfiniteCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        semantic = InfiniteSemantic.Info,
+                        showShadow = false
+                    ) {
+                        InfiniteSectionHeader(
+                            title = stringResource(R.string.wfa_request_policy_title),
+                            leadingIcon = Icons.Outlined.Info
+                        )
+                        Text(
+                            stringResource(R.string.wfa_request_policy_body, config.radiusMeters),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
             item {
                 InfiniteButton(
                     text = stringResource(if (isSubmitting) R.string.wfa_request_submitting else R.string.wfa_request_submit),

@@ -4,116 +4,73 @@ import android.app.DatePickerDialog
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.infinite_track.R
 import com.example.infinite_track.presentation.core.body1
 import com.example.infinite_track.presentation.theme.Blue_500
-import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import com.example.infinite_track.presentation.theme.White
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
+/**
+ * Shared controlled date selector. Date ownership stays with the caller so the
+ * selected value survives navigation and always matches the submitted draft.
+ */
 @Composable
 fun DatePickerButton(
-    onDateSelected: (String) -> Unit
+    selectedDate: LocalDate?,
+    onDateSelected: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: String = "Select date",
+    minimumDate: LocalDate? = null,
+    calendarContentDescription: String = "Open calendar"
 ) {
-    // Get current date
-    val calendar = Calendar.getInstance()
-    val currentYear = calendar.get(Calendar.YEAR)
-    val currentMonth = calendar.get(Calendar.MONTH)
-    val currentDay = calendar.get(Calendar.DAY_OF_MONTH)
-
-    // Save the current date for comparison
-    val todayDate = calendar.time
-
-    // SimpleDateFormat untuk menampilkan nama bulan
-    val dateFormat = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
-
-    // State untuk menyimpan tanggal yang dipilih
-    var selectedDate by remember {
-        mutableStateOf(dateFormat.format(calendar.time))
+    val context = LocalContext.current
+    val initialDate = selectedDate ?: minimumDate ?: LocalDate.now()
+    val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+    val datePickerDialog = DatePickerDialog(
+        context,
+        R.style.CustomDatePickerDialogTheme,
+        { _, year, month, day -> onDateSelected(LocalDate.of(year, month + 1, day)) },
+        initialDate.year,
+        initialDate.monthValue - 1,
+        initialDate.dayOfMonth
+    ).apply {
+        minimumDate?.let {
+            datePicker.minDate = it.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        }
     }
 
-    // Function untuk membuka DatePickerDialog
-    val datePickerDialog = DatePickerDialog(
-        LocalContext.current,
-        R.style.CustomDatePickerDialogTheme,
-        { _, year, month, dayOfMonth ->
-            // Update state dengan tanggal yang dipilih
-            calendar.set(year, month, dayOfMonth)
-            val newDate = dateFormat.format(calendar.time)
-            selectedDate = newDate
-            onDateSelected(newDate)
-        },
-        currentYear,
-        currentMonth,
-        currentDay
-    )
-
-    // Button untuk menampilkan tanggal dan membuka DatePicker saat ditekan
-    Button(
-        onClick = {
-            datePickerDialog.show()
-        },
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(width = 1.dp, color = White),
-        colors = ButtonDefaults.buttonColors(containerColor = Color(0x30FFFFFF)),
-        modifier = Modifier
-            .width(430.dp)
-            .height(38.dp)
+    OutlinedButton(
+        onClick = datePickerDialog::show,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, White),
+        colors = ButtonDefaults.outlinedButtonColors(containerColor = White.copy(alpha = 0.18f)),
+        modifier = modifier.fillMaxWidth().heightIn(min = 48.dp)
     ) {
-        // Compare selected date with today's date
-        calendar.set(currentYear, currentMonth, currentDay)  // Set calendar to current date for comparison
-        val isToday = dateFormat.format(todayDate) == selectedDate
-        Box(
-            modifier = Modifier
-                .fillMaxSize(),
-            contentAlignment = Alignment.CenterStart
-        ){
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
             Text(
-                text = if (isToday) {
-                    "Today, $selectedDate"
-                } else {
-                    selectedDate
-                },
+                text = selectedDate?.format(formatter) ?: placeholder,
                 style = body1,
                 color = Blue_500
             )
             Image(
-                painter = painterResource(id = R.drawable.ic_calender),
-                contentDescription = "Icon Calendar",
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
+                painter = painterResource(R.drawable.ic_calender),
+                contentDescription = calendarContentDescription,
+                modifier = Modifier.align(Alignment.CenterEnd)
             )
         }
-    }
-}
-
-@Preview
-@Composable
-private fun PreviewDatePickerButton() {
-    Infinite_TrackTheme {
-        DatePickerButton(
-            onDateSelected = {}
-        )
     }
 }
