@@ -166,6 +166,8 @@ fun NavGraphBuilder.mainContentNavGraph(
         LocationSearchScreen(navController = navController)
     }
 
+    wfaRequestNavGraph(navController)
+
     // Time Off Related Screens
     composable(Screen.TimeOffRequest.route) {
         TimeOffScreen(

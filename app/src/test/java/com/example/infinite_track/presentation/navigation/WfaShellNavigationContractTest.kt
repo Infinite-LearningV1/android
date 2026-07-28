@@ -62,8 +62,19 @@ class WfaShellNavigationContractTest {
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.Attendance.route))
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.LocationSearch.route))
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.WfaBooking.route))
+        assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.WfaRequestForm.route))
+        assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.WfaRequestReview.route))
+        assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.WfaRequestResult.route))
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.TimeOffReq.route))
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.MyLeave.route))
         assertTrue(WfaShellNavigationContract.shouldShowBottomBar(Screen.Wfa.route))
+    }
+
+    @Test
+    fun `WFA request route carries candidate coordinates into isolated flow`() {
+        assertEquals(
+            "wfa_request/-0.891234/119.876543",
+            Screen.WfaRequestFlow.createRoute(-0.891234, 119.876543)
+        )
     }
 }
