@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,10 +46,13 @@ fun InfiniteTrackDropDown(
     enabled: Boolean = true
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+    LaunchedEffect(enabled) {
+        if (!enabled) isExpanded = false
+    }
     val colors = infiniteSemanticColors(InfiniteSemantic.Neutral)
     val shape = MaterialTheme.shapes.medium
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column {
         label?.let {
             Text(
                 text = it,
@@ -58,7 +62,7 @@ fun InfiniteTrackDropDown(
             )
         }
         Box(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = 48.dp)
                 .background(colors.container, shape)
@@ -86,15 +90,16 @@ fun InfiniteTrackDropDown(
                 )
             }
             DropdownMenu(
-                expanded = isExpanded,
+                expanded = isExpanded && enabled,
                 onDismissRequest = { isExpanded = false }
             ) {
                 items.forEach { item ->
                     DropdownMenuItem(
                         text = { Text(text = item, style = body1) },
+                        enabled = enabled,
                         onClick = {
                             isExpanded = false
-                            onSelected(item)
+                            if (enabled) onSelected(item)
                         }
                     )
                 }

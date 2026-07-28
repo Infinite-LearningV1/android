@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -98,11 +99,37 @@ class WfaRequestScreensTest {
             }
         }
 
-        composeRule.onNodeWithTag("wfaReasonDropdown").performClick()
+        composeRule.onNodeWithTag("wfaReasonDropdown").assertHasClickAction().performClick()
         composeRule.onNodeWithText("Lainnya").performClick()
         composeRule.onNodeWithText("Lainnya").assertIsDisplayed()
         composeRule.onNodeWithTag("wfaOtherReason").assertIsDisplayed()
         composeRule.onNodeWithText("18/250").assertIsDisplayed()
+    }
+
+    @Test
+    fun sharedRequestDropdownClosesAndDisablesItsTaggedTriggerWhenCallerDisablesIt() {
+        val enabled = mutableStateOf(true)
+        val selections = mutableListOf<String>()
+        composeRule.setContent {
+            Infinite_TrackTheme {
+                InfiniteTrackDropDown(
+                    selectedValue = null,
+                    onSelected = selections::add,
+                    items = listOf("Lainnya"),
+                    placeholder = "Pilih alasan",
+                    enabled = enabled.value,
+                    modifier = Modifier.testTag("wfaReasonDropdown")
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("wfaReasonDropdown").assertHasClickAction().performClick()
+        composeRule.onNodeWithText("Lainnya").assertIsDisplayed()
+        composeRule.runOnIdle { enabled.value = false }
+
+        composeRule.onNodeWithTag("wfaReasonDropdown").assertIsNotEnabled()
+        composeRule.onNodeWithText("Lainnya").assertDoesNotExist()
+        assertEquals(emptyList<String>(), selections)
     }
 
     @Test
