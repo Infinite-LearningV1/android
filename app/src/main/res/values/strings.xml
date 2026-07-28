@@ -280,6 +280,8 @@
     <string name="attendance_wfa_recommendation_loading">Loading WFA location recommendations...</string>
     <string name="attendance_wfa_preview_draft">Preview for WFA request</string>
     <string name="attendance_map_precise_location_unavailable">Precise location is not ready</string>
+    <string name="location_map_unavailable_title">Map preview is unavailable</string>
+    <string name="location_map_unavailable_message">The selected location cannot be displayed right now.</string>
     <string name="attendance_map_pick_location">Pick location</string>
     <string name="attendance_marker_category">Category: %1$s</string>
     <string name="attendance_map_callout_category">Category</string>

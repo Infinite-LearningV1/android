@@ -88,6 +88,8 @@
     <string name="attendance_wfa_recommendation_loading">Memuat rekomendasi lokasi WFA...</string>
     <string name="attendance_wfa_preview_draft">Pratinjau untuk pengajuan WFA</string>
     <string name="attendance_map_precise_location_unavailable">Lokasi presisi belum siap</string>
+    <string name="location_map_unavailable_title">Pratinjau peta tidak tersedia</string>
+    <string name="location_map_unavailable_message">Lokasi terpilih belum dapat ditampilkan saat ini.</string>
     <string name="attendance_map_pick_location">Pilih lokasi</string>
     <string name="attendance_marker_category">Kategori: %1$s</string>
     <string name="attendance_map_callout_category">Kategori</string>
