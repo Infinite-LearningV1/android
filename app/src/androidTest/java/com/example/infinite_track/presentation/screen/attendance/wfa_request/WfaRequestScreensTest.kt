@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
@@ -23,6 +24,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.booking.SubmittedWfaRequest
 import com.example.infinite_track.domain.model.booking.WfaCandidateLocation
 import com.example.infinite_track.domain.model.booking.WfaRequestConfig
@@ -34,6 +36,10 @@ import com.example.infinite_track.domain.model.booking.WfaRequestReason
 import com.example.infinite_track.domain.model.booking.WfaRequestStatus
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackDropDown
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackTextArea
+import com.example.infinite_track.presentation.design.components.data.InfiniteChecklistCard
+import com.example.infinite_track.presentation.design.components.data.InfiniteChecklistItem
+import com.example.infinite_track.presentation.design.components.state.InfiniteResultHero
+import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
@@ -44,6 +50,43 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class WfaRequestScreensTest {
     @get:Rule val composeRule = createComposeRule()
+
+    @Test
+    fun sharedEligibilityChecklistShowsOnlySupportedFacts() {
+        composeRule.setContent {
+            Infinite_TrackTheme {
+                InfiniteChecklistCard(
+                    title = stringResource(R.string.wfa_request_eligibility_title),
+                    items = listOf(
+                        InfiniteChecklistItem(stringResource(R.string.wfa_request_eligibility_valid_location)),
+                        InfiniteChecklistItem(stringResource(R.string.wfa_request_eligibility_server_radius)),
+                        InfiniteChecklistItem(stringResource(R.string.wfa_request_eligibility_review_before_submission))
+                    )
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Lokasi yang dipilih memiliki koordinat valid.").assertIsDisplayed()
+        composeRule.onNodeWithText("Radius validasi dimuat dari konfigurasi server.").assertIsDisplayed()
+        composeRule.onNodeWithText("Data wajib dapat ditinjau sebelum dikirim.").assertIsDisplayed()
+        composeRule.onNodeWithText("Tidak ada jadwal WFA yang bentrok").assertDoesNotExist()
+    }
+
+    @Test
+    fun sharedSuccessResultHeroShowsLocalizedTitleAndMessage() {
+        composeRule.setContent {
+            Infinite_TrackTheme {
+                InfiniteResultHero(
+                    title = stringResource(R.string.wfa_request_success),
+                    message = stringResource(R.string.wfa_request_success_message),
+                    semantic = InfiniteSemantic.Success
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Permintaan berhasil dikirim").assertIsDisplayed()
+        composeRule.onNodeWithText("Permintaan WFA Anda telah dikirim dan menunggu peninjauan.").assertIsDisplayed()
+    }
 
     @Test
     fun formShowsServerPolicyAndConditionalOtherFieldWithoutEditableRadius() {
