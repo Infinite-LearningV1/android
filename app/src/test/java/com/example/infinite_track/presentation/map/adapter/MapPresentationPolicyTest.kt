@@ -33,8 +33,10 @@ class MapPresentationPolicyTest {
     }
 
     @Test
-    fun `read only mode suppresses marker click dispatch`() {
+    fun `read only marker click is consumed without dispatch`() {
         assertFalse(MapInteractionMode.ReadOnly.shouldDispatchMarkerClick())
+        assertTrue(MapInteractionMode.ReadOnly.shouldConsumeMarkerClick())
         assertTrue(MapInteractionMode.Interactive.shouldDispatchMarkerClick())
+        assertTrue(MapInteractionMode.Interactive.shouldConsumeMarkerClick())
     }
 }

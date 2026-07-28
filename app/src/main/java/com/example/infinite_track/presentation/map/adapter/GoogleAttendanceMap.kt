@@ -210,10 +210,8 @@ internal fun GoogleAttendanceMap(
                     onClick = {
                         if (state.interactionMode.shouldDispatchMarkerClick()) {
                             currentOnEvent(AttendanceMapEvent.MarkerClicked(marker))
-                            true
-                        } else {
-                            false
                         }
+                        state.interactionMode.shouldConsumeMarkerClick()
                     }
                 ) {
                     CompactMapCallout(
@@ -241,6 +239,8 @@ internal fun MapInteractionMode.toMapUiSettings() = MapUiSettings(
 
 internal fun MapInteractionMode.shouldDispatchMarkerClick(): Boolean =
     this == MapInteractionMode.Interactive
+
+internal fun MapInteractionMode.shouldConsumeMarkerClick(): Boolean = true
 
 internal val MapMarkerUiModel.renderIdentity: String
     get() = "${role.name}:$id"
