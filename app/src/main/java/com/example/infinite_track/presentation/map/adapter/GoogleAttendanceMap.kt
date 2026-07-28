@@ -28,10 +28,12 @@ import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.presentation.map.model.AttendanceMapEvent
 import com.example.infinite_track.presentation.map.model.AttendanceMapCameraMoveOrigin
 import com.example.infinite_track.presentation.map.model.MapCameraEffect
+import com.example.infinite_track.presentation.map.model.MapInteractionMode
 import com.example.infinite_track.presentation.map.components.CompactMapCallout
 import com.example.infinite_track.presentation.map.components.color
 import com.example.infinite_track.presentation.map.model.MapMarkerCategory
 import com.example.infinite_track.presentation.map.model.MapMarkerUiModel
+import com.example.infinite_track.presentation.map.model.MapPermissionRequirement
 import com.example.infinite_track.presentation.map.model.MapUiState
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
@@ -59,7 +61,10 @@ internal fun GoogleAttendanceMap(
 ) {
     val currentOnEvent by rememberUpdatedState(onEvent)
 
-    if (!state.hasPreciseLocationPermission) {
+    if (
+        state.permissionRequirement == MapPermissionRequirement.PreciseLocation &&
+        !state.hasPreciseLocationPermission
+    ) {
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -85,18 +90,8 @@ internal fun GoogleAttendanceMap(
             isTrafficEnabled = false
         )
     }
-    val uiSettings = remember {
-        MapUiSettings(
-            compassEnabled = false,
-            indoorLevelPickerEnabled = false,
-            mapToolbarEnabled = false,
-            myLocationButtonEnabled = false,
-            rotationGesturesEnabled = false,
-            scrollGesturesEnabled = true,
-            tiltGesturesEnabled = false,
-            zoomControlsEnabled = false,
-            zoomGesturesEnabled = true
-        )
+    val uiSettings = remember(state.interactionMode) {
+        state.interactionMode.toMapUiSettings()
     }
     var mapLoaded by remember { mutableStateOf(false) }
 
@@ -213,8 +208,10 @@ internal fun GoogleAttendanceMap(
                     icon = rememberMarkerDescriptor(marker.category),
                     zIndex = if (marker.isSelected) 2f else 1f,
                     onClick = {
-                        currentOnEvent(AttendanceMapEvent.MarkerClicked(marker))
-                        true
+                        if (state.interactionMode.shouldDispatchMarkerClick()) {
+                            currentOnEvent(AttendanceMapEvent.MarkerClicked(marker))
+                        }
+                        state.interactionMode.shouldConsumeMarkerClick()
                     }
                 ) {
                     CompactMapCallout(
@@ -227,6 +224,23 @@ internal fun GoogleAttendanceMap(
         }
     }
 }
+
+internal fun MapInteractionMode.toMapUiSettings() = MapUiSettings(
+    compassEnabled = false,
+    indoorLevelPickerEnabled = false,
+    mapToolbarEnabled = false,
+    myLocationButtonEnabled = false,
+    rotationGesturesEnabled = false,
+    scrollGesturesEnabled = this == MapInteractionMode.Interactive,
+    tiltGesturesEnabled = false,
+    zoomControlsEnabled = false,
+    zoomGesturesEnabled = this == MapInteractionMode.Interactive
+)
+
+internal fun MapInteractionMode.shouldDispatchMarkerClick(): Boolean =
+    this == MapInteractionMode.Interactive
+
+internal fun MapInteractionMode.shouldConsumeMarkerClick(): Boolean = true
 
 internal val MapMarkerUiModel.renderIdentity: String
     get() = "${role.name}:$id"

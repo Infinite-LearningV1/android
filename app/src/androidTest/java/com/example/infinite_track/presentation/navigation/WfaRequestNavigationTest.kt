@@ -4,6 +4,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -87,6 +88,67 @@ class WfaRequestNavigationTest {
         assertEquals(Screen.Attendance.route, navController.currentDestination?.route)
         composeRule.onNodeWithText("Attendance host").assertIsDisplayed()
     }
+
+    @Test
+    fun reviewCloseReturnsToEditableFormAndPreservesGraphScopedDraft() {
+        val controller = FakeWfaRequestFlowController()
+        lateinit var navController: TestNavHostController
+        composeRule.setContent {
+            navController = TestNavHostController(ApplicationProvider.getApplicationContext()).apply {
+                navigatorProvider.addNavigator(ComposeNavigator())
+            }
+            Infinite_TrackTheme {
+                NavHost(navController, startDestination = Screen.Attendance.route) {
+                    composable(Screen.Attendance.route) { Text("Attendance host") }
+                    wfaRequestNavGraph(navController) { controller }
+                }
+                LaunchedEffect(Unit) {
+                    navController.navigate(Screen.WfaRequestFlow.createRoute(-0.9, 119.8))
+                }
+            }
+        }
+
+        composeRule.onNodeWithTag("wfaReviewAction").performScrollTo().performClick()
+        composeRule.waitForIdle()
+        assertEquals(Screen.WfaRequestReview.route, navController.currentDestination?.route)
+
+        composeRule.onNodeWithContentDescription("Tutup").performClick()
+        composeRule.waitForIdle()
+        assertEquals(Screen.WfaRequestForm.route, navController.currentDestination?.route)
+        assertEquals(WfaRequestPhase.Editing, controller.uiState.value.phase)
+        assertEquals("Butuh ruang tenang", controller.uiState.value.draft.notes)
+        composeRule.onNodeWithText("Butuh ruang tenang").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun resultCloseExitsToAttendanceWhenNotSubmitting() {
+        val controller = FakeWfaRequestFlowController()
+        lateinit var navController: TestNavHostController
+        composeRule.setContent {
+            navController = TestNavHostController(ApplicationProvider.getApplicationContext()).apply {
+                navigatorProvider.addNavigator(ComposeNavigator())
+            }
+            Infinite_TrackTheme {
+                NavHost(navController, startDestination = Screen.Attendance.route) {
+                    composable(Screen.Attendance.route) { Text("Attendance host") }
+                    wfaRequestNavGraph(navController) { controller }
+                }
+                LaunchedEffect(Unit) {
+                    navController.navigate(Screen.WfaRequestFlow.createRoute(-0.9, 119.8))
+                }
+            }
+        }
+
+        composeRule.onNodeWithTag("wfaReviewAction").performScrollTo().performClick()
+        composeRule.onNodeWithTag("wfaConfirmAction").performScrollTo().performClick()
+        composeRule.waitForIdle()
+        assertEquals(Screen.WfaRequestResult.route, navController.currentDestination?.route)
+
+        composeRule.onNodeWithContentDescription("Tutup").performClick()
+        composeRule.waitForIdle()
+        assertEquals(Screen.Attendance.route, navController.currentDestination?.route)
+        composeRule.onNodeWithText("Attendance host").assertIsDisplayed()
+    }
 }
 
 private class FakeWfaRequestFlowController : WfaRequestFlowController {
@@ -97,7 +159,13 @@ private class FakeWfaRequestFlowController : WfaRequestFlowController {
             employee = WfaEmployeeSummary("Alya", "Product"),
             location = location,
             config = WfaRequestConfig(100, listOf(WfaRequestReason(1, "Client meeting", false))),
-            draft = WfaRequestDraft(LocalDate.of(2026, 8, 4), 1, "", "", location)
+            draft = WfaRequestDraft(
+                LocalDate.of(2026, 8, 4),
+                1,
+                "",
+                "Butuh ruang tenang",
+                location
+            )
         )
     )
     override val uiState: StateFlow<WfaRequestUiState> = mutableState
