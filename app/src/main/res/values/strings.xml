@@ -337,10 +337,12 @@
     <string name="wfa_request_review_guidance">Pastikan data berikut sudah benar sebelum dikirim.</string>
     <string name="wfa_request_submit">Kirim permintaan</string>
     <string name="wfa_request_submitting">Mengirim permintaan</string>
+    <string name="wfa_request_loading">Memuat formulir permintaan</string>
     <string name="wfa_request_edit">Ubah data</string>
     <string name="wfa_request_success">Permintaan berhasil dikirim</string>
     <string name="wfa_request_booking_id">ID booking: %1$d</string>
     <string name="wfa_request_status">Status: %1$s</string>
+    <string name="wfa_request_status_label">Status</string>
     <string name="wfa_request_result_date">Tanggal WFA: %1$s</string>
     <string name="wfa_request_done">Kembali ke Kehadiran</string>
     <string name="wfa_request_home">Kembali ke Beranda</string>

@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.runtime.Composable
@@ -47,7 +45,9 @@ fun WfaRequestReviewScreen(
             verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.lg)
         ) {
             item {
-                Text(stringResource(R.string.wfa_request_review_guidance), style = MaterialTheme.typography.bodyMedium)
+                InfiniteSectionHeader(
+                    title = stringResource(R.string.wfa_request_review_guidance)
+                )
             }
             item {
                 InfiniteCard(modifier = Modifier.fillMaxWidth()) {
@@ -70,11 +70,8 @@ fun WfaRequestReviewScreen(
                     ) {
                         InfiniteSectionHeader(
                             title = stringResource(R.string.wfa_request_policy_title),
+                            subtitle = stringResource(R.string.wfa_request_policy_body, config.radiusMeters),
                             leadingIcon = Icons.Outlined.Info
-                        )
-                        Text(
-                            stringResource(R.string.wfa_request_policy_body, config.radiusMeters),
-                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }

@@ -5,25 +5,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.booking.WfaRequestFieldError
 import com.example.infinite_track.domain.model.booking.WfaRequestFailure
@@ -34,7 +28,10 @@ import com.example.infinite_track.presentation.design.components.button.Infinite
 import com.example.infinite_track.presentation.design.components.data.InfiniteInfoRow
 import com.example.infinite_track.presentation.design.components.data.InfiniteInfoRowOrientation
 import com.example.infinite_track.presentation.design.components.data.InfiniteSectionHeader
+import com.example.infinite_track.presentation.design.components.input.InfiniteSupportingText
 import com.example.infinite_track.presentation.design.components.navigation.InfiniteTopBar
+import com.example.infinite_track.presentation.design.components.state.InfiniteErrorState
+import com.example.infinite_track.presentation.design.components.state.InfiniteLoadingState
 import com.example.infinite_track.presentation.design.components.surface.InfiniteCard
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
@@ -51,7 +48,10 @@ fun WfaRequestFormScreen(
         InfiniteTopBar(title = stringResource(R.string.wfa_request_form_title), onNavigationClick = onBack)
         when {
             uiState.phase == WfaRequestPhase.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(modifier = Modifier.testTag("wfaFormLoading"))
+                InfiniteLoadingState(
+                    message = stringResource(R.string.wfa_request_loading),
+                    modifier = Modifier.padding(InfiniteSpacing.Default.xl).testTag("wfaFormLoading")
+                )
             }
             uiState.failure != null && uiState.config == null -> ConfigFailure(uiState.failure, onEvent, onBack)
             else -> FormContent(uiState, onEvent)
@@ -108,11 +108,8 @@ private fun FormContent(uiState: WfaRequestUiState, onEvent: (WfaRequestEvent) -
             ) {
                 InfiniteSectionHeader(
                     title = stringResource(R.string.wfa_request_policy_title),
+                    subtitle = stringResource(R.string.wfa_request_policy_body, config.radiusMeters),
                     leadingIcon = Icons.Outlined.Info
-                )
-                Text(
-                    stringResource(R.string.wfa_request_policy_body, config.radiusMeters),
-                    style = MaterialTheme.typography.bodySmall
                 )
             }
         }
@@ -168,7 +165,6 @@ private fun FormContent(uiState: WfaRequestUiState, onEvent: (WfaRequestEvent) -
                 modifier = Modifier.fillMaxWidth().testTag("wfaReviewAction"),
                 fullWidth = true
             )
-            Spacer(Modifier.height(8.dp))
         }
     }
 }
@@ -176,7 +172,7 @@ private fun FormContent(uiState: WfaRequestUiState, onEvent: (WfaRequestEvent) -
 @Composable
 private fun FieldErrorText(error: WfaRequestFieldError?) {
     if (error == null) return
-    Text(
+    InfiniteSupportingText(
         text = when (error) {
             WfaRequestFieldError.REQUIRED -> stringResource(R.string.wfa_request_error_required)
             WfaRequestFieldError.REASON_UNAVAILABLE -> stringResource(R.string.wfa_request_error_reason_unavailable)
@@ -184,8 +180,7 @@ private fun FieldErrorText(error: WfaRequestFieldError?) {
             WfaRequestFieldError.TOO_LONG -> stringResource(R.string.wfa_request_error_too_long)
             WfaRequestFieldError.INVALID_LOCATION -> stringResource(R.string.wfa_request_error_location)
         },
-        style = MaterialTheme.typography.bodySmall,
-        color = InfiniteColors.Error,
+        semantic = InfiniteSemantic.Error,
         modifier = Modifier.padding(top = InfiniteSpacing.Default.xs)
     )
 }
@@ -197,27 +192,22 @@ private fun ConfigFailure(
     onBack: () -> Unit
 ) {
     val copy = WfaRequestUiMapper.map(failure)
-    Column(
+    Box(
         modifier = Modifier.fillMaxSize().padding(InfiniteSpacing.Default.xl),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        contentAlignment = Alignment.Center
     ) {
-        Text(copy.title)
-        Spacer(Modifier.height(8.dp))
-        Text(copy.message)
-        Spacer(Modifier.height(16.dp))
-        InfiniteButton(
-            text = if (copy.primaryAction == WfaRequestFailureAction.BACK) {
+        InfiniteErrorState(
+            title = copy.title,
+            message = copy.message,
+            actionLabel = if (copy.primaryAction == WfaRequestFailureAction.BACK) {
                 stringResource(R.string.wfa_request_back)
             } else {
                 stringResource(R.string.wfa_request_retry)
             },
-            onClick = {
+            onAction = {
                 if (copy.primaryAction == WfaRequestFailureAction.BACK) onBack()
                 else onEvent(WfaRequestEvent.RetryConfigClicked)
-            },
-            modifier = Modifier.fillMaxWidth(),
-            fullWidth = true
+            }
         )
     }
 }

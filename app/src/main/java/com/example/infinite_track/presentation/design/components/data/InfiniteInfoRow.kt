@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.infinite_track.presentation.core.body1
+import com.example.infinite_track.presentation.core.body2
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import com.example.infinite_track.presentation.design.tokens.infiniteSemanticColors
 
@@ -23,7 +25,7 @@ enum class InfiniteInfoRowOrientation {
 
 @Composable
 fun InfiniteInfoRow(
-    label: String,
+    label: String?,
     value: String,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
@@ -37,11 +39,15 @@ fun InfiniteInfoRow(
     }
     if (orientation == InfiniteInfoRowOrientation.Vertical) {
         Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                leading()
-                Text(text = label, color = colors.content.copy(alpha = 0.66f))
+            if (!label.isNullOrBlank() || icon != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    leading()
+                    if (!label.isNullOrBlank()) {
+                        Text(text = label, style = body2, color = colors.content.copy(alpha = 0.66f))
+                    }
+                }
             }
-            Text(text = value, fontWeight = FontWeight.SemiBold, color = colors.content)
+            Text(text = value, style = body1, fontWeight = FontWeight.SemiBold, color = colors.content)
             statusContent?.invoke()
         }
     } else {
@@ -51,8 +57,10 @@ fun InfiniteInfoRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             leading()
-            Text(text = label, color = colors.content.copy(alpha = 0.66f), modifier = Modifier.weight(1f))
-            statusContent?.invoke() ?: Text(text = value, fontWeight = FontWeight.SemiBold, color = colors.content)
+            if (!label.isNullOrBlank()) {
+                Text(text = label, style = body2, color = colors.content.copy(alpha = 0.66f), modifier = Modifier.weight(1f))
+            }
+            statusContent?.invoke() ?: Text(text = value, style = body1, fontWeight = FontWeight.SemiBold, color = colors.content)
         }
     }
 }

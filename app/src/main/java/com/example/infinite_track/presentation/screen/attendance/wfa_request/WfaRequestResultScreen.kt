@@ -10,21 +10,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.booking.WfaRequestFailure
+import com.example.infinite_track.domain.model.booking.WfaRequestStatus
 import com.example.infinite_track.presentation.design.components.button.InfiniteButton
 import com.example.infinite_track.presentation.design.components.button.InfiniteButtonVariant
+import com.example.infinite_track.presentation.design.components.data.InfiniteInfoRow
+import com.example.infinite_track.presentation.design.components.data.InfiniteSectionHeader
+import com.example.infinite_track.presentation.design.components.state.InfiniteErrorState
+import com.example.infinite_track.presentation.design.components.state.InfiniteLoadingState
+import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
+import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.components.surface.InfiniteCard
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
@@ -47,10 +48,9 @@ fun WfaRequestResultScreen(
         verticalArrangement = Arrangement.Center
     ) {
         if (uiState.phase == WfaRequestPhase.Submitting) {
-            CircularProgressIndicator(modifier = Modifier.testTag("wfaResultSubmitting"))
-            Text(
-                stringResource(R.string.wfa_request_submitting),
-                modifier = Modifier.padding(top = InfiniteSpacing.Default.lg)
+            InfiniteLoadingState(
+                message = stringResource(R.string.wfa_request_submitting),
+                modifier = Modifier.testTag("wfaResultSubmitting")
             )
             return@Column
         }
@@ -61,25 +61,41 @@ fun WfaRequestResultScreen(
                 modifier = Modifier.fillMaxWidth().testTag("wfaSuccessResult"),
                 semantic = InfiniteSemantic.Success
             ) {
-                Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = InfiniteColors.Success)
-                Text(stringResource(R.string.wfa_request_success), style = MaterialTheme.typography.headlineSmall)
-                Text(stringResource(R.string.wfa_request_booking_id, result.bookingId), modifier = Modifier.testTag("wfaBookingId"))
-                Text(stringResource(R.string.wfa_request_status, result.status.name.lowercase().replaceFirstChar { it.uppercase() }))
-                Text(stringResource(R.string.wfa_request_result_date, result.scheduleDate))
-                Text(stringResource(R.string.wfa_request_result_location, result.location.displayName))
-                Text(stringResource(R.string.wfa_request_result_reason, result.reasonLabel))
-                Text(stringResource(R.string.wfa_request_result_radius, result.radiusMeters))
+                InfiniteSectionHeader(
+                    title = stringResource(R.string.wfa_request_success),
+                    leadingIcon = Icons.Outlined.CheckCircle
+                )
+                InfiniteInfoRow(
+                    label = null,
+                    value = stringResource(R.string.wfa_request_booking_id, result.bookingId),
+                    modifier = Modifier.testTag("wfaBookingId")
+                )
+                InfiniteInfoRow(
+                    label = stringResource(R.string.wfa_request_status_label),
+                    value = result.status.displayLabel(),
+                    statusContent = {
+                        InfiniteStatusPill(
+                            label = result.status.displayLabel(),
+                            variant = result.status.statusVariant(),
+                            useSharedRequestPalette = true
+                        )
+                    }
+                )
+                InfiniteInfoRow(null, stringResource(R.string.wfa_request_result_date, result.scheduleDate))
+                InfiniteInfoRow(null, stringResource(R.string.wfa_request_result_location, result.location.displayName))
+                InfiniteInfoRow(null, stringResource(R.string.wfa_request_result_reason, result.reasonLabel))
+                InfiniteInfoRow(null, stringResource(R.string.wfa_request_result_radius, result.radiusMeters))
             }
             InfiniteButton(
                 text = stringResource(R.string.wfa_request_done),
                 onClick = onDone,
-                modifier = Modifier.fillMaxWidth().padding(top = 24.dp).testTag("wfaDoneAction"),
+                modifier = Modifier.fillMaxWidth().padding(top = InfiniteSpacing.Default.xl).testTag("wfaDoneAction"),
                 fullWidth = true
             )
             InfiniteButton(
                 text = stringResource(R.string.wfa_request_home),
                 onClick = onHome,
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp).testTag("wfaHomeAction"),
+                modifier = Modifier.fillMaxWidth().padding(top = InfiniteSpacing.Default.md).testTag("wfaHomeAction"),
                 variant = InfiniteButtonVariant.Outlined,
                 fullWidth = true
             )
@@ -96,14 +112,11 @@ private fun FailureResult(
     onBack: () -> Unit
 ) {
     val copy = WfaRequestUiMapper.map(failure)
-    InfiniteCard(
-        modifier = Modifier.fillMaxWidth().testTag("wfaFailureResult"),
-        semantic = InfiniteSemantic.Error
-    ) {
-        Icon(Icons.Outlined.ErrorOutline, contentDescription = null, tint = InfiniteColors.Error)
-        Text(copy.title, style = MaterialTheme.typography.headlineSmall)
-        Text(copy.message)
-    }
+    InfiniteErrorState(
+        title = copy.title,
+        message = copy.message,
+        modifier = Modifier.fillMaxWidth().testTag("wfaFailureResult")
+    )
     InfiniteButton(
         text = when (copy.primaryAction) {
             WfaRequestFailureAction.EDIT -> stringResource(R.string.wfa_request_edit)
@@ -117,14 +130,24 @@ private fun FailureResult(
                 WfaRequestFailureAction.BACK -> onBack()
             }
         },
-        modifier = Modifier.fillMaxWidth().padding(top = 24.dp).testTag("wfaFailurePrimaryAction"),
+        modifier = Modifier.fillMaxWidth().padding(top = InfiniteSpacing.Default.xl).testTag("wfaFailurePrimaryAction"),
         fullWidth = true
     )
     InfiniteButton(
         text = stringResource(R.string.wfa_request_done),
         onClick = onBack,
-        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = InfiniteSpacing.Default.md),
         variant = InfiniteButtonVariant.Ghost,
         fullWidth = true
     )
+}
+
+private fun WfaRequestStatus.displayLabel(): String =
+    name.lowercase().replaceFirstChar { it.uppercase() }
+
+private fun WfaRequestStatus.statusVariant(): InfiniteStatusVariant = when (this) {
+    WfaRequestStatus.PENDING -> InfiniteStatusVariant.Pending
+    WfaRequestStatus.APPROVED -> InfiniteStatusVariant.Approved
+    WfaRequestStatus.REJECTED -> InfiniteStatusVariant.Rejected
+    WfaRequestStatus.UNKNOWN -> InfiniteStatusVariant.Unknown
 }
