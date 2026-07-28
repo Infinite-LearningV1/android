@@ -163,6 +163,7 @@ private class LogoutFallbackFakeApiService(
     override suspend fun getWfaRequestConfig(): com.example.infinite_track.data.soucre.network.response.booking.WfaRequestConfigResponseDto = throw NotImplementedError()
     override suspend fun getBookingHistory(status: String?, page: Int, limit: Int, sortBy: String, sortOrder: String): BookingHistoryResponse = throw NotImplementedError()
     override suspend fun submitWfaBooking(request: BookingRequest): BookingResponse = throw NotImplementedError()
+    override suspend fun submitWfaRequest(request: com.example.infinite_track.data.soucre.network.request.WfaRequestDto): com.example.infinite_track.data.soucre.network.response.booking.WfaRequestResponseDto = throw NotImplementedError()
 }
 
 private class LogoutFallbackFakeAuthSessionApiService : AuthSessionApiService {

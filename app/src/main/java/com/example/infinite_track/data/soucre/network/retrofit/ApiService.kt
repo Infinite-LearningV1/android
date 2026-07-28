@@ -8,6 +8,7 @@ import com.example.infinite_track.data.soucre.network.request.LoginRequest
 import com.example.infinite_track.data.soucre.network.request.LogoutRequest
 import com.example.infinite_track.data.soucre.network.request.ProfileUpdateRequest
 import com.example.infinite_track.data.soucre.network.request.RefreshRequest
+import com.example.infinite_track.data.soucre.network.request.WfaRequestDto
 import com.example.infinite_track.data.soucre.network.response.AttendanceHistoryResponse
 import com.example.infinite_track.data.soucre.network.response.AttendanceResponse
 import com.example.infinite_track.data.soucre.network.response.LoginResponse
@@ -19,6 +20,7 @@ import com.example.infinite_track.data.soucre.network.response.WfaRecommendation
 import com.example.infinite_track.data.soucre.network.response.booking.BookingHistoryResponse
 import com.example.infinite_track.data.soucre.network.response.booking.BookingResponse
 import com.example.infinite_track.data.soucre.network.response.booking.WfaRequestConfigResponseDto
+import com.example.infinite_track.data.soucre.network.response.booking.WfaRequestResponseDto
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
@@ -122,6 +124,11 @@ interface ApiService {
     suspend fun submitWfaBooking(
         @Body request: BookingRequest
     ): BookingResponse
+
+    @POST("api/bookings")
+    suspend fun submitWfaRequest(
+        @Body request: WfaRequestDto
+    ): WfaRequestResponseDto
 
     companion object {
         const val HEADER_BOOTSTRAP_AUTH_REQUEST = "X-Bootstrap-Auth-Request"

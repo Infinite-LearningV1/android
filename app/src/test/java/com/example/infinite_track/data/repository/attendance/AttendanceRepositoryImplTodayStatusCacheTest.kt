@@ -360,5 +360,9 @@ private class FakeApiService(
 
     override suspend fun submitWfaBooking(request: BookingRequest): BookingResponse = unsupported()
 
+    override suspend fun submitWfaRequest(
+        request: com.example.infinite_track.data.soucre.network.request.WfaRequestDto
+    ): com.example.infinite_track.data.soucre.network.response.booking.WfaRequestResponseDto = unsupported()
+
     private fun unsupported(): Nothing = error("Not supported in this test")
 }

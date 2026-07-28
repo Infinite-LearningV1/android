@@ -1238,6 +1238,12 @@ private class FakeApiService(
     override suspend fun submitWfaBooking(request: BookingRequest): BookingResponse {
         throw NotImplementedError()
     }
+
+    override suspend fun submitWfaRequest(
+        request: com.example.infinite_track.data.soucre.network.request.WfaRequestDto
+    ): com.example.infinite_track.data.soucre.network.response.booking.WfaRequestResponseDto {
+        throw NotImplementedError()
+    }
 }
 
 private class FakeAuthSessionApiService(
