@@ -1,6 +1,5 @@
 package com.example.infinite_track.presentation.screen.attendance.wfa_request
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Person
@@ -21,10 +22,14 @@ import androidx.compose.ui.res.stringResource
 import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.booking.WfaRequestFieldError
 import com.example.infinite_track.domain.model.booking.WfaRequestFailure
+import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.presentation.components.button.DatePickerButton
-import com.example.infinite_track.presentation.components.button.RadioButtonWithText
+import com.example.infinite_track.presentation.components.map.ReadOnlyLocationMap
+import com.example.infinite_track.presentation.components.textfield.InfiniteTrackDropDown
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackTextArea
 import com.example.infinite_track.presentation.design.components.button.InfiniteButton
+import com.example.infinite_track.presentation.design.components.data.InfiniteChecklistCard
+import com.example.infinite_track.presentation.design.components.data.InfiniteChecklistItem
 import com.example.infinite_track.presentation.design.components.data.InfiniteInfoRow
 import com.example.infinite_track.presentation.design.components.data.InfiniteInfoRowOrientation
 import com.example.infinite_track.presentation.design.components.data.InfiniteSectionHeader
@@ -32,9 +37,11 @@ import com.example.infinite_track.presentation.design.components.input.InfiniteS
 import com.example.infinite_track.presentation.design.components.navigation.InfiniteTopBar
 import com.example.infinite_track.presentation.design.components.state.InfiniteErrorState
 import com.example.infinite_track.presentation.design.components.state.InfiniteLoadingState
+import com.example.infinite_track.presentation.design.components.status.InfiniteStatusPill
+import com.example.infinite_track.presentation.design.components.status.InfiniteStatusVariant
 import com.example.infinite_track.presentation.design.components.surface.InfiniteCard
-import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
+import com.example.infinite_track.presentation.design.tokens.InfiniteSize
 import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
 
 @Composable
@@ -42,10 +49,18 @@ fun WfaRequestFormScreen(
     uiState: WfaRequestUiState,
     onEvent: (WfaRequestEvent) -> Unit,
     onBack: () -> Unit,
+    onClose: () -> Unit = onBack,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier.fillMaxSize().background(InfiniteColors.AttendanceReportBackground)) {
-        InfiniteTopBar(title = stringResource(R.string.wfa_request_form_title), onNavigationClick = onBack)
+    Column(modifier.fillMaxSize()) {
+        InfiniteTopBar(
+            title = stringResource(R.string.wfa_request_form_title),
+            navigationContentDescription = stringResource(R.string.wfa_request_back),
+            onNavigationClick = onBack,
+            actionIcon = Icons.Default.Close,
+            actionContentDescription = stringResource(R.string.wfa_request_close),
+            onActionClick = onClose
+        )
         when {
             uiState.phase == WfaRequestPhase.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 InfiniteLoadingState(
@@ -65,6 +80,11 @@ private fun FormContent(uiState: WfaRequestUiState, onEvent: (WfaRequestEvent) -
     val employee = uiState.employee ?: return
     val location = uiState.location ?: uiState.draft.location ?: return
     val selectedReason = config.reasons.firstOrNull { it.id == uiState.draft.reasonId }
+    val locationCoordinate = if (location.hasValidCoordinates) {
+        GeoCoordinate(location.latitude, location.longitude)
+    } else {
+        null
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().testTag("wfaFormContent"),
@@ -72,95 +92,156 @@ private fun FormContent(uiState: WfaRequestUiState, onEvent: (WfaRequestEvent) -
         verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.lg)
     ) {
         item {
-            InfiniteCard(modifier = Modifier.fillMaxWidth().testTag("wfaEmployeeCard")) {
-                InfiniteSectionHeader(
-                    title = stringResource(R.string.wfa_request_employee),
-                    leadingIcon = Icons.Outlined.Person
-                )
-                InfiniteInfoRow("Nama", employee.fullName)
-                InfiniteInfoRow("Divisi", employee.division)
-            }
-        }
-        item {
             InfiniteCard(modifier = Modifier.fillMaxWidth().testTag("wfaLocationCard")) {
-                InfiniteSectionHeader(
-                    title = stringResource(R.string.wfa_request_location),
-                    leadingIcon = Icons.Outlined.LocationOn
-                )
-                InfiniteInfoRow(
-                    label = location.displayName,
-                    value = location.formattedAddress,
-                    orientation = InfiniteInfoRowOrientation.Vertical
-                )
-                InfiniteInfoRow(
-                    label = stringResource(R.string.wfa_request_policy_title),
-                    value = stringResource(R.string.wfa_request_radius_policy, config.radiusMeters),
-                    semantic = InfiniteSemantic.Primary,
-                    modifier = Modifier.testTag("wfaRadiusReadOnly")
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.lg)) {
+                    InfiniteSectionHeader(
+                        title = stringResource(R.string.wfa_request_location),
+                        leadingIcon = Icons.Outlined.LocationOn
+                    )
+                    InfiniteInfoRow(
+                        label = location.displayName,
+                        value = location.formattedAddress,
+                        orientation = InfiniteInfoRowOrientation.Vertical
+                    )
+                    ReadOnlyLocationMap(
+                        coordinate = locationCoordinate,
+                        radiusMeters = config.radiusMeters,
+                        title = location.displayName,
+                        address = location.formattedAddress,
+                        modifier = Modifier.fillMaxWidth().testTag("wfaLocationMap"),
+                        contentDescription = stringResource(
+                            R.string.wfa_request_location_map_content_description,
+                            location.displayName,
+                            config.radiusMeters
+                        )
+                    )
+                    InfiniteInfoRow(
+                        label = stringResource(R.string.wfa_request_policy_title),
+                        value = stringResource(R.string.wfa_request_radius_policy, config.radiusMeters),
+                        semantic = InfiniteSemantic.Primary,
+                        modifier = Modifier.testTag("wfaRadiusReadOnly")
+                    )
+                    InfiniteInfoRow(
+                        label = stringResource(R.string.wfa_request_location_status),
+                        value = stringResource(R.string.wfa_request_location_valid),
+                        semantic = InfiniteSemantic.Success,
+                        statusContent = {
+                            InfiniteStatusPill(
+                                label = stringResource(R.string.wfa_request_location_valid),
+                                variant = InfiniteStatusVariant.Active,
+                                size = InfiniteSize.Small,
+                                leadingIcon = Icons.Outlined.CheckCircle
+                            )
+                        }
+                    )
+                }
             }
         }
         item {
-            InfiniteCard(
-                modifier = Modifier.fillMaxWidth(),
-                semantic = InfiniteSemantic.Info,
-                showShadow = false
-            ) {
-                InfiniteSectionHeader(
-                    title = stringResource(R.string.wfa_request_policy_title),
-                    subtitle = stringResource(R.string.wfa_request_policy_body, config.radiusMeters),
-                    leadingIcon = Icons.Outlined.Info
-                )
+            InfiniteCard(modifier = Modifier.fillMaxWidth().testTag("wfaEmployeeCard")) {
+                Column(verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.md)) {
+                    InfiniteSectionHeader(
+                        title = stringResource(R.string.wfa_request_employee),
+                        leadingIcon = Icons.Outlined.Person
+                    )
+                    InfiniteInfoRow(
+                        label = stringResource(R.string.wfa_request_employee_name),
+                        value = employee.fullName
+                    )
+                    InfiniteInfoRow(
+                        label = stringResource(R.string.wfa_request_employee_division),
+                        value = employee.division
+                    )
+                    InfiniteSupportingText(
+                        text = stringResource(R.string.wfa_request_employee_profile_source)
+                    )
+                }
             }
         }
         item {
-            InfiniteSectionHeader(title = stringResource(R.string.wfa_request_date))
-            DatePickerButton(
-                selectedDate = uiState.draft.scheduleDate,
-                onDateSelected = { onEvent(WfaRequestEvent.ScheduleDateChanged(it)) },
-                placeholder = stringResource(R.string.wfa_request_date_placeholder),
-                calendarContentDescription = stringResource(R.string.wfa_request_date_placeholder),
-                modifier = Modifier.testTag("wfaScheduleDate")
+            InfiniteCard(modifier = Modifier.fillMaxWidth().testTag("wfaRequestDetails")) {
+                Column(verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.lg)) {
+                    InfiniteSectionHeader(
+                        title = stringResource(R.string.wfa_request_details),
+                        leadingIcon = Icons.Outlined.Info
+                    )
+                    Column {
+                        InfiniteSectionHeader(title = stringResource(R.string.wfa_request_date))
+                        DatePickerButton(
+                            selectedDate = uiState.draft.scheduleDate,
+                            onDateSelected = { onEvent(WfaRequestEvent.ScheduleDateChanged(it)) },
+                            placeholder = stringResource(R.string.wfa_request_date_placeholder),
+                            calendarContentDescription = stringResource(R.string.wfa_request_date_placeholder),
+                            modifier = Modifier.testTag("wfaScheduleDate")
+                        )
+                        FieldErrorText(uiState.fieldErrors.scheduleDate)
+                    }
+                    Column(
+                        modifier = selectedReason?.let {
+                            Modifier.testTag("wfaReason-${it.id}")
+                        } ?: Modifier
+                    ) {
+                        InfiniteTrackDropDown(
+                            selectedValue = selectedReason?.label,
+                            onSelected = { selectedLabel ->
+                                config.reasons.firstOrNull { it.label == selectedLabel }?.let { reason ->
+                                    onEvent(WfaRequestEvent.ReasonSelected(reason.id))
+                                }
+                            },
+                            items = config.reasons.map { it.label },
+                            label = stringResource(R.string.wfa_request_reason),
+                            placeholder = stringResource(R.string.wfa_request_reason_placeholder),
+                            modifier = Modifier.testTag("wfaReasonDropdown")
+                        )
+                        FieldErrorText(uiState.fieldErrors.reason)
+                    }
+                    if (selectedReason?.isOther == true) {
+                        Column {
+                            InfiniteTrackTextArea(
+                                value = uiState.draft.otherReasonText,
+                                label = stringResource(R.string.wfa_request_other_reason),
+                                placeholder = stringResource(R.string.wfa_request_other_reason_placeholder),
+                                onValueChange = { onEvent(WfaRequestEvent.OtherReasonChanged(it)) },
+                                modifier = Modifier.testTag("wfaOtherReason")
+                            )
+                            FieldErrorText(uiState.fieldErrors.otherReason)
+                        }
+                    }
+                    Column {
+                        InfiniteTrackTextArea(
+                            value = uiState.draft.notes,
+                            label = stringResource(R.string.wfa_request_notes),
+                            placeholder = stringResource(R.string.wfa_request_notes_placeholder),
+                            onValueChange = { onEvent(WfaRequestEvent.NotesChanged(it)) },
+                            maxLength = 250,
+                            showCharacterCount = true,
+                            modifier = Modifier.testTag("wfaNotes")
+                        )
+                        FieldErrorText(uiState.fieldErrors.notes)
+                    }
+                }
+            }
+        }
+        item {
+            InfiniteChecklistCard(
+                title = stringResource(R.string.wfa_request_eligibility_title),
+                items = listOf(
+                    InfiniteChecklistItem(
+                        text = stringResource(R.string.wfa_request_eligibility_valid_location)
+                    ),
+                    InfiniteChecklistItem(
+                        text = stringResource(R.string.wfa_request_eligibility_server_radius)
+                    ),
+                    InfiniteChecklistItem(
+                        text = stringResource(R.string.wfa_request_eligibility_review_before_submission)
+                    )
+                ),
+                modifier = Modifier.testTag("wfaEligibilityCard")
             )
-            FieldErrorText(uiState.fieldErrors.scheduleDate)
-        }
-        item {
-            InfiniteSectionHeader(title = stringResource(R.string.wfa_request_reason))
-            config.reasons.forEach { reason ->
-                RadioButtonWithText(
-                    text = reason.label,
-                    selected = reason.id == uiState.draft.reasonId,
-                    onClick = { onEvent(WfaRequestEvent.ReasonSelected(reason.id)) },
-                    modifier = Modifier.testTag("wfaReason-${reason.id}")
-                )
-            }
-            FieldErrorText(uiState.fieldErrors.reason)
-        }
-        if (selectedReason?.isOther == true) {
-            item {
-                InfiniteTrackTextArea(
-                    value = uiState.draft.otherReasonText,
-                    label = stringResource(R.string.wfa_request_other_reason),
-                    placeholder = stringResource(R.string.wfa_request_other_reason_placeholder),
-                    onValueChange = { onEvent(WfaRequestEvent.OtherReasonChanged(it)) },
-                    modifier = Modifier.testTag("wfaOtherReason")
-                )
-                FieldErrorText(uiState.fieldErrors.otherReason)
-            }
-        }
-        item {
-            InfiniteTrackTextArea(
-                value = uiState.draft.notes,
-                label = stringResource(R.string.wfa_request_notes),
-                placeholder = stringResource(R.string.wfa_request_notes_placeholder),
-                onValueChange = { onEvent(WfaRequestEvent.NotesChanged(it)) },
-                modifier = Modifier.testTag("wfaNotes")
-            )
-            FieldErrorText(uiState.fieldErrors.notes)
         }
         item {
             InfiniteButton(
-                text = stringResource(R.string.wfa_request_review_action),
+                text = stringResource(R.string.wfa_request_continue),
                 onClick = { onEvent(WfaRequestEvent.ReviewClicked) },
                 modifier = Modifier.fillMaxWidth().testTag("wfaReviewAction"),
                 fullWidth = true

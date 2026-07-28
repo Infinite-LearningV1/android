@@ -17,6 +17,7 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -86,6 +87,31 @@ class WfaRequestScreensTest {
 
         composeRule.onNodeWithText("Permintaan berhasil dikirim").assertIsDisplayed()
         composeRule.onNodeWithText("Permintaan WFA Anda telah dikirim dan menunggu peninjauan.").assertIsDisplayed()
+    }
+
+    @Test
+    fun formKeepsBothReferencePanelsInOneTransparentScrollableDestinationAndExposesClose() {
+        var closeCount = 0
+        composeRule.setContent {
+            Infinite_TrackTheme {
+                WfaRequestFormScreen(
+                    uiState = editingState(),
+                    onEvent = {},
+                    onBack = {},
+                    onClose = { closeCount += 1 }
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("wfaLocationMap").assertExists()
+        composeRule.onNodeWithTag("wfaEmployeeCard").assertExists()
+        composeRule.onNodeWithTag("wfaRequestDetails").assertExists()
+        composeRule.onNodeWithTag("wfaEligibilityCard").assertExists()
+        composeRule.onNodeWithTag("wfaReviewAction").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("wfaScreenOwnedOpaqueBackground").assertDoesNotExist()
+
+        composeRule.onNodeWithContentDescription("Tutup").performClick()
+        composeRule.runOnIdle { assertEquals(1, closeCount) }
     }
 
     @Test

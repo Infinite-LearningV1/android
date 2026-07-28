@@ -42,7 +42,8 @@ fun NavGraphBuilder.wfaRequestNavGraph(
                 WfaRequestFormScreen(
                     uiState = state,
                     onEvent = viewModel::onEvent,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onClose = { navController.returnToAttendance() }
                 )
             }
         }
