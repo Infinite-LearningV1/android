@@ -1,21 +1,27 @@
 package com.example.infinite_track.presentation.screen.attendance.wfa_request
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -95,12 +101,14 @@ class WfaRequestScreensTest {
         var closeCount = 0
         composeRule.setContent {
             Infinite_TrackTheme {
-                WfaRequestFormScreen(
-                    uiState = editingState(),
-                    onEvent = {},
-                    onBack = {},
-                    onClose = { closeCount += 1 }
-                )
+                TransparentPageProbe {
+                    WfaRequestFormScreen(
+                        uiState = editingState(),
+                        onEvent = {},
+                        onBack = {},
+                        onClose = { closeCount += 1 }
+                    )
+                }
             }
         }
 
@@ -109,7 +117,7 @@ class WfaRequestScreensTest {
         composeRule.onNodeWithTag("wfaRequestDetails").assertExists()
         composeRule.onNodeWithTag("wfaEligibilityCard").assertExists()
         composeRule.onNodeWithTag("wfaReviewAction").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithTag("wfaScreenOwnedOpaqueBackground").assertDoesNotExist()
+        assertPageBackdropIsVisible()
 
         composeRule.onNodeWithContentDescription("Tutup").performClick()
         composeRule.runOnIdle { assertEquals(1, closeCount) }
@@ -291,12 +299,14 @@ class WfaRequestScreensTest {
         val state = editingState().copy(phase = WfaRequestPhase.Reviewing)
         composeRule.setContent {
             Infinite_TrackTheme {
-                WfaRequestReviewScreen(
-                    uiState = state,
-                    onEvent = events::add,
-                    onBack = {},
-                    onClose = { closeCount += 1 }
-                )
+                TransparentPageProbe {
+                    WfaRequestReviewScreen(
+                        uiState = state,
+                        onEvent = events::add,
+                        onBack = {},
+                        onClose = { closeCount += 1 }
+                    )
+                }
             }
         }
 
@@ -309,7 +319,7 @@ class WfaRequestScreensTest {
         composeRule.onNodeWithText("Butuh ruang tenang").assertIsDisplayed()
         composeRule.onNodeWithTag("wfaConfirmAction").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("wfaEditAction").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithTag("wfaScreenOwnedOpaqueBackground").assertDoesNotExist()
+        assertPageBackdropIsVisible()
 
         composeRule.onNodeWithContentDescription("Tutup").performClick()
         composeRule.runOnIdle { assertEquals(1, closeCount) }
@@ -352,14 +362,16 @@ class WfaRequestScreensTest {
         )
         composeRule.setContent {
             Infinite_TrackTheme {
-                WfaRequestResultScreen(
-                    uiState = success,
-                    onEvent = {},
-                    onDone = {},
-                    onHome = {},
-                    onBack = {},
-                    onClose = {}
-                )
+                TransparentPageProbe {
+                    WfaRequestResultScreen(
+                        uiState = success,
+                        onEvent = {},
+                        onDone = {},
+                        onHome = {},
+                        onBack = {},
+                        onClose = {}
+                    )
+                }
             }
         }
         composeRule.onNodeWithTag("wfaSuccessHero").assertIsDisplayed()
@@ -373,7 +385,7 @@ class WfaRequestScreensTest {
         composeRule.onNodeWithText("Lokasi: Kafe Taman").assertDoesNotExist()
         composeRule.onNodeWithTag("wfaDoneAction").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("wfaHomeAction").performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithTag("wfaScreenOwnedOpaqueBackground").assertDoesNotExist()
+        assertPageBackdropIsVisible()
     }
 
     @Test
@@ -434,6 +446,25 @@ class WfaRequestScreensTest {
         }
     }
 
+    @Composable
+    private fun TransparentPageProbe(content: @Composable () -> Unit) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(TransparentPageProbeColor)
+                .testTag(TransparentPageProbeTag)
+        ) {
+            content()
+        }
+    }
+
+    private fun assertPageBackdropIsVisible() {
+        val capture = composeRule.onNodeWithTag(TransparentPageProbeTag).captureToImage()
+        val sampledColor = capture.toPixelMap()[0, capture.height / 2]
+
+        assertEquals(TransparentPageProbeColor.toArgb(), sampledColor.toArgb())
+    }
+
     private fun editingState() = WfaRequestUiState(
         phase = WfaRequestPhase.Editing,
         employee = WfaEmployeeSummary("Alya Putri", "Product"),
@@ -455,6 +486,8 @@ class WfaRequestScreensTest {
     )
 
     private companion object {
+        val TransparentPageProbeColor = Color.Magenta
+        const val TransparentPageProbeTag = "wfaTransparentPageProbe"
         val location = WfaCandidateLocation(-0.89, 119.87, "Kafe Taman", "Jl. Merdeka 10, Palu")
     }
 }

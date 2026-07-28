@@ -173,7 +173,6 @@
     <string name="wfa_request_done">Kembali ke Kehadiran</string>
     <string name="wfa_request_view_status">Lihat status permintaan</string>
     <string name="wfa_request_home">Kembali ke Beranda</string>
-    <string name="wfa_request_result_location">Lokasi: %1$s</string>
     <string name="wfa_request_result_reason">Alasan: %1$s</string>
     <string name="wfa_request_result_radius">Radius diterapkan: %1$d m</string>
     <string name="wfa_request_retry">Coba lagi</string>
