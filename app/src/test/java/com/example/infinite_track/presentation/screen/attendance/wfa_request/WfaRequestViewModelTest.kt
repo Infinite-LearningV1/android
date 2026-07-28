@@ -118,6 +118,23 @@ class WfaRequestViewModelTest {
         assertEquals(WfaRequestFailure.NetworkUnavailable, viewModel.uiState.value.failure)
     }
 
+    @Test
+    fun `network config failure can retry into editing`() = runTest {
+        val repository = WfaRequestViewModelRepositoryFake(
+            initialConfigFailure = WfaRequestFailure.NetworkUnavailable
+        )
+        val viewModel = createViewModel(repository)
+        advanceUntilIdle()
+        assertEquals(WfaRequestPhase.Failure, viewModel.uiState.value.phase)
+
+        repository.makeConfigAvailable()
+        viewModel.onEvent(WfaRequestEvent.RetryConfigClicked)
+        advanceUntilIdle()
+
+        assertEquals(WfaRequestPhase.Editing, viewModel.uiState.value.phase)
+        assertEquals(2, repository.configCalls)
+    }
+
     private fun createViewModel(
         repository: WfaRequestViewModelRepositoryFake,
         authRepository: WfaRequestAuthRepositoryFake = WfaRequestAuthRepositoryFake()
@@ -134,16 +151,22 @@ class WfaRequestViewModelTest {
 }
 
 private class WfaRequestViewModelRepositoryFake(
-    private val submitGate: CompletableDeferred<WfaRequestResult>? = null
+    private val submitGate: CompletableDeferred<WfaRequestResult>? = null,
+    initialConfigFailure: WfaRequestFailure? = null
 ) : BookingRepository {
     var configCalls = 0
     var submitCalls = 0
+    private var configResult: WfaRequestConfigResult = initialConfigFailure?.let {
+        WfaRequestConfigResult.Failure(it)
+    } ?: availableConfig()
+
+    fun makeConfigAvailable() {
+        configResult = availableConfig()
+    }
 
     override suspend fun getWfaRequestConfig(): WfaRequestConfigResult {
         configCalls += 1
-        return WfaRequestConfigResult.Success(
-            WfaRequestConfig(100, listOf(WfaRequestReason(1L, "Client meeting", false)))
-        )
+        return configResult
     }
 
     override suspend fun submitWfaRequest(command: SubmitWfaRequestCommand): WfaRequestResult {
@@ -154,6 +177,10 @@ private class WfaRequestViewModelRepositoryFake(
     override suspend fun getBookingHistory(
         status: String?, page: Int, limit: Int, sortBy: String, sortOrder: String
     ): Result<BookingHistoryPage> = error("Not used")
+
+    private fun availableConfig() = WfaRequestConfigResult.Success(
+        WfaRequestConfig(100, listOf(WfaRequestReason(1L, "Client meeting", false)))
+    )
 
 }
 

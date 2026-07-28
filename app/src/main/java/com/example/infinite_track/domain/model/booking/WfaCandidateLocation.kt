@@ -7,7 +7,6 @@ data class WfaCandidateLocation(
     val formattedAddress: String
 ) {
     val hasValidCoordinates: Boolean
-        get() = latitude in -90.0..90.0 &&
-            longitude in -180.0..180.0 &&
-            latitude != 0.0 && longitude != 0.0
+        get() = latitude.isFinite() && longitude.isFinite() &&
+            latitude in -90.0..90.0 && longitude in -180.0..180.0
 }

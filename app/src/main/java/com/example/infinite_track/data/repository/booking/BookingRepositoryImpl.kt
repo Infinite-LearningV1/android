@@ -46,9 +46,6 @@ class BookingRepositoryImpl @Inject constructor(
             val request = response.toDomainOrNull(command.location)
             when {
                 request != null -> WfaRequestResult.Success(request)
-                !response.success && !response.message.isNullOrBlank() -> WfaRequestResult.Failure(
-                    WfaRequestFailure.BackendRejected(response.message)
-                )
                 else -> WfaRequestResult.Failure(WfaRequestFailure.Unknown)
             }
         } catch (exception: HttpException) {

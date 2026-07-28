@@ -9,12 +9,13 @@ fun WfaRequestConfigResponseDto.toDomainOrNull(): WfaRequestConfig? {
     val radius = body.radiusMeters ?: return null
     if (!success || radius <= 0) return null
 
-    val mappedReasons = body.reasons.mapNotNull { reason ->
+    val rawReasons = body.reasons.orEmpty()
+    val mappedReasons = rawReasons.mapNotNull { reason ->
         val id = reason.id ?: return@mapNotNull null
         val label = reason.label?.trim().orEmpty()
         if (label.isBlank()) null else WfaRequestReason(id, label, reason.isOther)
     }
-    if (mappedReasons.size != body.reasons.size) return null
+    if (mappedReasons.size != rawReasons.size) return null
     if (mappedReasons.map { it.id }.distinct().size != mappedReasons.size) return null
     if (mappedReasons.isEmpty() || mappedReasons.count { it.isOther } > 1) return null
 

@@ -69,7 +69,7 @@ class ValidateWfaRequestDraftUseCaseTest {
 
     @Test
     fun `invalid location blocks review`() {
-        val invalid = location.copy(latitude = 0.0)
+        val invalid = location.copy(latitude = 91.0)
         val result = useCase(
             WfaRequestDraft(LocalDate.of(2026, 8, 10), 1L, "", "", invalid),
             config

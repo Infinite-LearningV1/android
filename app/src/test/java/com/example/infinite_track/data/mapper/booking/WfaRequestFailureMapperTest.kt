@@ -38,4 +38,12 @@ class WfaRequestFailureMapperTest {
             WfaRequestFailureMapper.mapHttp(503, null, null, emptyMap())
         )
     }
+
+    @Test
+    fun `unknown client message is never exposed as safe copy`() {
+        assertEquals(
+            WfaRequestFailure.Unknown,
+            WfaRequestFailureMapper.mapHttp(400, null, "internal provider detail", emptyMap())
+        )
+    }
 }

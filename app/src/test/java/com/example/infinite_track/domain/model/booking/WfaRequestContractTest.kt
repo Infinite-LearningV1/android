@@ -3,6 +3,7 @@ package com.example.infinite_track.domain.model.booking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
 
@@ -42,5 +43,11 @@ class WfaRequestContractTest {
         )
 
         assertEquals(request, WfaRequestResult.Success(request).request)
+    }
+
+    @Test
+    fun `equator and Greenwich meridian are valid coordinates`() {
+        assertTrue(location.copy(latitude = 0.0).hasValidCoordinates)
+        assertTrue(location.copy(longitude = 0.0).hasValidCoordinates)
     }
 }

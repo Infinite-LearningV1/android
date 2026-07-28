@@ -1,5 +1,6 @@
 package com.example.infinite_track.presentation.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,6 +42,11 @@ fun NavGraphBuilder.wfaRequestNavGraph(navController: NavHostController) {
         }
         composable(Screen.WfaRequestReview.route) { entry ->
             WfaRequestRoute(entry, navController) { state, viewModel ->
+                BackHandler {
+                    if (state.phase != com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestPhase.Submitting) {
+                        viewModel.onEvent(com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestEvent.EditClicked)
+                    }
+                }
                 WfaRequestReviewScreen(
                     uiState = state,
                     onEvent = viewModel::onEvent,
@@ -50,10 +56,16 @@ fun NavGraphBuilder.wfaRequestNavGraph(navController: NavHostController) {
         }
         composable(Screen.WfaRequestResult.route) { entry ->
             WfaRequestRoute(entry, navController) { state, viewModel ->
+                BackHandler {
+                    if (state.phase != com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestPhase.Submitting) {
+                        navController.returnToAttendance()
+                    }
+                }
                 WfaRequestResultScreen(
                     uiState = state,
                     onEvent = viewModel::onEvent,
                     onDone = { navController.returnToAttendance() },
+                    onHome = { navController.returnToHome() },
                     onBack = { navController.returnToAttendance() }
                 )
             }

@@ -34,7 +34,10 @@ fun WfaRequestReviewScreen(
     val isSubmitting = uiState.phase == WfaRequestPhase.Submitting
     val reason = uiState.config?.reasons?.firstOrNull { it.id == uiState.draft.reasonId }
     Column(modifier.fillMaxSize().background(InfiniteColors.AttendanceReportBackground)) {
-        InfiniteTopBar(title = stringResource(R.string.wfa_request_review_title), onNavigationClick = onBack)
+        InfiniteTopBar(
+            title = stringResource(R.string.wfa_request_review_title),
+            onNavigationClick = { if (!isSubmitting) onBack() }
+        )
         LazyColumn(
             modifier = Modifier.fillMaxSize().testTag("wfaReviewContent"),
             contentPadding = PaddingValues(InfiniteSpacing.Default.lg),

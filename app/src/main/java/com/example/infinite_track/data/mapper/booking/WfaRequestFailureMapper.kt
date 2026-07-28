@@ -21,8 +21,6 @@ object WfaRequestFailureMapper {
             WfaRequestFailure.ReasonUnavailable
         fieldErrors.isNotEmpty() -> WfaRequestFailure.ValidationRejected(fieldErrors)
         statusCode >= 500 -> WfaRequestFailure.ServerUnavailable
-        statusCode in 400..499 && !safeMessage.isNullOrBlank() ->
-            WfaRequestFailure.BackendRejected(safeMessage)
         else -> WfaRequestFailure.Unknown
     }
 

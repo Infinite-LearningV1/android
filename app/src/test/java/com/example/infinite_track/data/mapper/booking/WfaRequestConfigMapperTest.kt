@@ -42,6 +42,17 @@ class WfaRequestConfigMapperTest {
     }
 
     @Test
+    fun `explicit null reasons produces unusable config`() {
+        val dto = WfaRequestConfigResponseDto(
+            success = true,
+            message = null,
+            data = WfaRequestConfigDataDto(100, null)
+        )
+
+        assertNull(dto.toDomainOrNull())
+    }
+
+    @Test
     fun `duplicate identifiers or multiple Other reasons produce unusable config`() {
         val duplicateIds = WfaRequestConfigResponseDto(
             success = true,

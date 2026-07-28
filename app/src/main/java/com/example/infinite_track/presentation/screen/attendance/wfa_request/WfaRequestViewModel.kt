@@ -130,7 +130,7 @@ class WfaRequestViewModel @Inject constructor(
     }
 
     private fun retryConfig() {
-        if (_uiState.value.failure != WfaRequestFailure.ConfigUnavailable) return
+        if (_uiState.value.config != null || _uiState.value.failure == null) return
         _uiState.update { it.copy(phase = WfaRequestPhase.Loading, failure = null) }
         viewModelScope.launch { loadConfigIntoState() }
     }

@@ -29,7 +29,7 @@ class WfaRequestScreensTest {
 
     @Test
     fun formShowsServerPolicyAndConditionalOtherFieldWithoutEditableRadius() {
-        var state = editingState()
+        val state = editingState()
         renderForm(state)
 
         composeRule.onNodeWithText("Alya Putri").assertIsDisplayed()
@@ -40,7 +40,11 @@ class WfaRequestScreensTest {
         composeRule.onNodeWithText("Keperluan keluarga").assertIsDisplayed()
         composeRule.onNodeWithTag("wfaOtherReason").assertDoesNotExist()
 
-        state = state.copy(draft = state.draft.copy(reasonId = 2))
+    }
+
+    @Test
+    fun otherReasonFieldAppearsOnlyForServerOtherChoice() {
+        val state = editingState().let { it.copy(draft = it.draft.copy(reasonId = 2)) }
         renderForm(state)
         composeRule.onNodeWithTag("wfaOtherReason").assertIsDisplayed()
     }
@@ -87,7 +91,7 @@ class WfaRequestScreensTest {
     }
 
     @Test
-    fun resultShowsBookingIdAndSafeFailureRecovery() {
+    fun successResultShowsBackendConfirmedFieldsAndDestinations() {
         val base = editingState()
         val success = base.copy(
             phase = WfaRequestPhase.Success,
@@ -102,19 +106,40 @@ class WfaRequestScreensTest {
             )
         )
         composeRule.setContent {
-            Infinite_TrackTheme { WfaRequestResultScreen(success, {}, {}, {}) }
+            Infinite_TrackTheme { WfaRequestResultScreen(success, {}, {}, {}, {}) }
         }
         composeRule.onNodeWithText("ID booking: 9123").assertIsDisplayed()
+        composeRule.onNodeWithText("Lokasi: Kafe Taman").assertIsDisplayed()
+        composeRule.onNodeWithText("Alasan: Keperluan keluarga").assertIsDisplayed()
+        composeRule.onNodeWithText("Radius diterapkan: 100 m").assertIsDisplayed()
+        composeRule.onNodeWithTag("wfaDoneAction").assertIsDisplayed()
+        composeRule.onNodeWithTag("wfaHomeAction").assertIsDisplayed()
+    }
 
+    @Test
+    fun failureResultShowsSafeRecovery() {
+        val base = editingState()
         val events = mutableListOf<WfaRequestEvent>()
         val failure = base.copy(phase = WfaRequestPhase.Failure, failure = WfaRequestFailure.NetworkUnavailable)
         composeRule.setContent {
-            Infinite_TrackTheme { WfaRequestResultScreen(failure, events::add, {}, {}) }
+            Infinite_TrackTheme { WfaRequestResultScreen(failure, events::add, {}, {}, {}) }
         }
         composeRule.onNodeWithText("Koneksi bermasalah").assertIsDisplayed()
         composeRule.onNodeWithText("Periksa koneksi internet lalu coba kirim kembali.").assertIsDisplayed()
         composeRule.onNodeWithTag("wfaFailurePrimaryAction").performClick()
         assertEquals(listOf(WfaRequestEvent.RetrySubmitClicked), events)
+    }
+
+    @Test
+    fun retrySubmittingResultHasNoEnabledRecoveryControls() {
+        val state = editingState().copy(phase = WfaRequestPhase.Submitting)
+        composeRule.setContent {
+            Infinite_TrackTheme { WfaRequestResultScreen(state, {}, {}, {}, {}) }
+        }
+
+        composeRule.onNodeWithTag("wfaResultSubmitting").assertIsDisplayed()
+        composeRule.onNodeWithTag("wfaFailurePrimaryAction").assertDoesNotExist()
+        composeRule.onNodeWithTag("wfaDoneAction").assertDoesNotExist()
     }
 
     private fun renderForm(state: WfaRequestUiState) {

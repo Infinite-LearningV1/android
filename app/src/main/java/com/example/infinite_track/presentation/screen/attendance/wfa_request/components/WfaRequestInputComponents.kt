@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.booking.WfaRequestFieldError
 import com.example.infinite_track.domain.model.booking.WfaRequestReason
@@ -40,10 +41,10 @@ fun WfaDateField(date: LocalDate?, error: WfaRequestFieldError?, onDateChanged: 
         InfiniteTextField(
             value = date?.toString().orEmpty(),
             onValueChange = {},
-            modifier = Modifier.fillMaxWidth().testTag("wfaScheduleDate").clickable { showPicker = true },
+            modifier = Modifier.fillMaxWidth().testTag("wfaScheduleDate").clickable(role = Role.Button) { showPicker = true },
             label = stringResource(R.string.wfa_request_date),
             placeholder = stringResource(R.string.wfa_request_date_placeholder),
-            enabled = false
+            readOnly = true
         )
         FieldError(error)
     }

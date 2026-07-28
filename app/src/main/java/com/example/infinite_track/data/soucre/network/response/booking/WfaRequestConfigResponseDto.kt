@@ -10,7 +10,7 @@ data class WfaRequestConfigResponseDto(
 
 data class WfaRequestConfigDataDto(
     @SerializedName("radius_meters") val radiusMeters: Int?,
-    @SerializedName("reasons") val reasons: List<WfaRequestReasonDto> = emptyList()
+    @SerializedName("reasons") val reasons: List<WfaRequestReasonDto>?
 )
 
 data class WfaRequestReasonDto(
