@@ -120,13 +120,6 @@ fun WfaRequestResultScreen(
                             InfiniteInfoRow(
                                 null,
                                 stringResource(
-                                    R.string.wfa_request_result_location,
-                                    result.location.displayName
-                                )
-                            )
-                            InfiniteInfoRow(
-                                null,
-                                stringResource(
                                     R.string.wfa_request_result_reason,
                                     result.reasonLabel
                                 )

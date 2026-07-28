@@ -330,12 +330,12 @@ class WfaRequestScreensTest {
     }
 
     @Test
-    fun successResultShowsBackendConfirmedFieldsAndDestinations() {
+    fun successResultShowsOnlyProvenBackendConfirmedFieldsAndDestinations() {
         val base = editingState()
-        val confirmedLocation = WfaCandidateLocation(
+        val fallbackLocation = WfaCandidateLocation(
             -0.91,
             119.86,
-            "Hub Backend",
+            "Hub DTO Fallback",
             "Jl. Server 5, Palu"
         )
         val success = base.copy(
@@ -344,7 +344,7 @@ class WfaRequestScreensTest {
                 bookingId = 9123,
                 scheduleDate = LocalDate.of(2026, 8, 5),
                 status = WfaRequestStatus.APPROVED,
-                location = confirmedLocation,
+                location = fallbackLocation,
                 reasonLabel = "Kunjungan klien",
                 radiusMeters = 175,
                 submittedAt = null
@@ -366,9 +366,10 @@ class WfaRequestScreensTest {
         composeRule.onNodeWithTag("wfaResultDetailsCard").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("ID booking: 9123").assertIsDisplayed()
         composeRule.onNodeWithText("Tanggal WFA: 2026-08-05").assertIsDisplayed()
-        composeRule.onNodeWithText("Lokasi: Hub Backend").assertIsDisplayed()
+        composeRule.onNodeWithText("Approved").assertIsDisplayed()
         composeRule.onNodeWithText("Alasan: Kunjungan klien").assertIsDisplayed()
         composeRule.onNodeWithText("Radius diterapkan: 175 m").assertIsDisplayed()
+        composeRule.onNodeWithText("Lokasi: Hub DTO Fallback").assertDoesNotExist()
         composeRule.onNodeWithText("Lokasi: Kafe Taman").assertDoesNotExist()
         composeRule.onNodeWithTag("wfaDoneAction").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("wfaHomeAction").performScrollTo().assertIsDisplayed()
