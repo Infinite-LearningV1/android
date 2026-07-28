@@ -1,7 +1,6 @@
 package com.example.infinite_track.data.repository.booking
 
 import com.example.infinite_track.data.soucre.network.request.AttendanceRequest
-import com.example.infinite_track.data.soucre.network.request.BookingRequest
 import com.example.infinite_track.data.soucre.network.request.CheckOutRequestDto
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
@@ -18,7 +17,6 @@ import com.example.infinite_track.data.soucre.network.response.RefreshResponse
 import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
 import com.example.infinite_track.data.soucre.network.response.WfaRecommendationResponse
 import com.example.infinite_track.data.soucre.network.response.booking.BookingHistoryResponse
-import com.example.infinite_track.data.soucre.network.response.booking.BookingResponse
 import com.example.infinite_track.data.soucre.network.response.booking.WfaRequestConfigDataDto
 import com.example.infinite_track.data.soucre.network.response.booking.WfaRequestConfigResponseDto
 import com.example.infinite_track.data.soucre.network.response.booking.WfaRequestLocationDto
@@ -189,7 +187,6 @@ private class WfaRequestFakeApiService : ApiService {
     override suspend fun sendLocationEvent(request: LocationEventRequest): Response<Unit> = unsupported()
     override suspend fun getWfaRecommendations(latitude: Double, longitude: Double): WfaRecommendationResponse = unsupported()
     override suspend fun getBookingHistory(status: String?, page: Int, limit: Int, sortBy: String, sortOrder: String): BookingHistoryResponse = unsupported()
-    override suspend fun submitWfaBooking(request: BookingRequest): BookingResponse = unsupported()
 
     private fun unsupported(): Nothing = error("Not supported in this test")
 }

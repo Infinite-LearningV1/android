@@ -5,7 +5,6 @@ import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.local.room.UserDao
 import com.example.infinite_track.data.soucre.local.room.UserEntity
 import com.example.infinite_track.data.soucre.network.request.AttendanceRequest
-import com.example.infinite_track.data.soucre.network.request.BookingRequest
 import com.example.infinite_track.data.soucre.network.request.CheckOutRequestDto
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
@@ -21,7 +20,6 @@ import com.example.infinite_track.data.soucre.network.response.RefreshResponse
 import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
 import com.example.infinite_track.data.soucre.network.response.WfaRecommendationResponse
 import com.example.infinite_track.data.soucre.network.response.booking.BookingHistoryResponse
-import com.example.infinite_track.data.soucre.network.response.booking.BookingResponse
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.data.soucre.network.retrofit.AuthSessionApiService
 import kotlinx.coroutines.CancellationException
@@ -162,7 +160,6 @@ private class LogoutFallbackFakeApiService(
     override suspend fun getWfaRecommendations(latitude: Double, longitude: Double): WfaRecommendationResponse = throw NotImplementedError()
     override suspend fun getWfaRequestConfig(): com.example.infinite_track.data.soucre.network.response.booking.WfaRequestConfigResponseDto = throw NotImplementedError()
     override suspend fun getBookingHistory(status: String?, page: Int, limit: Int, sortBy: String, sortOrder: String): BookingHistoryResponse = throw NotImplementedError()
-    override suspend fun submitWfaBooking(request: BookingRequest): BookingResponse = throw NotImplementedError()
     override suspend fun submitWfaRequest(request: com.example.infinite_track.data.soucre.network.request.WfaRequestDto): com.example.infinite_track.data.soucre.network.response.booking.WfaRequestResponseDto = throw NotImplementedError()
 }
 

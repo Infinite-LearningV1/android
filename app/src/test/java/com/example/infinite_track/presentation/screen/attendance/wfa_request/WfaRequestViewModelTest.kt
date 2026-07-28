@@ -155,10 +155,6 @@ private class WfaRequestViewModelRepositoryFake(
         status: String?, page: Int, limit: Int, sortBy: String, sortOrder: String
     ): Result<BookingHistoryPage> = error("Not used")
 
-    override suspend fun submitBooking(
-        scheduleDate: String, latitude: Double, longitude: Double, radius: Int,
-        description: String, notes: String
-    ): Result<Unit> = error("Not used")
 }
 
 private class WfaRequestAuthRepositoryFake : AuthRepository {

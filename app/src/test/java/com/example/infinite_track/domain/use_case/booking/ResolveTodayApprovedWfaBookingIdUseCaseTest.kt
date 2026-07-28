@@ -125,15 +125,5 @@ class ResolveTodayApprovedWfaBookingIdUseCaseTest {
             command: com.example.infinite_track.domain.model.booking.SubmitWfaRequestCommand
         ): com.example.infinite_track.domain.model.booking.WfaRequestResult = error("Not needed")
 
-        override suspend fun submitBooking(
-            scheduleDate: String,
-            latitude: Double,
-            longitude: Double,
-            radius: Int,
-            description: String,
-            notes: String
-        ): Result<Unit> {
-            throw UnsupportedOperationException("Not needed in this test")
-        }
     }
 }

@@ -9,7 +9,6 @@ import com.example.infinite_track.data.soucre.local.preferences.CachedTodayStatu
 import com.example.infinite_track.data.soucre.local.preferences.TodayStatusPreference
 import com.example.infinite_track.data.soucre.local.preferences.UserPreference
 import com.example.infinite_track.data.soucre.network.request.AttendanceRequest
-import com.example.infinite_track.data.soucre.network.request.BookingRequest
 import com.example.infinite_track.data.soucre.network.request.CheckOutRequestDto
 import com.example.infinite_track.data.soucre.network.request.LocationEventRequest
 import com.example.infinite_track.data.soucre.network.request.LoginRequest
@@ -30,7 +29,6 @@ import com.example.infinite_track.data.soucre.network.response.TodayStatusMeta
 import com.example.infinite_track.data.soucre.network.response.TodayStatusResponse
 import com.example.infinite_track.data.soucre.network.response.WfaRecommendationResponse
 import com.example.infinite_track.data.soucre.network.response.booking.BookingHistoryResponse
-import com.example.infinite_track.data.soucre.network.response.booking.BookingResponse
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
 import com.example.infinite_track.domain.model.attendance.AttendanceRequestModel
 import com.example.infinite_track.domain.model.auth.AuthRuntimePolicy
@@ -358,7 +356,6 @@ private class FakeApiService(
         sortOrder: String
     ): BookingHistoryResponse = unsupported()
 
-    override suspend fun submitWfaBooking(request: BookingRequest): BookingResponse = unsupported()
 
     override suspend fun submitWfaRequest(
         request: com.example.infinite_track.data.soucre.network.request.WfaRequestDto

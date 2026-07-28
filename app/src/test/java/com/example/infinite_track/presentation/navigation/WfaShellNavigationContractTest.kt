@@ -44,7 +44,7 @@ class WfaShellNavigationContractTest {
         assertTrue(WfaShellNavigationContract.isSelected(wfaItem, Screen.Wfa.route))
         assertTrue(WfaShellNavigationContract.isSelected(wfaItem, Screen.DetailsMyBooking.route))
         assertFalse(WfaShellNavigationContract.isSelected(wfaItem, Screen.Attendance.route))
-        assertFalse(WfaShellNavigationContract.isSelected(wfaItem, Screen.WfaBooking.route))
+        assertFalse(WfaShellNavigationContract.isSelected(wfaItem, Screen.WfaRequestForm.route))
     }
 
     @Test
@@ -61,7 +61,6 @@ class WfaShellNavigationContractTest {
     fun `bottom bar stays hidden on attendance and location flow routes`() {
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.Attendance.route))
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.LocationSearch.route))
-        assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.WfaBooking.route))
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.WfaRequestForm.route))
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.WfaRequestReview.route))
         assertFalse(WfaShellNavigationContract.shouldShowBottomBar(Screen.WfaRequestResult.route))

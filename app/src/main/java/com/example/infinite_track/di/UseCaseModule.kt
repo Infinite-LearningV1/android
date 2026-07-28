@@ -33,7 +33,6 @@ import com.example.infinite_track.domain.use_case.auth.VerifyFaceUseCase
 import com.example.infinite_track.domain.use_case.booking.GetBookingHistoryUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayApprovedWfaBookingUseCase
 import com.example.infinite_track.domain.use_case.booking.ResolveTodayWfaBookingStateUseCase
-import com.example.infinite_track.domain.use_case.booking.SubmitWfaBookingUseCase
 import com.example.infinite_track.domain.use_case.contact.GetContactsUseCase
 import com.example.infinite_track.domain.use_case.history.ExportAttendanceReportPdfUseCase
 import com.example.infinite_track.domain.use_case.history.GetAttendanceHistoryUseCase
@@ -206,14 +205,6 @@ object UseCaseModule {
         bookingRepository: BookingRepository
     ): GetBookingHistoryUseCase {
         return GetBookingHistoryUseCase(bookingRepository)
-    }
-
-    // Provide the Submit WFA Booking Use Case
-    @Provides
-    fun provideSubmitWfaBookingUseCase(
-        bookingRepository: BookingRepository
-    ): SubmitWfaBookingUseCase {
-        return SubmitWfaBookingUseCase(bookingRepository)
     }
 
     @Provides

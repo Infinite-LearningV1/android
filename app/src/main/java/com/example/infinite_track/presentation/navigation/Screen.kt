@@ -42,14 +42,6 @@ sealed class Screen(val route: String) {
     data object MyDocument : Screen("profile/MyDocument")
     data object About : Screen("profile/about")
 
-    // WFA Booking
-    data object WfaBooking : Screen("wfa_booking/{latitude}/{longitude}") {
-        fun createRoute(latitude: Double, longitude: Double): String {
-            // Send Double directly, NavController will handle the conversion
-            return "wfa_booking/$latitude/$longitude"
-        }
-    }
-
     // Face Scanner
     data object FaceScanner : Screen("face_scanner?action={action}") {
         fun createRoute(action: String = "checkin"): String {

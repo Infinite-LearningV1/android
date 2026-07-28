@@ -225,14 +225,6 @@ class GeofenceReconciliationWorkerTest {
             command: com.example.infinite_track.domain.model.booking.SubmitWfaRequestCommand
         ): com.example.infinite_track.domain.model.booking.WfaRequestResult = error("Not used")
 
-        override suspend fun submitBooking(
-            scheduleDate: String,
-            latitude: Double,
-            longitude: Double,
-            radius: Int,
-            description: String,
-            notes: String
-        ): Result<Unit> = error("Not used")
     }
 
     private class FakeGeofenceRuntimeRepository : GeofenceRuntimeRepository {

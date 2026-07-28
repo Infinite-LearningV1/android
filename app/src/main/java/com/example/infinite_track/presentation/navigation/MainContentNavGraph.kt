@@ -11,8 +11,6 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
 import com.example.infinite_track.data.soucre.dummy.dummyTimeOff
 import com.example.infinite_track.presentation.screen.attendance.AttendanceScreen
-import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingScreen
-import com.example.infinite_track.presentation.screen.attendance.booking.WfaBookingViewModel
 import com.example.infinite_track.presentation.screen.attendance.face.FaceScannerScreen
 import com.example.infinite_track.presentation.screen.attendance.search.LocationSearchScreen
 import com.example.infinite_track.presentation.screen.contact.ContactScreen
@@ -197,21 +195,6 @@ fun NavGraphBuilder.mainContentNavGraph(
             onBackClick = {
                 navController.popBackStack()
             }
-        )
-    }
-
-    // WFA Booking Screen
-    composable(
-        route = Screen.WfaBooking.route,
-        arguments = listOf(
-            navArgument("latitude") { type = NavType.FloatType },
-            navArgument("longitude") { type = NavType.FloatType }
-        )
-    ) { backStackEntry ->
-        val viewModel: WfaBookingViewModel = hiltViewModel()
-        WfaBookingScreen(
-            viewModel = viewModel,
-            navController = navController
         )
     }
 

@@ -527,14 +527,6 @@ class AttendanceScreenFaceResultRescueTest {
             sortOrder: String
         ): Result<BookingHistoryPage> = Result.success(BookingHistoryPage(emptyList()))
 
-        override suspend fun submitBooking(
-            scheduleDate: String,
-            latitude: Double,
-            longitude: Double,
-            radius: Int,
-            description: String,
-            notes: String
-        ): Result<Unit> = Result.success(Unit)
     }
 
     internal class ControllableFakeWfaBookingResolver : BookingRepository {
@@ -594,14 +586,6 @@ class AttendanceScreenFaceResultRescueTest {
             response.await().also { requestCompleted.complete(Unit) }
         }
 
-        override suspend fun submitBooking(
-            scheduleDate: String,
-            latitude: Double,
-            longitude: Double,
-            radius: Int,
-            description: String,
-            notes: String
-        ): Result<Unit> = Result.success(Unit)
     }
 
     private class FakeAddressResolver : AddressResolver {

@@ -18,13 +18,4 @@ interface BookingRepository {
 	suspend fun getWfaRequestConfig(): WfaRequestConfigResult
 
 	suspend fun submitWfaRequest(command: SubmitWfaRequestCommand): WfaRequestResult
-
-	suspend fun submitBooking(
-		scheduleDate: String,
-		latitude: Double,
-		longitude: Double,
-		radius: Int,
-		description: String,
-		notes: String
-	): Result<Unit>
 }
