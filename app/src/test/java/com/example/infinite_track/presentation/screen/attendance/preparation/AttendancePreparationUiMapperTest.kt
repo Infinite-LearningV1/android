@@ -14,6 +14,9 @@ import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.location.DistanceMeters
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
+import com.example.infinite_track.domain.model.wfa.WfaFacilityAvailability
+import com.example.infinite_track.domain.model.wfa.WfaFacilityEvidence
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationStatus
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -201,9 +204,9 @@ class AttendancePreparationUiMapperTest {
     fun `low score final recommendation row cannot expose success semantic`() {
         val lowScore = recommendation().copy(
             stableKey = "park@-0.910000,119.890000",
-            category = "Park",
-            suitabilityScore = 0.25,
-            suitabilityLabel = "Needs review"
+            placeType = "Park",
+            finalScore = 25.0,
+            finalLabel = "Needs review"
         )
         val mapped = map(
             readyPreparation(WorkMode.WFA).copy(
@@ -347,10 +350,22 @@ class AttendancePreparationUiMapperTest {
         name = "Cafe Palu",
         address = "Palu",
         coordinate = GeoCoordinate(-0.90, 119.88),
-        category = "Cafe",
-        suitabilityScore = 0.91,
-        suitabilityLabel = "Sangat sesuai",
-        distanceMeters = DistanceMeters(1_250.0)
+        placeId = null,
+        placeType = "Cafe",
+        distanceMeters = DistanceMeters(1_250.0),
+        status = WfaRecommendationStatus.Ranked,
+        finalRank = 1,
+        finalScore = 91.0,
+        finalLabel = "Sangat sesuai",
+        facilityScore = null,
+        facilityConfidence = 0,
+        facilities = WfaFacilityEvidence(
+            internetAccess = WfaFacilityAvailability.UNKNOWN,
+            openingHours = WfaFacilityAvailability.UNKNOWN,
+            toilets = WfaFacilityAvailability.UNKNOWN,
+            airConditioning = WfaFacilityAvailability.UNKNOWN,
+            wheelchairAccessibility = WfaFacilityAvailability.UNKNOWN
+        )
     )
 
     private data class Case(

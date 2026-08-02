@@ -11,6 +11,9 @@ import com.example.infinite_track.domain.model.location.DistanceMeters
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
+import com.example.infinite_track.domain.model.wfa.WfaFacilityAvailability
+import com.example.infinite_track.domain.model.wfa.WfaFacilityEvidence
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationStatus
 import com.example.infinite_track.presentation.map.model.MapMarkerCategory
 import com.example.infinite_track.presentation.map.model.MapMarkerRole
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
@@ -166,11 +169,25 @@ class AttendanceMapUiMapperTest {
             name = "Cafe",
             address = "Palu",
             coordinate = GeoCoordinate(latitude, longitude),
-            category = "Cafe",
-            suitabilityScore = 0.91,
-            suitabilityLabel = "Sangat sesuai",
-            distanceMeters = DistanceMeters(1_250.0)
+            placeId = null,
+            placeType = "Cafe",
+            distanceMeters = DistanceMeters(1_250.0),
+            status = WfaRecommendationStatus.Ranked,
+            finalRank = 1,
+            finalScore = 91.0,
+            finalLabel = "Sangat sesuai",
+            facilityScore = null,
+            facilityConfidence = 0,
+            facilities = unknownFacilities()
         )
+
+    private fun unknownFacilities() = WfaFacilityEvidence(
+        internetAccess = WfaFacilityAvailability.UNKNOWN,
+        openingHours = WfaFacilityAvailability.UNKNOWN,
+        toilets = WfaFacilityAvailability.UNKNOWN,
+        airConditioning = WfaFacilityAvailability.UNKNOWN,
+        wheelchairAccessibility = WfaFacilityAvailability.UNKNOWN
+    )
 
     private val officeTarget = AuthoritativeTargetLocation(
         targetId = TargetLocationId("office:1"),

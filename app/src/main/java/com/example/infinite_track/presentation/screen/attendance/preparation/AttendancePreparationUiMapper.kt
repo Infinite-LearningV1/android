@@ -230,7 +230,9 @@ object AttendancePreparationUiMapper {
             retryable = retryable
         )
         is WfaDiscoveryState.Content -> WfaDiscoveryUiModel.Content(
-            rows = recommendations.map { recommendation -> recommendation.toUiModel(strings) },
+            rows = recommendations.mapNotNull { recommendation ->
+                recommendation.toUiModel(strings)
+            },
             selectedKey = selectedKey,
             searchPreviewName = searchPreview?.placeName
         )
@@ -238,23 +240,25 @@ object AttendancePreparationUiMapper {
 
     private fun WfaRecommendation.toUiModel(
         strings: AttendancePreparationTextResolver
-    ): WfaRecommendationUiModel {
-        val suitability = WfaSuitabilityPresentationMapper.map(suitabilityScore)
+    ): WfaRecommendationUiModel? {
+        val score = finalScore ?: return null
+        val label = finalLabel ?: return null
+        val suitability = WfaSuitabilityPresentationMapper.map(score / 100.0)
         return WfaRecommendationUiModel(
             stableKey = stableKey,
             name = name,
             supportingText = strings.text(
                 R.string.attendance_wfa_recommendation_detail,
-                category,
+                placeType,
                 formatDistance(distanceMeters, strings)
             ),
             suitabilityText = strings.text(
                 R.string.attendance_wfa_suitability,
                 suitability.percentage,
-                suitabilityLabel
+                label
             ),
             suitabilitySemantic = suitability.semantic,
-            categoryIcon = category.toCategoryIcon()
+            categoryIcon = placeType.toCategoryIcon()
         )
     }
 

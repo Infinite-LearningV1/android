@@ -5,6 +5,9 @@ import com.example.infinite_track.domain.model.location.DistanceMeters
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
+import com.example.infinite_track.domain.model.wfa.WfaFacilityAvailability
+import com.example.infinite_track.domain.model.wfa.WfaFacilityEvidence
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -69,10 +72,22 @@ class WfaMapSelectionEffectTest {
             name = "Selected",
             address = "Palu",
             coordinate = GeoCoordinate(-0.91, 119.89),
-            category = "cafe",
-            suitabilityScore = 90.0,
-            suitabilityLabel = "Sesuai",
-            distanceMeters = DistanceMeters(250.0)
+            placeId = null,
+            placeType = "cafe",
+            distanceMeters = DistanceMeters(250.0),
+            status = WfaRecommendationStatus.Ranked,
+            finalRank = 1,
+            finalScore = 90.0,
+            finalLabel = "Sesuai",
+            facilityScore = null,
+            facilityConfidence = 0,
+            facilities = WfaFacilityEvidence(
+                internetAccess = WfaFacilityAvailability.UNKNOWN,
+                openingHours = WfaFacilityAvailability.UNKNOWN,
+                toilets = WfaFacilityAvailability.UNKNOWN,
+                airConditioning = WfaFacilityAvailability.UNKNOWN,
+                wheelchairAccessibility = WfaFacilityAvailability.UNKNOWN
+            )
         )
         val preparation = AttendancePreparationState(
             selectedMode = WorkMode.WFA,

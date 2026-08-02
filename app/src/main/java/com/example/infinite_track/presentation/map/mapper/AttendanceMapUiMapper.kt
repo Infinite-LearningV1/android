@@ -51,6 +51,8 @@ object AttendanceMapUiMapper {
 
             val discovery = preparation.wfaDiscovery as? WfaDiscoveryState.Content
             discovery?.recommendations?.forEach { recommendation ->
+                val finalScore = recommendation.finalScore ?: return@forEach
+                val finalLabel = recommendation.finalLabel ?: return@forEach
                 add(
                     MapMarkerUiModel(
                         id = recommendationMarkerId(recommendation),
@@ -61,10 +63,10 @@ object AttendanceMapUiMapper {
                         snippet = recommendation.address,
                         isSelected = recommendation.stableKey == discovery.selectedKey,
                         recommendationInfo = MapMarkerRecommendationInfo(
-                            category = recommendation.category,
+                            category = recommendation.placeType,
                             distance = recommendation.distanceMeters,
-                            fuzzyAhpScore = recommendation.suitabilityScore,
-                            suitabilityLabel = recommendation.suitabilityLabel
+                            fuzzyAhpScore = finalScore / 100.0,
+                            suitabilityLabel = finalLabel
                         )
                     )
                 )

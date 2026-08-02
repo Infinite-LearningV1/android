@@ -14,6 +14,9 @@ import com.example.infinite_track.domain.model.location.DistanceMeters
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
+import com.example.infinite_track.domain.model.wfa.WfaFacilityAvailability
+import com.example.infinite_track.domain.model.wfa.WfaFacilityEvidence
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationStatus
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationReducer
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
 import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryState
@@ -124,9 +127,21 @@ class AttendancePreparationReducerTest {
         name = "Cafe Palu",
         address = "Palu",
         coordinate = GeoCoordinate(-0.90, 119.88),
-        category = "Cafe",
-        suitabilityScore = 0.91,
-        suitabilityLabel = "Sangat sesuai",
-        distanceMeters = DistanceMeters(1_250.0)
+        placeId = null,
+        placeType = "Cafe",
+        distanceMeters = DistanceMeters(1_250.0),
+        status = WfaRecommendationStatus.Ranked,
+        finalRank = 1,
+        finalScore = 91.0,
+        finalLabel = "Sangat sesuai",
+        facilityScore = null,
+        facilityConfidence = 0,
+        facilities = WfaFacilityEvidence(
+            internetAccess = WfaFacilityAvailability.UNKNOWN,
+            openingHours = WfaFacilityAvailability.UNKNOWN,
+            toilets = WfaFacilityAvailability.UNKNOWN,
+            airConditioning = WfaFacilityAvailability.UNKNOWN,
+            wheelchairAccessibility = WfaFacilityAvailability.UNKNOWN
+        )
     )
 }
