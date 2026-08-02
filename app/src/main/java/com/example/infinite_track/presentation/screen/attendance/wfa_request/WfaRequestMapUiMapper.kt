@@ -70,10 +70,11 @@ object WfaRequestMapUiMapper {
         return MapMarkerRecommendationInfo(
             category = placeType,
             distance = distanceMeters,
-            fuzzyAhpScore = score,
+            fuzzyAhpScore = score / PERCENT_SCALE,
             suitabilityLabel = label
         )
     }
 
     private const val CURRENT_LOCATION_ID = "wfa:current-location"
+    private const val PERCENT_SCALE = 100.0
 }

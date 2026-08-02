@@ -39,6 +39,11 @@ class WfaRequestMapUiMapperTest {
         assertEquals("wfa:place-1", result.markers[0].id)
         assertEquals("wfa:place-2", result.markers[1].id)
         assertEquals("wfa:place-2", result.markers.single { it.isSelected }.id)
+        assertEquals(
+            0.88,
+            result.markers.first().recommendationInfo?.fuzzyAhpScore ?: Double.NaN,
+            0.0
+        )
     }
 
     private fun contentState(selectedKey: String? = null) = WfaRequestRecommendationState.Content(
