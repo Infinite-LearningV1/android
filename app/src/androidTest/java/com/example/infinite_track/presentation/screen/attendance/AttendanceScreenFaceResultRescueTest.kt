@@ -41,7 +41,8 @@ import com.example.infinite_track.domain.model.location.CurrentLocationResult
 import com.example.infinite_track.domain.model.location.AddressResolutionResult
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.location.ResolvedAddress
-import com.example.infinite_track.domain.model.wfa.WfaRecommendation
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationQuery
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationResult
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
@@ -616,9 +617,13 @@ class AttendanceScreenFaceResultRescueTest {
 
     private class FakeWfaRepository : WfaRepository {
         override suspend fun getRecommendations(
-            latitude: Double,
-            longitude: Double
-        ): Result<List<WfaRecommendation>> = Result.success(emptyList())
+            query: WfaRecommendationQuery
+        ): WfaRecommendationResult = WfaRecommendationResult.Success(
+            scheduleDate = query.scheduleDate,
+            timezone = "Asia/Jakarta",
+            recommendations = emptyList(),
+            meta = null
+        )
     }
 
     private class FakeGeofenceRuntimeRepository : GeofenceRuntimeRepository {

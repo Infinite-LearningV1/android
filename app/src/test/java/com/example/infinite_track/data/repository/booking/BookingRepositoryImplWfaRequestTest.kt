@@ -185,7 +185,11 @@ private class WfaRequestFakeApiService : ApiService {
     override suspend fun exportAttendanceReportPdf(period: String, startDate: String?, endDate: String?, timezone: String?): Response<ResponseBody> = unsupported()
     override suspend fun updateUserProfile(userId: Int, request: ProfileUpdateRequest): ProfileUpdateResponse = unsupported()
     override suspend fun sendLocationEvent(request: LocationEventRequest): Response<Unit> = unsupported()
-    override suspend fun getWfaRecommendations(latitude: Double, longitude: Double): WfaRecommendationResponse = unsupported()
+    override suspend fun getWfaRecommendations(
+        latitude: Double,
+        longitude: Double,
+        scheduleDate: String
+    ): WfaRecommendationResponse = unsupported()
     override suspend fun getBookingHistory(status: String?, page: Int, limit: Int, sortBy: String, sortOrder: String): BookingHistoryResponse = unsupported()
 
     private fun unsupported(): Nothing = error("Not supported in this test")

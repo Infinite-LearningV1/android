@@ -2,13 +2,17 @@ package com.example.infinite_track.data.mapper.wfa
 
 import com.example.infinite_track.data.soucre.network.response.FacilityEvidenceDto
 import com.example.infinite_track.data.soucre.network.response.RecommendationItem
+import com.example.infinite_track.data.soucre.network.response.WfaRecommendationResponse
 import com.example.infinite_track.domain.model.location.DistanceMeters
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.wfa.WfaFacilityAvailability
 import com.example.infinite_track.domain.model.wfa.WfaFacilityEvidence
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationMeta
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationResult
 import com.example.infinite_track.domain.model.wfa.WfaRecommendationStatus
 import java.util.Locale
+import java.time.LocalDate
 
 fun RecommendationItem.toDomainOrNull(): WfaRecommendation? {
     if (facilityConfidence !in 0..100) return null
@@ -50,6 +54,24 @@ fun RecommendationItem.toDomainOrNull(): WfaRecommendation? {
 
 fun List<RecommendationItem>.toDomain(): List<WfaRecommendation> = mapNotNull {
     it.toDomainOrNull()
+}
+
+fun WfaRecommendationResponse.toDomainResultOrNull(): WfaRecommendationResult.Success? {
+    if (!success || data.timezone.isBlank()) return null
+    val scheduleDate = runCatching { LocalDate.parse(data.scheduleDate) }.getOrNull()
+        ?: return null
+    return WfaRecommendationResult.Success(
+        scheduleDate = scheduleDate,
+        timezone = data.timezone,
+        recommendations = data.recommendations.toDomain(),
+        meta = meta?.let {
+            WfaRecommendationMeta(
+                searchRadiusMeters = it.searchRadiusMeters,
+                candidatesFound = it.candidatesFound,
+                candidatesReturned = it.candidatesReturned
+            )
+        }
+    )
 }
 
 private fun FacilityEvidenceDto.toDomain(): WfaFacilityEvidence = WfaFacilityEvidence(

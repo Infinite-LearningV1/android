@@ -103,7 +103,8 @@ interface ApiService {
     @GET("api/wfa/recommendations")
     suspend fun getWfaRecommendations(
         @Query("lat") latitude: Double,
-        @Query("lng") longitude: Double
+        @Query("lng") longitude: Double,
+        @Query("schedule_date") scheduleDate: String
     ): WfaRecommendationResponse
 
     @GET("api/wfa/request-config")

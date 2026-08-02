@@ -343,7 +343,11 @@ private class FakeApiService(
 
     override suspend fun sendLocationEvent(request: LocationEventRequest): Response<Unit> = unsupported()
 
-    override suspend fun getWfaRecommendations(latitude: Double, longitude: Double): WfaRecommendationResponse = unsupported()
+    override suspend fun getWfaRecommendations(
+        latitude: Double,
+        longitude: Double,
+        scheduleDate: String
+    ): WfaRecommendationResponse = unsupported()
 
     override suspend fun getWfaRequestConfig():
         com.example.infinite_track.data.soucre.network.response.booking.WfaRequestConfigResponseDto = unsupported()
