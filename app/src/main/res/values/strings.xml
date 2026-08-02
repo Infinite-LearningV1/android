@@ -380,4 +380,22 @@
     <string name="wfa_request_error_other_required">Jelaskan alasan lainnya</string>
     <string name="wfa_request_error_too_long">Teks terlalu panjang</string>
     <string name="wfa_request_error_location">Lokasi tidak valid</string>
+    <string name="wfa_recommendation_title">Rekomendasi lokasi</string>
+    <string name="wfa_recommendation_supporting">Disesuaikan otomatis dengan tanggal WFA dan lokasi Anda saat ini.</string>
+    <string name="wfa_recommendation_loading">Memuat rekomendasi lokasi WFA</string>
+    <string name="wfa_recommendation_empty_title">Belum ada rekomendasi</string>
+    <string name="wfa_recommendation_empty_message">Cari lokasi lain untuk melanjutkan permintaan.</string>
+    <string name="wfa_recommendation_failure_title">Rekomendasi belum dapat dimuat</string>
+    <string name="wfa_recommendation_failure_location">Lokasi terkini tidak tersedia. Periksa izin lokasi lalu coba lagi.</string>
+    <string name="wfa_recommendation_failure_date">Pilih tanggal WFA setelah hari ini.</string>
+    <string name="wfa_recommendation_failure_duplicate">Anda sudah memiliki permintaan WFA pada tanggal ini.</string>
+    <string name="wfa_recommendation_failure_network">Periksa koneksi internet Anda lalu coba lagi.</string>
+    <string name="wfa_recommendation_failure_unavailable">Layanan rekomendasi sedang tidak tersedia.</string>
+    <string name="wfa_recommendation_search_fallback">Cari lokasi lainnya</string>
+    <string name="wfa_recommendation_selected">Dipilih</string>
+    <string name="wfa_recommendation_distance">Jarak %.0f m</string>
+    <string name="wfa_recommendation_ranked_score">Skor %1$s · %2$s</string>
+    <string name="wfa_recommendation_insufficient_data">Data fasilitas belum cukup untuk memberi skor.</string>
+    <string name="wfa_recommendation_enrichment_failed">Data fasilitas belum berhasil dilengkapi.</string>
+    <string name="wfa_recommendation_score_unavailable">Skor rekomendasi tidak tersedia.</string>
 </resources>

@@ -41,6 +41,13 @@ import com.example.infinite_track.domain.model.booking.WfaRequestFieldError
 import com.example.infinite_track.domain.model.booking.WfaRequestFieldErrors
 import com.example.infinite_track.domain.model.booking.WfaRequestReason
 import com.example.infinite_track.domain.model.booking.WfaRequestStatus
+import com.example.infinite_track.domain.model.location.DistanceMeters
+import com.example.infinite_track.domain.model.location.GeoCoordinate
+import com.example.infinite_track.domain.model.wfa.WfaFacilityAvailability
+import com.example.infinite_track.domain.model.wfa.WfaFacilityEvidence
+import com.example.infinite_track.domain.model.wfa.WfaRecommendation
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationFailure
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationStatus
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackDropDown
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackDropDownOption
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackTextArea
@@ -117,7 +124,7 @@ class WfaRequestScreensTest {
             }
         }
 
-        composeRule.onNodeWithTag("wfaLocationMap").assertExists()
+        composeRule.onNodeWithTag("wfaRecommendationMap").assertExists()
         composeRule.onNodeWithTag("wfaEmployeeCard").assertExists()
         composeRule.onNodeWithTag("wfaRequestDetails").assertExists()
         composeRule.onNodeWithTag("wfaEligibilityCard").assertExists()
@@ -126,6 +133,50 @@ class WfaRequestScreensTest {
 
         composeRule.onNodeWithContentDescription("Tutup").performClick()
         composeRule.runOnIdle { assertEquals(1, closeCount) }
+    }
+
+    @Test
+    fun formRendersRecommendationStatesAndSearchFallback() {
+        val state = mutableStateOf(
+            editingState().copy(recommendationState = WfaRequestRecommendationState.Loading)
+        )
+        composeRule.setContent {
+            Infinite_TrackTheme { WfaRequestFormScreen(state.value, {}, onBack = {}) }
+        }
+        composeRule.onNodeWithTag("wfaRecommendationLoading").assertIsDisplayed()
+        composeRule.onNodeWithTag("wfaSearchFallback").assertIsDisplayed()
+
+        composeRule.runOnIdle {
+            state.value = editingState().copy(
+                recommendationState = WfaRequestRecommendationState.Empty
+            )
+        }
+        composeRule.onNodeWithTag("wfaRecommendationEmpty").assertIsDisplayed()
+
+        composeRule.runOnIdle {
+            state.value = editingState().copy(
+                recommendationState = WfaRequestRecommendationState.Failure(
+                    WfaRecommendationFailure.NetworkUnavailable,
+                    retryable = true
+                )
+            )
+        }
+        composeRule.onNodeWithTag("wfaRecommendationFailure").assertIsDisplayed()
+    }
+
+    @Test
+    fun nonRankedRecommendationUsesTruthfulCopyWithoutSyntheticZero() {
+        val state = editingState().copy(
+            recommendationState = WfaRequestRecommendationState.Content(
+                listOf(recommendation(status = WfaRecommendationStatus.InsufficientFacilityData))
+            )
+        )
+        renderForm(state)
+
+        composeRule.onNodeWithText("Data fasilitas belum cukup untuk memberi skor.")
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeRule.onNodeWithText("Skor 0", substring = true).assertDoesNotExist()
     }
 
     @Test
@@ -502,6 +553,12 @@ class WfaRequestScreensTest {
         phase = WfaRequestPhase.Editing,
         employee = WfaEmployeeSummary("Alya Putri", "Product"),
         location = location,
+        minimumScheduleDate = LocalDate.of(2026, 8, 3),
+        currentCoordinate = GeoCoordinate(-0.89, 119.87),
+        recommendationState = WfaRequestRecommendationState.Content(
+            recommendations = listOf(recommendation()),
+            selectedKey = "place-1"
+        ),
         config = WfaRequestConfig(
             radiusMeters = 100,
             reasons = listOf(
@@ -522,5 +579,30 @@ class WfaRequestScreensTest {
         val TransparentPageProbeColor = Color.Magenta
         const val TransparentPageProbeTag = "wfaTransparentPageProbe"
         val location = WfaCandidateLocation(-0.89, 119.87, "Kafe Taman", "Jl. Merdeka 10, Palu")
+
+        fun recommendation(
+            status: WfaRecommendationStatus = WfaRecommendationStatus.Ranked
+        ) = WfaRecommendation(
+            stableKey = "place-1",
+            placeId = "place-1",
+            name = "Kafe Taman",
+            address = "Jl. Merdeka 10, Palu",
+            coordinate = GeoCoordinate(-0.89, 119.87),
+            placeType = "cafe",
+            distanceMeters = DistanceMeters(125.0),
+            status = status,
+            finalRank = if (status == WfaRecommendationStatus.Ranked) 1 else null,
+            finalScore = if (status == WfaRecommendationStatus.Ranked) 88.0 else null,
+            finalLabel = if (status == WfaRecommendationStatus.Ranked) "Direkomendasikan" else null,
+            facilityScore = null,
+            facilityConfidence = 0,
+            facilities = WfaFacilityEvidence(
+                internetAccess = WfaFacilityAvailability.UNKNOWN,
+                openingHours = WfaFacilityAvailability.UNKNOWN,
+                toilets = WfaFacilityAvailability.UNKNOWN,
+                airConditioning = WfaFacilityAvailability.UNKNOWN,
+                wheelchairAccessibility = WfaFacilityAvailability.UNKNOWN
+            )
+        )
     }
 }
