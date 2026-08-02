@@ -23,7 +23,7 @@ import androidx.compose.ui.res.stringResource
 import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.booking.WfaRequestFieldError
 import com.example.infinite_track.domain.model.booking.WfaRequestFailure
-import com.example.infinite_track.presentation.components.button.DatePickerButton
+import com.example.infinite_track.presentation.components.calendar.DatePickerComponent
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackDropDown
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackDropDownOption
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackTextArea
@@ -112,11 +112,11 @@ private fun FormContent(
                         title = stringResource(R.string.wfa_request_date),
                         leadingIcon = Icons.Outlined.Info
                     )
-                    DatePickerButton(
+                    DatePickerComponent(
                         selectedDate = uiState.draft.scheduleDate,
                         minimumDate = uiState.minimumScheduleDate,
                         onDateSelected = { onEvent(WfaRequestEvent.ScheduleDateChanged(it)) },
-                        placeholder = stringResource(R.string.wfa_request_date_placeholder),
+                        label = stringResource(R.string.wfa_request_date_placeholder),
                         calendarContentDescription = stringResource(R.string.wfa_request_date_placeholder),
                         modifier = Modifier.testTag("wfaScheduleDate")
                     )

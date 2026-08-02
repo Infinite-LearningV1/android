@@ -125,6 +125,7 @@ class WfaRequestScreensTest {
         }
 
         composeRule.onNodeWithTag("wfaRecommendationMap").assertExists()
+        composeRule.onNodeWithText("04/08/2026").assertIsDisplayed()
         composeRule.onNodeWithTag("wfaEmployeeCard").assertExists()
         composeRule.onNodeWithTag("wfaRequestDetails").assertExists()
         composeRule.onNodeWithTag("wfaEligibilityCard").assertExists()
