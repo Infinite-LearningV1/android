@@ -1,11 +1,11 @@
 # INF-273 — Android Date-Aware WFA Recommendations Design
 
-**Date:** 2026-08-02  
-**Linear:** [INF-273](https://linear.app/infinite-track-palu/issue/INF-273/android-auto-load-date-aware-wfa-recommendations-inside-wfa-request)  
-**Repository:** `Infinite-LearningV1/android`  
-**Integration branch:** `develop`  
-**Feature branch:** `feature/inf-273-wfa-date-aware-recommendations`  
-**Base:** `develop` at `dbc3c6cd838204519ef0e0bb06763537e21a1290`  
+**Date:** 2026-08-02
+**Linear:** [INF-273](https://linear.app/infinite-track-palu/issue/INF-273/android-auto-load-date-aware-wfa-recommendations-inside-wfa-request)
+**Repository:** `Infinite-LearningV1/android`
+**Integration branch:** `develop`
+**Feature branch:** `feature/inf-273-wfa-date-aware-recommendations`
+**Base:** `develop` at `dbc3c6cd838204519ef0e0bb06763537e21a1290`
 **Backend dependency:** [INF-272](https://linear.app/infinite-track-palu/issue/INF-272/backend-fix-wfa-facility-scoring-with-geoapify-place-details-and)
 
 > This branch contains documentation only. Implementation must run from an isolated worktree for this branch.
