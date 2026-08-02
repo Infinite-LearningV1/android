@@ -62,7 +62,7 @@ class WfaRequestNavigationTest {
                     }
                 }
                 LaunchedEffect(Unit) {
-                    navController.navigate(Screen.WfaRequestFlow.createRoute(-0.9, 119.8))
+                    navController.navigate(Screen.WfaRequestFlow.route)
                 }
             }
         }
@@ -103,7 +103,7 @@ class WfaRequestNavigationTest {
                     wfaRequestNavGraph(navController) { controller }
                 }
                 LaunchedEffect(Unit) {
-                    navController.navigate(Screen.WfaRequestFlow.createRoute(-0.9, 119.8))
+                    navController.navigate(Screen.WfaRequestFlow.route)
                 }
             }
         }
@@ -134,7 +134,7 @@ class WfaRequestNavigationTest {
                     wfaRequestNavGraph(navController) { controller }
                 }
                 LaunchedEffect(Unit) {
-                    navController.navigate(Screen.WfaRequestFlow.createRoute(-0.9, 119.8))
+                    navController.navigate(Screen.WfaRequestFlow.route)
                 }
             }
         }

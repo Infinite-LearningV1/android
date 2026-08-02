@@ -10,10 +10,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
-import androidx.navigation.navArgument
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestEffect
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestFormScreen
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestFlowController
@@ -31,11 +29,7 @@ fun NavGraphBuilder.wfaRequestNavGraph(
 ) {
     navigation(
         startDestination = Screen.WfaRequestForm.route,
-        route = Screen.WfaRequestFlow.route,
-        arguments = listOf(
-            navArgument("latitude") { type = NavType.StringType },
-            navArgument("longitude") { type = NavType.StringType }
-        )
+        route = Screen.WfaRequestFlow.route
     ) {
         composable(Screen.WfaRequestForm.route) { entry ->
             WfaRequestRoute(entry, navController, controllerFactory) { state, viewModel ->

@@ -74,6 +74,7 @@ import com.example.infinite_track.presentation.design.components.status.Infinite
 import com.example.infinite_track.presentation.design.components.status.InfiniteInlineAlert
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
+import com.example.infinite_track.presentation.navigation.LocationSearchResultContract
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.map.adapter.AttendanceMap
 import com.example.infinite_track.presentation.map.mapper.AttendanceMapUiMapper
@@ -170,7 +171,7 @@ fun AttendanceScreen(
     // Handle hasil pencarian lokasi dari LocationSearchScreen
     val selectedLocation = navController.currentBackStackEntry
         ?.savedStateHandle
-        ?.get<LocationResult>("selected_location")
+        ?.get<LocationResult>(LocationSearchResultContract.RESULT_KEY)
 
     // Process hasil pencarian lokasi
     LaunchedEffect(selectedLocation) {
@@ -180,7 +181,7 @@ fun AttendanceScreen(
             // Hapus state agar tidak diproses lagi saat re-komposisi
             navController.currentBackStackEntry
                 ?.savedStateHandle
-                ?.remove<LocationResult>("selected_location")
+                ?.remove<LocationResult>(LocationSearchResultContract.RESULT_KEY)
         }
     }
 

@@ -70,10 +70,8 @@ class WfaShellNavigationContractTest {
     }
 
     @Test
-    fun `WFA request route carries candidate coordinates into isolated flow`() {
-        assertEquals(
-            "wfa_request/-0.891234/119.876543",
-            Screen.WfaRequestFlow.createRoute(-0.891234, 119.876543)
-        )
+    fun `WFA request route does not carry candidate coordinates`() {
+        assertEquals("wfa_request", Screen.WfaRequestFlow.route)
+        assertFalse(Screen.WfaRequestFlow.route.contains("{"))
     }
 }

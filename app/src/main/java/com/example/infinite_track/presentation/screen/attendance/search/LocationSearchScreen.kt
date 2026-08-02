@@ -42,6 +42,7 @@ import com.example.infinite_track.presentation.design.components.state.InfiniteL
 import com.example.infinite_track.presentation.design.tokens.InfiniteColors
 import com.example.infinite_track.presentation.design.tokens.InfiniteIcons
 import com.example.infinite_track.presentation.design.tokens.InfiniteSpacing
+import com.example.infinite_track.presentation.navigation.LocationSearchResultContract
 
 @Composable
 fun LocationSearchScreen(
@@ -55,7 +56,7 @@ fun LocationSearchScreen(
         viewModel.selectionEvents.collect { location ->
             navController.previousBackStackEntry
                 ?.savedStateHandle
-                ?.set("selected_location", location)
+                ?.set(LocationSearchResultContract.RESULT_KEY, location)
             navController.popBackStack()
         }
     }
