@@ -286,6 +286,8 @@ private fun FieldErrorText(error: WfaRequestFieldError?) {
     InfiniteSupportingText(
         text = when (error) {
             WfaRequestFieldError.REQUIRED -> stringResource(R.string.wfa_request_error_required)
+            WfaRequestFieldError.FUTURE_DATE_REQUIRED ->
+                stringResource(R.string.wfa_request_error_future_date_required)
             WfaRequestFieldError.REASON_UNAVAILABLE -> stringResource(R.string.wfa_request_error_reason_unavailable)
             WfaRequestFieldError.OTHER_REASON_REQUIRED -> stringResource(R.string.wfa_request_error_other_required)
             WfaRequestFieldError.TOO_LONG -> stringResource(R.string.wfa_request_error_too_long)

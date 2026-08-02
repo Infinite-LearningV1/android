@@ -6,9 +6,13 @@ import com.example.infinite_track.domain.model.booking.WfaRequestDraft
 import com.example.infinite_track.domain.model.booking.WfaRequestFieldError
 import com.example.infinite_track.domain.model.booking.WfaRequestFieldErrors
 import com.example.infinite_track.domain.model.booking.WfaRequestValidationResult
+import com.example.infinite_track.domain.validation.WfaScheduleDatePolicy
 import javax.inject.Inject
 
-class ValidateWfaRequestDraftUseCase @Inject constructor() {
+class ValidateWfaRequestDraftUseCase @Inject constructor(
+    private val datePolicy: WfaScheduleDatePolicy
+) {
+    constructor() : this(WfaScheduleDatePolicy())
 
     operator fun invoke(
         draft: WfaRequestDraft,
@@ -18,10 +22,11 @@ class ValidateWfaRequestDraftUseCase @Inject constructor() {
             config.reasons.firstOrNull { it.id == id }
         }
         val errors = WfaRequestFieldErrors(
-            scheduleDate = if (draft.scheduleDate == null) {
-                WfaRequestFieldError.REQUIRED
-            } else {
-                null
+            scheduleDate = when {
+                draft.scheduleDate == null -> WfaRequestFieldError.REQUIRED
+                !datePolicy.isSelectable(draft.scheduleDate) ->
+                    WfaRequestFieldError.FUTURE_DATE_REQUIRED
+                else -> null
             },
             reason = when {
                 draft.reasonId == null -> WfaRequestFieldError.REQUIRED

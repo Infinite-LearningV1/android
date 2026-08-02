@@ -344,6 +344,7 @@
     <string name="wfa_request_details">Detail permintaan</string>
     <string name="wfa_request_date">Tanggal WFA</string>
     <string name="wfa_request_date_placeholder">Pilih tanggal</string>
+    <string name="wfa_request_error_future_date_required">Tanggal WFA harus setelah hari ini.</string>
     <string name="wfa_request_reason">Alasan WFA</string>
     <string name="wfa_request_reason_placeholder">Pilih alasan</string>
     <string name="wfa_request_other_reason">Alasan lainnya</string>

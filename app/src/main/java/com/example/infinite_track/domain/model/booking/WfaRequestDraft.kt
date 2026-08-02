@@ -16,6 +16,7 @@ data class WfaRequestDraft(
 
 enum class WfaRequestFieldError {
     REQUIRED,
+    FUTURE_DATE_REQUIRED,
     REASON_UNAVAILABLE,
     OTHER_REASON_REQUIRED,
     TOO_LONG,
