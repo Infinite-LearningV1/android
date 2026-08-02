@@ -4,33 +4,31 @@
 
 **Goal:** Move date-aware WFA recommendation discovery into the existing graph-scoped WFA Request transaction, default the request date to tomorrow in Jakarta, and automatically reload truthful INF-272 recommendations whenever the date changes.
 
-**Architecture:** Attendance keeps ownership of today's backend-authoritative WFA state and approved attendance target. `WfaRequestViewModel` becomes the single owner of future schedule date, current-coordinate snapshot, recommendation lifecycle, selected candidate, form draft, review, and submission. The existing Clean Architecture path remains `Screen → ViewModel → UseCase → Repository → RepositoryImpl → ApiService`.
+**Architecture:** Attendance keeps ownership of today's backend-authoritative WFA state and approved attendance target. `WfaRequestViewModel` becomes the single owner of future date, current-coordinate snapshot, recommendation lifecycle, selected candidate, request draft, review, and submission. The implementation preserves `Screen → ViewModel → UseCase → Repository → RepositoryImpl → ApiService`.
 
-**Tech Stack:** Kotlin, Android 14 / minSdk 26, Jetpack Compose, Material 3, Navigation Compose, Kotlin Coroutines/StateFlow, Hilt, Retrofit/Gson, JUnit4, Compose UI Test.
+**Tech Stack:** Kotlin, Android SDK 34 / minSdk 26, Jetpack Compose, Material 3, Navigation Compose, Kotlin Coroutines/StateFlow, Hilt, Retrofit/Gson, JUnit4, Compose UI Test.
 
 ## Global Constraints
 
-- Work only on `feature/inf-273-wfa-date-aware-recommendations` in an isolated worktree.
-- Integration target remains `develop`.
-- Backend dependency is INF-272; do not modify Backend from this branch.
-- Calendar policy is `Asia/Jakarta`; today and past are invalid, tomorrow is the default minimum.
-- No same-day booking support.
+- Use branch `feature/inf-273-wfa-date-aware-recommendations` from an isolated worktree.
+- Integration target is `develop`.
+- Backend dependency is INF-272; this plan changes Android only.
+- Calendar policy is `Asia/Jakarta`: today and past are invalid, tomorrow is the default minimum.
+- Same-day booking remains unsupported.
 - Approved WFA booking remains the only authoritative WFA attendance target.
 - `AttendanceViewModel` must not own new-request recommendations after migration.
 - One graph-scoped `WfaRequestViewModel` owns form, review, result, and recommendation state.
-- No DTO, Retrofit exception, `Context`, Compose type, or `NavController` enters Domain.
+- Domain must not depend on DTO, Retrofit, Compose, `Context`, or `NavController`.
 - Missing final score is `null`, never `0`.
 - Missing facility evidence is `UNKNOWN`, never inferred false.
 - Do not restore wifi/noise/crowd/generic-amenity score details.
-- Reuse the existing provider-neutral map adapter; do not perform a broad map rewrite.
+- Reuse the provider-neutral map adapter; do not rewrite the map stack.
 - Preserve INF-265 form → review → submit → result semantics.
-- Every production change starts with a failing focused test and ends with a bounded commit.
+- Each task starts with a failing focused test and ends with a bounded commit.
 
----
+## File Map
 
-## Target File Map
-
-### New files
+### New production files
 
 - `app/src/main/java/com/example/infinite_track/domain/validation/WfaScheduleDatePolicy.kt`
 - `app/src/main/java/com/example/infinite_track/domain/model/wfa/WfaRecommendationContract.kt`
@@ -39,9 +37,8 @@
 - `app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestRecommendationState.kt`
 - `app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestMapUiMapper.kt`
 - `app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/components/WfaRecommendationPicker.kt`
-- corresponding focused test files described in each task.
 
-### Main modified files
+### Main modified production files
 
 - `domain/model/booking/WfaRequestDraft.kt`
 - `domain/use_case/booking/ValidateWfaRequestDraftUseCase.kt`
@@ -54,6 +51,7 @@
 - `data/repository/wfa/WfaRepositoryImpl.kt`
 - `presentation/navigation/Screen.kt`
 - `presentation/navigation/WfaRequestNavGraph.kt`
+- `presentation/screen/attendance/search/LocationSearchScreen.kt`
 - `presentation/screen/attendance/wfa_request/WfaRequestEvent.kt`
 - `presentation/screen/attendance/wfa_request/WfaRequestUiState.kt`
 - `presentation/screen/attendance/wfa_request/WfaRequestViewModel.kt`
@@ -61,13 +59,15 @@
 - `presentation/screen/attendance/AttendanceViewModel.kt`
 - `presentation/screen/attendance/AttendanceScreen.kt`
 - `presentation/screen/attendance/preparation/AttendancePreparationState.kt`
+- `presentation/screen/attendance/preparation/AttendancePreparationUiModel.kt`
 - `presentation/screen/attendance/preparation/AttendancePreparationUiMapper.kt`
+- `presentation/components/button/attendance/AttendanceBottomSheetContent.kt`
 - `presentation/map/mapper/AttendanceMapUiMapper.kt`
 - `app/src/main/res/values/strings.xml`
 
 ---
 
-### Task 1: Add Jakarta future-date policy and enforce it in Domain
+### Task 1: Add the Jakarta date policy and Domain validation
 
 **Files:**
 - Create: `app/src/main/java/com/example/infinite_track/domain/validation/WfaScheduleDatePolicy.kt`
@@ -77,36 +77,36 @@
 - Modify: `app/src/test/java/com/example/infinite_track/domain/use_case/booking/ValidateWfaRequestDraftUseCaseTest.kt`
 
 **Interfaces:**
-- Produces: `WfaScheduleDatePolicy.today(clock)`, `minimumDate(today)`, and `isSelectable(date, today)`.
-- Produces: `WfaRequestFieldError.FUTURE_DATE_REQUIRED`.
-- Consumed later by: `WfaRequestViewModel` and `WfaRequestFormScreen` state.
+- Produces `WfaScheduleDatePolicy.today()`, `minimumDate(today)`, and `isSelectable(date, today)`.
+- Produces `WfaRequestFieldError.FUTURE_DATE_REQUIRED`.
+- Consumed by Task 5 and Task 6.
 
-- [ ] **Step 1: Write the failing date-policy tests**
+- [ ] **Step 1: Write failing policy tests**
 
 ```kotlin
 class WfaScheduleDatePolicyTest {
-    private val policy = WfaScheduleDatePolicy()
     private val today = LocalDate.of(2026, 8, 2)
 
     @Test
-    fun `tomorrow is the minimum selectable date`() {
-        assertEquals(LocalDate.of(2026, 8, 3), policy.minimumDate(today))
+    fun `tomorrow is the minimum date`() {
+        val policy = WfaScheduleDatePolicy.fixed(
+            Clock.fixed(Instant.parse("2026-08-02T02:00:00Z"), ZoneOffset.UTC)
+        )
+
+        assertEquals(today, policy.today())
+        assertEquals(today.plusDays(1), policy.minimumDate())
     }
 
     @Test
-    fun `today and past are rejected while future is accepted`() {
-        assertFalse(policy.isSelectable(today.minusDays(1), today))
-        assertFalse(policy.isSelectable(today, today))
-        assertTrue(policy.isSelectable(today.plusDays(1), today))
-        assertTrue(policy.isSelectable(today.plusDays(20), today))
-    }
+    fun `today and past are invalid while future is valid`() {
+        val policy = WfaScheduleDatePolicy.fixed(
+            Clock.fixed(Instant.parse("2026-08-02T02:00:00Z"), ZoneOffset.UTC)
+        )
 
-    @Test
-    fun `today uses Asia Jakarta`() {
-        val instant = Instant.parse("2026-08-02T16:30:00Z")
-        val clock = Clock.fixed(instant, ZoneOffset.UTC)
-
-        assertEquals(LocalDate.of(2026, 8, 2), policy.today(clock))
+        assertFalse(policy.isSelectable(today.minusDays(1)))
+        assertFalse(policy.isSelectable(today))
+        assertTrue(policy.isSelectable(today.plusDays(1)))
+        assertTrue(policy.isSelectable(today.plusDays(30)))
     }
 }
 ```
@@ -115,24 +115,22 @@ class WfaScheduleDatePolicyTest {
 
 ```kotlin
 @Test
-fun `same day and past return FUTURE_DATE_REQUIRED`() {
+fun `same day and past dates return FUTURE_DATE_REQUIRED`() {
     val today = LocalDate.of(2026, 8, 2)
-    val policy = WfaScheduleDatePolicy()
+    val policy = WfaScheduleDatePolicy.fixed(
+        Clock.fixed(Instant.parse("2026-08-02T02:00:00Z"), ZoneOffset.UTC)
+    )
     val useCase = ValidateWfaRequestDraftUseCase(policy)
 
-    listOf(today.minusDays(1), today).forEach { invalidDate ->
-        val result = useCase(validDraft.copy(scheduleDate = invalidDate), config, today)
-        assertEquals(
-            WfaRequestFieldError.FUTURE_DATE_REQUIRED,
-            (result as WfaRequestValidationResult.Invalid).errors.scheduleDate
-        )
+    listOf(today.minusDays(1), today).forEach { date ->
+        val result = useCase(validDraft.copy(scheduleDate = date), config)
+        val errors = (result as WfaRequestValidationResult.Invalid).errors
+        assertEquals(WfaRequestFieldError.FUTURE_DATE_REQUIRED, errors.scheduleDate)
     }
 }
 ```
 
-- [ ] **Step 3: Run the focused tests and confirm failure**
-
-Run:
+- [ ] **Step 3: Run the focused tests and verify failure**
 
 ```bash
 ./gradlew :app:testDebugUnitTest \
@@ -140,9 +138,9 @@ Run:
   --tests "*ValidateWfaRequestDraftUseCaseTest"
 ```
 
-Expected: compilation/test failure because the policy and field error do not exist and validation does not accept `today`.
+Expected: compilation/test failure because the policy, factory, and field error do not exist.
 
-- [ ] **Step 4: Implement the date policy**
+- [ ] **Step 4: Implement the testable date policy**
 
 ```kotlin
 package com.example.infinite_track.domain.validation
@@ -152,9 +150,13 @@ import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
 
-class WfaScheduleDatePolicy @Inject constructor() {
-    fun today(clock: Clock = Clock.system(JAKARTA_ZONE)): LocalDate =
-        LocalDate.now(clock.withZone(JAKARTA_ZONE))
+class WfaScheduleDatePolicy private constructor(
+    private val clock: Clock
+) {
+    @Inject
+    constructor() : this(Clock.system(JAKARTA_ZONE))
+
+    fun today(): LocalDate = LocalDate.now(clock.withZone(JAKARTA_ZONE))
 
     fun minimumDate(today: LocalDate = today()): LocalDate = today.plusDays(1)
 
@@ -165,41 +167,29 @@ class WfaScheduleDatePolicy @Inject constructor() {
 
     companion object {
         val JAKARTA_ZONE: ZoneId = ZoneId.of("Asia/Jakarta")
+
+        fun fixed(clock: Clock): WfaScheduleDatePolicy =
+            WfaScheduleDatePolicy(clock)
     }
 }
 ```
 
-- [ ] **Step 5: Extend the field-error enum and validator**
+- [ ] **Step 5: Extend validation**
 
-Add:
-
-```kotlin
-FUTURE_DATE_REQUIRED
-```
-
-Change the validator signature and schedule branch:
+Add `FUTURE_DATE_REQUIRED` to `WfaRequestFieldError`, inject the policy, and replace the schedule branch with:
 
 ```kotlin
-class ValidateWfaRequestDraftUseCase @Inject constructor(
-    private val datePolicy: WfaScheduleDatePolicy = WfaScheduleDatePolicy()
-) {
-    operator fun invoke(
-        draft: WfaRequestDraft,
-        config: WfaRequestConfig,
-        today: LocalDate = datePolicy.today()
-    ): WfaRequestValidationResult {
-        val scheduleError = when {
-            draft.scheduleDate == null -> WfaRequestFieldError.REQUIRED
-            !datePolicy.isSelectable(draft.scheduleDate, today) ->
-                WfaRequestFieldError.FUTURE_DATE_REQUIRED
-            else -> null
-        }
-        // Preserve existing reason, other-reason, notes, and location validation.
-    }
+scheduleDate = when {
+    draft.scheduleDate == null -> WfaRequestFieldError.REQUIRED
+    !datePolicy.isSelectable(draft.scheduleDate) ->
+        WfaRequestFieldError.FUTURE_DATE_REQUIRED
+    else -> null
 }
 ```
 
-- [ ] **Step 6: Run focused tests and confirm pass**
+Keep reason, Other, notes, and location validation unchanged.
+
+- [ ] **Step 6: Run tests and verify pass**
 
 ```bash
 ./gradlew :app:testDebugUnitTest \
@@ -209,7 +199,7 @@ class ValidateWfaRequestDraftUseCase @Inject constructor(
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit the date policy**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add app/src/main/java/com/example/infinite_track/domain/validation/WfaScheduleDatePolicy.kt \
@@ -222,7 +212,7 @@ git commit -m "feat(INF-273): enforce future WFA schedule dates"
 
 ---
 
-### Task 2: Replace the legacy recommendation model and DTO with the INF-272 contract
+### Task 2: Replace the legacy recommendation DTO and Domain model
 
 **Files:**
 - Create: `app/src/main/java/com/example/infinite_track/domain/model/wfa/WfaRecommendationContract.kt`
@@ -232,18 +222,16 @@ git commit -m "feat(INF-273): enforce future WFA schedule dates"
 - Modify: `app/src/test/java/com/example/infinite_track/data/mapper/wfa/WfaMapperTest.kt`
 
 **Interfaces:**
-- Produces: `WfaRecommendationQuery`, `WfaRecommendationResult`, `WfaRecommendationFailure`, `WfaRecommendationStatus`, `WfaFacilityAvailability`, `WfaFacilityEvidence`, and `WfaRecommendationMeta`.
-- Produces: truthful `WfaRecommendation` with nullable final scoring.
-- Consumed later by: repository, ViewModel, map mapper, and recommendation cards.
+- Produces `WfaRecommendationQuery`, `WfaRecommendationResult`, `WfaRecommendationFailure`, `WfaRecommendationStatus`, `WfaFacilityAvailability`, `WfaFacilityEvidence`, and `WfaRecommendationMeta`.
+- Produces a truthful `WfaRecommendation` with nullable final scoring.
+- Consumed by Task 3, Task 5, and Task 6.
 
-- [ ] **Step 1: Replace mapper fixtures with truthful contract fixtures**
-
-Write tests for all three candidate states:
+- [ ] **Step 1: Replace mapper tests with INF-272 fixtures**
 
 ```kotlin
 @Test
-fun `ranked candidate maps final score and facility evidence`() {
-    val result = rankedRecommendationDto().toDomainOrNull()
+fun `ranked candidate maps score and tri-state facilities`() {
+    val result = rankedDto().toDomainOrNull()
 
     requireNotNull(result)
     assertEquals(WfaRecommendationStatus.Ranked, result.status)
@@ -254,8 +242,8 @@ fun `ranked candidate maps final score and facility evidence`() {
 }
 
 @Test
-fun `insufficient data remains selectable with null final score`() {
-    val result = rankedRecommendationDto().copy(
+fun `insufficient candidate preserves null final score`() {
+    val result = rankedDto().copy(
         status = "insufficient_facility_data",
         finalRank = null,
         finalScore = null,
@@ -270,30 +258,22 @@ fun `insufficient data remains selectable with null final score`() {
 
 @Test
 fun `stable key prefers place id`() {
-    val result = rankedRecommendationDto(placeId = "place-123").toDomainOrNull()
+    val result = rankedDto(placeId = "place-123").toDomainOrNull()
     assertEquals("place:place-123", requireNotNull(result).stableKey)
 }
 ```
 
-Also test:
+Add cases for enrichment failure, true/false/null facility mapping, unknown status, confidence outside `0..100`, and ranked payload missing score/label.
 
-```text
-facility_enrichment_failed
-true/false/null facility mapping
-unknown status
-invalid facility confidence outside 0..100
-ranked with missing score becomes Unsupported and does not invent a score
-```
-
-- [ ] **Step 2: Run mapper tests and confirm failure**
+- [ ] **Step 2: Run mapper tests and verify failure**
 
 ```bash
 ./gradlew :app:testDebugUnitTest --tests "*WfaMapperTest"
 ```
 
-Expected: compilation failure because the new DTO and Domain types do not exist.
+Expected: compilation failure because the new contract does not exist.
 
-- [ ] **Step 3: Add the typed Domain contract**
+- [ ] **Step 3: Add the Domain contract**
 
 ```kotlin
 data class WfaRecommendationQuery(
@@ -329,11 +309,9 @@ sealed interface WfaRecommendationFailure {
 }
 ```
 
-Define `WfaRecommendationResult.Success` with `scheduleDate`, `timezone`, `recommendations`, and optional `meta`.
+Define `WfaRecommendationResult.Success` with `scheduleDate`, `timezone`, `recommendations`, and optional meta.
 
 - [ ] **Step 4: Replace the active DTO**
-
-Use DTO fields that match INF-272 exactly:
 
 ```kotlin
 data class RecommendationItem(
@@ -352,19 +330,11 @@ data class RecommendationItem(
     @SerializedName("facility_confidence") val facilityConfidence: Int,
     @SerializedName("facilities") val facilities: FacilityEvidenceDto
 )
-
-data class FacilityEvidenceDto(
-    @SerializedName("internet_access") val internetAccess: Boolean?,
-    @SerializedName("opening_hours") val openingHours: Boolean?,
-    @SerializedName("toilets") val toilets: Boolean?,
-    @SerializedName("air_conditioning") val airConditioning: Boolean?,
-    @SerializedName("wheelchair_accessibility") val wheelchairAccessibility: Boolean?
-)
 ```
 
-Add response-level `schedule_date`, `timezone`, `work_window`, and optional `meta` DTOs. Remove the active `ScoreDetails`, `WifiQuality`, `NoiseLevel`, `CrowdDensity`, `OperationalHours`, and `Amenities` DTOs.
+Add response DTOs for `schedule_date`, `timezone`, `work_window`, and `meta`. Remove active `ScoreDetails`, wifi, noise, crowd, operational-hours-score, and generic amenities DTOs.
 
-- [ ] **Step 5: Implement strict truthful mapping**
+- [ ] **Step 5: Implement strict mapping**
 
 ```kotlin
 private fun Boolean?.toAvailability(): WfaFacilityAvailability = when (this) {
@@ -386,7 +356,7 @@ fun RecommendationItem.toDomainOrNull(): WfaRecommendation? {
         "facility_enrichment_failed" -> WfaRecommendationStatus.FacilityEnrichmentFailed
         else -> WfaRecommendationStatus.Unsupported(status)
     }
-    val isRanked = mappedStatus is WfaRecommendationStatus.Ranked
+    val ranked = mappedStatus is WfaRecommendationStatus.Ranked
 
     return WfaRecommendation(
         stableKey = placeId?.trim()?.takeIf(String::isNotEmpty)?.let { "place:$it" }
@@ -398,9 +368,9 @@ fun RecommendationItem.toDomainOrNull(): WfaRecommendation? {
         placeType = placeType,
         distanceMeters = DistanceMeters(distanceMeters),
         status = mappedStatus,
-        finalRank = finalRank.takeIf { isRanked },
-        finalScore = finalScore.takeIf { isRanked },
-        finalLabel = finalLabel.takeIf { isRanked },
+        finalRank = finalRank.takeIf { ranked },
+        finalScore = finalScore.takeIf { ranked },
+        finalLabel = finalLabel.takeIf { ranked },
         facilityScore = facilityScore,
         facilityConfidence = facilityConfidence,
         facilities = facilities.toDomain()
@@ -408,25 +378,21 @@ fun RecommendationItem.toDomainOrNull(): WfaRecommendation? {
 }
 ```
 
-- [ ] **Step 6: Remove unused legacy detail models after a usage check**
-
-Run:
+- [ ] **Step 6: Remove unused legacy detail models**
 
 ```bash
 rg "WfaRecommendationDetail|ScoreItem|AmenityItem" app/src
 ```
 
-Expected before deletion: definitions only. Delete them from `WfaModels.kt`; do not delete if an active consumer is found without first migrating that consumer in this task.
+Expected before deletion: definitions only. Delete only after the usage search confirms no active consumer.
 
-- [ ] **Step 7: Run mapper tests and confirm pass**
+- [ ] **Step 7: Run mapper tests and verify pass**
 
 ```bash
 ./gradlew :app:testDebugUnitTest --tests "*WfaMapperTest"
 ```
 
-Expected: PASS.
-
-- [ ] **Step 8: Commit the truthful contract**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add app/src/main/java/com/example/infinite_track/domain/model/wfa \
@@ -438,7 +404,7 @@ git commit -m "refactor(INF-273): adopt truthful WFA recommendation contract"
 
 ---
 
-### Task 3: Add `schedule_date` to Retrofit and typed repository failure mapping
+### Task 3: Add `schedule_date` and typed repository failures
 
 **Files:**
 - Modify: `app/src/main/java/com/example/infinite_track/data/soucre/network/retrofit/ApiService.kt`
@@ -451,17 +417,15 @@ git commit -m "refactor(INF-273): adopt truthful WFA recommendation contract"
 - Create: `app/src/test/java/com/example/infinite_track/data/soucre/network/retrofit/WfaApiContractTest.kt`
 
 **Interfaces:**
-- Consumes: `WfaRecommendationQuery` and response mapper from Task 2.
-- Produces: `WfaRecommendationResult` without leaking transport exceptions.
-- Consumed later by: `WfaRequestViewModel`.
+- Consumes Task 2 query/result/DTO mapping.
+- Produces `WfaRecommendationResult` without leaking transport exceptions.
+- Consumed by Task 5.
 
-- [ ] **Step 1: Write the Retrofit annotation contract test**
-
-Use reflection to assert the third query is named `schedule_date`:
+- [ ] **Step 1: Write the Retrofit query contract test**
 
 ```kotlin
 @Test
-fun `recommendation endpoint requires lat lng and schedule date`() {
+fun `recommendation endpoint declares lat lng and schedule date queries`() {
     val method = ApiService::class.java.declaredMethods.single {
         it.name == "getWfaRecommendations"
     }
@@ -477,7 +441,7 @@ fun `recommendation endpoint requires lat lng and schedule date`() {
 
 ```kotlin
 @Test
-fun `stable date and duplicate codes map to typed failures`() {
+fun `date and duplicate codes map to typed failures`() {
     assertEquals(
         WfaRecommendationFailure.InvalidScheduleDate,
         WfaRecommendationFailureMapper.mapHttp(400, "SAME_DAY_NOT_ALLOWED")
@@ -489,7 +453,7 @@ fun `stable date and duplicate codes map to typed failures`() {
 }
 
 @Test
-fun `io failure maps to network unavailable`() {
+fun `io exception maps to network unavailable`() {
     assertEquals(
         WfaRecommendationFailure.NetworkUnavailable,
         WfaRecommendationFailureMapper.mapThrowable(IOException("offline"))
@@ -497,11 +461,11 @@ fun `io failure maps to network unavailable`() {
 }
 ```
 
-Cover provider/config codes, HTTP 5xx, and unknown failures.
+Also cover provider/config codes, HTTP 5xx, and unknown failures.
 
-- [ ] **Step 3: Write repository tests with a dynamic `ApiService` proxy**
+- [ ] **Step 3: Write repository tests**
 
-Create a focused helper that only handles `getWfaRecommendations` and fails any other method:
+Use a dynamic `ApiService` proxy that handles only `getWfaRecommendations` and errors on any unexpected call. Assert ISO date forwarding, response mapping, HTTP rejection mapping, and IO mapping.
 
 ```kotlin
 private fun apiServiceReturning(response: WfaRecommendationResponse): ApiService =
@@ -516,16 +480,7 @@ private fun apiServiceReturning(response: WfaRecommendationResponse): ApiService
     } as ApiService
 ```
 
-Assert:
-
-```text
-query date is ISO YYYY-MM-DD
-success maps response schedule/timezone/recommendations
-HTTP date rejection maps InvalidScheduleDate
-network throwable maps NetworkUnavailable
-```
-
-- [ ] **Step 4: Run focused tests and confirm failure**
+- [ ] **Step 4: Run focused tests and verify failure**
 
 ```bash
 ./gradlew :app:testDebugUnitTest \
@@ -534,9 +489,7 @@ network throwable maps NetworkUnavailable
   --tests "*WfaRepositoryImplTest"
 ```
 
-Expected: FAIL because the API signature and typed repository contract are not implemented.
-
-- [ ] **Step 5: Change the Retrofit and Domain signatures**
+- [ ] **Step 5: Change API and Domain signatures**
 
 ```kotlin
 @GET("api/wfa/recommendations")
@@ -564,21 +517,20 @@ class GetWfaRecommendationsUseCase @Inject constructor(
 }
 ```
 
-- [ ] **Step 6: Implement failure mapping and repository IO boundary**
+- [ ] **Step 6: Implement the repository boundary**
 
-Follow the existing `BookingRepositoryImpl` pattern: inject `Gson`, parse the shared WFA error envelope, execute on `Dispatchers.IO`, and map safe codes.
+Follow `BookingRepositoryImpl`: inject `Gson`, use `Dispatchers.IO`, parse the existing WFA error envelope, and map safe codes.
 
 ```kotlin
 override suspend fun getRecommendations(
     query: WfaRecommendationQuery
 ): WfaRecommendationResult = withContext(Dispatchers.IO) {
     try {
-        val response = apiService.getWfaRecommendations(
+        apiService.getWfaRecommendations(
             latitude = query.origin.latitude,
             longitude = query.origin.longitude,
             scheduleDate = query.scheduleDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
-        )
-        response.toDomainResult()
+        ).toDomainResult()
     } catch (exception: HttpException) {
         WfaRecommendationResult.Failure(parseHttpFailure(exception))
     } catch (throwable: Throwable) {
@@ -589,9 +541,9 @@ override suspend fun getRecommendations(
 }
 ```
 
-Do not map a provider failure to an empty list.
+Provider failure must not become an empty recommendation list.
 
-- [ ] **Step 7: Run focused tests and confirm pass**
+- [ ] **Step 7: Run focused tests and verify pass**
 
 ```bash
 ./gradlew :app:testDebugUnitTest \
@@ -600,9 +552,7 @@ Do not map a provider failure to an empty list.
   --tests "*WfaRepositoryImplTest"
 ```
 
-Expected: PASS.
-
-- [ ] **Step 8: Commit the data boundary**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add app/src/main/java/com/example/infinite_track/data/soucre/network/retrofit/ApiService.kt \
@@ -610,66 +560,53 @@ git add app/src/main/java/com/example/infinite_track/data/soucre/network/retrofi
   app/src/main/java/com/example/infinite_track/domain/use_case/wfa/GetWfaRecommendationsUseCase.kt \
   app/src/main/java/com/example/infinite_track/data/repository/wfa/WfaRepositoryImpl.kt \
   app/src/main/java/com/example/infinite_track/data/mapper/wfa/WfaRecommendationFailureMapper.kt \
-  app/src/test/java/com/example/infinite_track/data
+  app/src/test/java/com/example/infinite_track/data/mapper/wfa/WfaRecommendationFailureMapperTest.kt \
+  app/src/test/java/com/example/infinite_track/data/repository/wfa/WfaRepositoryImplTest.kt \
+  app/src/test/java/com/example/infinite_track/data/soucre/network/retrofit/WfaApiContractTest.kt
 git commit -m "feat(INF-273): request date-aware WFA recommendations"
 ```
 
 ---
 
-### Task 4: Remove coordinate route arguments and centralize the search-result contract
+### Task 4: Simplify the parent route and centralize the location-search key
 
 **Files:**
 - Modify: `app/src/main/java/com/example/infinite_track/presentation/navigation/Screen.kt`
 - Modify: `app/src/main/java/com/example/infinite_track/presentation/navigation/WfaRequestNavGraph.kt`
 - Create: `app/src/main/java/com/example/infinite_track/presentation/navigation/LocationSearchResultContract.kt`
+- Modify: `app/src/main/java/com/example/infinite_track/presentation/screen/attendance/search/LocationSearchScreen.kt`
 - Modify: `app/src/androidTest/java/com/example/infinite_track/presentation/navigation/WfaRequestNavigationTest.kt`
 - Modify: `app/src/test/java/com/example/infinite_track/presentation/navigation/WfaShellNavigationContractTest.kt`
 
 **Interfaces:**
-- Produces: parent route `wfa_request` with no arguments.
-- Produces: one typed saved-state key for `LocationResult`.
-- Consumed later by: Attendance entry and WFA Request form search fallback.
+- Produces parent route `wfa_request` without arguments.
+- Produces one result key used by search writer and later graph consumer.
+- Does not consume the search result yet; Task 7 wires it after the event exists.
 
-- [ ] **Step 1: Update navigation tests first**
-
-Replace all:
-
-```kotlin
-Screen.WfaRequestFlow.createRoute(-0.9, 119.8)
-```
-
-with:
-
-```kotlin
-Screen.WfaRequestFlow.route
-```
-
-Add assertions:
+- [ ] **Step 1: Update route tests first**
 
 ```kotlin
 assertEquals("wfa_request", Screen.WfaRequestFlow.route)
 assertFalse(Screen.WfaRequestFlow.route.contains("{"))
 ```
 
-Add a result-consumption test that writes a `LocationResult` using `LocationSearchResultContract.RESULT_KEY`, returns to the form, and verifies the fake controller receives one `ManualLocationSelected` event.
+Replace navigation calls using `createRoute(latitude, longitude)` with `Screen.WfaRequestFlow.route`.
 
-- [ ] **Step 2: Run navigation tests and confirm failure**
+- [ ] **Step 2: Run route tests and verify failure**
 
 ```bash
 ./gradlew :app:testDebugUnitTest --tests "*WfaShellNavigationContractTest"
 ```
 
-Expected: FAIL because the route still requires coordinates.
-
-- [ ] **Step 3: Simplify the route and graph**
+- [ ] **Step 3: Simplify `Screen` and the parent graph**
 
 ```kotlin
 data object WfaRequestFlow : Screen("wfa_request")
 ```
 
-Remove parent `navArgument("latitude")` and `navArgument("longitude")` declarations from `WfaRequestNavGraph`.
+Remove parent latitude/longitude `navArgument` declarations. Keep child routes unchanged.
 
-- [ ] **Step 4: Add the explicit location-search result contract**
+- [ ] **Step 4: Centralize the search result key**
 
 ```kotlin
 object LocationSearchResultContract {
@@ -677,35 +614,23 @@ object LocationSearchResultContract {
 }
 ```
 
-In the form destination, observe the current entry's `SavedStateHandle`, convert the `LocationResult` to `WfaCandidateLocation`, dispatch `ManualLocationSelected`, and remove the value immediately after consumption.
+Replace the hardcoded writer key in `LocationSearchScreen` with this constant. Do not add graph consumption in this task.
 
-```kotlin
-LaunchedEffect(selectedLocation) {
-    selectedLocation ?: return@LaunchedEffect
-    viewModel.onEvent(
-        WfaRequestEvent.ManualLocationSelected(selectedLocation.toWfaCandidateLocation())
-    )
-    entry.savedStateHandle.remove<LocationResult>(LocationSearchResultContract.RESULT_KEY)
-}
-```
-
-- [ ] **Step 5: Run navigation tests and confirm pass**
+- [ ] **Step 5: Run route tests and verify pass**
 
 ```bash
 ./gradlew :app:testDebugUnitTest --tests "*WfaShellNavigationContractTest"
 ```
 
-Run connected navigation tests when an emulator is available:
+Run `WfaRequestNavigationTest` on an emulator when available.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-./gradlew :app:connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=com.example.infinite_track.presentation.navigation.WfaRequestNavigationTest
-```
-
-- [ ] **Step 6: Commit the route migration**
-
-```bash
-git add app/src/main/java/com/example/infinite_track/presentation/navigation \
+git add app/src/main/java/com/example/infinite_track/presentation/navigation/Screen.kt \
+  app/src/main/java/com/example/infinite_track/presentation/navigation/WfaRequestNavGraph.kt \
+  app/src/main/java/com/example/infinite_track/presentation/navigation/LocationSearchResultContract.kt \
+  app/src/main/java/com/example/infinite_track/presentation/screen/attendance/search/LocationSearchScreen.kt \
   app/src/androidTest/java/com/example/infinite_track/presentation/navigation/WfaRequestNavigationTest.kt \
   app/src/test/java/com/example/infinite_track/presentation/navigation/WfaShellNavigationContractTest.kt
 git commit -m "refactor(INF-273): remove WFA request coordinate route args"
@@ -723,60 +648,58 @@ git commit -m "refactor(INF-273): remove WFA request coordinate route args"
 - Modify: `app/src/test/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestViewModelTest.kt`
 
 **Interfaces:**
-- Consumes: date policy, current-location use case, and typed recommendation use case.
-- Produces: request-owned automatic loading, selection, retry, cancellation, and stale-result protection.
-- Keeps: `draft.location` as the reviewed/submitted location source of truth.
+- Consumes Task 1 date policy, `GetCurrentLocationUseCase`, and Task 3 recommendation use case.
+- Produces request-owned automatic loading, selection, retry, cancellation, and stale-result protection.
+- Keeps `draft.location` as the reviewed/submitted source of truth.
 
-- [ ] **Step 1: Replace route-bootstrap tests with automatic-load tests**
+- [ ] **Step 1: Replace coordinate-bootstrap tests**
 
-Add tests with fixed `today = 2026-08-02`:
+Create the ViewModel with an empty `SavedStateHandle`. Use a fixed policy:
+
+```kotlin
+val datePolicy = WfaScheduleDatePolicy.fixed(
+    Clock.fixed(Instant.parse("2026-08-02T02:00:00Z"), ZoneOffset.UTC)
+)
+```
+
+Add tests:
 
 ```kotlin
 @Test
 fun `bootstrap defaults to tomorrow and loads recommendations automatically`() = runTest {
-    val recommendationRepository = FakeWfaRepository(successFor(LocalDate.of(2026, 8, 3)))
-    val viewModel = createViewModel(
-        recommendationRepository = recommendationRepository,
-        datePolicy = FixedWfaDatePolicy(LocalDate.of(2026, 8, 2))
-    )
+    val repository = FakeWfaRepository(successFor(LocalDate.of(2026, 8, 3)))
+    val viewModel = createViewModel(repository, datePolicy)
 
     advanceUntilIdle()
 
     assertEquals(LocalDate.of(2026, 8, 3), viewModel.uiState.value.draft.scheduleDate)
-    assertEquals(1, recommendationRepository.queries.size)
-    assertEquals(
-        LocalDate.of(2026, 8, 3),
-        recommendationRepository.queries.single().scheduleDate
-    )
+    assertEquals(1, repository.queries.size)
+    assertEquals(LocalDate.of(2026, 8, 3), repository.queries.single().scheduleDate)
     assertTrue(viewModel.uiState.value.recommendationState is WfaRequestRecommendationState.Content)
 }
 ```
 
-Add tests for:
+Also test:
 
 ```text
-no SavedStateHandle coordinates required
-date change clears draft.location and selectedKey
-date change starts exactly one new query
-old deferred response cannot overwrite new date
-retry preserves reason/notes and reloads current date
-current-location failure becomes CurrentLocationUnavailable recommendation failure
-non-ranked candidate selection writes draft.location
-invalid date does not call repository
-repeated retry while same query is loading does not duplicate calls
+no route coordinates required
+date change clears location and selected key
+date change starts one new query
+old deferred response cannot overwrite a newer date
+retry preserves reason and notes
+current-location failure is distinct
+invalid date performs no repository call
+non-ranked candidate remains selectable
+repeated identical load while in flight is guarded
 ```
 
-Use two `CompletableDeferred<WfaRecommendationResult>` values to prove stale-response protection.
-
-- [ ] **Step 2: Run ViewModel tests and confirm failure**
+- [ ] **Step 2: Run ViewModel tests and verify failure**
 
 ```bash
 ./gradlew :app:testDebugUnitTest --tests "*WfaRequestViewModelTest"
 ```
 
-Expected: FAIL because the ViewModel still requires route coordinates and has no recommendation state.
-
-- [ ] **Step 3: Add request-owned state and events**
+- [ ] **Step 3: Add state and events**
 
 ```kotlin
 sealed interface WfaRequestRecommendationState {
@@ -794,7 +717,7 @@ sealed interface WfaRequestRecommendationState {
 }
 ```
 
-Extend state:
+Add to `WfaRequestUiState`:
 
 ```kotlin
 val minimumScheduleDate: LocalDate? = null,
@@ -811,7 +734,7 @@ data class ManualLocationSelected(val location: WfaCandidateLocation) : WfaReque
 data object RetryRecommendationsClicked : WfaRequestEvent
 ```
 
-- [ ] **Step 4: Replace coordinate bootstrap with date/config/user bootstrap**
+- [ ] **Step 4: Replace route-coordinate bootstrap**
 
 Inject:
 
@@ -821,9 +744,7 @@ private val getRecommendations: GetWfaRecommendationsUseCase,
 private val datePolicy: WfaScheduleDatePolicy
 ```
 
-Remove route latitude/longitude fields and initial reverse-geocode dependency.
-
-Initialize:
+Remove latitude/longitude and initial reverse-geocode dependencies.
 
 ```kotlin
 private fun loadInitialData() {
@@ -845,20 +766,17 @@ private fun loadInitialData() {
 
 - [ ] **Step 5: Implement cancellation and stale guards**
 
-Add:
-
 ```kotlin
 private var recommendationJob: Job? = null
 private var nextRecommendationRequestId = 0L
 private var activeQuery: WfaRecommendationQuery? = null
 ```
 
-Core flow:
-
 ```kotlin
 private fun loadRecommendations(force: Boolean) {
     val date = _uiState.value.draft.scheduleDate ?: return
     if (!datePolicy.isSelectable(date)) return
+    if (!force && recommendationJob?.isActive == true && activeQuery?.scheduleDate == date) return
 
     recommendationJob?.cancel()
     val requestId = ++nextRecommendationRequestId
@@ -872,34 +790,29 @@ private fun loadRecommendations(force: Boolean) {
             is CurrentLocationResult.Failure -> null
         }
         if (coordinate == null) {
-            applyRecommendationFailure(
-                requestId,
-                date,
-                WfaRecommendationFailure.CurrentLocationUnavailable
-            )
+            applyFailure(requestId, date, WfaRecommendationFailure.CurrentLocationUnavailable)
             return@launch
         }
 
         val query = WfaRecommendationQuery(coordinate, date)
-        if (!force && activeQuery == query) return@launch
         activeQuery = query
         when (val result = getRecommendations(query)) {
             is WfaRecommendationResult.Success -> applySuccess(requestId, date, coordinate, result)
-            is WfaRecommendationResult.Failure -> applyFailure(requestId, date, coordinate, result.failure)
+            is WfaRecommendationResult.Failure -> applyFailure(requestId, date, result.failure)
         }
     }
 }
 
-private fun isCurrentRecommendationRequest(requestId: Long, date: LocalDate): Boolean =
+private fun isCurrentRequest(requestId: Long, date: LocalDate): Boolean =
     requestId == nextRecommendationRequestId &&
         _uiState.value.draft.scheduleDate == date
 ```
 
-Every result application must call `isCurrentRecommendationRequest` first.
+Every apply function checks `isCurrentRequest` before state mutation.
 
 - [ ] **Step 6: Implement event semantics**
 
-For date change:
+Valid date change:
 
 ```kotlin
 private fun onScheduleDateChanged(date: LocalDate?) {
@@ -927,27 +840,28 @@ private fun onScheduleDateChanged(date: LocalDate?) {
 }
 ```
 
-For recommendation selection, copy only factual location fields into the draft. Do not copy score into booking commands.
+Recommendation selection copies only name, address, and coordinate into `draft.location`. Scores never enter `SubmitWfaRequestCommand`.
 
-- [ ] **Step 7: Run ViewModel tests and confirm pass**
+- [ ] **Step 7: Run ViewModel tests and verify pass**
 
 ```bash
 ./gradlew :app:testDebugUnitTest --tests "*WfaRequestViewModelTest"
 ```
 
-Expected: PASS.
-
-- [ ] **Step 8: Commit graph-owned recommendation state**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request \
+git add app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestRecommendationState.kt \
+  app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestUiState.kt \
+  app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestEvent.kt \
+  app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestViewModel.kt \
   app/src/test/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestViewModelTest.kt
 git commit -m "feat(INF-273): auto-load recommendations in WFA request"
 ```
 
 ---
 
-### Task 6: Render truthful recommendation picker and provider-neutral map in the form
+### Task 6: Build the truthful recommendation picker and map
 
 **Files:**
 - Create: `app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestMapUiMapper.kt`
@@ -958,52 +872,34 @@ git commit -m "feat(INF-273): auto-load recommendations in WFA request"
 - Modify: `app/src/main/res/values/strings.xml`
 
 **Interfaces:**
-- Consumes: `WfaRequestRecommendationState`, `currentCoordinate`, and `draft.location`.
-- Produces: interactive recommendation map/cards and honest nullable-score presentation.
-- Emits only typed `WfaRequestEvent` values and semantic `onSearchLocation` callback.
+- Consumes Task 5 recommendation state/current coordinate/draft location.
+- Emits typed recommendation events and a semantic search callback.
+- Uses the existing provider-neutral `AttendanceMap` adapter without approved-target circles.
 
 - [ ] **Step 1: Write pure map-mapper tests**
 
 ```kotlin
 @Test
-fun `mapper creates current and recommendation markers without geofence circles`() {
-    val state = WfaRequestMapUiMapper.map(
+fun `map contains current and recommendation markers without circles`() {
+    val result = WfaRequestMapUiMapper.map(
         currentCoordinate = GeoCoordinate(-0.9, 119.87),
         recommendationState = contentState,
         hasPreciseLocationPermission = true
     )
 
-    assertEquals(1, state.markers.count { it.role == MapMarkerRole.CURRENT_LOCATION })
-    assertEquals(2, state.markers.count { it.role == MapMarkerRole.WFA_RECOMMENDATION })
-    assertTrue(state.circles.isEmpty())
-}
-
-@Test
-fun `selected recommendation marker is highlighted`() {
-    val marker = WfaRequestMapUiMapper.map(...)
-        .markers.single { it.role == MapMarkerRole.WFA_RECOMMENDATION && it.isSelected }
-    assertEquals("wfa:place:one", marker.id)
+    assertEquals(1, result.markers.count { it.role == MapMarkerRole.CURRENT_LOCATION })
+    assertEquals(2, result.markers.count { it.role == MapMarkerRole.WFA_RECOMMENDATION })
+    assertTrue(result.circles.isEmpty())
 }
 ```
 
-- [ ] **Step 2: Add failing Compose tests for state rendering**
+Add selected-marker and stable-ID tests.
 
-Cover:
+- [ ] **Step 2: Add failing Compose tests**
 
-```text
-loading state
-empty state
-retryable failure
-ranked card displays final score
-insufficient-data card displays explicit unavailable copy and no 0
-facility-enrichment-failed card displays provider failure copy and no 0
-selecting a card dispatches RecommendationSelected
-minimum date is passed to DatePickerButton
-selected location card is absent before selection and appears after selection
-search fallback invokes semantic callback
-```
+Cover loading, empty, retryable failure, ranked score, insufficient-data copy without `0`, enrichment-failed copy without `0`, card selection, selected-location card, minimum date, and search callback.
 
-Use stable test tags:
+Use test tags:
 
 ```text
 wfaRecommendationLoading
@@ -1016,28 +912,24 @@ wfaSelectedLocationCard
 wfaSearchFallback
 ```
 
-- [ ] **Step 3: Run focused tests and confirm failure**
+- [ ] **Step 3: Run focused tests and verify failure**
 
 ```bash
 ./gradlew :app:testDebugUnitTest --tests "*WfaRequestMapUiMapperTest"
 ```
 
-Expected: FAIL because mapper/component do not exist.
+- [ ] **Step 4: Implement `WfaRequestMapUiMapper`**
 
-- [ ] **Step 4: Implement the focused map mapper**
-
-Map current location and recommendation markers only. Marker IDs must be deterministic:
+Marker identity:
 
 ```kotlin
 fun recommendationMarkerId(recommendation: WfaRecommendation): String =
     "wfa:${recommendation.stableKey}"
 ```
 
-Do not set an approved-target role or geofence radius.
+Create current-location and WFA recommendation markers only. Do not create geofence circles or authoritative-target markers.
 
 - [ ] **Step 5: Implement `WfaRecommendationPicker`**
-
-Required component signature:
 
 ```kotlin
 @Composable
@@ -1052,7 +944,7 @@ fun WfaRecommendationPicker(
 )
 ```
 
-For score display:
+Score rendering must branch by status:
 
 ```kotlin
 when (recommendation.status) {
@@ -1069,22 +961,20 @@ when (recommendation.status) {
 }
 ```
 
-Never call `(finalScore ?: 0.0)` for display.
+Never use `finalScore ?: 0.0` in presentation.
 
-- [ ] **Step 6: Refactor the form without changing submission semantics**
+- [ ] **Step 6: Refactor the form**
 
-Change `FormContent` so it no longer returns when location is null.
-
-Order items:
+Remove the early return when location is null. Render in this order:
 
 ```text
 schedule date
 recommendation picker
-selected location card when non-null
-employee card
+selected location when present
+employee
 reason/notes
 checklist
-review button
+review action
 ```
 
 Pass:
@@ -1098,16 +988,9 @@ DatePickerButton(
 )
 ```
 
-Add callbacks to `WfaRequestFormScreen`:
+Add `onSearchLocation` and `hasPreciseLocationPermission` parameters. The screen does not navigate directly.
 
-```kotlin
-onSearchLocation: () -> Unit
-hasPreciseLocationPermission: Boolean
-```
-
-The navigation host, not the screen, performs navigation.
-
-- [ ] **Step 7: Run focused unit and connected tests**
+- [ ] **Step 7: Run focused tests**
 
 ```bash
 ./gradlew :app:testDebugUnitTest --tests "*WfaRequestMapUiMapperTest"
@@ -1120,10 +1003,12 @@ When an emulator is available:
   -Pandroid.testInstrumentationRunnerArguments.class=com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestScreensTest
 ```
 
-- [ ] **Step 8: Commit the recommendation UI**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request \
+git add app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestMapUiMapper.kt \
+  app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/components/WfaRecommendationPicker.kt \
+  app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestFormScreen.kt \
   app/src/test/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestMapUiMapperTest.kt \
   app/src/androidTest/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestScreensTest.kt \
   app/src/main/res/values/strings.xml
@@ -1132,76 +1017,163 @@ git commit -m "feat(INF-273): render truthful WFA recommendations"
 
 ---
 
-### Task 7: Remove recommendation ownership from Attendance and auto-open new requests
+### Task 7: Wire the graph and consume manual search exactly once
+
+**Files:**
+- Modify: `app/src/main/java/com/example/infinite_track/presentation/navigation/WfaRequestNavGraph.kt`
+- Modify: `app/src/androidTest/java/com/example/infinite_track/presentation/navigation/WfaRequestNavigationTest.kt`
+- Modify: `app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestUiMapper.kt`
+- Modify: `app/src/main/res/values/strings.xml`
+
+**Interfaces:**
+- Consumes Task 4 result key and Task 5 event.
+- Supplies semantic search callback and permission state to Task 6 UI.
+- Preserves one graph-scoped controller for form/review/result.
+
+- [ ] **Step 1: Add failing graph tests**
+
+Test:
+
+```text
+parent route opens without args
+form/review/result share one controller
+LocationResult is consumed once
+ManualLocationSelected is dispatched once
+saved-state result is removed after consumption
+review/back/result behavior remains unchanged
+```
+
+- [ ] **Step 2: Run navigation tests and verify failure**
+
+Run on an emulator:
+
+```bash
+./gradlew :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.example.infinite_track.presentation.navigation.WfaRequestNavigationTest
+```
+
+- [ ] **Step 3: Wire the search callback and result collector**
+
+```kotlin
+onSearchLocation = { navController.navigate(Screen.LocationSearch.route) }
+```
+
+Observe the form back-stack entry:
+
+```kotlin
+val selectedLocation by entry.savedStateHandle
+    .getStateFlow<LocationResult?>(LocationSearchResultContract.RESULT_KEY, null)
+    .collectAsStateWithLifecycle()
+
+LaunchedEffect(selectedLocation) {
+    selectedLocation ?: return@LaunchedEffect
+    viewModel.onEvent(
+        WfaRequestEvent.ManualLocationSelected(
+            WfaCandidateLocation(
+                latitude = selectedLocation.latitude,
+                longitude = selectedLocation.longitude,
+                displayName = selectedLocation.placeName,
+                formattedAddress = selectedLocation.address
+            )
+        )
+    )
+    entry.savedStateHandle.remove<LocationResult>(LocationSearchResultContract.RESULT_KEY)
+}
+```
+
+Compute precise-location permission in the graph host with `ContextCompat.checkSelfPermission`; do not move `Context` into the ViewModel.
+
+- [ ] **Step 4: Add typed recommendation failure copy**
+
+Map current location, invalid date, duplicate booking, network, provider, server, and unknown failures to safe string resources. Keep config and submit failures separate.
+
+- [ ] **Step 5: Run graph tests and verify pass**
+
+Run the same connected test command. Also run:
+
+```bash
+./gradlew :app:testDebugUnitTest --tests "*WfaRequest*Test"
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add app/src/main/java/com/example/infinite_track/presentation/navigation/WfaRequestNavGraph.kt \
+  app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestUiMapper.kt \
+  app/src/androidTest/java/com/example/infinite_track/presentation/navigation/WfaRequestNavigationTest.kt \
+  app/src/main/res/values/strings.xml
+git commit -m "feat(INF-273): wire WFA recommendation transaction graph"
+```
+
+---
+
+### Task 8: Remove request discovery from Attendance and auto-open not-requested flow
 
 **Files:**
 - Modify: `app/src/main/java/com/example/infinite_track/presentation/screen/attendance/AttendanceViewModel.kt`
 - Modify: `app/src/main/java/com/example/infinite_track/presentation/screen/attendance/AttendanceScreen.kt`
 - Modify: `app/src/main/java/com/example/infinite_track/presentation/screen/attendance/preparation/AttendancePreparationState.kt`
+- Modify: `app/src/main/java/com/example/infinite_track/presentation/screen/attendance/preparation/AttendancePreparationUiModel.kt`
 - Modify: `app/src/main/java/com/example/infinite_track/presentation/screen/attendance/preparation/AttendancePreparationUiMapper.kt`
+- Modify: `app/src/main/java/com/example/infinite_track/presentation/components/button/attendance/AttendanceBottomSheetContent.kt`
 - Modify: `app/src/main/java/com/example/infinite_track/presentation/map/mapper/AttendanceMapUiMapper.kt`
-- Modify/delete after usage check: `AttendancePreparationReducer.kt`, `WfaMapSelectionEffect.kt`, and request-only map-pick helpers.
-- Modify focused tests under:
-  - `app/src/test/java/com/example/infinite_track/presentation/screen/attendance/`
-  - `app/src/test/java/com/example/infinite_track/presentation/screen/attendance/preparation/`
-  - `app/src/test/java/com/example/infinite_track/presentation/map/mapper/`
+- Modify or delete after usage check: request-only reducer/map-pick helpers.
+- Modify focused tests under `app/src/test/java/com/example/infinite_track/presentation/screen/attendance/` and `presentation/map/mapper/`.
 
 **Interfaces:**
-- Consumes: simplified `Screen.WfaRequestFlow.route`.
-- Produces: Attendance that resolves backend truth and navigates only for `WFA_NOT_REQUESTED`.
-- Removes: request recommendation/search/map-pick state from Attendance.
+- Produces Attendance that resolves backend truth and navigates only for `WFA_NOT_REQUESTED`.
+- Removes recommendation/search/map-pick ownership from Attendance.
+- Keeps approved target, range, permission, face, and submission behavior.
 
-- [ ] **Step 1: Add failing Attendance behavior tests**
+- [ ] **Step 1: Add failing Attendance state-matrix tests**
 
-Test the state matrix:
+Test:
 
 ```text
-approved today → no WFA request navigation, authoritative target remains
-pending → OPEN_WFA_REQUESTS recovery
-rejected → OPEN_WFA_REQUESTS recovery
-approval missing for today → OPEN_WFA_REQUESTS recovery
+approved today → no request navigation and approved target remains
+pending → request-history recovery
+rejected → request-history recovery
+approval missing for date → request-history recovery
 not requested → one NavigationTarget.WfaRequest
-repeated WFA selection while current resolution is active → no duplicate navigation
+rapid repeated WFA selection → no duplicate in-flight navigation
 ```
 
-Add a constructor/behavior test proving Attendance no longer calls or requires `GetWfaRecommendationsUseCase`.
+Add a compile/constructor assertion that Attendance no longer needs `GetWfaRecommendationsUseCase`.
 
-- [ ] **Step 2: Run focused tests and confirm failure**
+- [ ] **Step 2: Run focused tests and verify failure**
 
-Run the exact current test classes found by:
+Discover exact current test classes:
 
 ```bash
 rg -l "AttendanceViewModel|WFA_NOT_REQUESTED|WfaDiscoveryState" app/src/test
 ```
 
-Then execute them with `:app:testDebugUnitTest --tests` filters. Expected: FAIL until Attendance ownership is removed.
+Run those classes through `:app:testDebugUnitTest --tests`.
 
-- [ ] **Step 3: Remove recommendation jobs and use-case injection**
+- [ ] **Step 3: Remove recommendation orchestration from `AttendanceViewModel`**
 
-Delete from `AttendanceViewModel`:
+Delete:
 
 ```text
-GetWfaRecommendationsUseCase constructor dependency
+GetWfaRecommendationsUseCase dependency
 recommendationJob
 fetchWfaRecommendations
-auto-fit recommendation camera logic
 recommendation retry
-recommendation marker selection
-selected recommendation lookup in onBookingClicked
+recommendation auto-fit
+recommendation selection
+coordinate-based onBookingClicked logic
 ```
 
-Rename the navigation target to reflect the transaction:
+Use:
 
 ```kotlin
 sealed class NavigationTarget {
     data class WfaRequest(val route: String) : NavigationTarget()
-    // existing FaceScanner and LocationSearch only if still used elsewhere
+    // preserve existing unrelated targets
 }
 ```
 
-- [ ] **Step 4: Emit automatic navigation only for not-requested resolution**
-
-After applying the latest WFA resolution, add:
+- [ ] **Step 4: Auto-open only after authoritative not-requested resolution**
 
 ```kotlin
 private fun maybeOpenWfaRequest(
@@ -1219,65 +1191,34 @@ private fun maybeOpenWfaRequest(
 }
 ```
 
-Call it only after the backend-authoritative resolution is applied.
+Call it after the latest resolution is applied. Do not call it for unresolved/failure/pending/rejected/approved states.
 
-- [ ] **Step 5: Remove request-discovery state from Attendance presentation**
+- [ ] **Step 5: Remove request-only state and UI**
 
-Remove from `AttendancePreparationState`:
+Remove from Attendance:
 
 ```text
 wfaDiscovery
 mapPickInteraction
-```
-
-Remove from `AttendancePreparationUiMapper`:
-
-```text
-retry discovery primary action
 recommendation rows
-selected recommendation requirement for OPEN_WFA_BOOKING
-secondary search action for new request
+search/pick secondary actions
+recommendation marker handling
+search-result consumption
+loading overlay
+map-pick crosshair
 ```
 
-Remove from `AttendanceMapUiMapper`:
+Keep current location and authoritative target markers.
 
-```text
-WFA_RECOMMENDATION markers
-SEARCH_PREVIEW markers for request creation
-```
-
-Keep authoritative target and current-location markers unchanged.
-
-- [ ] **Step 6: Remove request-only UI handlers from `AttendanceScreen`**
-
-Delete:
-
-```text
-selected_location consumption for WFA request creation
-SearchWfaLocation action
-PickWfaLocationOnMap action
-recommendation marker click branch
-recommendation loading overlay
-center crosshair for request map pick
-```
-
-Update navigation handling:
-
-```kotlin
-is NavigationTarget.WfaRequest -> navController.navigate(target.route)
-```
-
-- [ ] **Step 7: Delete dead helpers only after proving no usage**
-
-Run:
+- [ ] **Step 6: Delete dead helpers only after usage search**
 
 ```bash
 rg "WfaDiscoveryState|WfaMapPickInteractionState|WfaMapSelectionEffect|selectRecommendation" app/src
 ```
 
-Delete a helper only when every active consumer has been migrated. Do not remove shared provider-neutral map models or approved-target behavior.
+Delete only helpers with no active consumers. Do not delete shared map infrastructure.
 
-- [ ] **Step 8: Run focused Attendance tests**
+- [ ] **Step 7: Run focused Attendance tests**
 
 ```bash
 ./gradlew :app:testDebugUnitTest \
@@ -1287,12 +1228,11 @@ Delete a helper only when every active consumer has been migrated. Do not remove
   --tests "*AttendanceViewModel*Test"
 ```
 
-Expected: PASS.
-
-- [ ] **Step 9: Commit Attendance cleanup**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add app/src/main/java/com/example/infinite_track/presentation/screen/attendance \
+  app/src/main/java/com/example/infinite_track/presentation/components/button/attendance/AttendanceBottomSheetContent.kt \
   app/src/main/java/com/example/infinite_track/presentation/map/mapper/AttendanceMapUiMapper.kt \
   app/src/test/java/com/example/infinite_track/presentation/screen/attendance \
   app/src/test/java/com/example/infinite_track/presentation/map/mapper
@@ -1301,139 +1241,39 @@ git commit -m "refactor(INF-273): move WFA discovery out of attendance"
 
 ---
 
-### Task 8: Complete graph integration, error copy, and regression coverage
+### Task 9: Complete regression coverage and verification
 
 **Files:**
-- Modify: `app/src/main/java/com/example/infinite_track/presentation/navigation/WfaRequestNavGraph.kt`
-- Modify: `app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestUiMapper.kt`
-- Modify: `app/src/androidTest/java/com/example/infinite_track/presentation/navigation/WfaRequestNavigationTest.kt`
-- Modify: `app/src/androidTest/java/com/example/infinite_track/presentation/screen/attendance/wfa_request/WfaRequestScreensTest.kt`
-- Modify: relevant unit tests and `app/src/main/res/values/strings.xml`
+- Modify only files already owned by Tasks 1–8 when a failing test identifies a real defect.
+- Do not commit APKs, generated reports, local properties, secrets, or temporary logs.
 
-**Interfaces:**
-- Wires recommendation marker/card/search events to the graph-scoped controller.
-- Preserves review/result navigation and typed failure copy.
-
-- [ ] **Step 1: Add end-to-end graph tests before wiring**
-
-Cover:
-
-```text
-navigate to wfa_request without args
-form starts with tomorrow
-automatic loading/content is rendered
-select recommendation → selected location card
-change date → selected location disappears and loading returns
-search fallback result is consumed once
-review → back → form preserves date/reason/notes/location
-submit → result remains unchanged
-```
-
-- [ ] **Step 2: Add typed error-copy tests**
-
-Map:
-
-```text
-CurrentLocationUnavailable
-InvalidScheduleDate
-DuplicateBooking
-NetworkUnavailable
-ProviderUnavailable
-ServerUnavailable
-Unknown
-```
-
-Assert recommendation failures do not use the config-failure title/action.
-
-- [ ] **Step 3: Run tests and confirm failure**
+- [ ] **Step 1: Run the entire WFA-focused JVM suite**
 
 ```bash
-./gradlew :app:testDebugUnitTest --tests "*WfaRequest*Test"
+./gradlew :app:testDebugUnitTest --tests "*Wfa*Test"
 ```
 
-Connected tests when available:
+Expected: PASS.
+
+- [ ] **Step 2: Verify the old recommendation contract is gone**
 
 ```bash
-./gradlew :app:connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.package=com.example.infinite_track.presentation
-```
-
-- [ ] **Step 4: Wire graph callbacks and permission state**
-
-The graph host supplies:
-
-```kotlin
-onSearchLocation = { navController.navigate(Screen.LocationSearch.route) }
-hasPreciseLocationPermission = context.hasPreciseLocationPermission()
-```
-
-Do not put navigation in `WfaRequestViewModel` or screen composables.
-
-- [ ] **Step 5: Add safe localized copy and accessibility descriptions**
-
-Add strings for:
-
-```text
-recommendation loading/empty/retry
-current location unavailable
-duplicate selected date
-provider unavailable
-insufficient facility data
-enrichment failed
-facility confidence
-search another location
-future date required
-recommendation map content description
-```
-
-Use string resources in production Compose code; no hardcoded user-facing copy.
-
-- [ ] **Step 6: Run focused tests and confirm pass**
-
-```bash
-./gradlew :app:testDebugUnitTest --tests "*WfaRequest*Test"
-```
-
-Run connected tests when available as above.
-
-- [ ] **Step 7: Commit graph integration**
-
-```bash
-git add app/src/main/java/com/example/infinite_track/presentation/navigation/WfaRequestNavGraph.kt \
-  app/src/main/java/com/example/infinite_track/presentation/screen/attendance/wfa_request \
-  app/src/androidTest/java/com/example/infinite_track/presentation \
-  app/src/test/java/com/example/infinite_track/presentation \
-  app/src/main/res/values/strings.xml
-git commit -m "test(INF-273): verify date-aware WFA request flow"
-```
-
----
-
-### Task 9: Run full verification and record evidence
-
-**Files:**
-- Modify only if verification reveals an issue in files already owned by INF-273.
-- Do not add generated reports, APKs, local properties, or secrets to git.
-
-- [ ] **Step 1: Verify no old recommendation contract remains**
-
-```bash
-rg "suitability_score|suitabilityLabel|score_details|wifi_quality|noise_level|crowd_density|amenities" \
+rg "score_details|wifi_quality|noise_level|crowd_density" \
   app/src/main/java/com/example/infinite_track/{data,domain,presentation}
 ```
 
-Expected: no active WFA recommendation consumer uses the legacy fields. Booking-history `suitability_score` may remain because it is a separate persisted booking contract.
+Expected: no active WFA recommendation consumer. Booking-history `suitability_score` may remain because it is a separate persisted booking contract.
 
-- [ ] **Step 2: Verify Attendance no longer owns request discovery**
+- [ ] **Step 3: Verify Attendance no longer owns discovery**
 
 ```bash
 rg "GetWfaRecommendationsUseCase|fetchWfaRecommendations|WfaDiscoveryState" \
   app/src/main/java/com/example/infinite_track/presentation/screen/attendance
 ```
 
-Expected: recommendation ownership exists only under `wfa_request`; approved-target code remains.
+Expected: no request recommendation ownership under Attendance; request ownership exists under `wfa_request`.
 
-- [ ] **Step 3: Run all JVM unit tests**
+- [ ] **Step 4: Run all JVM unit tests**
 
 ```bash
 ./gradlew :app:testDebugUnitTest
@@ -1441,7 +1281,7 @@ Expected: recommendation ownership exists only under `wfa_request`; approved-tar
 
 Expected: BUILD SUCCESSFUL.
 
-- [ ] **Step 4: Build the debug APK**
+- [ ] **Step 5: Build debug**
 
 ```bash
 ./gradlew :app:assembleDebug
@@ -1449,15 +1289,15 @@ Expected: BUILD SUCCESSFUL.
 
 Expected: BUILD SUCCESSFUL.
 
-- [ ] **Step 5: Run lint**
+- [ ] **Step 6: Run lint**
 
 ```bash
 ./gradlew :app:lintDebug
 ```
 
-Expected: BUILD SUCCESSFUL, or every pre-existing non-blocking issue is documented separately with evidence that INF-273 introduced no new blocker.
+Expected: BUILD SUCCESSFUL, or pre-existing non-blocking findings are documented with evidence that INF-273 introduced no new blocker.
 
-- [ ] **Step 6: Run connected tests when an emulator/device is available**
+- [ ] **Step 7: Run connected tests when an emulator/device is available**
 
 ```bash
 ./gradlew :app:connectedDebugAndroidTest
@@ -1465,27 +1305,25 @@ Expected: BUILD SUCCESSFUL, or every pre-existing non-blocking issue is document
 
 Expected: BUILD SUCCESSFUL.
 
-- [ ] **Step 7: Perform the runtime matrix**
-
-Verify manually:
+- [ ] **Step 8: Execute the runtime matrix**
 
 ```text
 approved WFA today stays in Attendance
-pending/rejected routes to request history recovery
+pending/rejected/missing approval keeps history recovery
 not requested opens WFA Request automatically
 default date is tomorrow
-same-day/past cannot be selected
+today/past cannot be selected
 later future date reloads recommendations
 old selection clears on date change
 stale result cannot replace current date
 ranked candidate shows score
 insufficient/enrichment-failed candidate never shows 0
-search fallback remains secondary
-review and submit preserve the selected date/location
-backend duplicate-date rejection is typed
+manual search is secondary and consumed once
+review and submit preserve selected date/location
+duplicate-date rejection is typed
 ```
 
-- [ ] **Step 8: Review the final diff against the spec**
+- [ ] **Step 9: Review the final diff**
 
 ```bash
 git diff --stat develop...HEAD
@@ -1493,24 +1331,4 @@ git diff --check develop...HEAD
 git log --oneline develop..HEAD
 ```
 
-Confirm:
-
-```text
-no backend files
-no generated build artifacts
-no sensitive logs
-no duplicate route registration
-no DTO/entity leakage into Domain
-no recommendation ownership left in Attendance
-```
-
-- [ ] **Step 9: Commit any final bounded verification fix**
-
-Only when a real issue was found:
-
-```bash
-git add <owned INF-273 files>
-git commit -m "fix(INF-273): address final verification findings"
-```
-
-Do not create an empty verification commit.
+Confirm no Backend files, generated artifacts, sensitive logs, duplicate routes, DTO leakage, or recommendation ownership left in Attendance. Fix any failure in the task that owns the affected file, rerun that task's tests, and commit with a bounded `fix(INF-273): ...` message.
