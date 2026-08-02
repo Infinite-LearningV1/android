@@ -6,6 +6,8 @@ import com.example.infinite_track.domain.model.booking.WfaRequestConfig
 import com.example.infinite_track.domain.model.booking.WfaRequestDraft
 import com.example.infinite_track.domain.model.booking.WfaRequestFailure
 import com.example.infinite_track.domain.model.booking.WfaRequestFieldErrors
+import com.example.infinite_track.domain.model.location.GeoCoordinate
+import java.time.LocalDate
 
 sealed interface WfaRequestPhase {
     data object Loading : WfaRequestPhase
@@ -26,6 +28,10 @@ data class WfaRequestUiState(
     val phase: WfaRequestPhase = WfaRequestPhase.Loading,
     val employee: WfaEmployeeSummary? = null,
     val location: WfaCandidateLocation? = null,
+    val minimumScheduleDate: LocalDate? = null,
+    val currentCoordinate: GeoCoordinate? = null,
+    val recommendationState: WfaRequestRecommendationState =
+        WfaRequestRecommendationState.Initializing,
     val config: WfaRequestConfig? = null,
     val draft: WfaRequestDraft = WfaRequestDraft.Empty,
     val fieldErrors: WfaRequestFieldErrors = WfaRequestFieldErrors(),
