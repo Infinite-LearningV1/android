@@ -1,10 +1,42 @@
 package com.example.infinite_track.presentation.screen.attendance.wfa_request
 
+import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.booking.WfaRequestFailure
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationFailure
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class WfaRequestUiMapperTest {
+
+    @Test
+    fun `recommendation failures map to typed safe resources`() {
+        assertEquals(
+            R.string.wfa_recommendation_failure_location,
+            WfaRequestUiMapper.map(WfaRecommendationFailure.CurrentLocationUnavailable).messageRes
+        )
+        assertEquals(
+            R.string.wfa_recommendation_failure_date,
+            WfaRequestUiMapper.map(WfaRecommendationFailure.InvalidScheduleDate).messageRes
+        )
+        assertEquals(
+            R.string.wfa_recommendation_failure_duplicate,
+            WfaRequestUiMapper.map(WfaRecommendationFailure.DuplicateBooking).messageRes
+        )
+        assertEquals(
+            R.string.wfa_recommendation_failure_network,
+            WfaRequestUiMapper.map(WfaRecommendationFailure.NetworkUnavailable).messageRes
+        )
+        listOf(
+            WfaRecommendationFailure.ProviderUnavailable,
+            WfaRecommendationFailure.ServerUnavailable,
+            WfaRecommendationFailure.Unknown
+        ).forEach {
+            assertEquals(
+                R.string.wfa_recommendation_failure_unavailable,
+                WfaRequestUiMapper.map(it).messageRes
+            )
+        }
+    }
 
     @Test
     fun `duplicate request has correction copy`() {

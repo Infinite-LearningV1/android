@@ -1,288 +1,178 @@
 package com.example.infinite_track.presentation.screen.attendance
 
-import com.example.infinite_track.domain.model.attendance.AttendancePreparationEligibility
 import com.example.infinite_track.domain.model.attendance.AuthoritativeTargetLocation
 import com.example.infinite_track.domain.model.attendance.TargetLocationId
 import com.example.infinite_track.domain.model.attendance.TargetLocationResolution
 import com.example.infinite_track.domain.model.attendance.TargetLocationSource
-import com.example.infinite_track.domain.model.attendance.TargetRangeStatus
+import com.example.infinite_track.domain.model.attendance.TargetRecoveryAction
+import com.example.infinite_track.domain.model.attendance.TargetUnavailableReason
 import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.location.DistanceMeters
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
-import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryState
-import com.example.infinite_track.presentation.screen.attendance.preparation.WfaMapPickInteractionState
-import com.example.infinite_track.presentation.map.model.AttendanceMapCameraMoveOrigin
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AttendanceSelectionTransitionTest {
 
     @Test
-    fun `mode change cannot retain popup data from the previous target`() {
-        val oldTargetId = officeTarget.targetId
-        val wfaPreparation = readyPreparation(approvedWfaTarget)
-
-        val popupTarget = AttendanceSelectionTransition.resolvedTargetForInteraction(
-            preparation = wfaPreparation,
-            selectedTargetId = oldTargetId
-        )
-
-        assertNull(popupTarget)
-        assertEquals(
-            approvedWfaTarget,
-            AttendanceSelectionTransition.resolvedTargetForInteraction(
-                preparation = wfaPreparation,
-                selectedTargetId = approvedWfaTarget.targetId
-            )
-        )
-    }
-
-    @Test
-    fun `WFA mode alone does not enable map pick`() {
-        val initialWfaPreparation = AttendancePreparationState(
-            selectedMode = WorkMode.WFA,
-            targetResolution = TargetLocationResolution.Resolving(WorkMode.WFA),
-            wfaDiscovery = WfaDiscoveryState.Loading,
-            eligibility = AttendancePreparationEligibility.Resolving
-        )
-        assertFalse(
-            AttendanceSelectionTransition.isMapPickEnabled(
-                initialWfaPreparation
-            )
-        )
-        assertFalse(
-            AttendanceSelectionTransition.isMapPickEnabled(
-                readyPreparation(officeTarget)
-            )
-        )
-    }
-
-    @Test
-    fun `only an explicit WFA map pick session may consume camera idle`() {
-        val wfaPreparation = readyPreparation(approvedWfaTarget)
-
-        val active = AttendanceSelectionTransition.beginMapPick(
-            preparation = wfaPreparation,
-            sessionId = 7L
-        )
-
-        assertEquals(WfaMapPickInteractionState.Active(7L), active.mapPickInteraction)
-        assertTrue(AttendanceSelectionTransition.isMapPickEnabled(active))
-        assertEquals(
-            WfaMapPickInteractionState.Active(7L),
-            AttendanceSelectionTransition.mapPickSessionForCameraIdle(
-                active,
-                AttendanceMapCameraMoveOrigin.USER_GESTURE
-            )
-        )
-    }
-
-    @Test
-    fun `fit running then begin map pick cannot consume its programmatic terminal idle`() {
-        val fitRunning = readyPreparation(approvedWfaTarget)
-        val activeMidAnimation = AttendanceSelectionTransition.beginMapPick(
-            preparation = fitRunning,
-            sessionId = 8L
-        )
-
-        assertNull(
-            AttendanceSelectionTransition.mapPickSessionForCameraIdle(
-                activeMidAnimation,
-                AttendanceMapCameraMoveOrigin.PROGRAMMATIC
-            )
-        )
-        assertEquals(
-            WfaMapPickInteractionState.Active(8L),
-            activeMidAnimation.mapPickInteraction
-        )
-    }
-
-    @Test
-    fun `genuine user gesture idle consumes the active pick path`() {
-        val active = AttendanceSelectionTransition.beginMapPick(
-            preparation = readyPreparation(approvedWfaTarget),
-            sessionId = 9L
-        )
-
-        assertEquals(
-            WfaMapPickInteractionState.Active(9L),
-            AttendanceSelectionTransition.mapPickSessionForCameraIdle(
-                active,
-                AttendanceMapCameraMoveOrigin.USER_GESTURE
-            )
-        )
-    }
-
-    @Test
-    fun `target focus and recommendation fit cancel explicit map pick ownership`() {
-        val active = AttendanceSelectionTransition.beginMapPick(
-            preparation = readyPreparation(approvedWfaTarget),
-            sessionId = 7L
-        )
-
-        val cancelled = AttendanceSelectionTransition.cancelMapPick(active)
-
-        assertNull(
-            AttendanceSelectionTransition.mapPickSessionForCameraIdle(
-                cancelled,
-                AttendanceMapCameraMoveOrigin.USER_GESTURE
-            )
-        )
-    }
-
-    @Test
-    fun `only matching map pick session is consumed`() {
-        val active = AttendanceSelectionTransition.beginMapPick(
-            preparation = readyPreparation(approvedWfaTarget),
-            sessionId = 7L
-        )
-
-        assertNull(
-            AttendanceSelectionTransition.consumeMapPick(
-                preparation = active,
-                session = WfaMapPickInteractionState.Active(6L)
-            )
-        )
-        assertEquals(
-            WfaMapPickInteractionState.Inactive,
-            AttendanceSelectionTransition.consumeMapPick(
-                preparation = active,
-                session = WfaMapPickInteractionState.Active(7L)
-            )?.mapPickInteraction
-        )
-    }
-
-    @Test
-    fun `WFA booking navigation is cleared when WFO selection starts before consumption`() {
-        val queuedState = AttendanceScreenState(
-            preparation = readyPreparation(approvedWfaTarget),
-            navigationTarget = NavigationTarget.WfaBooking("wfa_booking?latitude=-0.9&longitude=119.88")
-        )
-        val wfoPreparing = AttendancePreparationState(
+    fun `resolved target is interactive only when its id is selected`() {
+        val preparation = AttendancePreparationState(
             selectedMode = WorkMode.WFO,
-            targetResolution = TargetLocationResolution.Resolving(WorkMode.WFO),
-            wfaDiscovery = WfaDiscoveryState.Hidden,
-            eligibility = AttendancePreparationEligibility.Resolving
+            targetResolution = TargetLocationResolution.Resolved(officeTarget)
         )
 
+        assertEquals(
+            officeTarget,
+            AttendanceSelectionTransition.resolvedTargetForInteraction(
+                preparation,
+                officeTarget.targetId
+            )
+        )
+        assertNull(
+            AttendanceSelectionTransition.resolvedTargetForInteraction(
+                preparation,
+                TargetLocationId("office:other")
+            )
+        )
+    }
+
+    @Test
+    fun `new selection clears queued WFA request navigation`() {
+        val nextPreparation = AttendancePreparationState(selectedMode = WorkMode.WFH)
         val next = AttendanceSelectionTransition.beginSelection(
-            state = queuedState,
-            preparation = wfoPreparing
+            state = AttendanceScreenState(
+                navigationTarget = NavigationTarget.WfaRequest(WFA_ROUTE)
+            ),
+            preparation = nextPreparation
         )
 
-        assertEquals(WorkMode.WFO, next.preparation.selectedMode)
-        assertEquals(WfaMapPickInteractionState.Inactive, next.preparation.mapPickInteraction)
+        assertEquals(nextPreparation, next.preparation)
         assertNull(next.navigationTarget)
     }
 
     @Test
-    fun `selection preserves FaceScanner navigation and verifying action coherence`() {
-        val verifying = AttendanceActionState.VerifyingFace(AttendanceActionIntent.CHECK_OUT)
-        val faceScanner = NavigationTarget.FaceScanner(AttendanceActionIntent.CHECK_OUT)
-        val queuedState = AttendanceScreenState(
-            preparation = readyPreparation(approvedWfaTarget),
-            actionState = verifying,
-            navigationTarget = faceScanner
-        )
-        val wfoPreparing = AttendancePreparationState(
-            selectedMode = WorkMode.WFO,
-            targetResolution = TargetLocationResolution.Resolving(WorkMode.WFO),
-            wfaDiscovery = WfaDiscoveryState.Hidden,
-            eligibility = AttendancePreparationEligibility.Resolving
-        )
+    fun `repeated WFA selection preserves queued request navigation`() {
+        val navigation = NavigationTarget.WfaRequest(WFA_ROUTE)
+        val nextPreparation = AttendancePreparationState(selectedMode = WorkMode.WFA)
 
         val next = AttendanceSelectionTransition.beginSelection(
-            state = queuedState,
-            preparation = wfoPreparing
+            state = AttendanceScreenState(navigationTarget = navigation),
+            preparation = nextPreparation
         )
 
-        assertEquals(faceScanner, next.navigationTarget)
-        assertEquals(verifying, next.actionState)
+        assertEquals(nextPreparation, next.preparation)
+        assertEquals(navigation, next.navigationTarget)
     }
 
     @Test
-    fun `stale WFA selection cannot emit booking navigation`() {
-        val navigation = AttendanceSelectionTransition.wfaBookingNavigationTarget(
-            preparation = readyPreparation(approvedWfaTarget),
-            selectionIsCurrent = false,
-            route = WFA_ROUTE
+    fun `new selection preserves unrelated navigation`() {
+        val navigation = NavigationTarget.FaceScanner(AttendanceActionIntent.CHECK_IN)
+        val next = AttendanceSelectionTransition.beginSelection(
+            state = AttendanceScreenState(navigationTarget = navigation),
+            preparation = AttendancePreparationState(selectedMode = WorkMode.WFH)
         )
 
-        assertNull(navigation)
+        assertEquals(navigation, next.navigationTarget)
     }
 
     @Test
-    fun `current non-WFA selection cannot emit booking navigation`() {
-        val navigation = AttendanceSelectionTransition.wfaBookingNavigationTarget(
-            preparation = readyPreparation(officeTarget),
-            selectionIsCurrent = true,
-            route = WFA_ROUTE
+    fun `current WFA not requested selection auto navigates to request form`() {
+        assertEquals(
+            NavigationTarget.WfaRequest(WFA_ROUTE),
+            AttendanceSelectionTransition.wfaRequestNavigationTarget(
+                preparation = unavailableWfa(TargetUnavailableReason.WFA_NOT_REQUESTED),
+                selectionIsCurrent = true,
+                hasPendingNavigation = false,
+                route = WFA_ROUTE
+            )
         )
-
-        assertNull(navigation)
     }
 
     @Test
-    fun `current WFA selection emits booking navigation`() {
-        val navigation = AttendanceSelectionTransition.wfaBookingNavigationTarget(
-            preparation = readyPreparation(approvedWfaTarget),
-            selectionIsCurrent = true,
-            route = WFA_ROUTE
+    fun `approved pending rejected and missing-date states never open a new request`() {
+        val states = listOf(
+            AttendancePreparationState(
+                selectedMode = WorkMode.WFA,
+                targetResolution = TargetLocationResolution.Resolved(approvedWfaTarget)
+            ),
+            unavailableWfa(TargetUnavailableReason.WFA_PENDING),
+            unavailableWfa(TargetUnavailableReason.WFA_REJECTED),
+            unavailableWfa(TargetUnavailableReason.WFA_APPROVAL_MISSING_FOR_DATE)
         )
 
-        assertEquals(NavigationTarget.WfaBooking(WFA_ROUTE), navigation)
+        states.forEach { preparation ->
+            assertNull(
+                AttendanceSelectionTransition.wfaRequestNavigationTarget(
+                    preparation = preparation,
+                    selectionIsCurrent = true,
+                    hasPendingNavigation = false,
+                    route = WFA_ROUTE
+                )
+            )
+        }
     }
 
-    private fun readyPreparation(
-        target: AuthoritativeTargetLocation
-    ): AttendancePreparationState {
-        val range = TargetRangeStatus.Inside(DistanceMeters(20.0))
-        return AttendancePreparationState(
-            selectedMode = target.mode,
-            targetResolution = TargetLocationResolution.Resolved(target),
-            rangeStatus = range,
-            wfaDiscovery = if (target.mode == WorkMode.WFA) {
-                WfaDiscoveryState.Empty
-            } else {
-                WfaDiscoveryState.Hidden
-            },
-            eligibility = AttendancePreparationEligibility.Ready(target, range)
+    @Test
+    fun `stale non-WFA and already queued selections cannot duplicate navigation`() {
+        assertNull(
+            AttendanceSelectionTransition.wfaRequestNavigationTarget(
+                preparation = unavailableWfa(TargetUnavailableReason.WFA_NOT_REQUESTED),
+                selectionIsCurrent = false,
+                hasPendingNavigation = false,
+                route = WFA_ROUTE
+            )
+        )
+        assertNull(
+            AttendanceSelectionTransition.wfaRequestNavigationTarget(
+                preparation = AttendancePreparationState(selectedMode = WorkMode.WFO),
+                selectionIsCurrent = true,
+                hasPendingNavigation = false,
+                route = WFA_ROUTE
+            )
+        )
+        assertNull(
+            AttendanceSelectionTransition.wfaRequestNavigationTarget(
+                preparation = unavailableWfa(TargetUnavailableReason.WFA_NOT_REQUESTED),
+                selectionIsCurrent = true,
+                hasPendingNavigation = true,
+                route = WFA_ROUTE
+            )
         )
     }
 
-    private val officeTarget = target(
-        id = "office:1",
+    private fun unavailableWfa(reason: TargetUnavailableReason) = AttendancePreparationState(
+        selectedMode = WorkMode.WFA,
+        targetResolution = TargetLocationResolution.Unavailable(
+            mode = WorkMode.WFA,
+            reason = reason,
+            recovery = when (reason) {
+                TargetUnavailableReason.WFA_NOT_REQUESTED -> TargetRecoveryAction.OPEN_WFA_BOOKING
+                else -> TargetRecoveryAction.OPEN_WFA_REQUESTS
+            }
+        )
+    )
+
+    private val officeTarget = AuthoritativeTargetLocation(
+        targetId = TargetLocationId("office:1"),
         mode = WorkMode.WFO,
         source = TargetLocationSource.STATUS_TODAY,
-        name = "Kantor lama"
+        coordinate = GeoCoordinate(-0.89, 119.87),
+        radius = DistanceMeters(100.0),
+        displayName = "Kantor Palu"
     )
 
-    private val approvedWfaTarget = target(
-        id = "booking:88",
+    private val approvedWfaTarget = AuthoritativeTargetLocation(
+        targetId = TargetLocationId("wfa:booking:42"),
         mode = WorkMode.WFA,
         source = TargetLocationSource.APPROVED_WFA_BOOKING,
-        name = "WFA disetujui"
-    )
-
-    private fun target(
-        id: String,
-        mode: WorkMode,
-        source: TargetLocationSource,
-        name: String
-    ) = AuthoritativeTargetLocation(
-        targetId = TargetLocationId(id),
-        mode = mode,
-        source = source,
-        coordinate = GeoCoordinate(-0.90, 119.88),
+        coordinate = GeoCoordinate(-0.88, 119.86),
         radius = DistanceMeters(100.0),
-        displayName = name
+        displayName = "WFA disetujui"
     )
 
     private companion object {
-        const val WFA_ROUTE = "wfa_booking?latitude=-0.9&longitude=119.88"
+        const val WFA_ROUTE = "wfa_request"
     }
 }

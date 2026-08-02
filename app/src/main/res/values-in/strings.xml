@@ -57,16 +57,11 @@
     <string name="attendance_action_reload">Muat ulang</string>
     <string name="attendance_action_refresh_location">Muat ulang lokasi</string>
     <string name="attendance_action_focus_target">Fokus ke lokasi target</string>
-    <string name="attendance_action_submit_wfa">Ajukan WFA</string>
     <string name="attendance_action_view_wfa_requests">Lihat status permintaan</string>
     <string name="attendance_action_contact_admin">Hubungi admin</string>
     <string name="attendance_action_retry">Coba lagi</string>
-    <string name="attendance_action_search_wfa">Cari lokasi WFA</string>
-    <string name="attendance_action_pick_on_map">Pilih di peta</string>
-    <string name="attendance_wfa_search_supporting">Cari atau pilih lokasi untuk draf pengajuan WFA.</string>
     <string name="attendance_status_preparing">Lokasi target sedang disiapkan.</string>
     <string name="attendance_status_ready">Lokasi target siap digunakan untuk kehadiran.</string>
-    <string name="attendance_status_recommendation_failed">Rekomendasi lokasi WFA gagal dimuat. Coba lagi.</string>
     <string name="attendance_block_wfo_not_assigned">Lokasi kantor belum ditetapkan. Muat ulang status kehadiran.</string>
     <string name="attendance_block_wfh_profile">Lokasi WFH belum tersedia dari profil. Muat ulang atau hubungi admin.</string>
     <string name="attendance_block_wfa_not_requested">Belum ada permintaan WFA untuk tanggal kehadiran ini.</string>
@@ -80,12 +75,7 @@
     <string name="attendance_block_profile_failed">Profil lokasi gagal dimuat. Coba muat ulang.</string>
     <string name="attendance_block_booking_failed">Status permintaan WFA gagal dimuat. Lihat status permintaan.</string>
     <string name="attendance_block_target_invalid">Data lokasi target tidak valid. Hubungi admin.</string>
-    <string name="attendance_wfa_recommendation_heading">Rekomendasi lokasi WFA</string>
-    <string name="attendance_wfa_recommendation_supporting">Pilih lokasi sebagai draf pengajuan, bukan target attendance.</string>
     <string name="attendance_wfa_preview_selected">Lokasi WFA dipilih</string>
-    <string name="attendance_wfa_recommendation_empty">Belum ada rekomendasi lokasi WFA.</string>
-    <string name="attendance_wfa_recommendation_failure">Rekomendasi lokasi WFA gagal dimuat.</string>
-    <string name="attendance_wfa_recommendation_loading">Memuat rekomendasi lokasi WFA...</string>
     <string name="attendance_wfa_preview_draft">Pratinjau untuk pengajuan WFA</string>
     <string name="attendance_map_precise_location_unavailable">Lokasi presisi belum siap</string>
     <string name="location_map_unavailable_title">Pratinjau peta tidak tersedia</string>
@@ -100,12 +90,6 @@
     <string name="attendance_permission_revoked_title">Lokasi presisi tidak tersedia</string>
     <string name="attendance_permission_revoked_message">Akses lokasi berubah saat Attendance dibuka. Pulihkan dari panel akses untuk melanjutkan.</string>
     <string name="attendance_permission_manage">Kelola akses</string>
-    <string name="attendance_wfa_recommendation_detail">%1$s &#8226; %2$s</string>
-    <string name="attendance_wfa_suitability">Skor WFA %1$d &#8226; %2$s</string>
-    <string name="attendance_wfa_suitability_success_state">Kesesuaian WFA sangat baik</string>
-    <string name="attendance_wfa_suitability_warning_state">Kesesuaian WFA perlu ditinjau</string>
-    <string name="attendance_wfa_suitability_error_state">Kesesuaian WFA tidak direkomendasikan</string>
-    <string name="attendance_wfa_suitability_neutral_state">Informasi kesesuaian WFA</string>
     <string name="attendance_pick_location_fallback">Koordinat dipilih</string>
     <string name="attendance_pick_location_failed">Detail lokasi gagal dimuat.</string>
 
@@ -151,6 +135,7 @@
     <string name="wfa_request_details">Detail permintaan</string>
     <string name="wfa_request_date">Tanggal WFA</string>
     <string name="wfa_request_date_placeholder">Pilih tanggal</string>
+    <string name="wfa_request_error_future_date_required">Tanggal WFA harus setelah hari ini.</string>
     <string name="wfa_request_reason">Alasan WFA</string>
     <string name="wfa_request_reason_placeholder">Pilih alasan</string>
     <string name="wfa_request_other_reason">Alasan lainnya</string>
@@ -186,4 +171,24 @@
     <string name="wfa_request_error_other_required">Jelaskan alasan lainnya</string>
     <string name="wfa_request_error_too_long">Teks terlalu panjang</string>
     <string name="wfa_request_error_location">Lokasi tidak valid</string>
+    <string name="wfa_recommendation_title">Rekomendasi lokasi</string>
+    <string name="wfa_recommendation_supporting">Disesuaikan otomatis dengan tanggal WFA dan lokasi Anda saat ini.</string>
+    <string name="wfa_recommendation_loading">Memuat rekomendasi lokasi WFA</string>
+    <string name="wfa_recommendation_empty_title">Belum ada rekomendasi</string>
+    <string name="wfa_recommendation_empty_message">Cari lokasi lain untuk melanjutkan permintaan.</string>
+    <string name="wfa_recommendation_failure_title">Rekomendasi belum dapat dimuat</string>
+    <string name="wfa_recommendation_failure_location">Lokasi terkini tidak tersedia. Periksa izin lokasi lalu coba lagi.</string>
+    <string name="wfa_recommendation_failure_date">Pilih tanggal WFA setelah hari ini.</string>
+    <string name="wfa_recommendation_failure_duplicate">Anda sudah memiliki permintaan WFA pada tanggal ini.</string>
+    <string name="wfa_recommendation_failure_network">Periksa koneksi internet Anda lalu coba lagi.</string>
+    <string name="wfa_recommendation_failure_unavailable">Layanan rekomendasi sedang tidak tersedia.</string>
+    <string name="wfa_recommendation_search_fallback">Cari lokasi lainnya</string>
+    <string name="wfa_recommendation_selected">Dipilih</string>
+    <string name="wfa_recommendation_distance">Jarak %.0f m</string>
+    <string name="wfa_recommendation_place_type">Tipe %1$s</string>
+    <string name="wfa_recommendation_facility_confidence">Keyakinan fasilitas %1$d%%</string>
+    <string name="wfa_recommendation_ranked_score">Skor %1$s &#183; %2$s</string>
+    <string name="wfa_recommendation_insufficient_data">Data fasilitas belum cukup untuk memberi skor.</string>
+    <string name="wfa_recommendation_enrichment_failed">Data fasilitas belum berhasil dilengkapi.</string>
+    <string name="wfa_recommendation_score_unavailable">Skor rekomendasi tidak tersedia.</string>
 </resources>

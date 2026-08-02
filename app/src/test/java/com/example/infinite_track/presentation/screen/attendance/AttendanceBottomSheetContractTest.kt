@@ -9,13 +9,13 @@ class AttendanceBottomSheetContractTest {
     private val appModuleRoot = File(requireNotNull(System.getProperty("user.dir")))
 
     @Test
-    fun `preparation sheet owns search but not WFA recommendation rows`() {
+    fun `preparation sheet owns neither WFA search nor recommendation rows`() {
         val source = source(
             "src/main/java/com/example/infinite_track/presentation/components/button/" +
                 "attendance/AttendanceBottomSheetContent.kt"
         )
 
-        assertTrue(source.contains("AttendancePreparationEvent.SearchWfaLocation"))
+        assertFalse(source.contains("AttendancePreparationEvent.SearchWfaLocation"))
         assertFalse(source.contains("WfaRecommendationSection("))
         assertFalse(source.contains("RecommendationSelected"))
     }

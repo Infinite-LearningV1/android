@@ -1,13 +1,13 @@
 package com.example.infinite_track.domain.repository
 
-import com.example.infinite_track.domain.model.wfa.WfaRecommendation
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationQuery
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationResult
 
 /**
  * Repository interface for WFA (Work From Anywhere) recommendations
  */
 interface WfaRepository {
     suspend fun getRecommendations(
-        latitude: Double,
-        longitude: Double
-    ): Result<List<WfaRecommendation>>
+        query: WfaRecommendationQuery
+    ): WfaRecommendationResult
 }

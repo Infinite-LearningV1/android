@@ -11,10 +11,8 @@ import com.example.infinite_track.domain.model.attendance.TargetRangeUnknownReas
 import com.example.infinite_track.domain.model.attendance.TargetResolutionFailure
 import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.auth.UserModel
-import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.location.AddressResolutionResult
-import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.domain.model.wfa.WfaBookingForDate
 import com.example.infinite_track.domain.model.geofence.GeofenceReconcileReason
 import com.example.infinite_track.domain.model.attendance.AttendanceSubmitCommand
@@ -32,17 +30,10 @@ import com.example.infinite_track.domain.use_case.geofence.RefreshAndReconcileGe
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentLocationUseCase
 import com.example.infinite_track.domain.model.location.CurrentLocationResult
-import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
-import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
 import com.example.infinite_track.presentation.navigation.Screen
-import com.example.infinite_track.presentation.map.model.AttendanceMapCameraMoveOrigin
 import com.example.infinite_track.presentation.map.model.MapCameraEffect
-import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationReducer
 import com.example.infinite_track.presentation.screen.attendance.preparation.LatestSelectionGuard
 import com.example.infinite_track.presentation.screen.attendance.preparation.SelectionRequestToken
-import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryState
-import com.example.infinite_track.presentation.screen.attendance.preparation.WfaMapSelectionEffect
-import com.example.infinite_track.presentation.screen.attendance.preparation.WfaMapPickInteractionState
 import com.example.infinite_track.utils.LocationPermissionHelper
 import com.example.infinite_track.utils.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -65,8 +56,7 @@ import javax.inject.Inject
  */
 sealed class NavigationTarget {
     data class FaceScanner(val intent: AttendanceActionIntent) : NavigationTarget()
-    data class WfaBooking(val route: String) : NavigationTarget()
-    data class LocationSearch(val params: String) : NavigationTarget()
+    data class WfaRequest(val route: String) : NavigationTarget()
 }
 
 /**
@@ -79,8 +69,6 @@ sealed class NavigationTarget {
 class AttendanceViewModel @Inject constructor(
     private val getCurrentAddressUseCase: GetCurrentAddressUseCase,
     private val getCurrentLocationUseCase: GetCurrentLocationUseCase,
-    private val getWfaRecommendationsUseCase: GetWfaRecommendationsUseCase,
-    private val reverseGeocodeUseCase: ReverseGeocodeUseCase,
     private val getLoggedInUserUseCase: GetLoggedInUserUseCase,
     private val resolveTodayWfaBookingStateUseCase: ResolveTodayWfaBookingStateUseCase,
     private val resolveAuthoritativeTargetLocationUseCase: ResolveAuthoritativeTargetLocationUseCase,
@@ -107,12 +95,10 @@ class AttendanceViewModel @Inject constructor(
     private val _mapCameraEffect = MutableStateFlow<MapCameraEffect?>(null)
     val mapCameraEffect: StateFlow<MapCameraEffect?> = _mapCameraEffect.asStateFlow()
     private var nextMapCameraEffectId = 0L
-    private var nextMapPickSessionId = 0L
 
     // Job for UI-focused location updates (display purposes only)
     private var displayLocationJob: Job? = null
     private var modeResolutionJob: Job? = null
-    private var recommendationJob: Job? = null
     private val latestSelectionGuard = LatestSelectionGuard()
     private var latestSelectionRequest: SelectionRequestToken =
         latestSelectionGuard.next(WorkMode.WFO)
@@ -161,22 +147,6 @@ class AttendanceViewModel @Inject constructor(
         if (pending.id == effectId) {
             _mapCameraEffect.compareAndSet(pending, null)
         }
-    }
-
-    private fun publishExplicitWfaSelectionFocus(
-        request: SelectionRequestToken
-    ): Boolean {
-        if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return false
-        val coordinate = WfaMapSelectionEffect.explicitSelectionCoordinate(
-            _uiState.value.preparation
-        ) ?: return false
-        publishMapCameraEffect(
-            WfaMapSelectionEffect.focus(
-                id = nextMapCameraEffectId++,
-                coordinate = coordinate
-            )
-        )
-        return true
     }
 
     /** Initializes backend-authoritative attendance and runtime state for this foreground entry. */
@@ -400,27 +370,16 @@ class AttendanceViewModel @Inject constructor(
         refreshAttendanceAndRuntime(GeofenceReconcileReason.FOREGROUND_REFRESH)
     }
 
-    fun onWfaDiscoveryRetryRequested() {
-        resolveAndApplyTargetForMode(WorkMode.WFA)
-    }
-
     private fun resolveAndApplyTargetForMode(
         mode: WorkMode = _uiState.value.preparation.selectedMode
     ) {
         modeResolutionJob?.cancel()
-        recommendationJob?.cancel()
-
         val request = latestSelectionGuard.next(mode)
         latestSelectionRequest = request
         val resolvingPreparation = _uiState.value.preparation.copy(
             selectedMode = mode,
             targetResolution = TargetLocationResolution.Resolving(mode),
             rangeStatus = null,
-            wfaDiscovery = if (mode == WorkMode.WFA) {
-                WfaDiscoveryState.Loading
-            } else {
-                WfaDiscoveryState.Hidden
-            },
             eligibility = AttendancePreparationEligibility.Resolving
         )
         _uiState.value = AttendanceSelectionTransition.beginSelection(
@@ -478,6 +437,8 @@ class AttendanceViewModel @Inject constructor(
                     preparation = nextPreparation
                 ).withResolvedActionStatePreservingInFlightSubmit()
 
+                maybeOpenWfaRequest(request, resolution)
+
                 if (!latestSelectionGuard.isCurrent(request, mode)) return@launch
                 (resolution as? TargetLocationResolution.Resolved)?.target?.let { target ->
                     animateMapToTarget(target, request)
@@ -505,9 +466,6 @@ class AttendanceViewModel @Inject constructor(
             }
         }
 
-        if (mode == WorkMode.WFA) {
-            fetchWfaRecommendations(request)
-        }
     }
 
     private fun WorkMode.resolutionFailure(): TargetResolutionFailure = when (this) {
@@ -523,18 +481,12 @@ class AttendanceViewModel @Inject constructor(
     ): Boolean {
         val preparation = _uiState.value.preparation
         if (!latestSelectionGuard.isCurrent(request, preparation.selectedMode)) return false
-        if (WfaMapSelectionEffect.explicitSelectionCoordinate(preparation) != null) return false
         if (
             AttendanceSelectionTransition.resolvedTargetForInteraction(
                 preparation = preparation,
                 selectedTargetId = target.targetId
             ) == null
         ) return false
-        _uiState.value = _uiState.value.copy(
-            preparation = AttendanceSelectionTransition.cancelMapPick(
-                _uiState.value.preparation
-            )
-        )
         publishMapCameraEffect(
             MapCameraEffect.Focus(
                 id = nextMapCameraEffectId++,
@@ -545,141 +497,17 @@ class AttendanceViewModel @Inject constructor(
         return true
     }
 
-    /**
-     * Fetch WFA recommendations based on current user location
-     * Menggunakan GPS real-time, bukan lokasi WFH yang tersimpan
-     */
-    private fun fetchWfaRecommendations(request: SelectionRequestToken) {
-        recommendationJob = viewModelScope.launch {
-            try {
-                val coordinate = when (val current = getCurrentLocationUseCase()) {
-                    is CurrentLocationResult.Success -> current.location.coordinate
-                    is CurrentLocationResult.Failure -> cachedCurrentCoordinateOrNull()
-                }
-                if (coordinate == null) {
-                    if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return@launch
-                    _uiState.value = _uiState.value.copy(
-                        preparation = _uiState.value.preparation.copy(
-                            wfaDiscovery = WfaDiscoveryState.Failure(retryable = true)
-                        )
-                    )
-                    return@launch
-                }
-
-                getWfaRecommendationsUseCase(
-                    coordinate.latitude,
-                    coordinate.longitude
-                ).onSuccess { recommendations ->
-                    if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return@onSuccess
-                    val currentDiscovery = _uiState.value.preparation.wfaDiscovery
-                        as? WfaDiscoveryState.Content
-                    val discovery = if (recommendations.isEmpty() && currentDiscovery?.searchPreview == null) {
-                        WfaDiscoveryState.Empty
-                    } else {
-                        WfaDiscoveryState.Content(
-                            recommendations = recommendations,
-                            selectedKey = currentDiscovery?.selectedKey
-                                ?.takeIf { selected -> recommendations.any { it.stableKey == selected } },
-                            searchPreview = currentDiscovery?.searchPreview
-                        )
-                    }
-                    _uiState.value = _uiState.value.copy(
-                        preparation = _uiState.value.preparation.copy(wfaDiscovery = discovery)
-                    )
-                    val shouldAutoFit = WfaMapSelectionEffect.shouldAutoFitRecommendations(
-                        _uiState.value.preparation
-                    )
-                    if (recommendations.isNotEmpty() && shouldAutoFit) {
-                        if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return@onSuccess
-                        _uiState.value = _uiState.value.copy(
-                            preparation = AttendanceSelectionTransition.cancelMapPick(
-                                _uiState.value.preparation
-                            )
-                        )
-                        publishMapCameraEffect(
-                            MapCameraEffect.Fit(
-                                id = nextMapCameraEffectId++,
-                                coordinates = recommendations.map(WfaRecommendation::coordinate)
-                            )
-                        )
-                    }
-                }.onFailure { exception ->
-                    Log.e(TAG, "Failed to fetch WFA recommendations", exception)
-                    if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return@onFailure
-                    _uiState.value = _uiState.value.copy(
-                        preparation = _uiState.value.preparation.copy(
-                            wfaDiscovery = WfaDiscoveryState.Failure(retryable = true)
-                        )
-                    )
-                }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (e: Exception) {
-                Log.e(TAG, "Unexpected error in fetchWfaRecommendations", e)
-                if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return@launch
-                _uiState.value = _uiState.value.copy(
-                    preparation = _uiState.value.preparation.copy(
-                        wfaDiscovery = WfaDiscoveryState.Failure(retryable = true)
-                    )
-                )
-            }
-        }
-    }
-
-    /**
-     * Handle WFA marker click - Updated to show marker details
-     */
-    fun onWfaMarkerClicked(recommendation: WfaRecommendation) {
-        Log.d(TAG, "WFA Marker clicked: ${recommendation.name}")
-        val request = latestSelectionRequest
-        if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return
-        val preparation = AttendanceSelectionTransition.cancelMapPick(
-            _uiState.value.preparation
-        )
-        _uiState.value = _uiState.value.copy(
-            preparation = AttendancePreparationReducer.selectRecommendation(
-                preparation,
-                recommendation
-            )
-        )
-        if (!publishExplicitWfaSelectionFocus(request)) return
-        refreshResolvedActionState()
-    }
-
-    /**
-     * Handle booking button click
-     */
-    fun onBookingClicked() {
-        val request = latestSelectionRequest
-        val preparation = _uiState.value.preparation
-        if (preparation.selectedMode != WorkMode.WFA) {
-            Log.d(TAG, "Booking clicked outside WFA mode")
-            return
-        }
-        val discovery = preparation.wfaDiscovery as? WfaDiscoveryState.Content
-        val selectedRecommendation = discovery?.recommendations?.firstOrNull {
-            it.stableKey == discovery.selectedKey
-        }
-        val coordinate = selectedRecommendation?.coordinate
-            ?: discovery?.searchPreview?.let { preview ->
-                runCatching { GeoCoordinate(preview.latitude, preview.longitude) }.getOrNull()
-            }
-        if (coordinate == null) {
-            Log.w(TAG, "Booking clicked in WFA mode but no preview is selected.")
-            return
-        }
-        val route = Screen.WfaRequestFlow.createRoute(
-            latitude = coordinate.latitude,
-            longitude = coordinate.longitude
-        )
-        val navigationTarget = AttendanceSelectionTransition.wfaBookingNavigationTarget(
-            preparation = _uiState.value.preparation,
+    private fun maybeOpenWfaRequest(
+        request: SelectionRequestToken,
+        resolution: TargetLocationResolution
+    ) {
+        val navigationTarget = AttendanceSelectionTransition.wfaRequestNavigationTarget(
+            preparation = _uiState.value.preparation.copy(targetResolution = resolution),
             selectionIsCurrent = latestSelectionGuard.isCurrent(request, WorkMode.WFA),
-            route = route
+            hasPendingNavigation = _uiState.value.navigationTarget != null,
+            route = Screen.WfaRequestFlow.route
         ) ?: return
-        _uiState.value = _uiState.value.copy(
-            navigationTarget = navigationTarget
-        )
+        _uiState.value = _uiState.value.copy(navigationTarget = navigationTarget)
     }
 
     /**
@@ -903,11 +731,6 @@ class AttendanceViewModel @Inject constructor(
                                 _uiState.value.preparation.selectedMode
                             )
                         ) return@launch
-                        _uiState.value = _uiState.value.copy(
-                            preparation = AttendanceSelectionTransition.cancelMapPick(
-                                _uiState.value.preparation
-                            )
-                        )
                         publishMapCameraEffect(
                             MapCameraEffect.Focus(
                                 id = nextMapCameraEffectId++,
@@ -944,12 +767,6 @@ class AttendanceViewModel @Inject constructor(
         }
     }
 
-    private fun cachedCurrentCoordinateOrNull(): GeoCoordinate? {
-        val current = _uiState.value.preparation.currentLocation
-            as? CurrentLocationResult.Success
-        return current?.location?.coordinate
-    }
-
     /**
      * Called when the map is ready to receive commands.
      */
@@ -958,10 +775,6 @@ class AttendanceViewModel @Inject constructor(
         Log.d(TAG, "Map is ready, focusing to selected target location")
         val request = latestSelectionRequest
         val preparation = _uiState.value.preparation
-        if (publishExplicitWfaSelectionFocus(request)) {
-            Log.d(TAG, "Map focus restored to the explicit WFA selection")
-            return
-        }
         val target = (preparation.targetResolution as? TargetLocationResolution.Resolved)
             ?.target
         if (target != null && animateMapToTarget(target, request)) {
@@ -978,114 +791,6 @@ class AttendanceViewModel @Inject constructor(
     fun startLocationUpdates() {
         Log.d(TAG, "Starting location updates for display")
         startDisplayLocationUpdates()
-    }
-
-    /**
-     * Handle selected location from LocationSearchScreen
-     */
-    fun onLocationSelected(location: LocationResult) {
-        val request = latestSelectionRequest
-        if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return
-        val preparation = AttendanceSelectionTransition.cancelMapPick(
-            _uiState.value.preparation
-        )
-        _uiState.value = _uiState.value.copy(
-            preparation = AttendancePreparationReducer.selectSearchPreview(
-                preparation,
-                location
-            )
-        )
-        publishExplicitWfaSelectionFocus(request)
-    }
-
-    /** Starts one explicit user-owned map-pick session. Camera-idle is ignored otherwise. */
-    fun onMapPickRequested() {
-        val preparation = _uiState.value.preparation
-        if (preparation.selectedMode != WorkMode.WFA) return
-        nextMapPickSessionId += 1
-        _uiState.value = _uiState.value.copy(
-            preparation = AttendanceSelectionTransition.beginMapPick(
-                preparation = preparation,
-                sessionId = nextMapPickSessionId
-            )
-        )
-    }
-
-    /**
-     * Handle map idle event - called when user stops moving the map
-     * Performs reverse geocoding for the center point of the map
-     */
-    fun onMapIdle(
-        centerPoint: GeoCoordinate,
-        origin: AttendanceMapCameraMoveOrigin
-    ) {
-        val mapPickSession = AttendanceSelectionTransition.mapPickSessionForCameraIdle(
-            preparation = _uiState.value.preparation,
-            origin = origin
-        ) ?: return
-        val request = latestSelectionRequest
-        if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return
-
-        viewModelScope.launch {
-            try {
-                Log.d(
-                    TAG,
-                    "Map idle detected in Pick on Map mode: ${centerPoint.latitude}, ${centerPoint.longitude}"
-                )
-
-                // Perform reverse geocoding for the center point
-                when (val result = reverseGeocodeUseCase(centerPoint)) {
-                    is AddressResolutionResult.Resolved -> applyPickedLocation(
-                        request = request,
-                        mapPickSession = mapPickSession,
-                        coordinate = centerPoint,
-                        placeName = result.address.name ?: result.address.formattedAddress,
-                        address = result.address.formattedAddress
-                    )
-                    is AddressResolutionResult.CoordinateOnly -> applyPickedLocation(
-                        request = request,
-                        mapPickSession = mapPickSession,
-                        coordinate = result.coordinate,
-                        placeName = result.coordinate.toDisplayText(),
-                        address = result.coordinate.toDisplayText()
-                    )
-                    is AddressResolutionResult.Failed -> {
-                        if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return@launch
-                        publishTransientFeedback(AttendanceTransientFeedbackKind.LOCATION_ERROR)
-                    }
-                }
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (e: Exception) {
-                Log.e(TAG, "Unexpected error in onMapIdle", e)
-            }
-        }
-    }
-
-    private fun applyPickedLocation(
-        request: SelectionRequestToken,
-        mapPickSession: WfaMapPickInteractionState.Active,
-        coordinate: GeoCoordinate,
-        placeName: String,
-        address: String
-    ) {
-        if (!latestSelectionGuard.isCurrent(request, WorkMode.WFA)) return
-        val locationResult = LocationResult(
-            placeName = placeName,
-            address = address,
-            latitude = coordinate.latitude,
-            longitude = coordinate.longitude
-        )
-        val consumedPreparation = AttendanceSelectionTransition.consumeMapPick(
-            preparation = _uiState.value.preparation,
-            session = mapPickSession
-        ) ?: return
-        _uiState.value = _uiState.value.copy(
-            preparation = AttendancePreparationReducer.selectSearchPreview(
-                consumedPreparation,
-                locationResult
-            )
-        )
     }
 
     private fun GeoCoordinate.toDisplayText(): String =
@@ -1123,7 +828,6 @@ class AttendanceViewModel @Inject constructor(
         super.onCleared()
         displayLocationJob?.cancel()
         modeResolutionJob?.cancel()
-        recommendationJob?.cancel()
 
         // Removed onCleared geofence removal to keep geofence active until explicit checkout
     }

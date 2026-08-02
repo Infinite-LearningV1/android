@@ -1,6 +1,9 @@
 package com.example.infinite_track.presentation.screen.attendance.wfa_request
 
+import androidx.annotation.StringRes
+import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.booking.WfaRequestFailure
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationFailure
 
 enum class WfaRequestFailureAction {
     EDIT,
@@ -14,7 +17,27 @@ data class WfaRequestUiFailure(
     val primaryAction: WfaRequestFailureAction
 )
 
+data class WfaRecommendationUiFailure(@StringRes val messageRes: Int)
+
 object WfaRequestUiMapper {
+    fun map(failure: WfaRecommendationFailure): WfaRecommendationUiFailure =
+        WfaRecommendationUiFailure(
+            messageRes = when (failure) {
+                WfaRecommendationFailure.CurrentLocationUnavailable ->
+                    R.string.wfa_recommendation_failure_location
+                WfaRecommendationFailure.InvalidScheduleDate ->
+                    R.string.wfa_recommendation_failure_date
+                WfaRecommendationFailure.DuplicateBooking ->
+                    R.string.wfa_recommendation_failure_duplicate
+                WfaRecommendationFailure.NetworkUnavailable ->
+                    R.string.wfa_recommendation_failure_network
+                WfaRecommendationFailure.ProviderUnavailable,
+                WfaRecommendationFailure.ServerUnavailable,
+                WfaRecommendationFailure.Unknown ->
+                    R.string.wfa_recommendation_failure_unavailable
+            }
+        )
+
     fun map(failure: WfaRequestFailure): WfaRequestUiFailure = when (failure) {
         WfaRequestFailure.BootstrapUnavailable -> WfaRequestUiFailure(
             title = "Form tidak dapat dibuka",

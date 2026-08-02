@@ -6,11 +6,15 @@ import com.example.infinite_track.domain.model.booking.WfaRequestDraft
 import com.example.infinite_track.domain.model.booking.WfaRequestFieldError
 import com.example.infinite_track.domain.model.booking.WfaRequestReason
 import com.example.infinite_track.domain.model.booking.WfaRequestValidationResult
+import com.example.infinite_track.domain.validation.WfaScheduleDatePolicy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Clock
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 
 class ValidateWfaRequestDraftUseCaseTest {
 
@@ -23,6 +27,22 @@ class ValidateWfaRequestDraftUseCaseTest {
             WfaRequestReason(2L, "Lainnya", true)
         )
     )
+
+    @Test
+    fun `same day and past dates return FUTURE_DATE_REQUIRED`() {
+        val today = LocalDate.of(2026, 8, 2)
+        val policy = WfaScheduleDatePolicy.fixed(
+            Clock.fixed(Instant.parse("2026-08-02T02:00:00Z"), ZoneOffset.UTC)
+        )
+        val dateAwareUseCase = ValidateWfaRequestDraftUseCase(policy)
+        val validDraft = WfaRequestDraft(today.plusDays(1), 1L, "", "", location)
+
+        listOf(today.minusDays(1), today).forEach { date ->
+            val result = dateAwareUseCase(validDraft.copy(scheduleDate = date), config)
+            val errors = (result as WfaRequestValidationResult.Invalid).errors
+            assertEquals(WfaRequestFieldError.FUTURE_DATE_REQUIRED, errors.scheduleDate)
+        }
+    }
 
     @Test
     fun `valid draft becomes command and blank optional values become null`() {

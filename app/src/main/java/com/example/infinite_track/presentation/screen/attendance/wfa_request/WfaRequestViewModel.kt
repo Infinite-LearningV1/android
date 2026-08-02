@@ -8,28 +8,37 @@ import com.example.infinite_track.domain.model.booking.WfaCandidateLocation
 import com.example.infinite_track.domain.model.booking.WfaRequestConfigResult
 import com.example.infinite_track.domain.model.booking.WfaRequestDraft
 import com.example.infinite_track.domain.model.booking.WfaRequestFailure
+import com.example.infinite_track.domain.model.booking.WfaRequestFieldError
 import com.example.infinite_track.domain.model.booking.WfaRequestFieldErrors
 import com.example.infinite_track.domain.model.booking.WfaRequestResult
 import com.example.infinite_track.domain.model.booking.WfaRequestValidationResult
-import com.example.infinite_track.domain.model.location.AddressResolutionResult
+import com.example.infinite_track.domain.model.location.CurrentLocationResult
 import com.example.infinite_track.domain.model.location.GeoCoordinate
+import com.example.infinite_track.domain.model.wfa.WfaRecommendation
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationFailure
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationQuery
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationResult
 import com.example.infinite_track.domain.use_case.auth.GetLoggedInUserUseCase
 import com.example.infinite_track.domain.use_case.booking.LoadWfaRequestConfigUseCase
 import com.example.infinite_track.domain.use_case.booking.SubmitWfaRequestUseCase
 import com.example.infinite_track.domain.use_case.booking.ValidateWfaRequestDraftUseCase
-import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
+import com.example.infinite_track.domain.use_case.location.GetCurrentLocationUseCase
+import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
+import com.example.infinite_track.domain.validation.WfaScheduleDatePolicy
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Locale
+import java.time.LocalDate
 import javax.inject.Inject
 
 @HiltViewModel
@@ -38,12 +47,11 @@ class WfaRequestViewModel @Inject constructor(
     private val validateDraft: ValidateWfaRequestDraftUseCase,
     private val submitRequest: SubmitWfaRequestUseCase,
     private val getLoggedInUser: GetLoggedInUserUseCase,
-    private val reverseGeocode: ReverseGeocodeUseCase,
-    savedStateHandle: SavedStateHandle
+    private val getCurrentLocation: GetCurrentLocationUseCase,
+    private val getRecommendations: GetWfaRecommendationsUseCase,
+    private val datePolicy: WfaScheduleDatePolicy,
+    @Suppress("UNUSED_PARAMETER") savedStateHandle: SavedStateHandle
 ) : ViewModel(), WfaRequestFlowController {
-
-    private val latitude = savedStateHandle.get<String>("latitude")?.toDoubleOrNull()
-    private val longitude = savedStateHandle.get<String>("longitude")?.toDoubleOrNull()
 
     private val _uiState = MutableStateFlow(WfaRequestUiState())
     override val uiState: StateFlow<WfaRequestUiState> = _uiState.asStateFlow()
@@ -53,6 +61,10 @@ class WfaRequestViewModel @Inject constructor(
 
     private var lastValidatedCommand: SubmitWfaRequestCommand? = null
     private var configLoadFailed = false
+    private var recommendationJob: Job? = null
+    private var nextRecommendationRequestId = 0L
+    private var activeQuery: WfaRecommendationQuery? = null
+    private var activeScheduleDate: LocalDate? = null
 
     init {
         loadInitialData()
@@ -60,9 +72,7 @@ class WfaRequestViewModel @Inject constructor(
 
     override fun onEvent(event: WfaRequestEvent) {
         when (event) {
-            is WfaRequestEvent.ScheduleDateChanged -> mutateDraft {
-                copy(scheduleDate = event.date)
-            }
+            is WfaRequestEvent.ScheduleDateChanged -> onScheduleDateChanged(event.date)
             is WfaRequestEvent.ReasonSelected -> mutateDraft {
                 val selectedIsOther = _uiState.value.config?.reasons
                     ?.firstOrNull { it.id == event.reasonId }
@@ -72,12 +82,11 @@ class WfaRequestViewModel @Inject constructor(
                     otherReasonText = if (selectedIsOther) otherReasonText else ""
                 )
             }
-            is WfaRequestEvent.OtherReasonChanged -> mutateDraft {
-                copy(otherReasonText = event.value)
-            }
-            is WfaRequestEvent.NotesChanged -> mutateDraft {
-                copy(notes = event.value)
-            }
+            is WfaRequestEvent.OtherReasonChanged -> mutateDraft { copy(otherReasonText = event.value) }
+            is WfaRequestEvent.NotesChanged -> mutateDraft { copy(notes = event.value) }
+            is WfaRequestEvent.RecommendationSelected -> selectRecommendation(event.stableKey)
+            is WfaRequestEvent.ManualLocationSelected -> selectManualLocation(event.location)
+            WfaRequestEvent.RetryRecommendationsClicked -> retryRecommendations()
             WfaRequestEvent.ReviewClicked -> reviewDraft()
             WfaRequestEvent.EditClicked -> returnToEditing()
             WfaRequestEvent.SubmitConfirmed -> startSubmit(lastValidatedCommand)
@@ -87,15 +96,14 @@ class WfaRequestViewModel @Inject constructor(
     }
 
     private fun loadInitialData() {
+        val minimumDate = datePolicy.minimumDate()
+        _uiState.update {
+            it.copy(
+                minimumScheduleDate = minimumDate,
+                draft = it.draft.copy(scheduleDate = minimumDate)
+            )
+        }
         viewModelScope.launch {
-            val coordinate = createCoordinateOrNull()
-            if (coordinate == null) {
-                _uiState.update {
-                    it.copy(phase = WfaRequestPhase.Failure, failure = WfaRequestFailure.BootstrapUnavailable)
-                }
-                return@launch
-            }
-
             val user = runCatching { getLoggedInUser().filterNotNull().first() }.getOrNull()
             val employee = user?.let {
                 WfaEmployeeSummary(fullName = it.fullName, division = it.divisionName.orEmpty())
@@ -106,39 +114,26 @@ class WfaRequestViewModel @Inject constructor(
                 }
                 return@launch
             }
-            val location = resolveCandidate(coordinate)
-            _uiState.update {
-                it.copy(
-                    employee = employee,
-                    location = location,
-                    draft = it.draft.copy(location = location)
-                )
-            }
-            loadConfigIntoState()
+            _uiState.update { it.copy(employee = employee) }
+            if (loadConfigIntoState()) loadRecommendations(force = true)
         }
     }
 
-    private suspend fun loadConfigIntoState() {
-        when (val result = loadConfig()) {
+    private suspend fun loadConfigIntoState(): Boolean {
+        return when (val result = loadConfig()) {
             is WfaRequestConfigResult.Success -> {
                 configLoadFailed = false
                 _uiState.update {
-                    it.copy(
-                        phase = WfaRequestPhase.Editing,
-                        config = result.config,
-                        failure = null
-                    )
+                    it.copy(phase = WfaRequestPhase.Editing, config = result.config, failure = null)
                 }
+                true
             }
             is WfaRequestConfigResult.Failure -> {
                 configLoadFailed = true
                 _uiState.update {
-                    it.copy(
-                        phase = WfaRequestPhase.Failure,
-                        config = null,
-                        failure = result.failure
-                    )
+                    it.copy(phase = WfaRequestPhase.Failure, config = null, failure = result.failure)
                 }
+                false
             }
         }
     }
@@ -146,11 +141,177 @@ class WfaRequestViewModel @Inject constructor(
     private fun retryConfig() {
         if (!configLoadFailed || _uiState.value.config != null) return
         _uiState.update { it.copy(phase = WfaRequestPhase.Loading, failure = null) }
-        viewModelScope.launch { loadConfigIntoState() }
+        viewModelScope.launch {
+            if (loadConfigIntoState() &&
+                _uiState.value.recommendationState is WfaRequestRecommendationState.Initializing
+            ) {
+                loadRecommendations(force = true)
+            }
+        }
+    }
+
+    private fun onScheduleDateChanged(date: LocalDate?) {
+        if (_uiState.value.phase != WfaRequestPhase.Editing) return
+        if (date == null || !datePolicy.isSelectable(date)) {
+            _uiState.update {
+                it.copy(
+                    fieldErrors = it.fieldErrors.copy(
+                        scheduleDate = WfaRequestFieldError.FUTURE_DATE_REQUIRED
+                    )
+                )
+            }
+            return
+        }
+
+        recommendationJob?.cancel()
+        nextRecommendationRequestId += 1
+        activeQuery = null
+        activeScheduleDate = null
+        lastValidatedCommand = null
+        _uiState.update {
+            it.copy(
+                location = null,
+                draft = it.draft.copy(scheduleDate = date, location = null),
+                currentCoordinate = null,
+                recommendationState = WfaRequestRecommendationState.Initializing,
+                fieldErrors = it.fieldErrors.copy(scheduleDate = null, location = null),
+                failure = null
+            )
+        }
+        loadRecommendations(force = true)
+    }
+
+    private fun loadRecommendations(force: Boolean) {
+        val date = _uiState.value.draft.scheduleDate ?: return
+        if (!datePolicy.isSelectable(date)) return
+        if (recommendationJob?.isActive == true && activeScheduleDate == date) return
+        if (!force && activeQuery?.scheduleDate == date) return
+
+        recommendationJob?.cancel()
+        val requestId = ++nextRecommendationRequestId
+        activeScheduleDate = date
+        _uiState.update {
+            it.copy(recommendationState = WfaRequestRecommendationState.Loading)
+        }
+        recommendationJob = viewModelScope.launch {
+            val coordinate = try {
+                when (val current = getCurrentLocation()) {
+                    is CurrentLocationResult.Success -> current.location.coordinate
+                    is CurrentLocationResult.Failure -> null
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Throwable) {
+                null
+            }
+            if (coordinate == null) {
+                applyFailure(
+                    requestId,
+                    date,
+                    WfaRecommendationFailure.CurrentLocationUnavailable
+                )
+                return@launch
+            }
+
+            val query = WfaRecommendationQuery(coordinate, date)
+            activeQuery = query
+            when (val result = getRecommendations(query)) {
+                is WfaRecommendationResult.Success -> applySuccess(requestId, date, coordinate, result)
+                is WfaRecommendationResult.Failure -> applyFailure(requestId, date, result.failure)
+            }
+        }
+    }
+
+    private fun applySuccess(
+        requestId: Long,
+        date: LocalDate,
+        coordinate: GeoCoordinate,
+        result: WfaRecommendationResult.Success
+    ) {
+        if (!isCurrentRequest(requestId, date)) return
+        if (result.scheduleDate != date) {
+            applyFailure(requestId, date, WfaRecommendationFailure.InvalidScheduleDate)
+            return
+        }
+        _uiState.update {
+            it.copy(
+                currentCoordinate = coordinate,
+                recommendationState = if (result.recommendations.isEmpty()) {
+                    WfaRequestRecommendationState.Empty
+                } else {
+                    WfaRequestRecommendationState.Content(result.recommendations)
+                }
+            )
+        }
+    }
+
+    private fun applyFailure(
+        requestId: Long,
+        date: LocalDate,
+        failure: WfaRecommendationFailure
+    ) {
+        if (!isCurrentRequest(requestId, date)) return
+        _uiState.update {
+            it.copy(
+                currentCoordinate = null,
+                recommendationState = WfaRequestRecommendationState.Failure(
+                    failure = failure,
+                    retryable = failure.isRetryable()
+                )
+            )
+        }
+    }
+
+    private fun isCurrentRequest(requestId: Long, date: LocalDate): Boolean =
+        requestId == nextRecommendationRequestId && _uiState.value.draft.scheduleDate == date
+
+    private fun retryRecommendations() {
+        if (_uiState.value.phase != WfaRequestPhase.Editing) return
+        if (_uiState.value.recommendationState !is WfaRequestRecommendationState.Failure) return
+        activeQuery = null
+        loadRecommendations(force = true)
+    }
+
+    private fun selectRecommendation(stableKey: String) {
+        if (_uiState.value.phase != WfaRequestPhase.Editing) return
+        val content = _uiState.value.recommendationState as? WfaRequestRecommendationState.Content
+            ?: return
+        val recommendation = content.recommendations.firstOrNull { it.stableKey == stableKey }
+            ?: return
+        setSelectedLocation(
+            location = recommendation.toCandidateLocation(),
+            recommendationState = content.copy(selectedKey = stableKey)
+        )
+    }
+
+    private fun selectManualLocation(location: WfaCandidateLocation) {
+        if (_uiState.value.phase != WfaRequestPhase.Editing || !location.hasValidCoordinates) return
+        val recommendationState = when (val current = _uiState.value.recommendationState) {
+            is WfaRequestRecommendationState.Content -> current.copy(selectedKey = null)
+            else -> current
+        }
+        setSelectedLocation(location, recommendationState)
+    }
+
+    private fun setSelectedLocation(
+        location: WfaCandidateLocation,
+        recommendationState: WfaRequestRecommendationState
+    ) {
+        lastValidatedCommand = null
+        _uiState.update {
+            it.copy(
+                location = location,
+                draft = it.draft.copy(location = location),
+                recommendationState = recommendationState,
+                fieldErrors = it.fieldErrors.copy(location = null),
+                failure = null
+            )
+        }
     }
 
     private fun mutateDraft(transform: WfaRequestDraft.() -> WfaRequestDraft) {
         if (_uiState.value.phase != WfaRequestPhase.Editing) return
+        lastValidatedCommand = null
         _uiState.update {
             it.copy(
                 draft = it.draft.transform(),
@@ -237,32 +398,23 @@ class WfaRequestViewModel @Inject constructor(
             effectChannel.send(WfaRequestEffect.OpenResult)
         }
     }
+}
 
-    private fun createCoordinateOrNull(): GeoCoordinate? {
-        val lat = latitude ?: return null
-        val lng = longitude ?: return null
-        return runCatching { GeoCoordinate(lat, lng) }.getOrNull()
-    }
+private fun WfaRecommendation.toCandidateLocation() = WfaCandidateLocation(
+    latitude = coordinate.latitude,
+    longitude = coordinate.longitude,
+    displayName = name,
+    formattedAddress = address
+)
 
-    private suspend fun resolveCandidate(coordinate: GeoCoordinate): WfaCandidateLocation {
-        return when (val result = runCatching { reverseGeocode(coordinate) }.getOrNull()) {
-            is AddressResolutionResult.Resolved -> WfaCandidateLocation(
-                latitude = coordinate.latitude,
-                longitude = coordinate.longitude,
-                displayName = result.address.name?.trim().orEmpty().ifBlank { "Lokasi WFA" },
-                formattedAddress = result.address.formattedAddress
-            )
-            is AddressResolutionResult.CoordinateOnly -> coordinate.toCandidate()
-            is AddressResolutionResult.Failed, null -> coordinate.toCandidate()
-        }
-    }
-
-    private fun GeoCoordinate.toCandidate() = WfaCandidateLocation(
-        latitude = latitude,
-        longitude = longitude,
-        displayName = "Lokasi WFA",
-        formattedAddress = "Lat: %.6f, Lng: %.6f".format(Locale.US, latitude, longitude)
-    )
+private fun WfaRecommendationFailure.isRetryable(): Boolean = when (this) {
+    WfaRecommendationFailure.InvalidScheduleDate,
+    WfaRecommendationFailure.DuplicateBooking -> false
+    WfaRecommendationFailure.CurrentLocationUnavailable,
+    WfaRecommendationFailure.NetworkUnavailable,
+    WfaRecommendationFailure.ProviderUnavailable,
+    WfaRecommendationFailure.ServerUnavailable,
+    WfaRecommendationFailure.Unknown -> true
 }
 
 interface WfaRequestFlowController {

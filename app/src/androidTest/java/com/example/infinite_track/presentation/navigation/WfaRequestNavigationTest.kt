@@ -22,6 +22,7 @@ import com.example.infinite_track.domain.model.booking.WfaRequestConfig
 import com.example.infinite_track.domain.model.booking.WfaRequestDraft
 import com.example.infinite_track.domain.model.booking.WfaRequestReason
 import com.example.infinite_track.domain.model.booking.WfaRequestStatus
+import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaEmployeeSummary
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestEffect
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestEvent
@@ -62,7 +63,7 @@ class WfaRequestNavigationTest {
                     }
                 }
                 LaunchedEffect(Unit) {
-                    navController.navigate(Screen.WfaRequestFlow.createRoute(-0.9, 119.8))
+                    navController.navigate(Screen.WfaRequestFlow.route)
                 }
             }
         }
@@ -103,7 +104,7 @@ class WfaRequestNavigationTest {
                     wfaRequestNavGraph(navController) { controller }
                 }
                 LaunchedEffect(Unit) {
-                    navController.navigate(Screen.WfaRequestFlow.createRoute(-0.9, 119.8))
+                    navController.navigate(Screen.WfaRequestFlow.route)
                 }
             }
         }
@@ -134,7 +135,7 @@ class WfaRequestNavigationTest {
                     wfaRequestNavGraph(navController) { controller }
                 }
                 LaunchedEffect(Unit) {
-                    navController.navigate(Screen.WfaRequestFlow.createRoute(-0.9, 119.8))
+                    navController.navigate(Screen.WfaRequestFlow.route)
                 }
             }
         }
@@ -149,9 +150,56 @@ class WfaRequestNavigationTest {
         assertEquals(Screen.Attendance.route, navController.currentDestination?.route)
         composeRule.onNodeWithText("Attendance host").assertIsDisplayed()
     }
+
+    @Test
+    fun manualLocationResultIsConsumedAndDispatchedExactlyOnce() {
+        val controller = FakeWfaRequestFlowController()
+        lateinit var navController: TestNavHostController
+        composeRule.setContent {
+            navController = TestNavHostController(ApplicationProvider.getApplicationContext()).apply {
+                navigatorProvider.addNavigator(ComposeNavigator())
+            }
+            Infinite_TrackTheme {
+                NavHost(navController, startDestination = Screen.Attendance.route) {
+                    composable(Screen.Attendance.route) { Text("Attendance host") }
+                    composable(Screen.LocationSearch.route) {
+                        LaunchedEffect(Unit) {
+                            navController.previousBackStackEntry?.savedStateHandle?.set(
+                                LocationSearchResultContract.RESULT_KEY,
+                                LocationResult(
+                                    placeName = "Ruang Kolaborasi",
+                                    address = "Jl. Ponegoro, Palu",
+                                    latitude = -0.91,
+                                    longitude = 119.88,
+                                    placeId = "manual-1"
+                                )
+                            )
+                            navController.popBackStack()
+                        }
+                    }
+                    wfaRequestNavGraph(navController) { controller }
+                }
+                LaunchedEffect(Unit) { navController.navigate(Screen.WfaRequestFlow.route) }
+            }
+        }
+
+        composeRule.onNodeWithTag("wfaSearchFallback").performClick()
+        composeRule.waitForIdle()
+
+        assertEquals(1, controller.manualLocationSelections)
+        assertEquals("Ruang Kolaborasi", controller.uiState.value.draft.location?.displayName)
+        assertEquals(
+            null,
+            navController.getBackStackEntry(Screen.WfaRequestForm.route)
+                .savedStateHandle
+                .get<LocationResult>(LocationSearchResultContract.RESULT_KEY)
+        )
+    }
 }
 
 private class FakeWfaRequestFlowController : WfaRequestFlowController {
+    var manualLocationSelections = 0
+        private set
     private val location = WfaCandidateLocation(-0.9, 119.8, "Kafe Taman", "Palu")
     private val mutableState = MutableStateFlow(
         WfaRequestUiState(
@@ -191,6 +239,13 @@ private class FakeWfaRequestFlowController : WfaRequestFlowController {
                     )
                 )
                 effectChannel.trySend(WfaRequestEffect.OpenResult)
+            }
+            is WfaRequestEvent.ManualLocationSelected -> {
+                manualLocationSelections += 1
+                mutableState.value = mutableState.value.copy(
+                    location = event.location,
+                    draft = mutableState.value.draft.copy(location = event.location)
+                )
             }
             else -> Unit
         }

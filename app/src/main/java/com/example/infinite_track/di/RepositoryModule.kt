@@ -205,9 +205,10 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideWfaRepository(
-        apiService: ApiService
+        apiService: ApiService,
+        gson: Gson
     ): WfaRepository {
-        return WfaRepositoryImpl(apiService)
+        return WfaRepositoryImpl(apiService, gson)
     }
 
     @Provides

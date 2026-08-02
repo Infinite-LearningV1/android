@@ -23,12 +23,11 @@ import androidx.compose.ui.res.stringResource
 import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.booking.WfaRequestFieldError
 import com.example.infinite_track.domain.model.booking.WfaRequestFailure
-import com.example.infinite_track.domain.model.location.GeoCoordinate
-import com.example.infinite_track.presentation.components.button.DatePickerButton
-import com.example.infinite_track.presentation.components.map.ReadOnlyLocationMap
+import com.example.infinite_track.presentation.components.calendar.DatePickerComponent
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackDropDown
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackDropDownOption
 import com.example.infinite_track.presentation.components.textfield.InfiniteTrackTextArea
+import com.example.infinite_track.presentation.components.wfa.WfaRecommendationPicker
 import com.example.infinite_track.presentation.design.components.button.InfiniteButton
 import com.example.infinite_track.presentation.design.components.data.InfiniteChecklistCard
 import com.example.infinite_track.presentation.design.components.data.InfiniteChecklistItem
@@ -52,6 +51,8 @@ fun WfaRequestFormScreen(
     onEvent: (WfaRequestEvent) -> Unit,
     onBack: () -> Unit,
     onClose: () -> Unit = onBack,
+    onSearchLocation: () -> Unit = {},
+    hasPreciseLocationPermission: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     Column(modifier.fillMaxSize()) {
@@ -71,23 +72,28 @@ fun WfaRequestFormScreen(
                 )
             }
             uiState.failure != null && uiState.config == null -> ConfigFailure(uiState.failure, onEvent, onBack)
-            else -> FormContent(uiState, onEvent)
+            else -> FormContent(
+                uiState = uiState,
+                onEvent = onEvent,
+                onSearchLocation = onSearchLocation,
+                hasPreciseLocationPermission = hasPreciseLocationPermission
+            )
         }
     }
 }
 
 @Composable
-private fun FormContent(uiState: WfaRequestUiState, onEvent: (WfaRequestEvent) -> Unit) {
+private fun FormContent(
+    uiState: WfaRequestUiState,
+    onEvent: (WfaRequestEvent) -> Unit,
+    onSearchLocation: () -> Unit,
+    hasPreciseLocationPermission: Boolean
+) {
     val config = uiState.config ?: return
     val employee = uiState.employee ?: return
-    val location = uiState.location ?: uiState.draft.location ?: return
+    val location = uiState.draft.location ?: uiState.location
     val selectedReason = config.reasons.firstOrNull { it.id == uiState.draft.reasonId }
-    val hasValidCoordinates = location.hasValidCoordinates
-    val locationCoordinate = if (hasValidCoordinates) {
-        GeoCoordinate(location.latitude, location.longitude)
-    } else {
-        null
-    }
+    val hasValidCoordinates = location?.hasValidCoordinates == true
     val locationStatus = if (hasValidCoordinates) {
         stringResource(R.string.wfa_request_location_valid)
     } else {
@@ -100,8 +106,39 @@ private fun FormContent(uiState: WfaRequestUiState, onEvent: (WfaRequestEvent) -
         verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.lg)
     ) {
         item {
-            InfiniteCard(modifier = Modifier.fillMaxWidth().testTag("wfaLocationCard")) {
+            InfiniteCard(modifier = Modifier.fillMaxWidth().testTag("wfaRequestDate")) {
                 Column(verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.lg)) {
+                    InfiniteSectionHeader(
+                        title = stringResource(R.string.wfa_request_date),
+                        leadingIcon = Icons.Outlined.Info
+                    )
+                    DatePickerComponent(
+                        selectedDate = uiState.draft.scheduleDate,
+                        minimumDate = uiState.minimumScheduleDate,
+                        onDateSelected = { onEvent(WfaRequestEvent.ScheduleDateChanged(it)) },
+                        label = stringResource(R.string.wfa_request_date_placeholder),
+                        calendarContentDescription = stringResource(R.string.wfa_request_date_placeholder),
+                        modifier = Modifier.testTag("wfaScheduleDate")
+                    )
+                    FieldErrorText(uiState.fieldErrors.scheduleDate)
+                }
+            }
+        }
+        item {
+            WfaRecommendationPicker(
+                state = uiState.recommendationState,
+                currentCoordinate = uiState.currentCoordinate,
+                hasPreciseLocationPermission = hasPreciseLocationPermission,
+                onRecommendationSelected = {
+                    onEvent(WfaRequestEvent.RecommendationSelected(it))
+                },
+                onRetry = { onEvent(WfaRequestEvent.RetryRecommendationsClicked) },
+                onSearchLocation = onSearchLocation
+            )
+        }
+        if (location != null) item {
+            InfiniteCard(modifier = Modifier.fillMaxWidth().testTag("wfaSelectedLocationCard")) {
+                Column(verticalArrangement = Arrangement.spacedBy(InfiniteSpacing.Default.md)) {
                     InfiniteSectionHeader(
                         title = stringResource(R.string.wfa_request_location),
                         leadingIcon = Icons.Outlined.LocationOn
@@ -110,18 +147,6 @@ private fun FormContent(uiState: WfaRequestUiState, onEvent: (WfaRequestEvent) -
                         label = location.displayName,
                         value = location.formattedAddress,
                         orientation = InfiniteInfoRowOrientation.Vertical
-                    )
-                    ReadOnlyLocationMap(
-                        coordinate = locationCoordinate,
-                        radiusMeters = config.radiusMeters,
-                        title = location.displayName,
-                        address = location.formattedAddress,
-                        modifier = Modifier.fillMaxWidth().testTag("wfaLocationMap"),
-                        contentDescription = stringResource(
-                            R.string.wfa_request_location_map_content_description,
-                            location.displayName,
-                            config.radiusMeters
-                        )
                     )
                     InfiniteInfoRow(
                         label = stringResource(R.string.wfa_request_policy_title),
@@ -132,11 +157,7 @@ private fun FormContent(uiState: WfaRequestUiState, onEvent: (WfaRequestEvent) -
                     InfiniteInfoRow(
                         label = stringResource(R.string.wfa_request_location_status),
                         value = locationStatus,
-                        semantic = if (hasValidCoordinates) {
-                            InfiniteSemantic.Success
-                        } else {
-                            InfiniteSemantic.Error
-                        },
+                        semantic = if (hasValidCoordinates) InfiniteSemantic.Success else InfiniteSemantic.Error,
                         modifier = Modifier.testTag("wfaLocationStatus"),
                         statusContent = {
                             InfiniteStatusPill(
@@ -186,17 +207,6 @@ private fun FormContent(uiState: WfaRequestUiState, onEvent: (WfaRequestEvent) -
                         title = stringResource(R.string.wfa_request_details),
                         leadingIcon = Icons.Outlined.Info
                     )
-                    Column {
-                        InfiniteSectionHeader(title = stringResource(R.string.wfa_request_date))
-                        DatePickerButton(
-                            selectedDate = uiState.draft.scheduleDate,
-                            onDateSelected = { onEvent(WfaRequestEvent.ScheduleDateChanged(it)) },
-                            placeholder = stringResource(R.string.wfa_request_date_placeholder),
-                            calendarContentDescription = stringResource(R.string.wfa_request_date_placeholder),
-                            modifier = Modifier.testTag("wfaScheduleDate")
-                        )
-                        FieldErrorText(uiState.fieldErrors.scheduleDate)
-                    }
                     Column {
                         InfiniteTrackDropDown(
                             selectedKey = uiState.draft.reasonId,
@@ -286,6 +296,8 @@ private fun FieldErrorText(error: WfaRequestFieldError?) {
     InfiniteSupportingText(
         text = when (error) {
             WfaRequestFieldError.REQUIRED -> stringResource(R.string.wfa_request_error_required)
+            WfaRequestFieldError.FUTURE_DATE_REQUIRED ->
+                stringResource(R.string.wfa_request_error_future_date_required)
             WfaRequestFieldError.REASON_UNAVAILABLE -> stringResource(R.string.wfa_request_error_reason_unavailable)
             WfaRequestFieldError.OTHER_REASON_REQUIRED -> stringResource(R.string.wfa_request_error_other_required)
             WfaRequestFieldError.TOO_LONG -> stringResource(R.string.wfa_request_error_too_long)

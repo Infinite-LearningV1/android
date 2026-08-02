@@ -1,31 +1,54 @@
 package com.example.infinite_track.data.repository.wfa
 
-import com.example.infinite_track.data.mapper.wfa.toDomain
+import com.example.infinite_track.data.mapper.wfa.WfaRecommendationFailureMapper
+import com.example.infinite_track.data.mapper.wfa.toDomainResultOrNull
+import com.example.infinite_track.data.soucre.network.response.booking.WfaRequestErrorResponseDto
 import com.example.infinite_track.data.soucre.network.retrofit.ApiService
-import com.example.infinite_track.domain.model.wfa.WfaRecommendation
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationFailure
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationQuery
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationResult
 import com.example.infinite_track.domain.repository.WfaRepository
+import com.google.gson.Gson
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import retrofit2.HttpException
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
-/**
- * Implementation of WfaRepository that fetches data from network API
- */
 class WfaRepositoryImpl @Inject constructor(
-    private val apiService: ApiService
+    private val apiService: ApiService,
+    private val gson: Gson
 ) : WfaRepository {
 
     override suspend fun getRecommendations(
-        latitude: Double,
-        longitude: Double
-    ): Result<List<WfaRecommendation>> {
-        return try {
-            val response = apiService.getWfaRecommendations(latitude, longitude)
-            if (response.success) {
-                Result.success(response.data.recommendations.toDomain())
-            } else {
-                Result.failure(Exception(response.message))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        query: WfaRecommendationQuery
+    ): WfaRecommendationResult = withContext(Dispatchers.IO) {
+        try {
+            apiService.getWfaRecommendations(
+                latitude = query.origin.latitude,
+                longitude = query.origin.longitude,
+                scheduleDate = query.scheduleDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+            ).toDomainResultOrNull()
+                ?: WfaRecommendationResult.Failure(WfaRecommendationFailure.Unknown)
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: HttpException) {
+            WfaRecommendationResult.Failure(parseHttpFailure(exception))
+        } catch (throwable: Throwable) {
+            WfaRecommendationResult.Failure(
+                WfaRecommendationFailureMapper.mapThrowable(throwable)
+            )
         }
+    }
+
+    private fun parseHttpFailure(exception: HttpException): WfaRecommendationFailure {
+        val parsed = runCatching {
+            exception.response()?.errorBody()?.string()?.let { body ->
+                gson.fromJson(body, WfaRequestErrorResponseDto::class.java)
+            }
+        }.getOrNull()
+        val code = parsed?.code ?: parsed?.errors?.firstNotNullOfOrNull { it.code }
+        return WfaRecommendationFailureMapper.mapHttp(exception.code(), code)
     }
 }

@@ -2,6 +2,9 @@ package com.example.infinite_track.domain.model.location
 
 import com.example.infinite_track.domain.model.attendance.Location
 import com.example.infinite_track.domain.model.wfa.WfaRecommendation
+import com.example.infinite_track.domain.model.wfa.WfaFacilityAvailability
+import com.example.infinite_track.domain.model.wfa.WfaFacilityEvidence
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationStatus
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -29,14 +32,28 @@ class ProviderNeutralLocationModelTest {
             name = "Cafe",
             address = "Palu",
             coordinate = GeoCoordinate(-0.90, 119.88),
-            category = "Cafe",
-            suitabilityScore = 0.9,
-            suitabilityLabel = "Good",
-            distanceMeters = DistanceMeters(1_000.0)
+            placeId = null,
+            placeType = "Cafe",
+            distanceMeters = DistanceMeters(1_000.0),
+            status = WfaRecommendationStatus.Ranked,
+            finalRank = 1,
+            finalScore = 90.0,
+            finalLabel = "Good",
+            facilityScore = null,
+            facilityConfidence = 0,
+            facilities = unknownFacilities()
         )
 
         assertEquals(GeoCoordinate(-0.90, 119.88), recommendation.coordinate)
         assertEquals(-0.90, recommendation.latitude, 0.0)
         assertEquals(119.88, recommendation.longitude, 0.0)
     }
+
+    private fun unknownFacilities() = WfaFacilityEvidence(
+        internetAccess = WfaFacilityAvailability.UNKNOWN,
+        openingHours = WfaFacilityAvailability.UNKNOWN,
+        toilets = WfaFacilityAvailability.UNKNOWN,
+        airConditioning = WfaFacilityAvailability.UNKNOWN,
+        wheelchairAccessibility = WfaFacilityAvailability.UNKNOWN
+    )
 }

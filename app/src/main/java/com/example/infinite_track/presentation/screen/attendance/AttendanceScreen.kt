@@ -3,8 +3,6 @@ package com.example.infinite_track.presentation.screen.attendance
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -16,8 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,7 +34,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -59,7 +54,6 @@ import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.R
 import com.example.infinite_track.domain.model.attendance.TargetLocationId
 import com.example.infinite_track.domain.model.attendance.TargetLocationResolution
-import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.presentation.components.button.attendance.AttendanceBottomSheetContent
 import com.example.infinite_track.presentation.components.button.attendance.AttendancePreparationEvent
 import com.example.infinite_track.presentation.components.empty.ErrorAnimation
@@ -85,7 +79,6 @@ import com.example.infinite_track.presentation.screen.attendance.preparation.Att
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationUiMapper
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationTextResolver
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePrimaryActionUiCombiner
-import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryState
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionPanelHost
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessEvent
 import com.example.infinite_track.presentation.screen.attendance.permission.AttendancePermissionReadinessViewModel
@@ -167,23 +160,6 @@ fun AttendanceScreen(
         }
     }
 
-    // Handle hasil pencarian lokasi dari LocationSearchScreen
-    val selectedLocation = navController.currentBackStackEntry
-        ?.savedStateHandle
-        ?.get<LocationResult>("selected_location")
-
-    // Process hasil pencarian lokasi
-    LaunchedEffect(selectedLocation) {
-        selectedLocation?.let { location ->
-            // Kirim lokasi terpilih ke ViewModel untuk diproses
-            viewModel.onLocationSelected(location)
-            // Hapus state agar tidak diproses lagi saat re-komposisi
-            navController.currentBackStackEntry
-                ?.savedStateHandle
-                ?.remove<LocationResult>("selected_location")
-        }
-    }
-
     // BottomSheet state
     val bottomSheetState = rememberStandardBottomSheetState(
         skipHiddenState = false
@@ -226,18 +202,11 @@ fun AttendanceScreen(
                         "Navigating to face scanner for $action"
                     )
                 }
-                is NavigationTarget.WfaBooking -> {
+                is NavigationTarget.WfaRequest -> {
                     navController.navigate(target.route)
                     android.util.Log.d(
                         "AttendanceScreen",
-                        "Navigating to WFA booking screen with route: ${target.route}"
-                    )
-                }
-                is NavigationTarget.LocationSearch -> {
-                    navController.navigate(target.params)
-                    android.util.Log.d(
-                        "AttendanceScreen",
-                        "Navigating to location search with params: ${target.params}"
+                        "Navigating to WFA request flow with route: ${target.route}"
                     )
                 }
             }
@@ -327,10 +296,6 @@ fun AttendanceScreen(
                             when (event) {
                                 is AttendancePreparationEvent.ModeSelected ->
                                     viewModel.onWorkModeSelected(event.mode)
-                                AttendancePreparationEvent.SearchWfaLocation ->
-                                    navController.navigate(Screen.LocationSearch.route)
-                                AttendancePreparationEvent.PickWfaLocationOnMap ->
-                                    viewModel.onMapPickRequested()
                                 is AttendancePreparationEvent.PrimaryActionClicked -> {
                                     when (event.action) {
                                         AttendancePreparationPrimaryAction.WAIT -> Unit
@@ -341,14 +306,10 @@ fun AttendanceScreen(
                                             viewModel.onAttendanceStatusRefreshRequested()
                                         AttendancePreparationPrimaryAction.REFRESH_PROFILE ->
                                             viewModel.onAttendanceProfileRefreshRequested()
-                                        AttendancePreparationPrimaryAction.RETRY_WFA_DISCOVERY ->
-                                            viewModel.onWfaDiscoveryRetryRequested()
                                         AttendancePreparationPrimaryAction.REFRESH_LOCATION ->
                                             viewModel.onFocusLocationClicked()
                                         AttendancePreparationPrimaryAction.FOCUS_TARGET ->
                                             viewModel.onMapReady()
-                                        AttendancePreparationPrimaryAction.OPEN_WFA_BOOKING ->
-                                            viewModel.onBookingClicked()
                                         AttendancePreparationPrimaryAction.OPEN_WFA_REQUESTS ->
                                             navController.navigate(Screen.Wfa.route)
                                         AttendancePreparationPrimaryAction.CONTACT_ADMIN ->
@@ -400,10 +361,7 @@ fun AttendanceScreen(
                                 AttendanceMapEvent.Ready -> viewModel.onMapReady()
                                 is AttendanceMapEvent.CameraEffectConsumed ->
                                     viewModel.onMapCameraEffectConsumed(event.effectId)
-                                is AttendanceMapEvent.CameraIdle -> viewModel.onMapIdle(
-                                    centerPoint = event.center,
-                                    origin = event.origin
-                                )
+                                is AttendanceMapEvent.CameraIdle -> Unit
                                 is AttendanceMapEvent.MarkerClicked -> {
                                     when (event.marker.role) {
                                         MapMarkerRole.CURRENT_LOCATION -> Unit
@@ -412,15 +370,7 @@ fun AttendanceScreen(
                                                 as? TargetLocationResolution.Resolved)
                                             ?.target
                                             ?.let { selectedTargetMarkerId = it.targetId }
-                                        MapMarkerRole.WFA_RECOMMENDATION ->
-                                            (uiState.preparation.wfaDiscovery
-                                                as? WfaDiscoveryState.Content)
-                                            ?.recommendations
-                                            .orEmpty()
-                                            .firstOrNull {
-                                                AttendanceMapUiMapper.recommendationMarkerId(it) == event.marker.id
-                                            }
-                                            ?.let(viewModel::onWfaMarkerClicked)
+                                        MapMarkerRole.WFA_RECOMMENDATION -> Unit
                                         MapMarkerRole.SEARCH_PREVIEW -> Unit
                                     }
                                 }
@@ -438,21 +388,6 @@ fun AttendanceScreen(
                             showPermissionPanel = true
                         }
                     )
-
-                    // Pick on Map Crosshair - shows static pin in center when Pick on Map mode is active
-                    AnimatedVisibility(
-                        visible = AttendanceSelectionTransition.isMapPickEnabled(preparation),
-                        modifier = Modifier.align(Alignment.Center)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = stringResource(
-                                R.string.attendance_map_pick_location
-                            ),
-                            tint = Color.Red,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
 
                     selectedTargetMarker?.let { selectedMarker ->
                         Box(
@@ -477,17 +412,6 @@ fun AttendanceScreen(
                         }
                     }
 
-                    // Loading overlay for WFA recommendations
-                    if (preparation.wfaDiscovery is WfaDiscoveryState.Loading) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.3f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            LoadingAnimation()
-                        }
-                    }
                 }
             }
         }

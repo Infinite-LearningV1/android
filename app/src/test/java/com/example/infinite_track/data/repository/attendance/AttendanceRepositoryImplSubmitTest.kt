@@ -380,7 +380,11 @@ private class SubmitFakeApiService : ApiService {
 
     override suspend fun sendLocationEvent(request: LocationEventRequest): Response<Unit> = unsupported()
 
-    override suspend fun getWfaRecommendations(latitude: Double, longitude: Double): WfaRecommendationResponse =
+    override suspend fun getWfaRecommendations(
+        latitude: Double,
+        longitude: Double,
+        scheduleDate: String
+    ): WfaRecommendationResponse =
         unsupported()
 
     override suspend fun getWfaRequestConfig():

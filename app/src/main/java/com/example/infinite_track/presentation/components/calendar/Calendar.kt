@@ -25,9 +25,53 @@ import com.example.infinite_track.presentation.core.body1
 import com.example.infinite_track.presentation.theme.Purple_300
 import com.example.infinite_track.presentation.theme.Purple_400
 import com.example.infinite_track.presentation.theme.Violet_50
-import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
-import java.util.Locale
+
+@Composable
+fun DatePickerComponent(
+    selectedDate: LocalDate?,
+    onDateSelected: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier,
+    label: String,
+    minimumDate: LocalDate? = null,
+    enabled: Boolean = true,
+    textColor: Color = Color.Gray,
+    calendarContentDescription: String? = null,
+    dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+) {
+    val context = LocalContext.current
+    val initialDate = (selectedDate ?: minimumDate ?: LocalDate.now()).let { date ->
+        if (minimumDate != null && date < minimumDate) minimumDate else date
+    }
+    val datePickerDialog = DatePickerDialog(
+        context,
+        R.style.CustomDatePickerDialogTheme,
+        { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
+            onDateSelected(LocalDate.of(year, month + 1, dayOfMonth))
+        },
+        initialDate.year,
+        initialDate.monthValue - 1,
+        initialDate.dayOfMonth
+    ).apply {
+        minimumDate?.let { minimum ->
+            datePicker.minDate = Calendar.getInstance().apply {
+                clear()
+                set(minimum.year, minimum.monthValue - 1, minimum.dayOfMonth)
+            }.timeInMillis
+        }
+    }
+
+    DatePickerField(
+        text = selectedDate?.format(dateFormatter) ?: label,
+        enabled = enabled,
+        textColor = textColor,
+        calendarContentDescription = calendarContentDescription,
+        onClick = datePickerDialog::show,
+        modifier = modifier
+    )
+}
 
 @Composable
 fun DatePickerComponent(
@@ -38,25 +82,37 @@ fun DatePickerComponent(
     enabled: Boolean = true,
     textColor: Color = Color.Gray
 ) {
-    val context = LocalContext.current
-    val calendar = Calendar.getInstance()
-    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+    val formatter = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy") }
+    var selectedDate by remember(initialDate) {
+        mutableStateOf(
+            runCatching { LocalDate.parse(initialDate, formatter) }
+                .getOrElse { LocalDate.now() }
+        )
+    }
 
-    var selectedDate by remember { mutableStateOf(initialDate.ifEmpty { dateFormat.format(calendar.time) }) }
-
-    val datePickerDialog = DatePickerDialog(
-        context,
-        R.style.CustomDatePickerDialogTheme,
-        { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
-            calendar.set(year, month, dayOfMonth)
-            selectedDate = dateFormat.format(calendar.time)
-            onDateSelected(selectedDate)
+    DatePickerComponent(
+        selectedDate = selectedDate,
+        onDateSelected = { date ->
+            selectedDate = date
+            onDateSelected(date.format(formatter))
         },
-        calendar.get(Calendar.YEAR),
-        calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH)
+        modifier = modifier,
+        label = label,
+        enabled = enabled,
+        textColor = textColor,
+        dateFormatter = formatter
     )
+}
 
+@Composable
+private fun DatePickerField(
+    text: String,
+    enabled: Boolean,
+    textColor: Color,
+    calendarContentDescription: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -66,9 +122,7 @@ fun DatePickerComponent(
             )
             .padding(14.dp)
             .clickable(enabled = enabled) {
-                if (enabled) {
-                    datePickerDialog.show()
-                }
+                if (enabled) onClick()
             }
     ) {
         Row(
@@ -79,14 +133,14 @@ fun DatePickerComponent(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = selectedDate.ifEmpty { label },
+                    text = text,
                     style = body1.copy(color = textColor)
                 )
             }
             Icon(
                 painter = painterResource(id = R.drawable.ic_calendar),
                 tint = Purple_300,
-                contentDescription = null
+                contentDescription = calendarContentDescription
             )
         }
     }

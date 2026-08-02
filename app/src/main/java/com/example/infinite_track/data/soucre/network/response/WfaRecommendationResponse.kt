@@ -2,109 +2,52 @@ package com.example.infinite_track.data.soucre.network.response
 
 import com.google.gson.annotations.SerializedName
 
-/**
- * Network response models for WFA (Work From Anywhere) recommendations API
- */
 data class WfaRecommendationResponse(
-    @SerializedName("success")
-    val success: Boolean,
-    @SerializedName("message")
-    val message: String,
-    @SerializedName("data")
-    val data: WfaData
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("message") val message: String,
+    @SerializedName("data") val data: WfaData,
+    @SerializedName("meta") val meta: WfaRecommendationMetaDto? = null
 )
 
 data class WfaData(
-    @SerializedName("user_location")
-    val userLocation: UserLocation,
-    @SerializedName("recommendations")
-    val recommendations: List<RecommendationItem>
+    @SerializedName("schedule_date") val scheduleDate: String,
+    @SerializedName("timezone") val timezone: String,
+    @SerializedName("work_window") val workWindow: WorkWindowDto?,
+    @SerializedName("recommendations") val recommendations: List<RecommendationItem>
 )
 
-data class UserLocation(
-    @SerializedName("latitude")
-    val latitude: Double,
-    @SerializedName("longitude")
-    val longitude: Double,
-    @SerializedName("address")
-    val address: String?
+data class WorkWindowDto(
+    @SerializedName("start") val start: String?,
+    @SerializedName("end") val end: String?
+)
+
+data class WfaRecommendationMetaDto(
+    @SerializedName("search_radius_meters") val searchRadiusMeters: Double? = null,
+    @SerializedName("candidates_found") val candidatesFound: Int? = null,
+    @SerializedName("candidates_returned") val candidatesReturned: Int? = null
 )
 
 data class RecommendationItem(
-    @SerializedName("name")
-    val name: String,
-    @SerializedName("address")
-    val address: String,
-    @SerializedName("latitude")
-    val latitude: Double,
-    @SerializedName("longitude")
-    val longitude: Double,
-    @SerializedName("category")
-    val category: String,
-    @SerializedName("suitability_score")
-    val suitabilityScore: Double,
-    @SerializedName("suitability_label")
-    val suitabilityLabel: String,
-    @SerializedName("distance_from_center")
-    val distanceFromCenter: Double, // This is in meters from API
-    @SerializedName("score_details")
-    val scoreDetails: ScoreDetails
+    @SerializedName("place_id") val placeId: String?,
+    @SerializedName("name") val name: String,
+    @SerializedName("address") val address: String,
+    @SerializedName("latitude") val latitude: Double,
+    @SerializedName("longitude") val longitude: Double,
+    @SerializedName("distance_meters") val distanceMeters: Double,
+    @SerializedName("place_type") val placeType: String,
+    @SerializedName("status") val status: String,
+    @SerializedName("final_rank") val finalRank: Int?,
+    @SerializedName("final_score") val finalScore: Double?,
+    @SerializedName("final_label") val finalLabel: String?,
+    @SerializedName("facility_score") val facilityScore: Double?,
+    @SerializedName("facility_confidence") val facilityConfidence: Int,
+    @SerializedName("facilities") val facilities: FacilityEvidenceDto
 )
 
-data class ScoreDetails(
-    @SerializedName("wifi_quality")
-    val wifiQuality: WifiQuality,
-    @SerializedName("noise_level")
-    val noiseLevel: NoiseLevel,
-    @SerializedName("crowd_density")
-    val crowdDensity: CrowdDensity,
-    @SerializedName("operational_hours")
-    val operationalHours: OperationalHours,
-    @SerializedName("amenities")
-    val amenities: Amenities
-)
-
-data class WifiQuality(
-    @SerializedName("score")
-    val score: Double,
-    @SerializedName("label")
-    val label: String,
-    @SerializedName("description")
-    val description: String
-)
-
-data class NoiseLevel(
-    @SerializedName("score")
-    val score: Double,
-    @SerializedName("label")
-    val label: String,
-    @SerializedName("description")
-    val description: String
-)
-
-data class CrowdDensity(
-    @SerializedName("score")
-    val score: Double,
-    @SerializedName("label")
-    val label: String,
-    @SerializedName("description")
-    val description: String
-)
-
-data class OperationalHours(
-    @SerializedName("score")
-    val score: Double,
-    @SerializedName("label")
-    val label: String,
-    @SerializedName("description")
-    val description: String
-)
-
-data class Amenities(
-    @SerializedName("score")
-    val score: Double,
-    @SerializedName("label")
-    val label: String,
-    @SerializedName("facilities")
-    val facilities: List<String>
+data class FacilityEvidenceDto(
+    @SerializedName("internet_access") val internetAccess: Boolean?,
+    @SerializedName("opening_hours") val openingHours: Boolean?,
+    @SerializedName("toilets") val toilets: Boolean?,
+    @SerializedName("air_conditioning") val airConditioning: Boolean?,
+    @SerializedName("wheelchair_accessibility") val wheelchairAccessibility: Boolean?
 )

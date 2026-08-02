@@ -1214,7 +1214,11 @@ private class FakeApiService(
         throw NotImplementedError()
     }
 
-    override suspend fun getWfaRecommendations(latitude: Double, longitude: Double): WfaRecommendationResponse {
+    override suspend fun getWfaRecommendations(
+        latitude: Double,
+        longitude: Double,
+        scheduleDate: String
+    ): WfaRecommendationResponse {
         throw NotImplementedError()
     }
 

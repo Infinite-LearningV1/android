@@ -41,7 +41,8 @@ import com.example.infinite_track.domain.model.location.CurrentLocationResult
 import com.example.infinite_track.domain.model.location.AddressResolutionResult
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.domain.model.location.ResolvedAddress
-import com.example.infinite_track.domain.model.wfa.WfaRecommendation
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationQuery
+import com.example.infinite_track.domain.model.wfa.WfaRecommendationResult
 import com.example.infinite_track.domain.repository.AttendanceRepository
 import com.example.infinite_track.domain.repository.AuthRefreshResult
 import com.example.infinite_track.domain.repository.AuthRepository
@@ -65,7 +66,6 @@ import com.example.infinite_track.domain.use_case.geofence.ResolveGeofenceRuntim
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentLocationUseCase
 import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
-import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
@@ -386,8 +386,6 @@ class AttendanceScreenFaceResultRescueTest {
                 addressResolver
             ),
             getCurrentLocationUseCase = getCurrentLocationUseCase,
-            getWfaRecommendationsUseCase = GetWfaRecommendationsUseCase(FakeWfaRepository()),
-            reverseGeocodeUseCase = ReverseGeocodeUseCase(addressResolver),
             getLoggedInUserUseCase = GetLoggedInUserUseCase(authRepository),
             resolveTodayWfaBookingStateUseCase = ResolveTodayWfaBookingStateUseCase(
                 wfaBookingResolver
@@ -616,9 +614,13 @@ class AttendanceScreenFaceResultRescueTest {
 
     private class FakeWfaRepository : WfaRepository {
         override suspend fun getRecommendations(
-            latitude: Double,
-            longitude: Double
-        ): Result<List<WfaRecommendation>> = Result.success(emptyList())
+            query: WfaRecommendationQuery
+        ): WfaRecommendationResult = WfaRecommendationResult.Success(
+            scheduleDate = query.scheduleDate,
+            timezone = "Asia/Jakarta",
+            recommendations = emptyList(),
+            meta = null
+        )
     }
 
     private class FakeGeofenceRuntimeRepository : GeofenceRuntimeRepository {

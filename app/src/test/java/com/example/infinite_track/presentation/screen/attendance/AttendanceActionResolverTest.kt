@@ -15,7 +15,6 @@ import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.location.DistanceMeters
 import com.example.infinite_track.domain.model.location.GeoCoordinate
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
-import com.example.infinite_track.presentation.screen.attendance.preparation.WfaDiscoveryState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -112,7 +111,6 @@ class AttendanceActionResolverTest {
     private fun unresolvedWfaPreparation() = AttendancePreparationState(
         selectedMode = WorkMode.WFA,
         targetResolution = TargetLocationResolution.Resolving(WorkMode.WFA),
-        wfaDiscovery = WfaDiscoveryState.Loading,
         eligibility = AttendancePreparationEligibility.Resolving
     )
 
