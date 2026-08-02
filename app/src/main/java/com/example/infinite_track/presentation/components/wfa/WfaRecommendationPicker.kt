@@ -43,6 +43,7 @@ import com.example.infinite_track.presentation.map.model.AttendanceMapEvent
 import com.example.infinite_track.presentation.map.model.MapCameraEffect
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestMapUiMapper
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestRecommendationState
+import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestUiMapper
 import java.util.Locale
 
 @Composable
@@ -77,7 +78,7 @@ fun WfaRecommendationPicker(
             )
             is WfaRequestRecommendationState.Failure -> InfiniteErrorState(
                 title = stringResource(R.string.wfa_recommendation_failure_title),
-                message = recommendationFailureMessage(state.failure),
+                message = stringResource(WfaRequestUiMapper.map(state.failure).messageRes),
                 actionLabel = if (state.retryable) stringResource(R.string.wfa_request_retry) else null,
                 onAction = if (state.retryable) onRetry else null,
                 modifier = Modifier.testTag("wfaRecommendationFailure")
@@ -223,22 +224,4 @@ private fun StatusText(text: String) {
         color = InfiniteColors.Text.copy(alpha = 0.72f),
         modifier = Modifier.padding(top = InfiniteSpacing.Default.xs)
     )
-}
-
-@Composable
-private fun recommendationFailureMessage(
-    failure: com.example.infinite_track.domain.model.wfa.WfaRecommendationFailure
-): String = when (failure) {
-    com.example.infinite_track.domain.model.wfa.WfaRecommendationFailure.CurrentLocationUnavailable ->
-        stringResource(R.string.wfa_recommendation_failure_location)
-    com.example.infinite_track.domain.model.wfa.WfaRecommendationFailure.InvalidScheduleDate ->
-        stringResource(R.string.wfa_recommendation_failure_date)
-    com.example.infinite_track.domain.model.wfa.WfaRecommendationFailure.DuplicateBooking ->
-        stringResource(R.string.wfa_recommendation_failure_duplicate)
-    com.example.infinite_track.domain.model.wfa.WfaRecommendationFailure.NetworkUnavailable ->
-        stringResource(R.string.wfa_recommendation_failure_network)
-    com.example.infinite_track.domain.model.wfa.WfaRecommendationFailure.ProviderUnavailable,
-    com.example.infinite_track.domain.model.wfa.WfaRecommendationFailure.ServerUnavailable,
-    com.example.infinite_track.domain.model.wfa.WfaRecommendationFailure.Unknown ->
-        stringResource(R.string.wfa_recommendation_failure_unavailable)
 }

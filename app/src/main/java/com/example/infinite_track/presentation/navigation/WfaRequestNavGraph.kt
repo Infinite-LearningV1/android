@@ -1,10 +1,14 @@
 package com.example.infinite_track.presentation.navigation
 
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
@@ -12,7 +16,10 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
+import com.example.infinite_track.domain.model.booking.WfaCandidateLocation
+import com.example.infinite_track.domain.model.location.LocationResult
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestEffect
+import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestEvent
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestFormScreen
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestFlowController
 import com.example.infinite_track.presentation.screen.attendance.wfa_request.WfaRequestResultScreen
@@ -32,12 +39,38 @@ fun NavGraphBuilder.wfaRequestNavGraph(
         route = Screen.WfaRequestFlow.route
     ) {
         composable(Screen.WfaRequestForm.route) { entry ->
+            val context = LocalContext.current
+            val hasPreciseLocationPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
             WfaRequestRoute(entry, navController, controllerFactory) { state, viewModel ->
+                val selectedLocation by entry.savedStateHandle
+                    .getStateFlow<LocationResult?>(LocationSearchResultContract.RESULT_KEY, null)
+                    .collectAsStateWithLifecycle()
+                LaunchedEffect(selectedLocation, viewModel) {
+                    val location = selectedLocation ?: return@LaunchedEffect
+                    viewModel.onEvent(
+                        WfaRequestEvent.ManualLocationSelected(
+                            WfaCandidateLocation(
+                                latitude = location.latitude,
+                                longitude = location.longitude,
+                                displayName = location.placeName,
+                                formattedAddress = location.address
+                            )
+                        )
+                    )
+                    entry.savedStateHandle.remove<LocationResult>(
+                        LocationSearchResultContract.RESULT_KEY
+                    )
+                }
                 WfaRequestFormScreen(
                     uiState = state,
                     onEvent = viewModel::onEvent,
                     onBack = { navController.popBackStack() },
-                    onClose = { navController.returnToAttendance() }
+                    onClose = { navController.returnToAttendance() },
+                    onSearchLocation = { navController.navigate(Screen.LocationSearch.route) },
+                    hasPreciseLocationPermission = hasPreciseLocationPermission
                 )
             }
         }
