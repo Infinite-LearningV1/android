@@ -63,7 +63,6 @@ class AttendancePrimaryActionUiCombinerTest {
     @Test
     fun `blocked attendance preserves the typed preparation recovery CTA`() {
         val recoveryActions = listOf(
-            AttendancePreparationPrimaryAction.OPEN_WFA_BOOKING,
             AttendancePreparationPrimaryAction.OPEN_WFA_REQUESTS,
             AttendancePreparationPrimaryAction.REFRESH_STATUS,
             AttendancePreparationPrimaryAction.REFRESH_PROFILE
@@ -86,25 +85,6 @@ class AttendancePrimaryActionUiCombinerTest {
             assertEquals(recoveryAction, result.primaryAction)
             assertTrue(result.isPrimaryActionEnabled)
         }
-    }
-
-    @Test
-    fun `blocked attendance cannot re-enable WFA booking without a selected draft`() {
-        val result = AttendancePrimaryActionUiCombiner.combine(
-            preparation = preparation(
-                action = AttendancePreparationPrimaryAction.OPEN_WFA_BOOKING,
-                label = "Submit WFA",
-                enabled = false
-            ),
-            actionState = AttendanceActionState.Blocked(
-                reason = AttendanceBlockReason.TARGET_LOCATION_UNAVAILABLE,
-                title = "Location unavailable",
-                message = "Select a draft first"
-            )
-        )
-
-        assertEquals(AttendancePreparationPrimaryAction.OPEN_WFA_BOOKING, result.primaryAction)
-        assertFalse(result.isPrimaryActionEnabled)
     }
 
     @Test
@@ -142,11 +122,8 @@ class AttendancePrimaryActionUiCombinerTest {
         modeOptions = emptyList(),
         targetSummary = null,
         statusMessage = "status",
-        wfaDiscovery = WfaDiscoveryUiModel.Hidden,
         primaryAction = action,
         primaryActionLabel = label,
-        isPrimaryActionEnabled = enabled,
-        secondaryAction = null,
-        secondaryActionLabel = null
+        isPrimaryActionEnabled = enabled
     )
 }

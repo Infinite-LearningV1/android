@@ -66,7 +66,6 @@ import com.example.infinite_track.domain.use_case.geofence.ResolveGeofenceRuntim
 import com.example.infinite_track.domain.use_case.location.GetCurrentAddressUseCase
 import com.example.infinite_track.domain.use_case.location.GetCurrentLocationUseCase
 import com.example.infinite_track.domain.use_case.location.ReverseGeocodeUseCase
-import com.example.infinite_track.domain.use_case.wfa.GetWfaRecommendationsUseCase
 import com.example.infinite_track.presentation.navigation.Screen
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
 import com.example.infinite_track.presentation.theme.Infinite_TrackTheme
@@ -387,8 +386,6 @@ class AttendanceScreenFaceResultRescueTest {
                 addressResolver
             ),
             getCurrentLocationUseCase = getCurrentLocationUseCase,
-            getWfaRecommendationsUseCase = GetWfaRecommendationsUseCase(FakeWfaRepository()),
-            reverseGeocodeUseCase = ReverseGeocodeUseCase(addressResolver),
             getLoggedInUserUseCase = GetLoggedInUserUseCase(authRepository),
             resolveTodayWfaBookingStateUseCase = ResolveTodayWfaBookingStateUseCase(
                 wfaBookingResolver

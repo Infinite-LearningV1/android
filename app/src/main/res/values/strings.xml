@@ -249,16 +249,11 @@
     <string name="attendance_action_reload">Reload</string>
     <string name="attendance_action_refresh_location">Refresh location</string>
     <string name="attendance_action_focus_target">Focus target location</string>
-    <string name="attendance_action_submit_wfa">Submit WFA Request</string>
     <string name="attendance_action_view_wfa_requests">View request status</string>
     <string name="attendance_action_contact_admin">Contact admin</string>
     <string name="attendance_action_retry">Try again</string>
-    <string name="attendance_action_search_wfa">Search WFA location</string>
-    <string name="attendance_action_pick_on_map">Pick on map</string>
-    <string name="attendance_wfa_search_supporting">Search or pick a location for the WFA request draft.</string>
     <string name="attendance_status_preparing">The target location is being prepared.</string>
     <string name="attendance_status_ready">The target location is ready for attendance.</string>
-    <string name="attendance_status_recommendation_failed">WFA location recommendations could not be loaded. Try again.</string>
     <string name="attendance_block_wfo_not_assigned">An office location has not been assigned. Reload attendance status.</string>
     <string name="attendance_block_wfh_profile">The WFH location is unavailable from your profile. Reload or contact admin.</string>
     <string name="attendance_block_wfa_not_requested">There is no WFA request for this attendance date.</string>
@@ -272,12 +267,7 @@
     <string name="attendance_block_profile_failed">The location profile could not be loaded. Try reloading.</string>
     <string name="attendance_block_booking_failed">WFA request status could not be loaded. View request status.</string>
     <string name="attendance_block_target_invalid">Target location data is invalid. Contact admin.</string>
-    <string name="attendance_wfa_recommendation_heading">WFA location recommendations</string>
-    <string name="attendance_wfa_recommendation_supporting">Choose a location for the request draft, not as the attendance target.</string>
     <string name="attendance_wfa_preview_selected">WFA location selected</string>
-    <string name="attendance_wfa_recommendation_empty">No WFA location recommendations are available.</string>
-    <string name="attendance_wfa_recommendation_failure">WFA location recommendations could not be loaded.</string>
-    <string name="attendance_wfa_recommendation_loading">Loading WFA location recommendations...</string>
     <string name="attendance_wfa_preview_draft">Preview for WFA request</string>
     <string name="attendance_map_precise_location_unavailable">Precise location is not ready</string>
     <string name="location_map_unavailable_title">Map preview is unavailable</string>
@@ -292,12 +282,6 @@
     <string name="attendance_permission_revoked_title">Precise location is unavailable</string>
     <string name="attendance_permission_revoked_message">Location access changed while Attendance was open. Restore it from the access panel to continue.</string>
     <string name="attendance_permission_manage">Manage access</string>
-    <string name="attendance_wfa_recommendation_detail">%1$s &#8226; %2$s</string>
-    <string name="attendance_wfa_suitability">WFA score %1$d &#8226; %2$s</string>
-    <string name="attendance_wfa_suitability_success_state">WFA suitability is excellent</string>
-    <string name="attendance_wfa_suitability_warning_state">WFA suitability needs review</string>
-    <string name="attendance_wfa_suitability_error_state">WFA suitability is not recommended</string>
-    <string name="attendance_wfa_suitability_neutral_state">WFA suitability information</string>
     <string name="attendance_pick_location_fallback">Selected coordinates</string>
     <string name="attendance_pick_location_failed">Location details could not be loaded.</string>
 

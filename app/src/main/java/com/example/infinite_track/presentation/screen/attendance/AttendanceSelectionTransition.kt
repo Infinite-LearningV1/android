@@ -3,73 +3,39 @@ package com.example.infinite_track.presentation.screen.attendance
 import com.example.infinite_track.domain.model.attendance.AuthoritativeTargetLocation
 import com.example.infinite_track.domain.model.attendance.TargetLocationId
 import com.example.infinite_track.domain.model.attendance.TargetLocationResolution
+import com.example.infinite_track.domain.model.attendance.TargetUnavailableReason
 import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.presentation.screen.attendance.preparation.AttendancePreparationState
-import com.example.infinite_track.presentation.screen.attendance.preparation.WfaMapPickInteractionState
-import com.example.infinite_track.presentation.map.model.AttendanceMapCameraMoveOrigin
 
 internal object AttendanceSelectionTransition {
     fun resolvedTargetForInteraction(
         preparation: AttendancePreparationState,
         selectedTargetId: TargetLocationId?
     ): AuthoritativeTargetLocation? {
-        val target = (preparation.targetResolution as? TargetLocationResolution.Resolved)
-            ?.target
+        val target = (preparation.targetResolution as? TargetLocationResolution.Resolved)?.target
         return target?.takeIf { it.targetId == selectedTargetId }
     }
-
-    fun isMapPickEnabled(preparation: AttendancePreparationState): Boolean =
-        preparation.selectedMode == WorkMode.WFA &&
-            preparation.mapPickInteraction is WfaMapPickInteractionState.Active
-
-    fun beginMapPick(
-        preparation: AttendancePreparationState,
-        sessionId: Long
-    ): AttendancePreparationState {
-        if (preparation.selectedMode != WorkMode.WFA) return preparation
-        return preparation.copy(
-            mapPickInteraction = WfaMapPickInteractionState.Active(sessionId)
-        )
-    }
-
-    fun mapPickSessionForCameraIdle(
-        preparation: AttendancePreparationState,
-        origin: AttendanceMapCameraMoveOrigin
-    ): WfaMapPickInteractionState.Active? {
-        if (origin != AttendanceMapCameraMoveOrigin.USER_GESTURE) return null
-        if (preparation.selectedMode != WorkMode.WFA) return null
-        return preparation.mapPickInteraction as? WfaMapPickInteractionState.Active
-    }
-
-    fun consumeMapPick(
-        preparation: AttendancePreparationState,
-        session: WfaMapPickInteractionState.Active
-    ): AttendancePreparationState? {
-        val active = preparation.mapPickInteraction as? WfaMapPickInteractionState.Active
-            ?: return null
-        if (preparation.selectedMode != WorkMode.WFA) return null
-        if (active != session) return null
-        return preparation.copy(mapPickInteraction = WfaMapPickInteractionState.Inactive)
-    }
-
-    fun cancelMapPick(preparation: AttendancePreparationState): AttendancePreparationState =
-        preparation.copy(mapPickInteraction = WfaMapPickInteractionState.Inactive)
 
     fun beginSelection(
         state: AttendanceScreenState,
         preparation: AttendancePreparationState
     ): AttendanceScreenState = state.copy(
-        preparation = cancelMapPick(preparation),
+        preparation = preparation,
         navigationTarget = state.navigationTarget
-            .takeUnless { it is NavigationTarget.WfaBooking }
+            .takeUnless { it is NavigationTarget.WfaRequest }
     )
 
-    fun wfaBookingNavigationTarget(
+    fun wfaRequestNavigationTarget(
         preparation: AttendancePreparationState,
         selectionIsCurrent: Boolean,
+        hasPendingNavigation: Boolean,
         route: String
-    ): NavigationTarget.WfaBooking? {
-        if (!selectionIsCurrent || preparation.selectedMode != WorkMode.WFA) return null
-        return NavigationTarget.WfaBooking(route)
+    ): NavigationTarget.WfaRequest? {
+        if (!selectionIsCurrent || hasPendingNavigation) return null
+        if (preparation.selectedMode != WorkMode.WFA) return null
+        val unavailable = preparation.targetResolution as? TargetLocationResolution.Unavailable
+            ?: return null
+        if (unavailable.reason != TargetUnavailableReason.WFA_NOT_REQUESTED) return null
+        return NavigationTarget.WfaRequest(route)
     }
 }

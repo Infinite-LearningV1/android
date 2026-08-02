@@ -12,7 +12,6 @@ import com.example.infinite_track.domain.model.attendance.TargetRangeStatus
 import com.example.infinite_track.domain.model.attendance.TargetRangeUnknownReason
 import com.example.infinite_track.domain.model.attendance.WorkMode
 import com.example.infinite_track.domain.model.location.DistanceMeters
-import com.example.infinite_track.domain.model.wfa.WfaRecommendation
 import com.example.infinite_track.presentation.design.tokens.InfiniteSemantic
 import java.text.NumberFormat
 import java.util.Locale
@@ -29,27 +28,7 @@ object AttendancePreparationUiMapper {
         strings: AttendancePreparationTextResolver
     ): AttendancePreparationUiModel {
         val eligibilityPresentation = preparation.eligibility.toPresentation(strings)
-        val retryDiscovery = preparation.eligibility is AttendancePreparationEligibility.Ready &&
-            preparation.selectedMode == WorkMode.WFA &&
-            (preparation.wfaDiscovery as? WfaDiscoveryState.Failure)?.retryable == true
-        val primary = if (retryDiscovery) {
-            PrimaryPresentation(
-                action = AttendancePreparationPrimaryAction.RETRY_WFA_DISCOVERY,
-                label = strings.text(R.string.attendance_action_retry),
-                enabled = true,
-                statusMessage = strings.text(R.string.attendance_status_recommendation_failed)
-            )
-        } else {
-            eligibilityPresentation
-        }
-        val hasWfaSecondaryAction = preparation.selectedMode == WorkMode.WFA
-        val primaryEnabled = if (
-            primary.action == AttendancePreparationPrimaryAction.OPEN_WFA_BOOKING
-        ) {
-            preparation.hasSelectedWfaDraft()
-        } else {
-            primary.enabled
-        }
+        val primary = eligibilityPresentation
 
         return AttendancePreparationUiModel(
             modeOptions = WorkMode.values().map { mode ->
@@ -59,14 +38,9 @@ object AttendancePreparationUiMapper {
                 ?.target
                 ?.toUiModel(preparation.rangeStatus, strings),
             statusMessage = primary.statusMessage,
-            wfaDiscovery = preparation.wfaDiscovery.toUiModel(strings),
             primaryAction = primary.action,
             primaryActionLabel = primary.label,
-            isPrimaryActionEnabled = primaryEnabled,
-            secondaryAction = AttendancePreparationSecondaryAction.SEARCH_WFA_LOCATION
-                .takeIf { hasWfaSecondaryAction },
-            secondaryActionLabel = strings.text(R.string.attendance_action_search_wfa)
-                .takeIf { hasWfaSecondaryAction }
+            isPrimaryActionEnabled = primary.enabled
         )
     }
 
@@ -102,7 +76,7 @@ object AttendancePreparationUiMapper {
             AttendancePreparationRecovery.FOCUS_TARGET ->
                 AttendancePreparationPrimaryAction.FOCUS_TARGET to R.string.attendance_action_focus_target
             AttendancePreparationRecovery.OPEN_WFA_BOOKING ->
-                AttendancePreparationPrimaryAction.OPEN_WFA_BOOKING to R.string.attendance_action_submit_wfa
+                AttendancePreparationPrimaryAction.WAIT to R.string.attendance_action_wait
             AttendancePreparationRecovery.OPEN_WFA_REQUESTS ->
                 AttendancePreparationPrimaryAction.OPEN_WFA_REQUESTS to R.string.attendance_action_view_wfa_requests
             AttendancePreparationRecovery.CONTACT_ADMIN ->
@@ -111,16 +85,9 @@ object AttendancePreparationUiMapper {
         return PrimaryPresentation(
             action = action,
             label = strings.text(labelResource),
-            enabled = true,
+            enabled = action != AttendancePreparationPrimaryAction.WAIT,
             statusMessage = strings.text(reason.copyResource())
         )
-    }
-
-    private fun AttendancePreparationState.hasSelectedWfaDraft(): Boolean {
-        val content = wfaDiscovery as? WfaDiscoveryState.Content ?: return false
-        return content.searchPreview != null || content.selectedKey?.let { selected ->
-            content.recommendations.any { it.stableKey == selected }
-        } == true
     }
 
     @StringRes
@@ -216,66 +183,6 @@ object AttendancePreparationUiMapper {
             strings.text(R.string.attendance_target_booking_date, context.scheduleDateDisplay)
         }
     )
-
-    private fun WfaDiscoveryState.toUiModel(
-        strings: AttendancePreparationTextResolver
-    ): WfaDiscoveryUiModel = when (this) {
-        WfaDiscoveryState.Hidden -> WfaDiscoveryUiModel.Hidden
-        WfaDiscoveryState.Loading -> WfaDiscoveryUiModel.Loading
-        WfaDiscoveryState.Empty -> WfaDiscoveryUiModel.Empty(
-            strings.text(R.string.attendance_wfa_recommendation_empty)
-        )
-        is WfaDiscoveryState.Failure -> WfaDiscoveryUiModel.Failure(
-            message = strings.text(R.string.attendance_wfa_recommendation_failure),
-            retryable = retryable
-        )
-        is WfaDiscoveryState.Content -> WfaDiscoveryUiModel.Content(
-            rows = recommendations.mapNotNull { recommendation ->
-                recommendation.toUiModel(strings)
-            },
-            selectedKey = selectedKey,
-            searchPreviewName = searchPreview?.placeName
-        )
-    }
-
-    private fun WfaRecommendation.toUiModel(
-        strings: AttendancePreparationTextResolver
-    ): WfaRecommendationUiModel? {
-        val score = finalScore ?: return null
-        val label = finalLabel ?: return null
-        val suitability = WfaSuitabilityPresentationMapper.map(score / 100.0)
-        return WfaRecommendationUiModel(
-            stableKey = stableKey,
-            name = name,
-            supportingText = strings.text(
-                R.string.attendance_wfa_recommendation_detail,
-                placeType,
-                formatDistance(distanceMeters, strings)
-            ),
-            suitabilityText = strings.text(
-                R.string.attendance_wfa_suitability,
-                suitability.percentage,
-                label
-            ),
-            suitabilitySemantic = suitability.semantic,
-            categoryIcon = placeType.toCategoryIcon()
-        )
-    }
-
-    private fun String.toCategoryIcon(): WfaRecommendationCategoryIcon {
-        val normalized = trim().lowercase(Locale.ROOT)
-        return when {
-            normalized.contains("cafe") || normalized.contains("kafe") ||
-                normalized.contains("coffee") -> WfaRecommendationCategoryIcon.CAFE
-            normalized.contains("cowork") || normalized.contains("office") ->
-                WfaRecommendationCategoryIcon.COWORKING
-            normalized.contains("library") || normalized.contains("perpustakaan") ->
-                WfaRecommendationCategoryIcon.LIBRARY
-            normalized.contains("park") || normalized.contains("taman") ->
-                WfaRecommendationCategoryIcon.PARK
-            else -> WfaRecommendationCategoryIcon.WORK
-        }
-    }
 
     private fun formatDistance(
         distance: DistanceMeters,

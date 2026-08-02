@@ -64,10 +64,8 @@ object AttendancePrimaryActionUiCombiner {
         AttendancePreparationPrimaryAction.REFRESH_PROFILE,
         AttendancePreparationPrimaryAction.REFRESH_LOCATION,
         AttendancePreparationPrimaryAction.FOCUS_TARGET,
-        AttendancePreparationPrimaryAction.OPEN_WFA_BOOKING,
         AttendancePreparationPrimaryAction.OPEN_WFA_REQUESTS,
-        AttendancePreparationPrimaryAction.CONTACT_ADMIN,
-        AttendancePreparationPrimaryAction.RETRY_WFA_DISCOVERY -> true
+        AttendancePreparationPrimaryAction.CONTACT_ADMIN -> true
         AttendancePreparationPrimaryAction.WAIT,
         AttendancePreparationPrimaryAction.CONTINUE_TO_FACE_VERIFICATION,
         AttendancePreparationPrimaryAction.SUBMIT_ATTENDANCE -> false
