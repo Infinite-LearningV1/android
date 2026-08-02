@@ -22,7 +22,9 @@ internal object AttendanceSelectionTransition {
     ): AttendanceScreenState = state.copy(
         preparation = preparation,
         navigationTarget = state.navigationTarget
-            .takeUnless { it is NavigationTarget.WfaRequest }
+            .takeUnless {
+                it is NavigationTarget.WfaRequest && preparation.selectedMode != WorkMode.WFA
+            }
     )
 
     fun wfaRequestNavigationTarget(

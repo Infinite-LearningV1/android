@@ -229,6 +229,10 @@ class WfaRequestViewModel @Inject constructor(
         result: WfaRecommendationResult.Success
     ) {
         if (!isCurrentRequest(requestId, date)) return
+        if (result.scheduleDate != date) {
+            applyFailure(requestId, date, WfaRecommendationFailure.InvalidScheduleDate)
+            return
+        }
         _uiState.update {
             it.copy(
                 currentCoordinate = coordinate,

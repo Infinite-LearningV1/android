@@ -378,6 +378,8 @@
     <string name="wfa_recommendation_search_fallback">Cari lokasi lainnya</string>
     <string name="wfa_recommendation_selected">Dipilih</string>
     <string name="wfa_recommendation_distance">Jarak %.0f m</string>
+    <string name="wfa_recommendation_place_type">Tipe %1$s</string>
+    <string name="wfa_recommendation_facility_confidence">Keyakinan fasilitas %1$d%%</string>
     <string name="wfa_recommendation_ranked_score">Skor %1$s · %2$s</string>
     <string name="wfa_recommendation_insufficient_data">Data fasilitas belum cukup untuk memberi skor.</string>
     <string name="wfa_recommendation_enrichment_failed">Data fasilitas belum berhasil dilengkapi.</string>

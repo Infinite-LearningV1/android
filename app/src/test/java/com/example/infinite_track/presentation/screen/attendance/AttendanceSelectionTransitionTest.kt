@@ -53,6 +53,20 @@ class AttendanceSelectionTransitionTest {
     }
 
     @Test
+    fun `repeated WFA selection preserves queued request navigation`() {
+        val navigation = NavigationTarget.WfaRequest(WFA_ROUTE)
+        val nextPreparation = AttendancePreparationState(selectedMode = WorkMode.WFA)
+
+        val next = AttendanceSelectionTransition.beginSelection(
+            state = AttendanceScreenState(navigationTarget = navigation),
+            preparation = nextPreparation
+        )
+
+        assertEquals(nextPreparation, next.preparation)
+        assertEquals(navigation, next.navigationTarget)
+    }
+
+    @Test
     fun `new selection preserves unrelated navigation`() {
         val navigation = NavigationTarget.FaceScanner(AttendanceActionIntent.CHECK_IN)
         val next = AttendanceSelectionTransition.beginSelection(

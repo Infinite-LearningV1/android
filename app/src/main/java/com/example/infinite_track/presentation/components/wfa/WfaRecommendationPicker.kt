@@ -165,6 +165,14 @@ private fun RecommendationCard(
                         style = body2,
                         color = InfiniteColors.Text.copy(alpha = 0.72f)
                     )
+                    Text(
+                        text = stringResource(
+                            R.string.wfa_recommendation_place_type,
+                            recommendation.placeType.toDisplayPlaceType()
+                        ),
+                        style = body2,
+                        color = InfiniteColors.Text.copy(alpha = 0.72f)
+                    )
                 }
                 if (selected) {
                     InfiniteStatusPill(
@@ -178,6 +186,14 @@ private fun RecommendationCard(
                 text = stringResource(
                     R.string.wfa_recommendation_distance,
                     recommendation.distanceMeters.value
+                ),
+                style = body2,
+                color = InfiniteColors.Text.copy(alpha = 0.72f)
+            )
+            Text(
+                text = stringResource(
+                    R.string.wfa_recommendation_facility_confidence,
+                    recommendation.facilityConfidence
                 ),
                 style = body2,
                 color = InfiniteColors.Text.copy(alpha = 0.72f)
@@ -225,3 +241,10 @@ private fun StatusText(text: String) {
         modifier = Modifier.padding(top = InfiniteSpacing.Default.xs)
     )
 }
+
+private fun String.toDisplayPlaceType(): String =
+    replace('_', ' ')
+        .trim()
+        .replaceFirstChar { first ->
+            if (first.isLowerCase()) first.titlecase(Locale.getDefault()) else first.toString()
+        }

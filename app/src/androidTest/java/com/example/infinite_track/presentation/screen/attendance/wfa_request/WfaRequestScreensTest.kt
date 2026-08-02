@@ -180,6 +180,23 @@ class WfaRequestScreensTest {
     }
 
     @Test
+    fun recommendationShowsPlaceTypeAndFacilityConfidence() {
+        val state = editingState().copy(
+            recommendationState = WfaRequestRecommendationState.Content(
+                listOf(recommendation().copy(placeType = "coworking_space", facilityConfidence = 72))
+            )
+        )
+        renderForm(state)
+
+        composeRule.onNodeWithText("Tipe Coworking space")
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeRule.onNodeWithText("Keyakinan fasilitas 72%")
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun formShowsServerPolicyAndConditionalOtherFieldWithoutEditableRadius() {
         val state = editingState()
         renderForm(state)

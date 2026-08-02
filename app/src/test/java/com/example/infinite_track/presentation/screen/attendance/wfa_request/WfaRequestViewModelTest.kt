@@ -132,6 +132,24 @@ class WfaRequestViewModelTest {
     }
 
     @Test
+    fun `response for a different declared date is rejected`() = runTest {
+        val recommendations = FakeRecommendationRepository {
+            success(LocalDate.of(2026, 8, 4), listOf(recommendation("wrong-date")))
+        }
+        val viewModel = createViewModel(recommendations = recommendations)
+
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value.recommendationState
+        assertTrue(state is WfaRequestRecommendationState.Failure)
+        assertSame(
+            WfaRecommendationFailure.InvalidScheduleDate,
+            (state as WfaRequestRecommendationState.Failure).failure
+        )
+        assertNull(viewModel.uiState.value.draft.location)
+    }
+
+    @Test
     fun `retry preserves reason and notes`() = runTest {
         var fail = true
         val recommendations = FakeRecommendationRepository { query ->
